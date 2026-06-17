@@ -1,0 +1,1 @@
+"use strict";Object.defineProperty(exports,Symbol.toStringTag,{value:"Module"});const e=require("./common/vendor.js");Math;const t={onLaunch(){e.index.getStorageSync("baseUrl")||e.index.setStorageSync("baseUrl","http://192.168.1.8:8081")}};function r(){return{app:e.createSSRApp(t)}}r().app.mount("#app"),exports.createApp=r;

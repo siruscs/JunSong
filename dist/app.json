@@ -1,0 +1,53 @@
+{
+  "pages": [
+    "pages/login/index",
+    "pages/dept/index",
+    "pages/dept/detail",
+    "pages/dept/form",
+    "pages/index/index",
+    "pages/workbench/index",
+    "pages/mine/index",
+    "pages/list/index",
+    "pages/detail/index",
+    "pages/form/index",
+    "pages/user/index",
+    "pages/user/detail",
+    "pages/user/form",
+    "pages/profile/index",
+    "pages/password/index",
+    "pages/settings/index"
+  ],
+  "window": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "JunSong店记",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f5f7fa"
+  },
+  "tabBar": {
+    "color": "#94a3b8",
+    "selectedColor": "#2A6F97",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "static/tab/home.png",
+        "selectedIconPath": "static/tab/home-active.png"
+      },
+      {
+        "pagePath": "pages/workbench/index",
+        "text": "功能",
+        "iconPath": "static/tab/grid.png",
+        "selectedIconPath": "static/tab/grid-active.png"
+      },
+      {
+        "pagePath": "pages/mine/index",
+        "text": "我的",
+        "iconPath": "static/tab/user.png",
+        "selectedIconPath": "static/tab/user-active.png"
+      }
+    ]
+  },
+  "usingComponents": {}
+}

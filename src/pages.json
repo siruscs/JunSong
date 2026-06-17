@@ -1,0 +1,100 @@
+{
+  "pages": [
+    {
+      "path": "pages/login/index",
+      "style": { "navigationBarTitleText": "登录", "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/dept/index",
+      "style": { "navigationBarTitleText": "部门管理" }
+    },
+    {
+      "path": "pages/dept/detail",
+      "style": { "navigationBarTitleText": "部门详情" }
+    },
+    {
+      "path": "pages/dept/form",
+      "style": { "navigationBarTitleText": "部门表单" }
+    },
+    {
+      "path": "pages/index/index",
+      "style": { "navigationBarTitleText": "首页", "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/workbench/index",
+      "style": { "navigationBarTitleText": "功能" }
+    },
+    {
+      "path": "pages/mine/index",
+      "style": { "navigationBarTitleText": "我的" }
+    },
+    {
+      "path": "pages/list/index",
+      "style": { "navigationBarTitleText": "列表", "enablePullDownRefresh": false }
+    },
+    {
+      "path": "pages/detail/index",
+      "style": { "navigationBarTitleText": "详情" }
+    },
+    {
+      "path": "pages/form/index",
+      "style": { "navigationBarTitleText": "表单" }
+    },
+    {
+      "path": "pages/user/index",
+      "style": { "navigationBarTitleText": "用户管理" }
+    },
+    {
+      "path": "pages/user/detail",
+      "style": { "navigationBarTitleText": "用户详情" }
+    },
+    {
+      "path": "pages/user/form",
+      "style": { "navigationBarTitleText": "编辑用户" }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": { "navigationBarTitleText": "个人资料" }
+    },
+    {
+      "path": "pages/password/index",
+      "style": { "navigationBarTitleText": "修改密码" }
+    },
+    {
+      "path": "pages/settings/index",
+      "style": { "navigationBarTitleText": "接口设置" }
+    }
+  ],
+  "tabBar": {
+    "color": "#94a3b8",
+    "selectedColor": "#2A6F97",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "static/tab/home.png",
+        "selectedIconPath": "static/tab/home-active.png"
+      },
+      {
+        "pagePath": "pages/workbench/index",
+        "text": "功能",
+        "iconPath": "static/tab/grid.png",
+        "selectedIconPath": "static/tab/grid-active.png"
+      },
+      {
+        "pagePath": "pages/mine/index",
+        "text": "我的",
+        "iconPath": "static/tab/user.png",
+        "selectedIconPath": "static/tab/user-active.png"
+      }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "JunSong店记",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f5f7fa"
+  }
+}

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.FinDeptProfitConfigMapper">
+    <resultMap type="FinDeptProfitConfig" id="FinDeptProfitConfigResult">
+        <id property="configId" column="config_id"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="managerProfitRate" column="manager_profit_rate"/>
+        <result property="autoCreateInvestorPayment" column="auto_create_investor_payment"/>
+        <result property="status" column="status"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+    <sql id="selectVo">select c.config_id, c.dept_id, c.manager_profit_rate, c.auto_create_investor_payment, c.status, c.del_flag, c.create_by, c.create_time, c.update_by, c.update_time, c.remark from fin_dept_profit_config c</sql>
+    <select id="selectFinDeptProfitConfigByConfigId" resultMap="FinDeptProfitConfigResult"><include refid="selectVo"/> where config_id=#{configId}</select>
+    <select id="selectFinDeptProfitConfigByDeptId" resultMap="FinDeptProfitConfigResult"><include refid="selectVo"/> where dept_id=#{deptId} and del_flag='0' limit 1</select>
+    <select id="selectAnyFinDeptProfitConfigByDeptId" resultMap="FinDeptProfitConfigResult"><include refid="selectVo"/> where dept_id=#{deptId} limit 1</select>
+    <select id="selectFinDeptProfitConfigList" resultMap="FinDeptProfitConfigResult">
+        <include refid="selectVo"/>
+        <where>
+            c.del_flag='0'
+            <if test="deptId != null"> and c.dept_id=#{deptId}</if>
+            <if test="status != null and status != ''"> and c.status=#{status}</if>
+        </where>
+    </select>
+    <insert id="insertFinDeptProfitConfig" parameterType="FinDeptProfitConfig" useGeneratedKeys="true" keyProperty="configId">
+        insert into fin_dept_profit_config(dept_id, manager_profit_rate, auto_create_investor_payment, status, del_flag, create_by, create_time, remark)
+        values(#{deptId}, #{managerProfitRate}, #{autoCreateInvestorPayment}, #{status}, '0', #{createBy}, sysdate(), #{remark})
+    </insert>
+    <update id="updateFinDeptProfitConfig" parameterType="FinDeptProfitConfig">
+        update fin_dept_profit_config
+        <trim prefix="set" suffixOverrides=",">
+            <if test="managerProfitRate != null">manager_profit_rate=#{managerProfitRate},</if>
+            <if test="autoCreateInvestorPayment != null">auto_create_investor_payment=#{autoCreateInvestorPayment},</if>
+            <if test="status != null">status=#{status},</if>
+            <if test="delFlag != null">del_flag=#{delFlag},</if>
+            <if test="updateBy != null">update_by=#{updateBy},</if>
+            update_time=sysdate(),
+            <if test="remark != null">remark=#{remark},</if>
+        </trim>
+        where config_id=#{configId}
+    </update>
+    <delete id="deleteFinDeptProfitConfigByConfigId">update fin_dept_profit_config set del_flag='2' where config_id=#{configId}</delete>
+    <delete id="deleteFinDeptProfitConfigByConfigIds">update fin_dept_profit_config set del_flag='2' where config_id in <foreach item="configId" collection="array" open="(" separator="," close=")">#{configId}</foreach></delete>
+</mapper>

@@ -1,0 +1,666 @@
+// cover some element-plus styles - Modern Business Theme
+
+.el-breadcrumb__inner,
+.el-breadcrumb__inner a {
+  font-weight: 500 !important;
+  color: var(--theme-app-muted, #6B7280);
+  transition: color 0.2s ease;
+}
+
+.el-breadcrumb__item:last-child .el-breadcrumb__inner {
+  color: var(--theme-app-text, #1F2937);
+  font-weight: 600;
+}
+
+.el-breadcrumb__inner:hover {
+  color: var(--theme-primary) !important;
+}
+
+.el-upload {
+  input[type="file"] {
+    display: none !important;
+  }
+}
+
+.el-upload__input {
+  display: none;
+}
+
+.cell {
+  .el-tag {
+    margin-right: 0px;
+    border-radius: 6px;
+    font-weight: 500;
+  }
+}
+
+.small-padding {
+  .cell {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+}
+
+.fixed-width {
+  .cell {
+    display: inline-flex;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+
+  .el-button--small {
+    width: auto;
+    min-width: 0;
+    padding: 0 3px;
+    margin-left: 0 !important;
+  }
+}
+
+.el-form--inline {
+  .el-form-item {
+    .el-select {
+      min-width: 160px;
+    }
+  }
+}
+
+.status-col {
+  .cell {
+    padding: 0 10px;
+    text-align: center;
+
+    .el-tag {
+      margin-right: 0px;
+    }
+  }
+}
+
+// Modern Dialog
+.el-dialog {
+  transform: none;
+  left: 0;
+  position: relative;
+  margin: 0 auto;
+  border-radius: 16px;
+  box-shadow: var(--theme-card-shadow, 0 25px 50px rgba(31, 45, 82, 0.14));
+}
+
+.el-dialog__header {
+  padding: 24px 24px 0;
+  border-bottom: 1px solid var(--theme-app-border, #E5E7EB);
+  margin-right: 0;
+  padding-bottom: 16px;
+}
+
+.el-dialog__title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--theme-app-text, #1F2937);
+}
+
+.el-dialog__body {
+  padding: 24px;
+  color: var(--theme-app-muted, #4B5563);
+}
+
+.el-dialog__footer {
+  padding: 16px 24px 24px;
+  border-top: 1px solid var(--theme-app-border, #E5E7EB);
+}
+
+// refine element-plus upload
+.upload-container {
+  .el-upload {
+    width: 100%;
+
+    .el-upload-dragger {
+      width: 100%;
+      height: 200px;
+      border-radius: 12px;
+      border: 2px dashed #D1D5DB;
+      transition: all 0.3s ease;
+
+      &:hover {
+        border-color: var(--theme-primary);
+        background-color: var(--theme-hover-bg);
+      }
+    }
+  }
+}
+
+// dropdown
+.el-dropdown-menu {
+  a {
+    display: block
+  }
+  border-radius: 12px;
+  box-shadow: var(--theme-card-shadow, 0 18px 50px rgba(31, 45, 82, 0.1));
+  border: 1px solid var(--theme-app-border, #E5E7EB);
+  padding: 8px 0;
+}
+
+.el-dropdown-menu__item {
+  padding: 10px 20px;
+  color: var(--theme-app-text, #374151);
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: var(--theme-hover-bg);
+    color: var(--theme-primary);
+  }
+}
+
+// Modern Select, Tree Select and Cascader Popper
+.el-popper.is-light,
+.el-select__popper.el-popper,
+.el-cascader__dropdown.el-popper,
+.el-tree-select__popper.el-popper {
+  border: 1px solid rgba(255, 255, 255, 0.82) !important;
+  border-radius: 14px !important;
+  background:
+    linear-gradient(135deg, rgba(var(--theme-primary-rgb), 0.045), transparent 44%),
+    rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 18px 46px rgba(31, 45, 82, 0.14) !important;
+  overflow: hidden;
+}
+
+.el-popper.is-light .el-popper__arrow::before {
+  border-color: rgba(255, 255, 255, 0.82) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+}
+
+.el-select-dropdown,
+.el-cascader-panel {
+  background: transparent !important;
+}
+
+.el-select-dropdown__wrap,
+.el-cascader-menu__wrap {
+  padding: 6px;
+}
+
+.el-select-dropdown__item,
+.el-cascader-node {
+  height: 34px;
+  margin: 2px 0;
+  padding: 0 12px;
+  border-radius: 10px;
+  color: var(--theme-app-text, #172033);
+  font-size: 13px;
+  font-weight: 600;
+  transition: color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
+}
+
+.el-select-dropdown__item.hover,
+.el-select-dropdown__item:hover,
+.el-cascader-node:not(.is-disabled):focus,
+.el-cascader-node:not(.is-disabled):hover {
+  background: rgba(var(--theme-primary-rgb), 0.08) !important;
+  color: var(--theme-primary-dark, var(--theme-primary)) !important;
+  transform: translateX(2px);
+}
+
+.el-select-dropdown__item.selected,
+.el-cascader-node.in-active-path,
+.el-cascader-node.is-active {
+  background: linear-gradient(135deg, rgba(var(--theme-primary-rgb), 0.16), rgba(var(--theme-primary-rgb), 0.08)) !important;
+  color: var(--theme-primary-dark, var(--theme-primary)) !important;
+  font-weight: 750;
+}
+
+.el-select-dropdown__item.is-disabled,
+.el-cascader-node.is-disabled {
+  color: #a8b1c0 !important;
+  background: transparent !important;
+  transform: none;
+}
+
+.el-select-dropdown.is-multiple .el-select-dropdown__item.selected::after {
+  background-color: var(--theme-primary) !important;
+}
+
+// fix date-picker ui bug in filter-item
+.el-range-editor.el-input__inner {
+  display: inline-flex !important;
+}
+
+// to fix el-date-picker css style
+.el-range-separator {
+  box-sizing: content-box;
+}
+
+.el-menu--collapse
+  > div
+  > .el-sub-menu
+  > .el-sub-menu__title
+  .el-sub-menu__icon-arrow {
+  display: none;
+}
+
+// Modern Table Styles
+.el-table {
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: var(--theme-card-shadow, 0 18px 50px rgba(31, 45, 82, 0.1));
+  border: 1px solid rgba(255, 255, 255, 0.78);
+
+  th.el-table__cell {
+    background: linear-gradient(180deg, rgba(var(--theme-primary-rgb), 0.07), rgba(248, 250, 252, 0.94));
+    color: #475467;
+    font-weight: 750;
+  }
+
+  tr:hover > td {
+    background-color: rgba(var(--theme-primary-rgb), 0.04) !important;
+  }
+
+  .cell {
+    line-height: 1.45;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  th.el-table__cell,
+  td.el-table__cell {
+    white-space: nowrap;
+  }
+
+  .el-button.is-link {
+    min-height: 26px;
+    padding: 0 3px;
+    margin-left: 0;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .el-button.is-link + .el-button.is-link {
+    margin-left: 3px;
+  }
+
+  td.el-table__cell:last-child .cell {
+    white-space: nowrap;
+  }
+}
+
+.el-table--border:after,
+.el-table--group:after,
+.el-table:before {
+  display: none;
+}
+
+// Modern Button Styles
+.el-button {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.el-button--primary {
+  background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-dark) 100%);
+  border: none;
+
+  &:hover {
+    background: linear-gradient(135deg, var(--theme-primary-dark) 0%, var(--theme-primary-dark) 100%);
+  }
+}
+
+.el-button--success {
+  background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-light) 100%);
+  border: none;
+
+  &:hover {
+    background: linear-gradient(135deg, var(--theme-primary-dark) 0%, var(--theme-primary) 100%);
+  }
+}
+
+.el-button--warning {
+  background: linear-gradient(135deg, var(--theme-primary-light) 0%, var(--theme-primary) 100%);
+  border: none;
+
+  &:hover {
+    background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-dark) 100%);
+  }
+}
+
+.el-button--danger {
+  background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+  border: none;
+
+  &:hover {
+    background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+  }
+}
+
+// Modern Input Styles
+.el-input,
+.el-select,
+.el-date-editor,
+.el-input-number {
+  --el-input-border-radius: 8px;
+}
+
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner {
+  border-radius: 8px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    box-shadow: 0 0 0 1px #9CA3AF inset;
+  }
+
+  &.is-focus,
+  &:focus {
+    box-shadow: 0 0 0 1px var(--theme-primary) inset, 0 0 0 3px var(--theme-focus-shadow);
+  }
+}
+
+.el-form-item {
+  align-items: flex-start;
+}
+
+.el-form-item__content {
+  min-width: 0;
+}
+
+.el-dialog .el-select,
+.el-dialog .el-date-editor,
+.el-dialog .el-input-number {
+  width: 100%;
+}
+
+.el-form--inline {
+  .el-form-item {
+    margin-right: 12px;
+    margin-bottom: 10px;
+  }
+
+  .el-form-item__content {
+    max-width: 100%;
+  }
+}
+
+// Modern Select Styles
+.el-select .el-input__wrapper,
+.el-select__wrapper {
+  border-radius: 8px;
+}
+
+.el-select__wrapper,
+.el-input__wrapper,
+.el-textarea__inner,
+.el-cascader .el-input__wrapper {
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.9));
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.92) inset, 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.el-select__wrapper.is-focused,
+.el-cascader .el-input.is-focus .el-input__wrapper {
+  border-color: rgba(var(--theme-primary-rgb), 0.38);
+  box-shadow: 0 0 0 1px rgba(var(--theme-primary-rgb), 0.26) inset, 0 0 0 3px rgba(var(--theme-primary-rgb), 0.1) !important;
+}
+
+.el-select__placeholder,
+.el-input__inner::placeholder,
+.el-textarea__inner::placeholder {
+  color: #8b96a8;
+}
+
+.el-select .el-tag {
+  border-color: rgba(var(--theme-primary-rgb), 0.16);
+  background: rgba(var(--theme-primary-rgb), 0.08);
+  color: var(--theme-primary-dark, var(--theme-primary));
+}
+
+// Modern Tree Styles
+.el-tree {
+  --el-tree-node-hover-bg-color: rgba(var(--theme-primary-rgb), 0.08);
+  background: transparent;
+  color: var(--theme-app-text, #172033);
+}
+
+.el-tree-node {
+  margin: 2px 0;
+}
+
+.el-tree-node__content {
+  height: 34px;
+  border-radius: 10px;
+  color: var(--theme-app-text, #172033);
+  font-size: 13px;
+  font-weight: 650;
+  transition: color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
+}
+
+.el-tree-node__content:hover {
+  background: rgba(var(--theme-primary-rgb), 0.08) !important;
+  color: var(--theme-primary-dark, var(--theme-primary));
+  transform: translateX(2px);
+}
+
+.el-tree-node.is-current > .el-tree-node__content,
+.el-tree-node:focus > .el-tree-node__content {
+  background: linear-gradient(135deg, rgba(var(--theme-primary-rgb), 0.16), rgba(var(--theme-primary-rgb), 0.08)) !important;
+  color: var(--theme-primary-dark, var(--theme-primary));
+  font-weight: 760;
+}
+
+.el-tree-node__expand-icon {
+  color: #8b96a8;
+}
+
+.el-tree-node__expand-icon.expanded,
+.el-tree-node__content:hover .el-tree-node__expand-icon,
+.el-tree-node.is-current > .el-tree-node__content .el-tree-node__expand-icon {
+  color: var(--theme-primary);
+}
+
+.el-tree-node__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Modern Pagination
+.el-pagination {
+  .el-pager li {
+    border-radius: 8px;
+    margin: 0 4px;
+    font-weight: 500;
+
+    &.is-active {
+      background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-dark) 100%);
+    }
+
+    &:hover:not(.is-active) {
+      background-color: var(--theme-hover-bg);
+      color: var(--theme-primary);
+    }
+  }
+
+  button {
+    border-radius: 8px;
+
+    &:hover {
+      color: var(--theme-primary);
+    }
+  }
+}
+
+// Modern Card
+.el-card {
+  border-radius: 12px;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+
+  &:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+
+  .el-card__header {
+    background-color: #F9FAFB;
+    border-bottom: 1px solid #E5E7EB;
+    padding: 16px 20px;
+    font-weight: 600;
+    color: #1F2937;
+  }
+
+  .el-card__body {
+    padding: 20px;
+  }
+}
+
+// Modern Message Box
+.el-message {
+  border-radius: 12px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border: 1px solid #E5E7EB;
+}
+
+// Modern Notification
+.el-notification {
+  border-radius: 12px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border: 1px solid #E5E7EB;
+}
+
+// Modern Tag
+.el-tag {
+  border-radius: 6px;
+  font-weight: 500;
+  padding: 0 12px;
+  height: 28px;
+  line-height: 26px;
+}
+
+/* 防止搜索表单label换行 */
+.el-form--inline .el-form-item__label {
+  white-space: nowrap;
+}
+
+/* ========== 通用操作按钮明亮样式 ========== */
+.mb8 > .el-col .el-button--small:not(.is-link):not(.is-circle) {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.mb8 .el-button--primary.is-plain,
+.mb8 .el-button--success.is-plain,
+.mb8 .el-button--warning.is-plain,
+.table-toolbar .toolbar-left .el-button--primary:not(.is-plain):not(.is-link):not(.is-circle),
+.table-toolbar .toolbar-left .el-button--success:not(.is-plain):not(.is-link):not(.is-circle),
+.table-toolbar .toolbar-left .el-button--warning:not(.is-plain):not(.is-link):not(.is-circle) {
+  color: color-mix(in srgb, var(--theme-primary-dark) 86%, #172033 14%) !important;
+  background: rgba(var(--theme-primary-rgb), 0.08) !important;
+  border-color: rgba(var(--theme-primary-rgb), 0.18) !important;
+  box-shadow: none !important;
+  font-weight: 700;
+}
+
+.table-toolbar .toolbar-left .el-button--primary.is-plain,
+.table-toolbar .toolbar-left .el-button--warning.is-plain {
+  color: color-mix(in srgb, var(--theme-primary-dark) 86%, #172033 14%) !important;
+  background: rgba(var(--theme-primary-rgb), 0.08) !important;
+  border-color: rgba(var(--theme-primary-rgb), 0.18) !important;
+  box-shadow: none !important;
+  font-weight: 700;
+}
+
+.table-toolbar .toolbar-left .el-button--success.is-plain {
+  color: color-mix(in srgb, var(--theme-primary-dark) 86%, #172033 14%) !important;
+  background: rgba(var(--theme-primary-rgb), 0.08) !important;
+  border-color: rgba(var(--theme-primary-rgb), 0.18) !important;
+  box-shadow: none !important;
+  font-weight: 700;
+}
+
+.mb8 .el-button--primary.is-plain:hover,
+.mb8 .el-button--success.is-plain:hover,
+.mb8 .el-button--warning.is-plain:hover,
+.table-toolbar .toolbar-left .el-button--primary.is-plain:hover,
+.table-toolbar .toolbar-left .el-button--success.is-plain:hover,
+.table-toolbar .toolbar-left .el-button--warning.is-plain:hover,
+.table-toolbar .toolbar-left .el-button--primary:not(.is-plain):not(.is-link):not(.is-circle):hover,
+.table-toolbar .toolbar-left .el-button--success:not(.is-plain):not(.is-link):not(.is-circle):hover,
+.table-toolbar .toolbar-left .el-button--warning:not(.is-plain):not(.is-link):not(.is-circle):hover {
+  color: #fff !important;
+  background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-light) 100%) !important;
+  border-color: rgba(var(--theme-primary-rgb), 0.28) !important;
+  box-shadow: 0 8px 18px rgba(var(--theme-primary-rgb), 0.18) !important;
+}
+
+.mb8 .el-button--danger.is-plain,
+.table-toolbar .toolbar-left .el-button--danger:not(.is-plain):not(.is-link):not(.is-circle) {
+  color: #b83255 !important;
+  background: rgba(212, 69, 106, 0.08) !important;
+  border-color: rgba(212, 69, 106, 0.18) !important;
+  box-shadow: none !important;
+  font-weight: 700;
+}
+
+.table-toolbar .toolbar-left .el-button--danger.is-plain {
+  color: #b83255 !important;
+  background: rgba(212, 69, 106, 0.08) !important;
+  border-color: rgba(212, 69, 106, 0.18) !important;
+  box-shadow: none !important;
+  font-weight: 700;
+}
+
+.mb8 .el-button--danger.is-plain:hover,
+.table-toolbar .toolbar-left .el-button--danger.is-plain:hover,
+.table-toolbar .toolbar-left .el-button--danger:not(.is-plain):not(.is-link):not(.is-circle):hover {
+  color: #fff !important;
+  background: linear-gradient(135deg, #b83255 0%, #d4456a 100%) !important;
+  border-color: rgba(184, 50, 85, 0.28) !important;
+  box-shadow: 0 8px 18px rgba(212, 69, 106, 0.18) !important;
+}
+
+.mb8 .el-button--info.is-plain,
+.table-toolbar .toolbar-left .el-button--info:not(.is-plain):not(.is-link):not(.is-circle) {
+  color: #475569 !important;
+  background: rgba(100, 116, 139, 0.08) !important;
+  border-color: rgba(100, 116, 139, 0.18) !important;
+  box-shadow: none !important;
+  font-weight: 700;
+}
+
+.mb8 .el-button--info.is-plain:hover,
+.table-toolbar .toolbar-left .el-button--info:not(.is-plain):not(.is-link):not(.is-circle):hover {
+  color: #fff !important;
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%) !important;
+  border-color: rgba(71, 85, 105, 0.28) !important;
+  box-shadow: 0 8px 18px rgba(71, 85, 105, 0.16) !important;
+}
+
+.mb8 .el-button.is-disabled,
+.mb8 .el-button.is-disabled:hover,
+.table-toolbar .toolbar-left .el-button.is-disabled,
+.table-toolbar .toolbar-left .el-button.is-disabled:hover {
+  color: #a8b1c0 !important;
+  background: #f3f6fa !important;
+  border-color: #e1e7ef !important;
+  box-shadow: none;
+  transform: none;
+}

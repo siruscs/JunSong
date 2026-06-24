@@ -1,0 +1,2 @@
+com.junsong.common.log.service.AsyncLogService
+com.junsong.common.log.aspect.LogAspect

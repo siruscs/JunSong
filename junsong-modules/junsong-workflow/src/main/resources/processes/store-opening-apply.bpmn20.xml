@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             targetNamespace="http://junsong.com/workflow"
+             id="storeOpeningApplyDef">
+
+    <process id="store_opening_apply" name="门店开业申请" isExecutable="true">
+        <startEvent id="start" name="提交申请" flowable:initiator="initiator"/>
+        <sequenceFlow id="flow1" sourceRef="start" targetRef="taskRegionLeader"/>
+
+        <userTask id="taskRegionLeader" name="区域负责人审批" flowable:assignee="${regionLeader}">
+            <documentation>区域负责人审核门店开业申请。</documentation>
+        </userTask>
+        <sequenceFlow id="flow2" sourceRef="taskRegionLeader" targetRef="taskGeneralManager"/>
+
+        <userTask id="taskGeneralManager" name="总经理审批" flowable:assignee="${generalManager}">
+            <documentation>总经理审批门店开业申请。</documentation>
+        </userTask>
+        <sequenceFlow id="flow3" sourceRef="taskGeneralManager" targetRef="end"/>
+
+        <endEvent id="end" name="审批完成"/>
+    </process>
+    <bpmndi:BPMNDiagram id="BPMNDiagram_storeOpeningApply">
+        <bpmndi:BPMNPlane id="BPMNPlane_storeOpeningApply" bpmnElement="store_opening_apply">
+            <bpmndi:BPMNShape id="BPMNShape_start" bpmnElement="start">
+                <omgdc:Bounds x="250" y="240" width="30" height="30"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="BPMNShape_taskRegionLeader" bpmnElement="taskRegionLeader">
+                <omgdc:Bounds x="400" y="200" width="100" height="80"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="BPMNShape_taskGeneralManager" bpmnElement="taskGeneralManager">
+                <omgdc:Bounds x="580" y="200" width="100" height="80"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="BPMNShape_end" bpmnElement="end">
+                <omgdc:Bounds x="760" y="240" width="30" height="30"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNEdge id="BPMNEdge_flow1" bpmnElement="flow1">
+                <omgdi:waypoint x="280" y="255"/>
+                <omgdi:waypoint x="400" y="240"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="BPMNEdge_flow2" bpmnElement="flow2">
+                <omgdi:waypoint x="500" y="240"/>
+                <omgdi:waypoint x="580" y="240"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="BPMNEdge_flow3" bpmnElement="flow3">
+                <omgdi:waypoint x="680" y="240"/>
+                <omgdi:waypoint x="760" y="255"/>
+            </bpmndi:BPMNEdge>
+        </bpmndi:BPMNPlane>
+    </bpmndi:BPMNDiagram>
+</definitions>

@@ -1,0 +1,106 @@
+spring:
+  data:
+    redis:
+      host: junsong-redis
+      port: 6379
+      password:
+  cloud:
+    gateway:
+      server:
+        webflux:
+          discovery:
+            locator:
+              lowerCaseServiceId: true
+              enabled: true
+          routes:
+            - id: junsong-auth
+              uri: lb://junsong-auth
+              predicates:
+                - Path=/auth/**
+              filters:
+                - name: CacheRequestBody
+                  args:
+                    bodyClass: java.lang.String
+                - ValidateCodeFilter
+                - StripPrefix=1
+            - id: junsong-gen
+              uri: lb://junsong-gen
+              predicates:
+                - Path=/gen/**
+              filters:
+                - StripPrefix=1
+            - id: junsong-job
+              uri: lb://junsong-job
+              predicates:
+                - Path=/job/**
+              filters:
+                - StripPrefix=1
+            - id: junsong-system-userdept
+              uri: lb://junsong-system
+              predicates:
+                - Path=/userDept/**
+            - id: junsong-system
+              uri: lb://junsong-system
+              predicates:
+                - Path=/system/**
+              filters:
+                - StripPrefix=1
+            - id: junsong-file
+              uri: lb://junsong-file
+              predicates:
+                - Path=/file/**
+              filters:
+                - StripPrefix=1
+            - id: junsong-finance
+              uri: lb://junsong-finance
+              predicates:
+                - Path=/finance/**
+              filters:
+                - StripPrefix=1
+            - id: junsong-member
+              uri: lb://junsong-member
+              predicates:
+                - Path=/member/**
+              filters:
+                - StripPrefix=1
+            - id: junsong-workflow
+              uri: lb://junsong-workflow
+              predicates:
+                - Path=/workflow/**
+              filters:
+                - StripPrefix=1
+
+security:
+  captcha:
+    enabled: true
+    type: math
+  xss:
+    enabled: true
+    excludeUrls:
+      - /system/notice
+  ignore:
+    whites:
+      - /auth/logout
+      - /auth/login
+      - /auth/mp/login
+      - /auth/register
+      - /code
+      - /system/user/deptsForLogin
+      - /*/v2/api-docs
+      - /*/v3/api-docs
+      - /member/v2/api-docs
+      - /member/v3/api-docs
+      - /member/swagger-ui.html
+      - /member/swagger-ui/**
+      - /member/doc.html
+      - /workflow/health/**
+      - /csrf
+
+springdoc:
+  webjars:
+    prefix:
+
+sentinel:
+  transport:
+    dashboard: 127.0.0.1:8718
+  datasource: {}

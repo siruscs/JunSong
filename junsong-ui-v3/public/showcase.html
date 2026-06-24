@@ -1,0 +1,1341 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Genesis · 峻松管理系统</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #132331;
+      --muted: #617381;
+      --soft: #eef6f8;
+      --surface: rgba(255, 255, 255, 0.86);
+      --line: rgba(35, 103, 130, 0.16);
+      --primary: #2a6f97;
+      --primary-2: #5aa6b8;
+      --primary-3: #173b57;
+      --cyan: #8ec8d2;
+      --green: #5f8f73;
+      --paper: #f7fafb;
+      --radius: 24px;
+      --shadow: 0 24px 70px rgba(25, 65, 87, 0.14);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 12%, rgba(90, 166, 184, 0.25), transparent 30%),
+        radial-gradient(circle at 86% 10%, rgba(95, 143, 115, 0.18), transparent 28%),
+        linear-gradient(180deg, #f9fcfd 0%, #edf5f7 48%, #f9fbfa 100%);
+      font-family: "SF Pro Display", "PingFang SC", "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+      letter-spacing: 0;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .page {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .page::before {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      content: "";
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(42, 111, 151, 0.055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(42, 111, 151, 0.045) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: linear-gradient(180deg, transparent, #000 14%, #000 82%, transparent);
+    }
+
+    .site-header {
+      position: sticky;
+      top: 16px;
+      z-index: 10;
+      width: min(1180px, calc(100% - 32px));
+      height: 68px;
+      margin: 16px auto 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 10px 12px 10px 18px;
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.72);
+      box-shadow: 0 18px 48px rgba(22, 56, 76, 0.12);
+      backdrop-filter: blur(18px);
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+      font-weight: 800;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 11px;
+      overflow: hidden;
+      box-shadow: 0 12px 26px rgba(0, 73, 153, 0.28);
+    }
+
+    .brand-mark svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border-radius: 11px;
+    }
+
+    .brand-text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.15;
+    }
+
+    .brand-text strong {
+      font-size: 16px;
+    }
+
+    .brand-name {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    .brand-name .brand-en {
+      font-family: 'Cormorant Garamond', 'Source Han Serif SC', serif;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: #0f2a4a;
+    }
+
+    .brand-name .brand-divider {
+      width: 1px;
+      height: 15px;
+      background: var(--primary, #0071e3);
+      opacity: 0.55;
+    }
+
+    .brand-name .brand-dot {
+      font-size: 18px;
+      line-height: 1;
+      color: var(--primary, #0071e3);
+      opacity: 0.75;
+    }
+
+    .brand-name .brand-cn {
+      font-family: 'PingFang SC', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: #0f2a4a;
+    }
+
+    .brand-text span {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      color: #405464;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .nav a {
+      transition: color 0.18s ease;
+    }
+
+    .nav a:hover {
+      color: var(--primary);
+    }
+
+    .login-entry {
+      display: inline-flex;
+      height: 46px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 18px;
+      border-radius: 999px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--primary-3), var(--primary));
+      box-shadow: 0 14px 30px rgba(23, 59, 87, 0.25);
+      font-size: 14px;
+      font-weight: 800;
+      white-space: nowrap;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .login-entry:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 18px 36px rgba(23, 59, 87, 0.3);
+    }
+
+    .login-entry:active {
+      transform: translateY(0) scale(0.98);
+    }
+
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .hero {
+      min-height: calc(100dvh - 86px);
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(420px, 1.05fr);
+      align-items: center;
+      gap: 54px;
+      padding: 58px 0 44px;
+    }
+
+    .hero-copy {
+      max-width: 560px;
+      animation: rise-in 0.72s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .eyebrow {
+      width: fit-content;
+      margin: 0 0 18px;
+      padding: 9px 13px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--primary-3);
+      background: rgba(255, 255, 255, 0.62);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--ink);
+      font-size: clamp(44px, 6vw, 78px);
+      font-weight: 850;
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+
+    .hero-lead {
+      max-width: 500px;
+      margin: 24px 0 0;
+      color: #526777;
+      font-size: 18px;
+      line-height: 1.75;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 30px;
+    }
+
+    .primary-action,
+    .secondary-action {
+      display: inline-flex;
+      height: 48px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 800;
+      white-space: nowrap;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+
+    .primary-action {
+      padding: 0 22px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      box-shadow: 0 18px 34px rgba(42, 111, 151, 0.24);
+    }
+
+    .secondary-action {
+      padding: 0 20px;
+      border: 1px solid rgba(42, 111, 151, 0.22);
+      color: var(--primary-3);
+      background: rgba(255, 255, 255, 0.68);
+    }
+
+    .primary-action:hover,
+    .secondary-action:hover {
+      transform: translateY(-1px);
+    }
+
+    .secondary-action:hover {
+      border-color: rgba(42, 111, 151, 0.42);
+      box-shadow: 0 14px 28px rgba(25, 65, 87, 0.09);
+    }
+
+    .hero-visual {
+      position: relative;
+      min-height: 570px;
+      animation: rise-in 0.72s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both;
+    }
+
+    .product-shell {
+      position: absolute;
+      inset: 44px 0 0 0;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.78);
+      border-radius: 30px;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(245, 250, 251, 0.7)),
+        radial-gradient(circle at 80% 14%, rgba(142, 200, 210, 0.36), transparent 28%);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(20px);
+    }
+
+    .product-topbar {
+      display: flex;
+      height: 58px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      border-bottom: 1px solid rgba(42, 111, 151, 0.12);
+    }
+
+    .window-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .window-controls span {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(42, 111, 151, 0.25);
+    }
+
+    .topbar-title {
+      color: #536674;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .product-layout {
+      display: grid;
+      grid-template-columns: 168px minmax(0, 1fr);
+      min-height: 512px;
+    }
+
+    .mock-sidebar {
+      padding: 18px 14px;
+      border-right: 1px solid rgba(42, 111, 151, 0.12);
+      background: linear-gradient(180deg, rgba(238, 246, 248, 0.94), rgba(255, 255, 255, 0.58));
+    }
+
+    .mock-menu {
+      display: grid;
+      gap: 9px;
+    }
+
+    .mock-menu span {
+      display: block;
+      height: 34px;
+      border-radius: 12px;
+      background: rgba(42, 111, 151, 0.08);
+    }
+
+    .mock-menu span:nth-child(2) {
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      box-shadow: 0 12px 22px rgba(42, 111, 151, 0.2);
+    }
+
+    .mock-main {
+      padding: 20px;
+    }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr 0.8fr;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .metric {
+      min-height: 94px;
+      padding: 16px;
+      border: 1px solid rgba(42, 111, 151, 0.12);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.74);
+    }
+
+    .metric strong {
+      display: block;
+      color: var(--primary-3);
+      font-size: 25px;
+      line-height: 1;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 11px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .mock-table {
+      overflow: hidden;
+      border: 1px solid rgba(42, 111, 151, 0.12);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.78);
+    }
+
+    .table-line {
+      display: grid;
+      grid-template-columns: 1.1fr 0.7fr 0.7fr 0.5fr;
+      gap: 12px;
+      align-items: center;
+      min-height: 48px;
+      padding: 0 14px;
+      border-bottom: 1px solid rgba(42, 111, 151, 0.08);
+    }
+
+    .table-line:last-child {
+      border-bottom: 0;
+    }
+
+    .table-line span {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(42, 111, 151, 0.12);
+    }
+
+    .table-line:first-child {
+      background: rgba(42, 111, 151, 0.06);
+    }
+
+    .floating-card {
+      position: absolute;
+      right: -18px;
+      bottom: 38px;
+      width: min(310px, 52%);
+      padding: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: 0 22px 48px rgba(23, 59, 87, 0.16);
+      backdrop-filter: blur(16px);
+      animation: float-card 5.8s ease-in-out infinite;
+    }
+
+    .floating-card b {
+      display: block;
+      color: var(--primary-3);
+      font-size: 18px;
+      line-height: 1.25;
+    }
+
+    .floating-card p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    section {
+      padding: 86px 0;
+    }
+
+    .section-head {
+      max-width: 720px;
+      margin-bottom: 34px;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: clamp(32px, 4vw, 48px);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .section-head p {
+      max-width: 620px;
+      margin: 16px 0 0;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.75;
+    }
+
+    .module-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr 1fr;
+      gap: 16px;
+    }
+
+    .module-card {
+      min-height: 220px;
+      padding: 24px;
+      border: 1px solid rgba(42, 111, 151, 0.13);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.72);
+      box-shadow: 0 14px 38px rgba(23, 59, 87, 0.08);
+    }
+
+    .module-card.featured {
+      grid-row: span 2;
+      color: #fff;
+      background:
+        linear-gradient(145deg, var(--primary-3), var(--primary) 58%, var(--primary-2)),
+        var(--primary);
+      box-shadow: 0 24px 60px rgba(23, 59, 87, 0.22);
+    }
+
+    .module-card.wide {
+      grid-column: span 2;
+      min-height: 180px;
+      background:
+        radial-gradient(circle at 86% 22%, rgba(142, 200, 210, 0.4), transparent 34%),
+        rgba(255, 255, 255, 0.72);
+    }
+
+    .module-card h3 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.2;
+    }
+
+    .module-card p {
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.72;
+    }
+
+    .module-card.featured p {
+      color: rgba(255, 255, 255, 0.76);
+    }
+
+    .mini-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .mini-list span {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.14);
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .workflow {
+      display: grid;
+      grid-template-columns: 0.8fr 1.2fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .role-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .role-card {
+      min-height: 210px;
+      padding: 22px;
+      border: 1px solid rgba(42, 111, 151, 0.13);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.72);
+      box-shadow: 0 14px 38px rgba(23, 59, 87, 0.08);
+    }
+
+    .role-card strong {
+      display: block;
+      color: var(--primary-3);
+      font-size: 20px;
+      line-height: 1.2;
+    }
+
+    .role-card p {
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.72;
+    }
+
+    .scenario-band {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .scenario-card {
+      min-height: 250px;
+      padding: 28px;
+      border: 1px solid rgba(42, 111, 151, 0.13);
+      border-radius: 28px;
+      background:
+        radial-gradient(circle at 84% 16%, rgba(142, 200, 210, 0.34), transparent 34%),
+        rgba(255, 255, 255, 0.74);
+      box-shadow: 0 14px 38px rgba(23, 59, 87, 0.08);
+    }
+
+    .scenario-card.alt {
+      color: #fff;
+      background:
+        linear-gradient(145deg, rgba(23, 59, 87, 0.96), rgba(42, 111, 151, 0.9)),
+        var(--primary-3);
+    }
+
+    .scenario-card h3 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.12;
+    }
+
+    .scenario-card p {
+      max-width: 520px;
+      margin: 16px 0 0;
+      color: var(--muted);
+      line-height: 1.75;
+    }
+
+    .scenario-card.alt p {
+      color: rgba(255, 255, 255, 0.74);
+    }
+
+    .scenario-points {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .scenario-points span {
+      display: inline-flex;
+      min-height: 36px;
+      align-items: center;
+      padding: 0 13px;
+      border: 1px solid rgba(42, 111, 151, 0.15);
+      border-radius: 999px;
+      color: var(--primary-3);
+      background: rgba(255, 255, 255, 0.66);
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .scenario-card.alt .scenario-points span {
+      border-color: rgba(255, 255, 255, 0.16);
+      color: #fff;
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .insight-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .insight-panel {
+      padding: 28px;
+      border: 1px solid rgba(42, 111, 151, 0.13);
+      border-radius: 28px;
+      background: rgba(255, 255, 255, 0.74);
+      box-shadow: 0 14px 38px rgba(23, 59, 87, 0.08);
+    }
+
+    .insight-panel h2 {
+      margin: 0;
+      font-size: clamp(32px, 4vw, 48px);
+      line-height: 1.08;
+    }
+
+    .insight-panel p {
+      margin: 16px 0 0;
+      color: var(--muted);
+      line-height: 1.75;
+    }
+
+    .chart-stack {
+      display: grid;
+      gap: 12px;
+      margin-top: 26px;
+    }
+
+    .chart-row {
+      display: grid;
+      grid-template-columns: 90px minmax(0, 1fr);
+      gap: 14px;
+      align-items: center;
+      color: var(--primary-3);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .bar {
+      height: 12px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(42, 111, 151, 0.09);
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--primary), var(--primary-2));
+    }
+
+    .theme-board {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .theme-chip {
+      min-height: 120px;
+      padding: 18px;
+      border-radius: 20px;
+      color: #fff;
+      box-shadow: 0 16px 32px rgba(23, 59, 87, 0.14);
+    }
+
+    .theme-chip:nth-child(1) {
+      background: linear-gradient(135deg, #2c6975, #68b2a0);
+    }
+
+    .theme-chip:nth-child(2) {
+      background: linear-gradient(135deg, #302080, #6c63d9);
+    }
+
+    .theme-chip:nth-child(3) {
+      background: linear-gradient(135deg, #2C6975, #68B2A0);
+    }
+
+    .theme-chip:nth-child(4) {
+      background: linear-gradient(135deg, #302080, #6C63D9);
+    }
+
+    .theme-chip strong {
+      display: block;
+      font-size: 18px;
+    }
+
+    .theme-chip span {
+      display: block;
+      margin-top: 10px;
+      color: rgba(255, 255, 255, 0.76);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .workflow-panel,
+    .security-panel {
+      border: 1px solid rgba(42, 111, 151, 0.13);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.74);
+      box-shadow: 0 14px 38px rgba(23, 59, 87, 0.08);
+    }
+
+    .workflow-panel {
+      padding: 28px;
+    }
+
+    .workflow-panel h2 {
+      margin: 0;
+      font-size: clamp(30px, 4vw, 48px);
+      line-height: 1.08;
+    }
+
+    .workflow-panel p {
+      margin: 16px 0 0;
+      color: var(--muted);
+      line-height: 1.75;
+    }
+
+    .workflow-steps {
+      display: grid;
+      gap: 12px;
+    }
+
+    .workflow-step {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr);
+      gap: 18px;
+      align-items: center;
+      min-height: 104px;
+      padding: 18px;
+      border: 1px solid rgba(42, 111, 151, 0.13);
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.74);
+    }
+
+    .workflow-step strong {
+      color: var(--primary-3);
+      font-size: 18px;
+    }
+
+    .workflow-step span {
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .security-panel {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      padding: 28px;
+      background:
+        linear-gradient(135deg, rgba(23, 59, 87, 0.95), rgba(42, 111, 151, 0.88)),
+        var(--primary-3);
+      color: #fff;
+    }
+
+    .security-panel h2 {
+      grid-column: 1 / -1;
+      margin: 0;
+      font-size: clamp(32px, 4vw, 50px);
+      line-height: 1.06;
+    }
+
+    .security-item {
+      min-height: 136px;
+      padding: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .security-item strong {
+      display: block;
+      font-size: 18px;
+    }
+
+    .security-item span {
+      display: block;
+      margin-top: 12px;
+      color: rgba(255, 255, 255, 0.72);
+      line-height: 1.65;
+    }
+
+    .final-cta {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 26px;
+      align-items: center;
+      margin: 10px 0 72px;
+      padding: 34px;
+      border: 1px solid rgba(42, 111, 151, 0.13);
+      border-radius: 30px;
+      background:
+        radial-gradient(circle at 82% 20%, rgba(142, 200, 210, 0.32), transparent 30%),
+        rgba(255, 255, 255, 0.74);
+      box-shadow: var(--shadow);
+    }
+
+    .final-cta h2 {
+      margin: 0;
+      font-size: clamp(30px, 4vw, 46px);
+      line-height: 1.1;
+    }
+
+    .final-cta p {
+      margin: 14px 0 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .site-footer {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 30px 0 42px;
+      border-top: 1px solid rgba(42, 111, 151, 0.14);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @keyframes rise-in {
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes float-card {
+      0%,
+      100% {
+        transform: translate3d(0, 0, 0);
+      }
+      50% {
+        transform: translate3d(-8px, -12px, 0);
+      }
+    }
+
+    @media (max-width: 980px) {
+      .site-header {
+        height: auto;
+        border-radius: 24px;
+        flex-wrap: wrap;
+      }
+
+      .nav {
+        order: 3;
+        width: 100%;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .hero,
+      .workflow,
+      .security-panel,
+      .final-cta {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        min-height: auto;
+        padding-top: 54px;
+      }
+
+      .hero-visual {
+        min-height: 540px;
+      }
+
+      .module-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .role-grid,
+      .scenario-band,
+      .insight-layout {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .module-card.featured,
+      .module-card.wide {
+        grid-column: span 2;
+        grid-row: auto;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .site-header {
+        top: 10px;
+        width: min(100% - 20px, 1180px);
+        padding: 10px;
+      }
+
+      .brand-text > span,
+      .nav {
+        display: none;
+      }
+
+      .login-entry {
+        height: 42px;
+        padding: 0 15px;
+      }
+
+      main {
+        width: min(100% - 20px, 1180px);
+      }
+
+      .hero {
+        gap: 28px;
+        padding: 46px 0 32px;
+      }
+
+      h1 {
+        font-size: clamp(38px, 13vw, 52px);
+      }
+
+      .hero-lead {
+        font-size: 16px;
+      }
+
+      .hero-visual {
+        min-height: 500px;
+      }
+
+      .product-shell {
+        inset: 10px 0 0 0;
+        border-radius: 22px;
+      }
+
+      .product-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .mock-sidebar {
+        display: none;
+      }
+
+      .metric-row,
+      .module-grid,
+      .role-grid,
+      .scenario-band,
+      .insight-layout,
+      .theme-board {
+        grid-template-columns: 1fr;
+      }
+
+      .module-card.featured,
+      .module-card.wide {
+        grid-column: auto;
+      }
+
+      .workflow-step {
+        grid-template-columns: 1fr;
+      }
+
+      .security-panel,
+      .final-cta,
+      .module-card,
+      .workflow-panel {
+        padding: 22px;
+        border-radius: 22px;
+      }
+
+      .floating-card {
+        right: 10px;
+        bottom: 12px;
+        width: calc(100% - 20px);
+      }
+
+      section {
+        padding: 62px 0;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation: none !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="Genesis · 峻松管理系统">
+        <span class="brand-mark">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+            <defs>
+              <linearGradient id="sc-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#0071E3"/>
+                <stop offset="100%" stop-color="#004999"/>
+              </linearGradient>
+              <linearGradient id="sc-pl" x1="50%" y1="0%" x2="50%" y2="100%">
+                <stop offset="0%" stop-color="#FFFFFF" stop-opacity="1"/>
+                <stop offset="100%" stop-color="#E6F0FA" stop-opacity="0.92"/>
+              </linearGradient>
+              <linearGradient id="sc-pb" x1="50%" y1="0%" x2="50%" y2="100%">
+                <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.5"/>
+                <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.28"/>
+              </linearGradient>
+            </defs>
+            <rect width="96" height="96" rx="22" fill="url(#sc-bg)"/>
+            <path d="M48 46 L74 74 L22 74 Z" fill="url(#sc-pb)"/>
+            <path d="M48 22 L66 56 L30 56 Z" fill="url(#sc-pl)"/>
+          </svg>
+        </span>
+        <span class="brand-text">
+          <strong class="brand-name"><span class="brand-en">Genesis</span><span class="brand-dot">·</span><span class="brand-cn">峻松</span></strong>
+          <span>Genesis Cloud · Healthcare Management</span>
+        </span>
+      </a>
+      <nav class="nav" aria-label="页面导航">
+        <a href="#modules">核心能力</a>
+        <a href="#roles">适用角色</a>
+        <a href="#scenarios">业务场景</a>
+        <a href="#workflow">业务闭环</a>
+      </nav>
+      <a class="login-entry" href="/login?redirect=/index">进入系统</a>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-label="系统介绍">
+        <div class="hero-copy">
+          <p class="eyebrow">正式上线运营平台</p>
+          <h1>让会员、财务和门店运营更有秩序</h1>
+          <p class="hero-lead">面向门店、财务和管理者，把日常业务、数据和权限收进同一套系统。</p>
+          <div class="hero-actions">
+            <a class="primary-action" href="/login?redirect=/index">进入系统</a>
+            <a class="secondary-action" href="#modules">查看能力</a>
+          </div>
+        </div>
+
+        <div class="hero-visual" aria-label="系统界面预览">
+          <div class="product-shell">
+            <div class="product-topbar">
+              <div class="window-controls" aria-hidden="true">
+                <span></span><span></span><span></span>
+              </div>
+              <div class="topbar-title">运营总览</div>
+            </div>
+            <div class="product-layout">
+              <aside class="mock-sidebar" aria-hidden="true">
+                <div class="mock-menu">
+                  <span></span><span></span><span></span><span></span><span></span><span></span>
+                </div>
+              </aside>
+              <div class="mock-main">
+                <div class="metric-row">
+                  <div class="metric">
+                    <strong>会员</strong>
+                    <span>入会、卡类型、积分服务</span>
+                  </div>
+                  <div class="metric">
+                    <strong>财务</strong>
+                    <span>费用、成本、返款分析</span>
+                  </div>
+                  <div class="metric">
+                    <strong>组织</strong>
+                    <span>多机构权限与部门治理</span>
+                  </div>
+                </div>
+                <div class="mock-table" aria-hidden="true">
+                  <div class="table-line"><span></span><span></span><span></span><span></span></div>
+                  <div class="table-line"><span></span><span></span><span></span><span></span></div>
+                  <div class="table-line"><span></span><span></span><span></span><span></span></div>
+                  <div class="table-line"><span></span><span></span><span></span><span></span></div>
+                  <div class="table-line"><span></span><span></span><span></span><span></span></div>
+                  <div class="table-line"><span></span><span></span><span></span><span></span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="floating-card">
+            <b>苹果银灰默认主题，登录页和后台统一呈现</b>
+            <p>默认采用清爽银灰底色，按钮、表格、树、下拉框保持一致视觉。</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="modules" aria-label="核心能力">
+        <div class="section-head">
+          <h2>核心模块按真实经营流程组织</h2>
+          <p>会员、财务、权限和看板围绕常用动作展开，减少上线后的培训成本。</p>
+        </div>
+        <div class="module-grid">
+          <article class="module-card featured">
+            <h3>会员服务</h3>
+            <p>覆盖会员新增、会员卡类型、积分兑换、秒杀活动和服务记录，适合门店日常使用。</p>
+            <div class="mini-list">
+              <span>入会资料管理 <b>清晰</b></span>
+              <span>卡类型默认值 <b>可配置</b></span>
+              <span>积分兑换闭环 <b>可追踪</b></span>
+            </div>
+          </article>
+          <article class="module-card">
+            <h3>财务管理</h3>
+            <p>采购、销售、费用、成本核算和返款统计集中处理，财务核对更直接。</p>
+          </article>
+          <article class="module-card">
+            <h3>系统管理</h3>
+            <p>用户、角色、菜单、部门、字典和参数集中维护，权限边界更明确。</p>
+          </article>
+          <article class="module-card wide">
+            <h3>数据看板</h3>
+            <p>首页按角色展示不同经营视角，管理员能看到系统健康和服务状态。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="roles" aria-label="适用角色">
+        <div class="section-head">
+          <h2>岗位不同，入口和重点也不同</h2>
+          <p>系统按角色、部门和小程序权限组织入口，让每个岗位先看到自己的工作内容。</p>
+        </div>
+        <div class="role-grid">
+          <article class="role-card">
+            <strong>经营管理者</strong>
+            <p>查看整体会员增长、财务趋势、返款进度和关键业务状态，减少到处找报表的时间。</p>
+          </article>
+          <article class="role-card">
+            <strong>财务人员</strong>
+            <p>处理采购、销售、费用、成本核算和投资人返款，重点动作集中在同一套表格体验里。</p>
+          </article>
+          <article class="role-card">
+            <strong>门店人员</strong>
+            <p>完成入会、会员卡、积分兑换和服务记录维护，默认值减少重复录入。</p>
+          </article>
+          <article class="role-card">
+            <strong>系统管理员</strong>
+            <p>维护用户、角色、部门、菜单、字典和参数，让权限与基础数据保持一致。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="scenarios" aria-label="业务场景">
+        <div class="scenario-band">
+          <article class="scenario-card">
+            <h3>会员服务从登记开始就保持规范</h3>
+            <p>新增会员时，入会日期、会员卡类型和字典默认值可以自动带入。门店人员只需要核对关键信息。</p>
+            <div class="scenario-points">
+              <span>入会日期默认当天</span>
+              <span>会员卡默认带入</span>
+              <span>积分兑换可追踪</span>
+              <span>秒杀活动统一维护</span>
+            </div>
+          </article>
+          <article class="scenario-card alt">
+            <h3>财务动作和经营结果连在一起</h3>
+            <p>费用登记、采购销售、成本核算和返款分析使用统一视觉规则，减少模块之间的割裂感。</p>
+            <div class="scenario-points">
+              <span>费用分析</span>
+              <span>成本核算</span>
+              <span>供应商管理</span>
+              <span>返款统计</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="insights" aria-label="报表与主题">
+        <div class="insight-layout">
+          <div class="insight-panel">
+            <h2>报表直接说明经营状态</h2>
+            <p>首页和报表突出趋势、结构和待处理事项，用户先看到最需要关注的内容。</p>
+            <div class="chart-stack" aria-label="报表展示">
+              <div class="chart-row">
+                <span>会员服务</span>
+                <div class="bar"><span style="width: 86%"></span></div>
+              </div>
+              <div class="chart-row">
+                <span>财务处理</span>
+                <div class="bar"><span style="width: 74%"></span></div>
+              </div>
+              <div class="chart-row">
+                <span>返款进度</span>
+                <div class="bar"><span style="width: 68%"></span></div>
+              </div>
+              <div class="chart-row">
+                <span>运营事项</span>
+                <div class="bar"><span style="width: 79%"></span></div>
+              </div>
+            </div>
+          </div>
+          <div class="insight-panel">
+            <h2>苹果银灰作为默认上线主题</h2>
+            <p>系统保留多套主题，正式环境默认使用更干净的银灰视觉。</p>
+            <div class="theme-board" aria-label="主题展示">
+              <div class="theme-chip">
+                <strong>苹果银灰</strong>
+                <span>浅银背景、深灰文字，适合作为正式上线默认主题。</span>
+              </div>
+              <div class="theme-chip">
+                <strong>霁蓝晨雾</strong>
+                <span>低饱和蓝绿，适合长时间办公。</span>
+              </div>
+              <div class="theme-chip">
+                <strong>翠绿自然</strong>
+                <span>清爽稳定，适合日常业务处理。</span>
+              </div>
+              <div class="theme-chip">
+                <strong>靛蓝星河</strong>
+                <span>识别度更强，适合偏深的品牌气质。</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="workflow" aria-label="业务闭环">
+        <div class="workflow">
+          <div class="workflow-panel">
+            <h2>从开卡到结算，减少切换</h2>
+            <p>会员、财务和组织权限使用同一套操作逻辑，用户进入页面即可处理常用动作。</p>
+          </div>
+          <div class="workflow-steps">
+            <div class="workflow-step">
+              <strong>采集资料</strong>
+              <span>新增会员时自动带入入会日期和字典默认项，减少重复录入。</span>
+            </div>
+            <div class="workflow-step">
+              <strong>处理业务</strong>
+              <span>会员服务、费用登记、采购销售和返款记录统一使用清爽表单体验。</span>
+            </div>
+            <div class="workflow-step">
+              <strong>查看结果</strong>
+              <span>首页和报表以可视化方式呈现关键趋势，方便快速判断经营状态。</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="security" aria-label="安全治理">
+        <div class="security-panel">
+          <h2>权限、机构和配置一起守住入口</h2>
+          <div class="security-item">
+            <strong>多机构识别</strong>
+            <span>账号属于多个机构时，登录页展示部门选择，避免进入错误组织。</span>
+          </div>
+          <div class="security-item">
+            <strong>安全配置</strong>
+            <span>Nacos 等生产配置通过环境变量注入，降低密码写入源码的风险。</span>
+          </div>
+          <div class="security-item">
+            <strong>权限菜单</strong>
+            <span>角色、菜单、小程序模块和按钮权限集中配置，适配不同岗位的操作边界。</span>
+          </div>
+          <div class="security-item">
+            <strong>操作日志</strong>
+            <span>系统保留登录和操作记录，方便审计和问题定位。</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="final-cta">
+        <div>
+          <h2>进入正式系统</h2>
+          <p>使用当前入口登录后台，开始处理会员、财务和运营工作。</p>
+        </div>
+        <a class="primary-action" href="/login?redirect=/index">进入系统</a>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      © 2026 Genesis · 峻松管理系统. All Rights Reserved.
+    </footer>
+  </div>
+</body>
+</html>

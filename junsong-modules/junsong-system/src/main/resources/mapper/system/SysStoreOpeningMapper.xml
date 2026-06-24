@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.system.mapper.SysStoreOpeningMapper">
+
+    <resultMap id="SysStoreOpeningResult" type="com.junsong.system.domain.SysStoreOpening">
+        <id property="id" column="id"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="storeName" column="store_name"/>
+        <result property="storeShortName" column="store_short_name"/>
+        <result property="storeType" column="store_type"/>
+        <result property="expectedOpeningDate" column="expected_opening_date"/>
+        <result property="regionName" column="region_name"/>
+        <result property="regionLeader" column="region_leader"/>
+        <result property="generalManager" column="general_manager"/>
+        <result property="storeManagerName" column="store_manager_name"/>
+        <result property="province" column="province"/>
+        <result property="city" column="city"/>
+        <result property="district" column="district"/>
+        <result property="addressDetail" column="address_detail"/>
+        <result property="siteArea" column="site_area"/>
+        <result property="siteMode" column="site_mode"/>
+        <result property="plannedStaffCount" column="planned_staff_count"/>
+        <result property="initialInvestmentAmount" column="initial_investment_amount"/>
+        <result property="estimatedMonthlyRevenue" column="estimated_monthly_revenue"/>
+        <result property="openingReason" column="opening_reason"/>
+        <result property="remark" column="remark"/>
+        <result property="processInstanceId" column="process_instance_id"/>
+        <result property="processDefinitionKey" column="process_definition_key"/>
+        <result property="workflowStatus" column="workflow_status"/>
+        <result property="currentTaskName" column="current_task_name"/>
+        <result property="submitter" column="submitter"/>
+        <result property="submitTime" column="submit_time"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="selectStoreOpeningVo">
+        select id, order_no, store_name, store_short_name, store_type, expected_opening_date,
+               region_name, region_leader, general_manager, store_manager_name,
+               province, city, district, address_detail, site_area, site_mode,
+               planned_staff_count, initial_investment_amount, estimated_monthly_revenue,
+               opening_reason, remark, process_instance_id, process_definition_key,
+               workflow_status, current_task_name, submitter, submit_time,
+               del_flag, create_by, create_time, update_by, update_time
+        from sys_store_opening
+    </sql>
+
+    <select id="selectStoreOpeningById" parameterType="Long" resultMap="SysStoreOpeningResult">
+        <include refid="selectStoreOpeningVo"/>
+        where id = #{id} and del_flag = '0'
+    </select>
+
+    <select id="selectStoreOpeningByOrderNo" parameterType="String" resultMap="SysStoreOpeningResult">
+        <include refid="selectStoreOpeningVo"/>
+        where order_no = #{orderNo} and del_flag = '0'
+    </select>
+
+    <select id="selectStoreOpeningByProcessInstanceId" parameterType="String" resultMap="SysStoreOpeningResult">
+        <include refid="selectStoreOpeningVo"/>
+        where process_instance_id = #{processInstanceId} and del_flag = '0'
+    </select>
+
+    <select id="selectStoreOpeningList" parameterType="com.junsong.system.domain.SysStoreOpening" resultMap="SysStoreOpeningResult">
+        <include refid="selectStoreOpeningVo"/>
+        where del_flag = '0'
+        <if test="orderNo != null and orderNo != ''">
+            and order_no like concat('%', #{orderNo}, '%')
+        </if>
+        <if test="storeName != null and storeName != ''">
+            and store_name like concat('%', #{storeName}, '%')
+        </if>
+        <if test="regionName != null and regionName != ''">
+            and region_name like concat('%', #{regionName}, '%')
+        </if>
+        <if test="workflowStatus != null and workflowStatus != ''">
+            and workflow_status = #{workflowStatus}
+        </if>
+        order by id desc
+    </select>
+
+    <insert id="insertStoreOpening" parameterType="com.junsong.system.domain.SysStoreOpening" useGeneratedKeys="true" keyProperty="id">
+        insert into sys_store_opening(
+            order_no, store_name, store_short_name, store_type, expected_opening_date,
+            region_name, region_leader, general_manager, store_manager_name,
+            province, city, district, address_detail, site_area, site_mode,
+            planned_staff_count, initial_investment_amount, estimated_monthly_revenue,
+            opening_reason, remark, process_instance_id, process_definition_key,
+            workflow_status, current_task_name, submitter, submit_time,
+            del_flag, create_by, create_time, update_by, update_time
+        ) values (
+            #{orderNo}, #{storeName}, #{storeShortName}, #{storeType}, #{expectedOpeningDate},
+            #{regionName}, #{regionLeader}, #{generalManager}, #{storeManagerName},
+            #{province}, #{city}, #{district}, #{addressDetail}, #{siteArea}, #{siteMode},
+            #{plannedStaffCount}, #{initialInvestmentAmount}, #{estimatedMonthlyRevenue},
+            #{openingReason}, #{remark}, #{processInstanceId}, #{processDefinitionKey},
+            #{workflowStatus}, #{currentTaskName}, #{submitter}, #{submitTime},
+            #{delFlag}, #{createBy}, sysdate(), #{updateBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateStoreOpening" parameterType="com.junsong.system.domain.SysStoreOpening">
+        update sys_store_opening
+        <set>
+            <if test="storeName != null">store_name = #{storeName},</if>
+            <if test="storeShortName != null">store_short_name = #{storeShortName},</if>
+            <if test="storeType != null">store_type = #{storeType},</if>
+            <if test="expectedOpeningDate != null">expected_opening_date = #{expectedOpeningDate},</if>
+            <if test="regionName != null">region_name = #{regionName},</if>
+            <if test="regionLeader != null">region_leader = #{regionLeader},</if>
+            <if test="generalManager != null">general_manager = #{generalManager},</if>
+            <if test="storeManagerName != null">store_manager_name = #{storeManagerName},</if>
+            <if test="province != null">province = #{province},</if>
+            <if test="city != null">city = #{city},</if>
+            <if test="district != null">district = #{district},</if>
+            <if test="addressDetail != null">address_detail = #{addressDetail},</if>
+            <if test="siteArea != null">site_area = #{siteArea},</if>
+            <if test="siteMode != null">site_mode = #{siteMode},</if>
+            <if test="plannedStaffCount != null">planned_staff_count = #{plannedStaffCount},</if>
+            <if test="initialInvestmentAmount != null">initial_investment_amount = #{initialInvestmentAmount},</if>
+            <if test="estimatedMonthlyRevenue != null">estimated_monthly_revenue = #{estimatedMonthlyRevenue},</if>
+            <if test="openingReason != null">opening_reason = #{openingReason},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id} and del_flag = '0'
+    </update>
+
+    <update id="updateWorkflowSnapshot" parameterType="com.junsong.system.domain.SysStoreOpening">
+        update sys_store_opening
+        <set>
+            <if test="processInstanceId != null">process_instance_id = #{processInstanceId},</if>
+            <if test="processDefinitionKey != null">process_definition_key = #{processDefinitionKey},</if>
+            <if test="workflowStatus != null">workflow_status = #{workflowStatus},</if>
+            <if test="currentTaskName != null">current_task_name = #{currentTaskName},</if>
+            <if test="submitter != null">submitter = #{submitter},</if>
+            <if test="submitTime != null">submit_time = #{submitTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where
+        <choose>
+            <when test="id != null">
+                id = #{id}
+            </when>
+            <otherwise>
+                process_instance_id = #{processInstanceId}
+            </otherwise>
+        </choose>
+        and del_flag = '0'
+    </update>
+
+    <update id="deleteStoreOpeningById" parameterType="Long">
+        update sys_store_opening set del_flag = '2', update_time = sysdate() where id = #{id}
+    </update>
+</mapper>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.workflow.lowcode.mapper.LcBizConfigSnapshotMapper">
+
+    <resultMap id="snapshotResultMap" type="com.junsong.workflow.lowcode.domain.LcBizConfigSnapshot">
+        <id property="id" column="id"/>
+        <result property="bizCode" column="biz_code"/>
+        <result property="versionNo" column="version_no"/>
+        <result property="configJson" column="config_json"/>
+        <result property="status" column="status"/>
+        <result property="publishRemark" column="publish_remark"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <select id="selectByBizCode" resultMap="snapshotResultMap">
+        SELECT id, biz_code, version_no, config_json, status, publish_remark,
+               del_flag, create_by, create_time, update_by, update_time, remark
+        FROM lc_biz_config_snapshot
+        WHERE biz_code = #{bizCode} AND del_flag = '0'
+        ORDER BY version_no DESC
+    </select>
+
+    <select id="selectByBizCodeAndVersion" resultMap="snapshotResultMap">
+        SELECT id, biz_code, version_no, config_json, status, publish_remark,
+               del_flag, create_by, create_time, update_by, update_time, remark
+        FROM lc_biz_config_snapshot
+        WHERE biz_code = #{bizCode} AND version_no = #{versionNo} AND del_flag = '0'
+    </select>
+
+    <select id="selectMaxVersionByBizCode" resultType="java.lang.Integer">
+        SELECT COALESCE(MAX(version_no), 0) FROM lc_biz_config_snapshot
+        WHERE biz_code = #{bizCode} AND del_flag = '0'
+    </select>
+
+    <insert id="insertSnapshot" parameterType="com.junsong.workflow.lowcode.domain.LcBizConfigSnapshot" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO lc_biz_config_snapshot
+            (biz_code, version_no, config_json, status, publish_remark, del_flag,
+             create_by, create_time, update_by, update_time, remark)
+        VALUES
+            (#{bizCode}, #{versionNo}, #{configJson}, #{status}, #{publishRemark}, '0',
+             #{createBy}, NOW(), '', NULL, #{remark})
+    </insert>
+
+</mapper>

@@ -1,0 +1,31 @@
+// base color - driven by CSS variables (theme system)
+$primary: var(--theme-primary);
+$primary-light: var(--theme-primary-light);
+$primary-dark: var(--theme-primary-dark);
+$secondary: #0EA5E9;
+$accent: #10B981;
+$warning: #F59E0B;
+$danger: #EF4444;
+$purple: var(--theme-primary-light);
+
+$text-primary: #1F2937;
+$text-secondary: #6B7280;
+$text-tertiary: #9CA3AF;
+$border-color: #E5E7EB;
+$bg-light: #F9FAFB;
+$bg-card: #FFFFFF;
+
+// 默认菜单主题风格
+$base-menu-color: var(--theme-sidebar-text);
+$base-menu-color-active: var(--theme-sidebar-active-text);
+$base-menu-background: var(--theme-sidebar-bg);
+$base-logo-title-color: #FFFFFF;
+
+$base-menu-light-color: rgba(0,0,0,.70);
+$base-menu-light-background: #ffffff;
+$base-logo-light-title-color: #1F2937;
+
+$base-sub-menu-background: var(--theme-sidebar-submenu-bg);
+$base-sub-menu-hover: var(--theme-sidebar-hover);
+
+$base-sidebar-width: 240px;

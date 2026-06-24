@@ -1,0 +1,13 @@
+# 基础镜像（复用本地已有的 job 模块镜像，规避公共镜像源 403 限制）
+FROM docker-junsong-modules-job:latest
+# author
+MAINTAINER junsong
+
+# 指定路径
+WORKDIR /home/junsong
+# 删除继承自基础镜像的旧 jar
+RUN rm -f /home/junsong/junsong-modules-job.jar
+# 复制 workflow jar 文件到路径
+COPY ./jar/junsong-modules-workflow.jar /home/junsong/junsong-modules-workflow.jar
+# 启动工作流服务
+ENTRYPOINT ["java","-jar","junsong-modules-workflow.jar"]

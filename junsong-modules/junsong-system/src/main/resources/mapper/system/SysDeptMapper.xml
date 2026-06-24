@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.system.mapper.SysDeptMapper">
+
+	<resultMap type="SysDept" id="SysDeptResult">
+		<id     property="deptId"     column="dept_id"     />
+		<result property="parentId"   column="parent_id"   />
+		<result property="ancestors"  column="ancestors"   />
+		<result property="deptName"   column="dept_name"   />
+		<result property="orderNum"   column="order_num"   />
+		<result property="leader"     column="leader"      />
+		<result property="phone"      column="phone"       />
+		<result property="email"      column="email"       />
+		<result property="status"     column="status"      />
+		<result property="delFlag"    column="del_flag"    />
+		<result property="provinceCode" column="province_code" />
+		<result property="provinceName" column="province_name" />
+		<result property="cityCode" column="city_code" />
+		<result property="cityName" column="city_name" />
+		<result property="districtCode" column="district_code" />
+		<result property="districtName" column="district_name" />
+		<result property="streetCode" column="street_code" />
+		<result property="streetName" column="street_name" />
+		<result property="detailAddress" column="detail_address" />
+		<result property="longitude" column="longitude" />
+		<result property="latitude" column="latitude" />
+		<result property="deptType" column="dept_type" />
+		<result property="parentName" column="parent_name" />
+		<result property="createBy"   column="create_by"   />
+		<result property="createTime" column="create_time" />
+		<result property="updateBy"   column="update_by"   />
+		<result property="updateTime" column="update_time" />
+	</resultMap>
+	
+	<sql id="selectDeptVo">
+        select d.dept_id, d.parent_id, d.ancestors, d.dept_name, d.order_num, d.leader, d.phone, d.email, d.status, d.del_flag, d.province_code, d.province_name, d.city_code, d.city_name, d.district_code, d.district_name, d.street_code, d.street_name, d.detail_address, d.longitude, d.latitude, d.dept_type, d.create_by, d.create_time 
+        from sys_dept d
+    </sql>
+    
+	<select id="selectDeptList" parameterType="SysDept" resultMap="SysDeptResult">
+        <include refid="selectDeptVo"/>
+        where d.del_flag = '0'
+		<if test="deptId != null and deptId != 0">
+			AND dept_id = #{deptId}
+		</if>
+        <if test="parentId != null and parentId != 0">
+			AND parent_id = #{parentId}
+		</if>
+		<if test="deptName != null and deptName != ''">
+			AND dept_name like concat('%', #{deptName}, '%')
+		</if>
+		<if test="status != null and status != ''">
+			AND status = #{status}
+		</if>
+		<!-- 数据范围过滤 -->
+		${params.dataScope}
+		order by d.parent_id, d.order_num
+    </select>
+    
+    <select id="selectDeptListByRoleId" resultType="Long">
+		select d.dept_id
+		from sys_dept d
+            left join sys_role_dept rd on d.dept_id = rd.dept_id
+        where rd.role_id = #{roleId}
+            <if test="deptCheckStrictly">
+              and d.dept_id not in (select d.parent_id from sys_dept d inner join sys_role_dept rd on d.dept_id = rd.dept_id and rd.role_id = #{roleId})
+            </if>
+		order by d.parent_id, d.order_num
+	</select>
+    
+    <select id="selectDeptById" parameterType="Long" resultMap="SysDeptResult">
+		<include refid="selectDeptVo"/>
+		where dept_id = #{deptId} and del_flag = '0'
+	</select>
+
+	<select id="selectDeptByIds" resultMap="SysDeptResult">
+		<include refid="selectDeptVo"/>
+		where del_flag = '0'
+		  and dept_id in
+		  <foreach collection="deptIds" item="item" open="(" separator="," close=")">
+			  #{item}
+		  </foreach>
+	</select>
+
+    <select id="checkDeptExistUser" parameterType="Long" resultType="int">
+		select count(1) from sys_user where dept_id = #{deptId} and del_flag = '0'
+	</select>
+	
+	<select id="hasChildByDeptId" parameterType="Long" resultType="int">
+		select count(1) from sys_dept
+		where del_flag = '0' and parent_id = #{deptId} limit 1
+	</select>
+	
+	<select id="selectChildrenDeptById" parameterType="Long" resultMap="SysDeptResult">
+		select * from sys_dept where find_in_set(#{deptId}, ancestors)
+	</select>
+	
+	<select id="selectNormalChildrenDeptById" parameterType="Long" resultType="int">
+		select count(*) from sys_dept where status = 0 and del_flag = '0' and find_in_set(#{deptId}, ancestors)
+	</select>
+	
+	<select id="checkDeptNameUnique" resultMap="SysDeptResult">
+	    <include refid="selectDeptVo"/>
+		where dept_name=#{deptName} and parent_id = #{parentId} and del_flag = '0' limit 1
+	</select>
+    
+    <insert id="insertDept" parameterType="SysDept">
+ 		insert into sys_dept(
+ 			<if test="deptId != null and deptId != 0">dept_id,</if>
+ 			<if test="parentId != null and parentId != 0">parent_id,</if>
+ 			<if test="deptName != null and deptName != ''">dept_name,</if>
+ 			<if test="ancestors != null and ancestors != ''">ancestors,</if>
+ 			<if test="orderNum != null">order_num,</if>
+ 			<if test="leader != null and leader != ''">leader,</if>
+ 			<if test="phone != null and phone != ''">phone,</if>
+ 			<if test="email != null and email != ''">email,</if>
+ 			<if test="status != null">status,</if>
+ 			<if test="provinceCode != null and provinceCode != ''">province_code,</if>
+ 			<if test="provinceName != null and provinceName != ''">province_name,</if>
+ 			<if test="cityCode != null and cityCode != ''">city_code,</if>
+ 			<if test="cityName != null and cityName != ''">city_name,</if>
+ 			<if test="districtCode != null and districtCode != ''">district_code,</if>
+ 			<if test="districtName != null and districtName != ''">district_name,</if>
+ 			<if test="streetCode != null and streetCode != ''">street_code,</if>
+ 			<if test="streetName != null and streetName != ''">street_name,</if>
+ 			<if test="detailAddress != null and detailAddress != ''">detail_address,</if>
+ 			<if test="longitude != null">longitude,</if>
+ 			<if test="latitude != null">latitude,</if>
+ 			<if test="deptType != null and deptType != ''">dept_type,</if>
+ 			<if test="createBy != null and createBy != ''">create_by,</if>
+ 			create_time
+ 		)values(
+ 			<if test="deptId != null and deptId != 0">#{deptId},</if>
+ 			<if test="parentId != null and parentId != 0">#{parentId},</if>
+ 			<if test="deptName != null and deptName != ''">#{deptName},</if>
+ 			<if test="ancestors != null and ancestors != ''">#{ancestors},</if>
+ 			<if test="orderNum != null">#{orderNum},</if>
+ 			<if test="leader != null and leader != ''">#{leader},</if>
+ 			<if test="phone != null and phone != ''">#{phone},</if>
+ 			<if test="email != null and email != ''">#{email},</if>
+ 			<if test="status != null">#{status},</if>
+ 			<if test="provinceCode != null and provinceCode != ''">#{provinceCode},</if>
+ 			<if test="provinceName != null and provinceName != ''">#{provinceName},</if>
+ 			<if test="cityCode != null and cityCode != ''">#{cityCode},</if>
+ 			<if test="cityName != null and cityName != ''">#{cityName},</if>
+ 			<if test="districtCode != null and districtCode != ''">#{districtCode},</if>
+ 			<if test="districtName != null and districtName != ''">#{districtName},</if>
+ 			<if test="streetCode != null and streetCode != ''">#{streetCode},</if>
+ 			<if test="streetName != null and streetName != ''">#{streetName},</if>
+ 			<if test="detailAddress != null and detailAddress != ''">#{detailAddress},</if>
+ 			<if test="longitude != null">#{longitude},</if>
+ 			<if test="latitude != null">#{latitude},</if>
+ 			<if test="deptType != null and deptType != ''">#{deptType},</if>
+ 			<if test="createBy != null and createBy != ''">#{createBy},</if>
+ 			sysdate()
+ 		)
+	</insert>
+	
+	<update id="updateDept" parameterType="SysDept">
+ 		update sys_dept
+ 		<set>
+ 			<if test="parentId != null and parentId != 0">parent_id = #{parentId},</if>
+ 			<if test="deptName != null and deptName != ''">dept_name = #{deptName},</if>
+ 			<if test="ancestors != null and ancestors != ''">ancestors = #{ancestors},</if>
+ 			<if test="orderNum != null">order_num = #{orderNum},</if>
+ 			<if test="leader != null">leader = #{leader},</if>
+ 			<if test="phone != null">phone = #{phone},</if>
+ 			<if test="email != null">email = #{email},</if>
+ 			<if test="status != null and status != ''">status = #{status},</if>
+ 			<if test="provinceCode != null">province_code = #{provinceCode},</if>
+ 			<if test="provinceName != null">province_name = #{provinceName},</if>
+ 			<if test="cityCode != null">city_code = #{cityCode},</if>
+ 			<if test="cityName != null">city_name = #{cityName},</if>
+ 			<if test="districtCode != null">district_code = #{districtCode},</if>
+ 			<if test="districtName != null">district_name = #{districtName},</if>
+ 			<if test="streetCode != null">street_code = #{streetCode},</if>
+ 			<if test="streetName != null">street_name = #{streetName},</if>
+ 			<if test="detailAddress != null">detail_address = #{detailAddress},</if>
+ 			<if test="longitude != null">longitude = #{longitude},</if>
+ 			<if test="latitude != null">latitude = #{latitude},</if>
+ 			<if test="deptType != null and deptType != ''">dept_type = #{deptType},</if>
+ 			<if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+ 			update_time = sysdate()
+ 		</set>
+ 		where dept_id = #{deptId}
+	</update>
+	
+	<update id="updateDeptChildren" parameterType="java.util.List">
+	    update sys_dept set ancestors =
+	    <foreach collection="depts" item="item" index="index"
+	        separator=" " open="case dept_id" close="end">
+	        when #{item.deptId} then #{item.ancestors}
+	    </foreach>
+	    where dept_id in
+	    <foreach collection="depts" item="item" index="index"
+	        separator="," open="(" close=")">
+	        #{item.deptId}
+	    </foreach>
+	</update>
+	 
+	<update id="updateDeptStatusNormal" parameterType="Long">
+ 	    update sys_dept set status = '0' where dept_id in 
+ 	    <foreach collection="array" item="deptId" open="(" separator="," close=")">
+        	#{deptId}
+        </foreach>
+	</update>
+	
+	<update id="updateDeptSort" parameterType="SysDept">
+		update sys_dept set order_num = #{orderNum} where dept_id = #{deptId}
+	</update>
+	
+	<delete id="deleteDeptById" parameterType="Long">
+		update sys_dept set del_flag = '2' where dept_id = #{deptId}
+	</delete>
+
+	<select id="selectStoreGeoInBbox" resultMap="SysDeptResult">
+		select dept_id, dept_name, longitude, latitude
+		from sys_dept
+		where del_flag = '0' and dept_type = '1'
+		  and longitude is not null and latitude is not null
+		  and longitude between #{minLng} and #{maxLng}
+		  and latitude between #{minLat} and #{maxLat}
+	</select>
+
+	<select id="selectStoreGeoAll" resultMap="SysDeptResult">
+		select dept_id, dept_name, parent_id, longitude, latitude, province_code, city_code, district_code, street_code, province_name, city_name, district_name, street_name, detail_address
+		from sys_dept
+		where del_flag = '0' and dept_type = '1'
+		  and longitude is not null and latitude is not null
+	</select>
+
+	<select id="selectTopDeptGeoAll" resultMap="SysDeptResult">
+		select dept_id, dept_name, parent_id, longitude, latitude, province_code, city_code, district_code, street_code
+		from sys_dept
+		where del_flag = '0' and parent_id = 0
+		  and longitude is not null and latitude is not null
+	</select>
+
+	<select id="selectStoreGeoByRegion" parameterType="SysDept" resultMap="SysDeptResult">
+		select dept_id, dept_name, parent_id, longitude, latitude, province_code, city_code, district_code, street_code, province_name, city_name, district_name, street_name, detail_address
+		from sys_dept
+		where del_flag = '0' and dept_type = '1'
+		  and longitude is not null and latitude is not null
+		<if test="provinceCode != null and provinceCode != ''">
+		  and province_code = #{provinceCode}
+		</if>
+		<if test="cityCode != null and cityCode != ''">
+		  and city_code = #{cityCode}
+		</if>
+		<if test="districtCode != null and districtCode != ''">
+		  and district_code = #{districtCode}
+		</if>
+		<if test="streetCode != null and streetCode != ''">
+		  and street_code = #{streetCode}
+		</if>
+	</select>
+
+</mapper>

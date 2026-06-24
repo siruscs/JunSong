@@ -1,0 +1,285 @@
+{
+  "bizObject": {
+    "id": 6,
+    "bizCode": "store_opening",
+    "bizName": "门店开业申请",
+    "storageMode": "GENERIC",
+    "pkField": "id",
+    "orderNoField": "order_no",
+    "orderNoPrefix": "STORE",
+    "statusField": "workflow_status",
+    "workflowEnabled": 1,
+    "processKey": "store_opening",
+    "fulfillmentEnabled": 1,
+    "submitValidators": "[{\"type\":\"GEO_DEDUP\",\"geoField\":\"store_location\",\"radiusKm\":1.5,\"message\":\"周边1.5公里内已存在门店「${nearestName}」(距离${distance}米)，不可重复开店\"}]",
+    "status": "0",
+    "configStatus": "DRAFT",
+    "delFlag": "0"
+  },
+  "fields": [
+    {
+      "bizCode": "store_opening",
+      "fieldKey": "store_name",
+      "fieldLabel": "门店名称",
+      "fieldType": "string",
+      "componentType": "input",
+      "required": "1",
+      "stage": "APPLY",
+      "isList": "1",
+      "isDetail": "1",
+      "isProcessVar": "0",
+      "orderNum": 1,
+      "delFlag": "0",
+      "isQuery": "0"
+    },
+    {
+      "bizCode": "store_opening",
+      "fieldKey": "store_location",
+      "fieldLabel": "门店定位",
+      "fieldType": "geo",
+      "componentType": "geo-picker",
+      "required": "1",
+      "stage": "APPLY",
+      "isList": "0",
+      "isDetail": "1",
+      "isProcessVar": "1",
+      "processVarName": "storeLocation",
+      "orderNum": 2,
+      "delFlag": "0",
+      "isQuery": "0"
+    },
+    {
+      "bizCode": "store_opening",
+      "fieldKey": "store_address",
+      "fieldLabel": "门店地址",
+      "fieldType": "address",
+      "componentType": "address",
+      "required": "1",
+      "stage": "APPLY",
+      "isList": "0",
+      "isDetail": "1",
+      "isProcessVar": "0",
+      "orderNum": 3,
+      "delFlag": "0",
+      "isQuery": "0"
+    },
+    {
+      "bizCode": "store_opening",
+      "fieldKey": "storefront_photo",
+      "fieldLabel": "门头照片",
+      "fieldType": "image",
+      "componentType": "image-upload",
+      "required": "1",
+      "stage": "APPLY",
+      "isList": "0",
+      "isDetail": "1",
+      "isProcessVar": "0",
+      "orderNum": 4,
+      "delFlag": "0",
+      "isQuery": "0"
+    },
+    {
+      "bizCode": "store_opening",
+      "fieldKey": "lease_contract",
+      "fieldLabel": "租赁合同",
+      "fieldType": "file",
+      "componentType": "file-upload",
+      "required": "1",
+      "stage": "FULFILLMENT",
+      "isList": "0",
+      "isDetail": "1",
+      "isProcessVar": "0",
+      "orderNum": 5,
+      "delFlag": "0",
+      "isQuery": "0"
+    },
+    {
+      "bizCode": "store_opening",
+      "fieldKey": "business_license",
+      "fieldLabel": "营业执照",
+      "fieldType": "image",
+      "componentType": "image-upload",
+      "required": "1",
+      "stage": "FULFILLMENT",
+      "isList": "0",
+      "isDetail": "1",
+      "isProcessVar": "0",
+      "orderNum": 6,
+      "delFlag": "0",
+      "isQuery": "0"
+    }
+  ],
+  "pageSchemas": [],
+  "nodeAssignees": [
+    {
+      "bizCode": "store_opening",
+      "taskKey": "task_region_director_approve",
+      "taskName": "大区总监审核",
+      "assigneeSource": "INITIATOR_LEADER",
+      "assigneeValue": "",
+      "processVarName": "regionDirector",
+      "delFlag": "0"
+    }
+  ],
+  "branchRules": [],
+  "actions": [
+    {
+      "bizCode": "store_opening",
+      "actionCode": "VIEW_DETAIL",
+      "actionName": "详情",
+      "actionType": "BUILTIN",
+      "apiEndpoint": "/lowcode/biz/{bizCode}/{id}",
+      "buttonStyle": "primary",
+      "buttonIcon": "View",
+      "sortOrder": 1,
+      "triggerStatus": "DRAFT,IN_APPROVAL,APPROVED,REJECTED,WITHDRAWN,PENDING_FULFILLMENT,FULFILLED,CANCELLED,EXPIRED",
+      "status": "0",
+      "delFlag": "0"
+    },
+    {
+      "bizCode": "store_opening",
+      "actionCode": "EDIT",
+      "actionName": "编辑",
+      "actionType": "BUILTIN",
+      "apiEndpoint": "/lowcode/biz/{bizCode}/{id}",
+      "buttonStyle": "primary",
+      "buttonIcon": "Edit",
+      "sortOrder": 2,
+      "triggerStatus": "DRAFT,REJECTED",
+      "status": "0",
+      "delFlag": "0"
+    },
+    {
+      "bizCode": "store_opening",
+      "actionCode": "SUBMIT",
+      "actionName": "提交审批",
+      "actionType": "BUILTIN",
+      "apiEndpoint": "/lowcode/biz/{bizCode}/{id}/submit",
+      "buttonStyle": "success",
+      "buttonIcon": "Promotion",
+      "sortOrder": 3,
+      "triggerStatus": "DRAFT,REJECTED",
+      "status": "0",
+      "delFlag": "0"
+    },
+    {
+      "bizCode": "store_opening",
+      "actionCode": "WITHDRAW",
+      "actionName": "撤回",
+      "actionType": "BUILTIN",
+      "apiEndpoint": "/lowcode/biz/{bizCode}/{id}/withdraw",
+      "buttonStyle": "warning",
+      "buttonIcon": "Back",
+      "sortOrder": 4,
+      "triggerStatus": "IN_APPROVAL",
+      "status": "0",
+      "delFlag": "0"
+    },
+    {
+      "bizCode": "store_opening",
+      "actionCode": "VIEW_FLOW",
+      "actionName": "查看流程",
+      "actionType": "BUILTIN",
+      "apiEndpoint": "/workflow/instance/list",
+      "buttonStyle": "info",
+      "buttonIcon": "View",
+      "sortOrder": 5,
+      "triggerStatus": "IN_APPROVAL,APPROVED,REJECTED,WITHDRAWN,PENDING_FULFILLMENT,FULFILLED,CANCELLED,EXPIRED",
+      "status": "0",
+      "delFlag": "0"
+    },
+    {
+      "bizCode": "store_opening",
+      "actionCode": "FULFILL",
+      "actionName": "履约提交",
+      "actionType": "BUILTIN",
+      "apiEndpoint": "/lowcode/biz/{bizCode}/{id}/fulfill",
+      "buttonStyle": "success",
+      "buttonIcon": "Upload",
+      "sortOrder": 6,
+      "triggerStatus": "PENDING_FULFILLMENT",
+      "status": "0",
+      "delFlag": "0"
+    },
+    {
+      "bizCode": "store_opening",
+      "actionCode": "DELETE",
+      "actionName": "删除",
+      "actionType": "BUILTIN",
+      "apiEndpoint": "/lowcode/biz/{bizCode}/{ids}",
+      "buttonStyle": "danger",
+      "buttonIcon": "Delete",
+      "sortOrder": 7,
+      "triggerStatus": "DRAFT,REJECTED,CANCELLED,EXPIRED",
+      "status": "0",
+      "delFlag": "0"
+    }
+  ],
+  "postActions": [
+    {
+      "bizCode": "store_opening",
+      "triggerEvent": "AFTER_SUBMIT",
+      "actionType": "UPDATE_STATUS",
+      "targetValue": "IN_APPROVAL",
+      "delFlag": "0",
+      "status": "0",
+      "sortOrder": 1
+    },
+    {
+      "bizCode": "store_opening",
+      "triggerEvent": "AFTER_APPROVE",
+      "actionType": "UPDATE_STATUS",
+      "targetValue": "PENDING_FULFILLMENT",
+      "delFlag": "0",
+      "status": "0",
+      "sortOrder": 2
+    },
+    {
+      "bizCode": "store_opening",
+      "triggerEvent": "AFTER_REJECT",
+      "actionType": "UPDATE_STATUS",
+      "targetValue": "REJECTED",
+      "delFlag": "0",
+      "status": "0",
+      "sortOrder": 3
+    },
+    {
+      "bizCode": "store_opening",
+      "triggerEvent": "AFTER_WITHDRAW",
+      "actionType": "UPDATE_STATUS",
+      "targetValue": "WITHDRAWN",
+      "delFlag": "0",
+      "status": "0",
+      "sortOrder": 4
+    },
+    {
+      "bizCode": "store_opening",
+      "triggerEvent": "AFTER_FULFILL",
+      "actionType": "UPDATE_STATUS",
+      "targetValue": "FULFILLED",
+      "delFlag": "0",
+      "status": "0",
+      "sortOrder": 5
+    }
+  ],
+  "nodeTimers": [
+    {
+      "bizCode": "store_opening",
+      "taskKey": "task_region_director_approve",
+      "taskName": "大区总监审核",
+      "duration": "P3D",
+      "timeoutAction": "AUTO_CANCEL",
+      "targetStatus": "CANCELLED",
+      "delFlag": "0"
+    },
+    {
+      "bizCode": "store_opening",
+      "taskKey": "task_upload_materials",
+      "taskName": "履约上传材料",
+      "duration": "P45D",
+      "timeoutAction": "AUTO_CANCEL",
+      "targetStatus": "EXPIRED",
+      "delFlag": "0"
+    }
+  ]
+}

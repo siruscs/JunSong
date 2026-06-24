@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.member.mapper.MemPointsRuleMapper">
+
+    <resultMap type="com.junsong.member.domain.MemPointsRule" id="MemPointsRuleResult">
+        <result property="ruleId" column="rule_id"/>
+        <result property="ruleName" column="rule_name"/>
+        <result property="ruleCode" column="rule_code"/>
+        <result property="ruleType" column="rule_type"/>
+        <result property="pointsPerYuan" column="points_per_yuan"/>
+        <result property="validityDays" column="validity_days"/>
+        <result property="status" column="status"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="selectMemPointsRuleVo">
+        select rule_id, rule_name, rule_code, rule_type, points_per_yuan, validity_days,
+               status, del_flag, create_by, create_time, update_by, update_time
+        from mem_points_rule
+    </sql>
+
+    <select id="selectMemPointsRuleList" parameterType="com.junsong.member.domain.MemPointsRule" resultMap="MemPointsRuleResult">
+        <include refid="selectMemPointsRuleVo"/>
+        <where>
+            <if test="ruleName != null and ruleName != ''">
+                AND rule_name like concat('%', #{ruleName}, '%')
+            </if>
+            <if test="ruleCode != null and ruleCode != ''">
+                AND rule_code like concat('%', #{ruleCode}, '%')
+            </if>
+            <if test="ruleType != null and ruleType != ''">
+                AND rule_type = #{ruleType}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            AND del_flag = '0'
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="selectMemPointsRuleById" parameterType="Long" resultMap="MemPointsRuleResult">
+        <include refid="selectMemPointsRuleVo"/>
+        where rule_id = #{ruleId} and del_flag = '0'
+    </select>
+
+    <select id="checkMemRuleCodeUnique" parameterType="com.junsong.member.domain.MemPointsRule" resultType="int">
+        select count(1) from mem_points_rule where rule_code = #{ruleCode} and del_flag = '0'
+        <if test="ruleId != null and ruleId != 0">
+            AND rule_id != #{ruleId}
+        </if>
+    </select>
+
+    <select id="selectEffectiveRule" resultMap="MemPointsRuleResult">
+        <include refid="selectMemPointsRuleVo"/>
+        where status = '0' and del_flag = '0'
+        order by rule_id asc
+        limit 1
+    </select>
+
+    <insert id="insertMemPointsRule" parameterType="com.junsong.member.domain.MemPointsRule" useGeneratedKeys="true" keyProperty="ruleId">
+        insert into mem_points_rule
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="ruleName != null and ruleName != ''">rule_name,</if>
+            <if test="ruleCode != null and ruleCode != ''">rule_code,</if>
+            <if test="ruleType != null and ruleType != ''">rule_type,</if>
+            <if test="pointsPerYuan != null">points_per_yuan,</if>
+            <if test="validityDays != null">validity_days,</if>
+            <if test="status != null">status,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="ruleName != null and ruleName != ''">#{ruleName},</if>
+            <if test="ruleCode != null and ruleCode != ''">#{ruleCode},</if>
+            <if test="ruleType != null and ruleType != ''">#{ruleType},</if>
+            <if test="pointsPerYuan != null">#{pointsPerYuan},</if>
+            <if test="validityDays != null">#{validityDays},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <update id="updateMemPointsRule" parameterType="com.junsong.member.domain.MemPointsRule">
+        update mem_points_rule
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="ruleName != null and ruleName != ''">rule_name = #{ruleName},</if>
+            <if test="ruleCode != null and ruleCode != ''">rule_code = #{ruleCode},</if>
+            <if test="ruleType != null and ruleType != ''">rule_type = #{ruleType},</if>
+            <if test="pointsPerYuan != null">points_per_yuan = #{pointsPerYuan},</if>
+            <if test="validityDays != null">validity_days = #{validityDays},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where rule_id = #{ruleId}
+    </update>
+
+    <delete id="deleteMemPointsRuleById" parameterType="Long">
+        update mem_points_rule set del_flag = '1' where rule_id = #{ruleId}
+    </delete>
+
+    <delete id="deleteMemPointsRuleByIds" parameterType="Long">
+        update mem_points_rule set del_flag = '1' where rule_id in
+        <foreach item="ruleId" collection="array" open="(" separator="," close=")">
+            #{ruleId}
+        </foreach>
+    </delete>
+
+</mapper>

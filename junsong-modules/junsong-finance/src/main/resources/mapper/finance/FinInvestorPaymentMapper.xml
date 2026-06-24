@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.FinInvestorPaymentMapper">
+    
+    <resultMap type="FinInvestorPayment" id="FinInvestorPaymentResult">
+        <id property="paymentId" column="payment_id" />
+        <result property="deptId" column="dept_id" />
+        <result property="periodId" column="period_id" />
+        <result property="shareId" column="share_id" />
+        <result property="shareDetailId" column="share_detail_id" />
+        <result property="investorId" column="investor_id" />
+        <result property="paymentNo" column="payment_no" />
+        <result property="paymentDate" column="payment_date" />
+        <result property="paymentType" column="payment_type" />
+        <result property="investorName" column="investor_name" />
+        <result property="amount" column="amount" />
+        <result property="sourceType" column="source_type" />
+        <result property="paymentStatus" column="payment_status" />
+        <result property="investRatio" column="invest_ratio" />
+        <result property="delFlag" column="del_flag" />
+        <result property="createBy" column="create_by" />
+        <result property="createTime" column="create_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="updateTime" column="update_time" />
+        <result property="remark" column="remark" />
+    </resultMap>
+    
+    <sql id="selectFinInvestorPaymentVo">
+        select p.payment_id, p.dept_id, p.period_id, p.share_id, p.share_detail_id, p.investor_id,
+               p.payment_no, p.payment_date, p.payment_type, p.investor_name, p.amount,
+               p.source_type, p.payment_status, p.invest_ratio,
+               p.del_flag, p.create_by, p.create_time, p.update_by, p.update_time, p.remark
+        from fin_investor_payment p
+    </sql>
+
+    <select id="selectFinInvestorPaymentList" parameterType="FinInvestorPayment" resultMap="FinInvestorPaymentResult">
+        <include refid="selectFinInvestorPaymentVo"/>
+        <where>  
+            p.del_flag = '0'
+            <if test="deptId != null"> and p.dept_id = #{deptId}</if>
+            <if test="paymentNo != null and paymentNo != ''"> and p.payment_no like concat('%', #{paymentNo}, '%')</if>
+            <if test="periodId != null"> and p.period_id = #{periodId}</if>
+            <if test="investorId != null"> and p.investor_id = #{investorId}</if>
+            <if test="investorName != null and investorName != ''"> and p.investor_name like concat('%', #{investorName}, '%')</if>
+            <if test="paymentType != null and paymentType != ''"> and p.payment_type = #{paymentType}</if>
+            <if test="sourceType != null and sourceType != ''"> and p.source_type = #{sourceType}</if>
+            <if test="paymentStatus != null and paymentStatus != ''"> and p.payment_status = #{paymentStatus}</if>
+        </where>
+        order by p.create_time desc
+    </select>
+    
+    <select id="selectFinInvestorPaymentByPaymentId" parameterType="Long" resultMap="FinInvestorPaymentResult">
+        <include refid="selectFinInvestorPaymentVo"/>
+        where p.payment_id = #{paymentId}
+    </select>
+
+    <select id="checkPaymentNoUnique" parameterType="String" resultMap="FinInvestorPaymentResult">
+        <include refid="selectFinInvestorPaymentVo"/>
+        where p.payment_no = #{paymentNo} and p.del_flag = '0' limit 1
+    </select>
+
+    <select id="countTodayInvestorPayments" resultType="int">
+        select count(*) from fin_investor_payment where date(create_time) = curdate()
+    </select>
+    
+    <select id="sumReserveFund" resultType="java.math.BigDecimal">
+        select
+            ifnull((select sum(invest_amount) from fin_invest_record where del_flag = '0'), 0) -
+            ifnull((select sum(amount) from fin_investor_payment where payment_type = 'return' and del_flag = '0'), 0)
+    </select>
+    
+    <select id="sumVerifiedExpenses" resultType="java.math.BigDecimal">
+        select ifnull(sum(expense_amount), 0) from fin_expense where status = '1' and del_flag = '0'
+    </select>
+
+    <select id="sumVerifiedExpensesByDeptId" resultType="java.math.BigDecimal">
+        select ifnull(sum(expense_amount), 0)
+        from fin_expense
+        where status = '1' and del_flag = '0'
+        <if test="deptId != null"> and dept_id = #{deptId}</if>
+    </select>
+    
+    <select id="sumTotalInvestAmount" resultType="java.math.BigDecimal">
+        select ifnull(sum(invest_amount), 0) from fin_invest_record where del_flag = '0'
+    </select>
+    
+    <select id="sumTotalReturnAmount" resultType="java.math.BigDecimal">
+        select ifnull(sum(amount), 0) from fin_investor_payment where payment_type = 'return' and del_flag = '0'
+    </select>
+
+    <select id="sumTotalReturnAmountByDeptId" resultType="java.math.BigDecimal">
+        select ifnull(sum(amount), 0)
+        from fin_investor_payment
+        where payment_type = 'return' and del_flag = '0'
+        <if test="deptId != null"> and dept_id = #{deptId}</if>
+    </select>
+        
+    <insert id="insertFinInvestorPayment" parameterType="FinInvestorPayment" useGeneratedKeys="true" keyProperty="paymentId">
+        insert into fin_investor_payment
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="deptId != null">dept_id,</if>
+            <if test="periodId != null">period_id,</if>
+            <if test="shareId != null">share_id,</if>
+            <if test="shareDetailId != null">share_detail_id,</if>
+            <if test="investorId != null">investor_id,</if>
+            <if test="paymentNo != null and paymentNo != ''">payment_no,</if>
+            <if test="paymentDate != null">payment_date,</if>
+            <if test="paymentType != null and paymentType != ''">payment_type,</if>
+            <if test="investorName != null and investorName != ''">investor_name,</if>
+            <if test="amount != null">amount,</if>
+            <if test="sourceType != null">source_type,</if>
+            <if test="paymentStatus != null">payment_status,</if>
+            <if test="investRatio != null">invest_ratio,</if>
+            <if test="delFlag != null">del_flag,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time,
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="deptId != null">#{deptId},</if>
+            <if test="periodId != null">#{periodId},</if>
+            <if test="shareId != null">#{shareId},</if>
+            <if test="shareDetailId != null">#{shareDetailId},</if>
+            <if test="investorId != null">#{investorId},</if>
+            <if test="paymentNo != null and paymentNo != ''">#{paymentNo},</if>
+            <if test="paymentDate != null">#{paymentDate},</if>
+            <if test="paymentType != null and paymentType != ''">#{paymentType},</if>
+            <if test="investorName != null and investorName != ''">#{investorName},</if>
+            <if test="amount != null">#{amount},</if>
+            <if test="sourceType != null">#{sourceType},</if>
+            <if test="paymentStatus != null">#{paymentStatus},</if>
+            <if test="investRatio != null">#{investRatio},</if>
+            <if test="delFlag != null">#{delFlag},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate(),
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateFinInvestorPayment" parameterType="FinInvestorPayment">
+        update fin_investor_payment
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="deptId != null">dept_id = #{deptId},</if>
+            <if test="periodId != null">period_id = #{periodId},</if>
+            <if test="shareId != null">share_id = #{shareId},</if>
+            <if test="shareDetailId != null">share_detail_id = #{shareDetailId},</if>
+            <if test="investorId != null">investor_id = #{investorId},</if>
+            <if test="paymentNo != null and paymentNo != ''">payment_no = #{paymentNo},</if>
+            <if test="paymentDate != null">payment_date = #{paymentDate},</if>
+            <if test="paymentType != null and paymentType != ''">payment_type = #{paymentType},</if>
+            <if test="investorName != null and investorName != ''">investor_name = #{investorName},</if>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="sourceType != null">source_type = #{sourceType},</if>
+            <if test="paymentStatus != null">payment_status = #{paymentStatus},</if>
+            <if test="investRatio != null">invest_ratio = #{investRatio},</if>
+            <if test="delFlag != null">del_flag = #{delFlag},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where payment_id = #{paymentId}
+    </update>
+
+    <delete id="deleteFinInvestorPaymentByPaymentId" parameterType="Long">
+        update fin_investor_payment set del_flag = '2' where payment_id = #{paymentId}
+    </delete>
+
+    <delete id="deleteFinInvestorPaymentByPaymentIds" parameterType="Long">
+        update fin_investor_payment set del_flag = '2' where payment_id in 
+        <foreach item="paymentId" collection="array" open="(" separator="," close=")">
+            #{paymentId}
+        </foreach>
+    </delete>
+    <delete id="deleteAutoInvestorPaymentByShareId">
+        update fin_investor_payment
+        set del_flag = '2', update_time = sysdate()
+        where share_id = #{shareId}
+          and source_type = '1'
+          and del_flag = '0'
+    </delete>
+</mapper>

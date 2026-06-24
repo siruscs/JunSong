@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.FinExpenseMapper">
+    
+    <resultMap type="FinExpense" id="FinExpenseResult">
+        <id property="expenseId" column="expense_id" />
+        <result property="deptId" column="dept_id" />
+        <result property="periodId" column="period_id" />
+        <result property="expenseNo" column="expense_no" />
+        <result property="expenseDate" column="expense_date" />
+        <result property="expenseType" column="expense_type" />
+        <result property="expenseContent" column="expense_content" />
+        <result property="paymentMethod" column="payment_method" />
+        <result property="expenseAmount" column="expense_amount" />
+        <result property="advanceId" column="advance_id" />
+        <result property="advanceNo" column="advance_no" />
+        <result property="status" column="status" />
+        <result property="verifyBy" column="verify_by" />
+        <result property="verifyTime" column="verify_time" />
+        <result property="delFlag" column="del_flag" />
+        <result property="createBy" column="create_by" />
+        <result property="createTime" column="create_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="updateTime" column="update_time" />
+        <result property="remark" column="remark" />
+    </resultMap>
+    
+    <sql id="selectFinExpenseVo">
+        select e.expense_id, e.dept_id, e.period_id, e.expense_no, e.expense_date, e.expense_type, e.expense_content, e.payment_method, e.expense_amount, e.advance_id, e.status, e.verify_by, e.verify_time, e.del_flag, e.create_by, e.create_time, e.update_by, e.update_time, e.remark,
+               a.advance_no
+        from fin_expense e
+        left join fin_advance a on e.advance_id = a.advance_id
+    </sql>
+
+    <select id="selectFinExpenseList" parameterType="FinExpense" resultMap="FinExpenseResult">
+        <include refid="selectFinExpenseVo"/>
+        <where>  
+            e.del_flag = '0'
+            <if test="deptId != null"> and e.dept_id = #{deptId}</if>
+            <if test="periodId != null"> and e.period_id = #{periodId}</if>
+            <if test="expenseNo != null and expenseNo != ''"> and e.expense_no like concat('%', #{expenseNo}, '%')</if>
+            <if test="expenseType != null and expenseType != ''"> and e.expense_type = #{expenseType}</if>
+            <if test="expenseContent != null and expenseContent != ''"> and e.expense_content like concat('%', #{expenseContent}, '%')</if>
+            <if test="status != null and status != ''"> and e.status = #{status}</if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                and date_format(e.expense_date,'%Y%m%d') &gt;= date_format(#{params.beginTime},'%Y%m%d')
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and date_format(e.expense_date,'%Y%m%d') &lt;= date_format(#{params.endTime},'%Y%m%d')
+            </if>
+        </where>
+        order by e.create_time desc
+    </select>
+    
+    <select id="selectFinExpenseByExpenseId" parameterType="Long" resultMap="FinExpenseResult">
+        <include refid="selectFinExpenseVo"/>
+        where e.expense_id = #{expenseId}
+    </select>
+
+    <select id="selectFinExpenseByExpenseIds" parameterType="Long" resultMap="FinExpenseResult">
+        <include refid="selectFinExpenseVo"/>
+        where e.expense_id in
+        <foreach item="expenseId" collection="array" open="(" separator="," close=")">
+            #{expenseId}
+        </foreach>
+    </select>
+
+    <select id="checkExpenseNoUnique" parameterType="String" resultMap="FinExpenseResult">
+        <include refid="selectFinExpenseVo"/>
+        where e.expense_no = #{expenseNo} and e.del_flag = '0' limit 1
+    </select>
+
+    <select id="countTodayExpenses" resultType="int">
+        select count(*) from fin_expense where date(create_time) = curdate()
+    </select>
+        
+    <select id="sumUnverifiedExpenses" resultType="java.math.BigDecimal">
+        select ifnull(sum(expense_amount), 0) from fin_expense where status = '0' and del_flag = '0'
+    </select>
+
+    <select id="sumUnverifiedExpensesByDeptId" resultType="java.math.BigDecimal">
+        select ifnull(sum(expense_amount), 0) from fin_expense where status = '0' and del_flag = '0'
+        <if test="deptId != null"> and dept_id = #{deptId}</if>
+    </select>
+
+    <select id="sumAllExpenses" resultType="java.math.BigDecimal">
+        select ifnull(sum(expense_amount), 0) from fin_expense where del_flag = '0'
+    </select>
+
+    <select id="sumAllExpensesByDeptId" resultType="java.math.BigDecimal">
+        select ifnull(sum(expense_amount), 0) from fin_expense where del_flag = '0'
+        <if test="deptId != null"> and dept_id = #{deptId}</if>
+    </select>
+
+    <select id="sumAllExpensesByPeriodId" resultType="java.math.BigDecimal">
+        select ifnull(sum(expense_amount), 0) from fin_expense where del_flag = '0'
+        <if test="periodId != null"> and period_id = #{periodId}</if>
+    </select>
+        
+    <insert id="insertFinExpense" parameterType="FinExpense" useGeneratedKeys="true" keyProperty="expenseId">
+        insert into fin_expense
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="deptId != null">dept_id,</if>
+            <if test="periodId != null">period_id,</if>
+            <if test="expenseNo != null and expenseNo != ''">expense_no,</if>
+            <if test="expenseDate != null">expense_date,</if>
+            <if test="expenseType != null and expenseType != ''">expense_type,</if>
+            <if test="expenseContent != null">expense_content,</if>
+            <if test="paymentMethod != null and paymentMethod != ''">payment_method,</if>
+            <if test="expenseAmount != null">expense_amount,</if>
+            <if test="advanceId != null">advance_id,</if>
+            <if test="status != null">status,</if>
+            <if test="verifyBy != null">verify_by,</if>
+            <if test="verifyTime != null">verify_time,</if>
+            <if test="delFlag != null">del_flag,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time,
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="deptId != null">#{deptId},</if>
+            <if test="periodId != null">#{periodId},</if>
+            <if test="expenseNo != null and expenseNo != ''">#{expenseNo},</if>
+            <if test="expenseDate != null">#{expenseDate},</if>
+            <if test="expenseType != null and expenseType != ''">#{expenseType},</if>
+            <if test="expenseContent != null">#{expenseContent},</if>
+            <if test="paymentMethod != null and paymentMethod != ''">#{paymentMethod},</if>
+            <if test="expenseAmount != null">#{expenseAmount},</if>
+            <if test="advanceId != null">#{advanceId},</if>
+            <if test="status != null">#{status},</if>
+            <if test="verifyBy != null">#{verifyBy},</if>
+            <if test="verifyTime != null">#{verifyTime},</if>
+            <if test="delFlag != null">#{delFlag},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate(),
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateFinExpense" parameterType="FinExpense">
+        update fin_expense
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="deptId != null">dept_id = #{deptId},</if>
+            <if test="periodId != null">period_id = #{periodId},</if>
+            <if test="expenseNo != null and expenseNo != ''">expense_no = #{expenseNo},</if>
+            <if test="expenseDate != null">expense_date = #{expenseDate},</if>
+            <if test="expenseType != null and expenseType != ''">expense_type = #{expenseType},</if>
+            <if test="expenseContent != null">expense_content = #{expenseContent},</if>
+            <if test="paymentMethod != null and paymentMethod != ''">payment_method = #{paymentMethod},</if>
+            <if test="expenseAmount != null">expense_amount = #{expenseAmount},</if>
+            <if test="advanceId != null">advance_id = #{advanceId},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="verifyBy != null">verify_by = #{verifyBy},</if>
+            <if test="verifyTime != null">verify_time = #{verifyTime},</if>
+            <if test="delFlag != null">del_flag = #{delFlag},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where expense_id = #{expenseId}
+    </update>
+
+    <delete id="deleteFinExpenseByExpenseId" parameterType="Long">
+        update fin_expense set del_flag = '2' where expense_id = #{expenseId}
+    </delete>
+
+    <delete id="deleteFinExpenseByExpenseIds" parameterType="Long">
+        update fin_expense set del_flag = '2' where expense_id in 
+        <foreach item="expenseId" collection="array" open="(" separator="," close=")">
+            #{expenseId}
+        </foreach>
+    </delete>
+
+    <select id="selectExpenseCategoryStats" resultType="java.util.HashMap">
+        select expense_type as categoryName,
+               ifnull(sum(abs(expense_amount)), 0) as totalAmount
+        from fin_expense
+        where del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in
+            <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+        <if test="startTime != null">
+            and expense_date &gt;= #{startTime}
+        </if>
+        <if test="endTime != null">
+            and expense_date &lt;= #{endTime}
+        </if>
+        group by expense_type
+        order by totalAmount desc
+    </select>
+
+    <select id="selectExpenseTrendStats" resultType="java.util.HashMap">
+        select date_format(e.expense_date, '%Y-%m-%d') as dateStr,
+               e.dept_id as deptId,
+               d.dept_name as deptName,
+               ifnull(sum(case when e.expense_type = '开支' then abs(e.expense_amount) else 0 end), 0) as expenseAmount,
+               ifnull(sum(case when e.expense_type = '收入' then abs(e.expense_amount) else 0 end), 0) as incomeAmount
+        from fin_expense e
+        left join sys_dept d on e.dept_id = d.dept_id
+        where e.del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and e.dept_id in
+            <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+        <if test="startTime != null">
+            and e.expense_date &gt;= #{startTime}
+        </if>
+        <if test="endTime != null">
+            and e.expense_date &lt;= #{endTime}
+        </if>
+        group by date_format(e.expense_date, '%Y-%m-%d'), e.dept_id, d.dept_name
+        order by dateStr, e.dept_id
+    </select>
+
+    <select id="selectExpenseDeptStats" resultType="java.util.HashMap">
+        select e.dept_id as deptId,
+               d.dept_name as deptName,
+               ifnull(sum(e.expense_amount), 0) as totalAmount
+        from fin_expense e
+        left join sys_dept d on e.dept_id = d.dept_id
+        where e.del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and e.dept_id in
+            <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+        <if test="startTime != null">
+            and e.expense_date &gt;= #{startTime}
+        </if>
+        <if test="endTime != null">
+            and e.expense_date &lt;= #{endTime}
+        </if>
+        group by e.dept_id, d.dept_name
+        order by totalAmount desc
+    </select>
+
+    <select id="selectExpenseTotal" resultType="java.math.BigDecimal">
+        select ifnull(sum(expense_amount), 0)
+        from fin_expense
+        where del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in
+            <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+        <if test="startTime != null">
+            and expense_date &gt;= #{startTime}
+        </if>
+        <if test="endTime != null">
+            and expense_date &lt;= #{endTime}
+        </if>
+    </select>
+</mapper>

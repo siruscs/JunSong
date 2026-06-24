@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.member.mapper.MemPointsRecordMapper">
+
+    <resultMap type="com.junsong.member.domain.MemPointsRecord" id="MemPointsRecordResult">
+        <result property="recordId" column="record_id"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="memberId" column="member_id"/>
+        <result property="memberNo" column="member_no"/>
+        <result property="memberName" column="member_name"/>
+        <result property="recordType" column="record_type"/>
+        <result property="consumeAmount" column="consume_amount"/>
+        <result property="points" column="points"/>
+        <result property="balance" column="balance"/>
+        <result property="ruleCode" column="rule_code"/>
+        <result property="expireDate" column="expire_date"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="delFlag" column="del_flag"/>
+    </resultMap>
+
+    <sql id="selectMemPointsRecordVo">
+        select record_id, dept_id, member_id, member_no, member_name, record_type,
+               consume_amount, points, balance, rule_code, expire_date,
+               create_by, create_time, update_by, update_time, del_flag
+        from mem_points_record
+    </sql>
+
+    <select id="selectMemPointsRecordList" parameterType="com.junsong.member.domain.MemPointsRecord" resultMap="MemPointsRecordResult">
+        <include refid="selectMemPointsRecordVo"/>
+        <where>
+            <if test="memberId != null">
+                AND member_id = #{memberId}
+            </if>
+            <if test="memberNo != null and memberNo != ''">
+                AND member_no like concat('%', #{memberNo}, '%')
+            </if>
+            <if test="memberName != null and memberName != ''">
+                AND member_name like concat('%', #{memberName}, '%')
+            </if>
+            <if test="recordType != null and recordType != ''">
+                AND record_type = #{recordType}
+            </if>
+            <if test="ruleCode != null and ruleCode != ''">
+                AND rule_code like concat('%', #{ruleCode}, '%')
+            </if>
+            AND del_flag = '0'
+            ${params.dataScope}
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="selectMemPointsRecordByRecordId" parameterType="Long" resultMap="MemPointsRecordResult">
+        <include refid="selectMemPointsRecordVo"/>
+        where record_id = #{recordId} and del_flag = '0'
+    </select>
+
+    <select id="checkRecordNoUnique" parameterType="String" resultType="int">
+        select count(1) from mem_points_record where 1=0
+    </select>
+
+    <insert id="insertMemPointsRecord" parameterType="com.junsong.member.domain.MemPointsRecord" useGeneratedKeys="true" keyProperty="recordId">
+        insert into mem_points_record
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="deptId != null">dept_id,</if>
+            <if test="memberId != null">member_id,</if>
+            <if test="memberNo != null">member_no,</if>
+            <if test="memberName != null">member_name,</if>
+            <if test="recordType != null and recordType != ''">record_type,</if>
+            <if test="consumeAmount != null">consume_amount,</if>
+            <if test="points != null">points,</if>
+            <if test="balance != null">balance,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+            <if test="ruleCode != null">rule_code,</if>
+            <if test="expireDate != null">expire_date,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="deptId != null">#{deptId},</if>
+            <if test="memberId != null">#{memberId},</if>
+            <if test="memberNo != null">#{memberNo},</if>
+            <if test="memberName != null">#{memberName},</if>
+            <if test="recordType != null and recordType != ''">#{recordType},</if>
+            <if test="consumeAmount != null">#{consumeAmount},</if>
+            <if test="points != null">#{points},</if>
+            <if test="balance != null">#{balance},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+            <if test="ruleCode != null">#{ruleCode},</if>
+            <if test="expireDate != null">#{expireDate},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <update id="updateMemPointsRecord" parameterType="com.junsong.member.domain.MemPointsRecord">
+        update mem_points_record
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="memberNo != null">member_no = #{memberNo},</if>
+            <if test="memberName != null">member_name = #{memberName},</if>
+            <if test="recordType != null and recordType != ''">record_type = #{recordType},</if>
+            <if test="consumeAmount != null">consume_amount = #{consumeAmount},</if>
+            <if test="points != null">points = #{points},</if>
+            <if test="balance != null">balance = #{balance},</if>
+            <if test="ruleCode != null">rule_code = #{ruleCode},</if>
+            <if test="expireDate != null">expire_date = #{expireDate},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where record_id = #{recordId}
+    </update>
+
+    <delete id="deleteMemPointsRecordByRecordId" parameterType="Long">
+        update mem_points_record set del_flag = '1' where record_id = #{recordId}
+    </delete>
+
+    <delete id="deleteMemPointsRecordByRecordIds" parameterType="Long">
+        update mem_points_record set del_flag = '1' where record_id in
+        <foreach item="recordId" collection="array" open="(" separator="," close=")">
+            #{recordId}
+        </foreach>
+    </delete>
+
+    <select id="selectMemPointsRecordByRemark" parameterType="String" resultMap="MemPointsRecordResult">
+        <include refid="selectMemPointsRecordVo"/>
+        where remark like concat('%', #{remark}, '%') and del_flag = '0'
+    </select>
+
+    <select id="selectLatestBalanceByMemberId" parameterType="Long" resultMap="MemPointsRecordResult">
+        <include refid="selectMemPointsRecordVo"/>
+        where member_id = #{memberId} and del_flag = '0' order by create_time desc limit 1
+    </select>
+
+</mapper>

@@ -1,0 +1,10 @@
+springdoc:
+  gatewayUrl: http://localhost:8080/${spring.application.name}
+  api-docs:
+    enabled: true
+  info:
+    title: 工作流模块接口文档
+    description: 工作流流程引擎模块接口描述
+    contact:
+      name: 峻松
+      url: https://junsong.vip

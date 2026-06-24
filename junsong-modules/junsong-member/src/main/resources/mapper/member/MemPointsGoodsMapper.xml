@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.member.mapper.MemPointsGoodsMapper">
+
+    <resultMap type="com.junsong.member.domain.MemPointsGoods" id="MemPointsGoodsResult">
+        <result property="goodsId" column="goods_id"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="goodsName" column="goods_name"/>
+        <result property="goodsCode" column="goods_code"/>
+        <result property="goodsValue" column="goods_value"/>
+        <result property="pointsPrice" column="points_price"/>
+        <result property="stock" column="stock"/>
+        <result property="exchanged" column="exchanged"/>
+        <result property="goodsImage" column="goods_image"/>
+        <result property="status" column="status"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="delFlag" column="del_flag"/>
+    </resultMap>
+
+    <sql id="selectMemPointsGoodsVo">
+        select goods_id, dept_id, goods_name, goods_code, goods_value, points_price,
+               stock, exchanged, goods_image, status, create_by, create_time,
+               update_by, update_time, del_flag
+        from mem_points_goods
+    </sql>
+
+    <select id="selectMemPointsGoodsList" parameterType="com.junsong.member.domain.MemPointsGoods" resultMap="MemPointsGoodsResult">
+        <include refid="selectMemPointsGoodsVo"/>
+        <where>
+            <if test="goodsCode != null and goodsCode != ''">
+                AND goods_code like concat('%', #{goodsCode}, '%')
+            </if>
+            <if test="goodsName != null and goodsName != ''">
+                AND goods_name like concat('%', #{goodsName}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                AND date_format(create_time,'%y%m%d') &gt;= date_format(#{params.beginTime},'%y%m%d')
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                AND date_format(create_time,'%y%m%d') &lt;= date_format(#{params.endTime},'%y%m%d')
+            </if>
+            AND del_flag = '0'
+            ${params.dataScope}
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="selectMemPointsGoodsById" parameterType="Long" resultMap="MemPointsGoodsResult">
+        <include refid="selectMemPointsGoodsVo"/>
+        where goods_id = #{goodsId} and del_flag = '0'
+    </select>
+
+    <select id="checkMemGoodsCodeUnique" parameterType="String" resultType="int">
+        select count(1) from mem_points_goods where goods_code = #{goodsNo} and del_flag = '0'
+    </select>
+
+    <insert id="insertMemPointsGoods" parameterType="com.junsong.member.domain.MemPointsGoods" useGeneratedKeys="true" keyProperty="goodsId">
+        insert into mem_points_goods
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="deptId != null">dept_id,</if>
+            <if test="goodsName != null and goodsName != ''">goods_name,</if>
+            <if test="goodsCode != null and goodsCode != ''">goods_code,</if>
+            <if test="goodsValue != null">goods_value,</if>
+            <if test="pointsPrice != null">points_price,</if>
+            <if test="stock != null">stock,</if>
+            <if test="exchanged != null">exchanged,</if>
+            <if test="goodsImage != null">goods_image,</if>
+            <if test="status != null">status,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="deptId != null">#{deptId},</if>
+            <if test="goodsName != null and goodsName != ''">#{goodsName},</if>
+            <if test="goodsCode != null and goodsCode != ''">#{goodsCode},</if>
+            <if test="goodsValue != null">#{goodsValue},</if>
+            <if test="pointsPrice != null">#{pointsPrice},</if>
+            <if test="stock != null">#{stock},</if>
+            <if test="exchanged != null">#{exchanged},</if>
+            <if test="goodsImage != null">#{goodsImage},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <update id="updateMemPointsGoods" parameterType="com.junsong.member.domain.MemPointsGoods">
+        update mem_points_goods
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="goodsName != null and goodsName != ''">goods_name = #{goodsName},</if>
+            <if test="goodsCode != null and goodsCode != ''">goods_code = #{goodsCode},</if>
+            <if test="goodsValue != null">goods_value = #{goodsValue},</if>
+            <if test="pointsPrice != null">points_price = #{pointsPrice},</if>
+            <if test="stock != null">stock = #{stock},</if>
+            <if test="exchanged != null">exchanged = #{exchanged},</if>
+            <if test="goodsImage != null">goods_image = #{goodsImage},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where goods_id = #{goodsId}
+    </update>
+
+    <delete id="deleteMemPointsGoodsById" parameterType="Long">
+        update mem_points_goods set del_flag = '1' where goods_id = #{goodsId}
+    </delete>
+
+    <delete id="deleteMemPointsGoodsByIds" parameterType="Long">
+        update mem_points_goods set del_flag = '1' where goods_id in
+        <foreach item="goodsId" collection="array" open="(" separator="," close=")">
+            #{goodsId}
+        </foreach>
+    </delete>
+
+</mapper>

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.workflow.lowcode.mapper.LcBizBranchRuleMapper">
+
+    <resultMap id="LcBizBranchRuleResult" type="com.junsong.workflow.lowcode.domain.LcBizBranchRule">
+        <id property="id" column="id"/>
+        <result property="bizCode" column="biz_code"/>
+        <result property="gatewayKey" column="gateway_key"/>
+        <result property="fieldKey" column="field_key"/>
+        <result property="operator" column="operator"/>
+        <result property="compareValue" column="compare_value"/>
+        <result property="targetVarName" column="target_var_name"/>
+        <result property="groupOp" column="group_op"/>
+        <result property="parentRuleId" column="parent_rule_id"/>
+        <result property="remark" column="remark"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="selectLcBizBranchRuleVo">
+        select id, biz_code, gateway_key, field_key, operator, compare_value, target_var_name,
+               group_op, parent_rule_id, remark, del_flag, create_by, create_time, update_by, update_time
+        from lc_biz_branch_rule
+    </sql>
+
+    <select id="selectLcBizBranchRuleList" parameterType="com.junsong.workflow.lowcode.domain.LcBizBranchRule" resultMap="LcBizBranchRuleResult">
+        <include refid="selectLcBizBranchRuleVo"/>
+        <where>
+            del_flag = '0'
+            <if test="bizCode != null and bizCode != ''">and biz_code = #{bizCode}</if>
+            <if test="gatewayKey != null and gatewayKey != ''">and gateway_key = #{gatewayKey}</if>
+            <if test="fieldKey != null and fieldKey != ''">and field_key = #{fieldKey}</if>
+        </where>
+        order by id asc
+    </select>
+
+    <select id="selectLcBizBranchRuleById" parameterType="Long" resultMap="LcBizBranchRuleResult">
+        <include refid="selectLcBizBranchRuleVo"/>
+        where id = #{id} and del_flag = '0'
+    </select>
+
+    <select id="selectByBizCode" parameterType="String" resultMap="LcBizBranchRuleResult">
+        <include refid="selectLcBizBranchRuleVo"/>
+        where biz_code = #{bizCode} and del_flag = '0'
+        order by id asc
+    </select>
+
+    <insert id="insertLcBizBranchRule" parameterType="com.junsong.workflow.lowcode.domain.LcBizBranchRule" useGeneratedKeys="true" keyProperty="id">
+        insert into lc_biz_branch_rule(
+            biz_code, gateway_key, field_key, operator, compare_value, target_var_name,
+            group_op, parent_rule_id, remark, del_flag, create_by, create_time, update_by, update_time
+        ) values (
+            #{bizCode}, #{gatewayKey}, #{fieldKey}, #{operator}, #{compareValue}, #{targetVarName},
+            #{groupOp}, #{parentRuleId}, #{remark}, #{delFlag}, #{createBy}, sysdate(), #{updateBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateLcBizBranchRule" parameterType="com.junsong.workflow.lowcode.domain.LcBizBranchRule">
+        update lc_biz_branch_rule
+        <set>
+            <if test="bizCode != null">biz_code = #{bizCode},</if>
+            <if test="gatewayKey != null">gateway_key = #{gatewayKey},</if>
+            <if test="fieldKey != null">field_key = #{fieldKey},</if>
+            <if test="operator != null">operator = #{operator},</if>
+            <if test="compareValue != null">compare_value = #{compareValue},</if>
+            <if test="targetVarName != null">target_var_name = #{targetVarName},</if>
+            <if test="groupOp != null">group_op = #{groupOp},</if>
+            <if test="parentRuleId != null">parent_rule_id = #{parentRuleId},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <update id="deleteLcBizBranchRuleByIds" parameterType="Long">
+        update lc_biz_branch_rule
+        set del_flag = '2', update_time = sysdate()
+        where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <delete id="physicalDeleteByBizCode" parameterType="String">
+        delete from lc_biz_branch_rule where biz_code = #{bizCode}
+    </delete>
+
+</mapper>

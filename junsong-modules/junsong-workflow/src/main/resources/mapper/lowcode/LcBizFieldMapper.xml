@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.workflow.lowcode.mapper.LcBizFieldMapper">
+
+    <resultMap id="LcBizFieldResult" type="com.junsong.workflow.lowcode.domain.LcBizField">
+        <id property="id" column="id"/>
+        <result property="bizCode" column="biz_code"/>
+        <result property="fieldKey" column="field_key"/>
+        <result property="fieldLabel" column="field_label"/>
+        <result property="fieldType" column="field_type"/>
+        <result property="componentType" column="component_type"/>
+        <result property="required" column="required"/>
+        <result property="defaultValue" column="default_value"/>
+        <result property="dictType" column="dict_type"/>
+        <result property="uploadConfig" column="upload_config"/>
+        <result property="fieldExt" column="field_ext"/>
+        <result property="validateRule" column="validate_rule"/>
+        <result property="stage" column="stage"/>
+        <result property="isQuery" column="is_query"/>
+        <result property="isList" column="is_list"/>
+        <result property="isDetail" column="is_detail"/>
+        <result property="isProcessVar" column="is_process_var"/>
+        <result property="processVarName" column="process_var_name"/>
+        <result property="parentFieldKey" column="parent_field_key"/>
+        <result property="orderNum" column="order_num"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="selectLcBizFieldVo">
+        select id, biz_code, field_key, field_label, field_type, component_type, required,
+               default_value, dict_type, upload_config, field_ext, validate_rule, stage,
+               is_query, is_list, is_detail, is_process_var, process_var_name, parent_field_key, order_num,
+               del_flag, create_by, create_time, update_by, update_time
+        from lc_biz_field
+    </sql>
+
+    <select id="selectLcBizFieldList" parameterType="com.junsong.workflow.lowcode.domain.LcBizField" resultMap="LcBizFieldResult">
+        <include refid="selectLcBizFieldVo"/>
+        <where>
+            del_flag = '0'
+            <if test="bizCode != null and bizCode != ''">and biz_code = #{bizCode}</if>
+            <if test="fieldKey != null and fieldKey != ''">and field_key like concat('%', #{fieldKey}, '%')</if>
+            <if test="fieldLabel != null and fieldLabel != ''">and field_label like concat('%', #{fieldLabel}, '%')</if>
+            <if test="stage != null and stage != ''">and stage = #{stage}</if>
+        </where>
+        order by order_num asc, id asc
+    </select>
+
+    <select id="selectLcBizFieldById" parameterType="Long" resultMap="LcBizFieldResult">
+        <include refid="selectLcBizFieldVo"/>
+        where id = #{id} and del_flag = '0'
+    </select>
+
+    <select id="selectByBizCode" parameterType="String" resultMap="LcBizFieldResult">
+        <include refid="selectLcBizFieldVo"/>
+        where biz_code = #{bizCode} and del_flag = '0'
+        order by order_num asc, id asc
+    </select>
+
+    <insert id="insertLcBizField" parameterType="com.junsong.workflow.lowcode.domain.LcBizField" useGeneratedKeys="true" keyProperty="id">
+        insert into lc_biz_field(
+            biz_code, field_key, field_label, field_type, component_type, required,
+            default_value, dict_type, upload_config, field_ext, validate_rule, stage,
+            is_query, is_list, is_detail, is_process_var, process_var_name, parent_field_key, order_num,
+            del_flag, create_by, create_time, update_by, update_time
+        ) values (
+            #{bizCode}, #{fieldKey}, #{fieldLabel}, #{fieldType}, #{componentType}, #{required},
+            #{defaultValue}, #{dictType}, #{uploadConfig}, #{fieldExt}, #{validateRule}, #{stage},
+            #{isQuery}, #{isList}, #{isDetail}, #{isProcessVar}, #{processVarName}, #{parentFieldKey}, #{orderNum},
+            #{delFlag}, #{createBy}, sysdate(), #{updateBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateLcBizField" parameterType="com.junsong.workflow.lowcode.domain.LcBizField">
+        update lc_biz_field
+        <set>
+            <if test="bizCode != null">biz_code = #{bizCode},</if>
+            <if test="fieldKey != null">field_key = #{fieldKey},</if>
+            <if test="fieldLabel != null">field_label = #{fieldLabel},</if>
+            <if test="fieldType != null">field_type = #{fieldType},</if>
+            <if test="componentType != null">component_type = #{componentType},</if>
+            <if test="required != null">required = #{required},</if>
+            <if test="defaultValue != null">default_value = #{defaultValue},</if>
+            <if test="dictType != null">dict_type = #{dictType},</if>
+            <if test="uploadConfig != null">upload_config = #{uploadConfig},</if>
+            <if test="fieldExt != null">field_ext = #{fieldExt},</if>
+            <if test="validateRule != null">validate_rule = #{validateRule},</if>
+            <if test="stage != null">stage = #{stage},</if>
+            <if test="isQuery != null">is_query = #{isQuery},</if>
+            <if test="isList != null">is_list = #{isList},</if>
+            <if test="isDetail != null">is_detail = #{isDetail},</if>
+            <if test="isProcessVar != null">is_process_var = #{isProcessVar},</if>
+            <if test="processVarName != null">process_var_name = #{processVarName},</if>
+            <if test="parentFieldKey != null">parent_field_key = #{parentFieldKey},</if>
+            <if test="orderNum != null">order_num = #{orderNum},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <update id="deleteLcBizFieldByIds" parameterType="Long">
+        update lc_biz_field
+        set del_flag = '2', update_time = sysdate()
+        where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <delete id="physicalDeleteByBizCode" parameterType="String">
+        delete from lc_biz_field where biz_code = #{bizCode}
+    </delete>
+
+</mapper>

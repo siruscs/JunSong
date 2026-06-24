@@ -1,0 +1,20 @@
+file:
+  domain: http://120.26.150.127:9300
+  path: /home/junsong/uploadPath
+  prefix: /statics
+
+fdfs:
+  domain: http://120.26.150.127:9300
+  soTimeout: 3000
+  connectTimeout: 2000
+  trackerList: 120.26.150.127:22122
+
+minio:
+  url: http://120.26.150.127:9000
+  accessKey: change-me
+  secretKey: change-me
+  bucketName: test
+
+referer:
+  enabled: false
+  allowed-domains: localhost,127.0.0.1,120.26.150.127

@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.FinCostAccountingMapper">
+
+    <resultMap type="FinCostAccounting" id="FinCostAccountingResult">
+        <id property="accountingId" column="accounting_id" />
+        <result property="deptId" column="dept_id" />
+        <result property="accountingNo" column="accounting_no" />
+        <result property="startDate" column="start_date" />
+        <result property="endDate" column="end_date" />
+        <result property="totalExpense" column="total_expense" />
+        <result property="totalPurchase" column="total_purchase" />
+        <result property="totalSale" column="total_sale" />
+        <result property="totalPayment" column="total_payment" />
+        <result property="totalInvest" column="total_invest" />
+        <result property="currentAdvance" column="current_advance" />
+        <result property="returnSituation" column="return_situation" />
+        <result property="delFlag" column="del_flag" />
+        <result property="createBy" column="create_by" />
+        <result property="createTime" column="create_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="updateTime" column="update_time" />
+        <result property="remark" column="remark" />
+    </resultMap>
+
+    <sql id="selectFinCostAccountingVo">
+        select c.accounting_id, c.dept_id, c.accounting_no, c.start_date, c.end_date, c.total_expense, c.total_purchase, c.total_sale, c.total_payment, c.total_invest, c.current_advance, c.return_situation, c.del_flag, c.create_by, c.create_time, c.update_by, c.update_time, c.remark
+        from fin_cost_accounting c
+    </sql>
+
+    <select id="selectFinCostAccountingList" parameterType="FinCostAccounting" resultMap="FinCostAccountingResult">
+        <include refid="selectFinCostAccountingVo"/>
+        <where>
+            c.del_flag = '0'
+            <if test="deptId != null"> and c.dept_id = #{deptId}</if>
+            <if test="accountingNo != null and accountingNo != ''"> and c.accounting_no like concat('%', #{accountingNo}, '%')</if>
+        </where>
+        order by c.create_time desc
+    </select>
+
+    <select id="selectFinCostAccountingByAccountingId" parameterType="Long" resultMap="FinCostAccountingResult">
+        <include refid="selectFinCostAccountingVo"/>
+        where c.accounting_id = #{accountingId}
+    </select>
+
+    <select id="checkAccountingNoUnique" parameterType="String" resultMap="FinCostAccountingResult">
+        <include refid="selectFinCostAccountingVo"/>
+        where c.accounting_no = #{accountingNo} and c.del_flag = '0' limit 1
+    </select>
+
+    <select id="countTodayAccountings" resultType="int">
+        select count(*) from fin_cost_accounting where date(create_time) = curdate()
+    </select>
+
+    <select id="sumTotalExpenseAmount" resultType="java.math.BigDecimal">
+        select ifnull(sum(expense_amount), 0) from fin_expense where del_flag = '0'
+    </select>
+
+    <select id="sumTotalPurchaseAmount" resultType="java.math.BigDecimal">
+        select ifnull(sum(total_amount), 0) from fin_purchase where del_flag = '0'
+    </select>
+
+    <select id="sumTotalSaleAmount" resultType="java.math.BigDecimal">
+        select ifnull(sum(sale_amount), 0) from fin_sale_record where del_flag = '0'
+    </select>
+
+    <select id="sumTotalPaymentAmount" resultType="java.math.BigDecimal">
+        select ifnull(sum(payment_amount), 0) from fin_sale_payment where del_flag = '0'
+    </select>
+
+    <select id="sumTotalInvestAmount" resultType="java.math.BigDecimal">
+        select ifnull(sum(invest_amount), 0)
+        from fin_invest_record
+        where del_flag = '0'
+    </select>
+
+    <select id="sumCurrentAdvance" resultType="java.math.BigDecimal">
+        select ifnull(sum(advance_amount), 0) from fin_advance where status = '0' and del_flag = '0'
+    </select>
+
+    <select id="sumExpenseAmountByDateRange" resultType="java.math.BigDecimal">
+        select ifnull(sum(expense_amount), 0) from fin_expense
+        where del_flag = '0' and expense_date between #{startDate} and concat(#{endDate}, ' 23:59:59')
+    </select>
+
+    <select id="sumPurchaseAmountByDateRange" resultType="java.math.BigDecimal">
+        select ifnull(sum(total_amount), 0) from fin_purchase
+        where del_flag = '0' and purchase_date between #{startDate} and concat(#{endDate}, ' 23:59:59')
+    </select>
+
+    <select id="sumSaleAmountByDateRange" resultType="java.math.BigDecimal">
+        select ifnull(sum(sale_amount), 0) from fin_sale_record
+        where del_flag = '0' and sale_date between #{startDate} and concat(#{endDate}, ' 23:59:59')
+    </select>
+
+    <select id="sumPaymentAmountByDateRange" resultType="java.math.BigDecimal">
+        select ifnull(sum(payment_amount), 0) from fin_sale_payment
+        where del_flag = '0' and payment_date between #{startDate} and concat(#{endDate}, ' 23:59:59')
+    </select>
+
+    <select id="sumInvestAmountByDateRange" resultType="java.math.BigDecimal">
+        select ifnull(sum(invest_amount), 0)
+        from fin_invest_record
+        where del_flag = '0' and invest_time between #{startDate} and concat(#{endDate}, ' 23:59:59')
+    </select>
+
+    <insert id="insertFinCostAccounting" parameterType="FinCostAccounting" useGeneratedKeys="true" keyProperty="accountingId">
+        insert into fin_cost_accounting
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="deptId != null">dept_id,</if>
+            <if test="accountingNo != null and accountingNo != ''">accounting_no,</if>
+            <if test="startDate != null">start_date,</if>
+            <if test="endDate != null">end_date,</if>
+            <if test="totalExpense != null">total_expense,</if>
+            <if test="totalPurchase != null">total_purchase,</if>
+            <if test="totalSale != null">total_sale,</if>
+            <if test="totalPayment != null">total_payment,</if>
+            <if test="totalInvest != null">total_invest,</if>
+            <if test="currentAdvance != null">current_advance,</if>
+            <if test="returnSituation != null">return_situation,</if>
+            <if test="delFlag != null">del_flag,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time,
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="deptId != null">#{deptId},</if>
+            <if test="accountingNo != null and accountingNo != ''">#{accountingNo},</if>
+            <if test="startDate != null">#{startDate},</if>
+            <if test="endDate != null">#{endDate},</if>
+            <if test="totalExpense != null">#{totalExpense},</if>
+            <if test="totalPurchase != null">#{totalPurchase},</if>
+            <if test="totalSale != null">#{totalSale},</if>
+            <if test="totalPayment != null">#{totalPayment},</if>
+            <if test="totalInvest != null">#{totalInvest},</if>
+            <if test="currentAdvance != null">#{currentAdvance},</if>
+            <if test="returnSituation != null">#{returnSituation},</if>
+            <if test="delFlag != null">#{delFlag},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate(),
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateFinCostAccounting" parameterType="FinCostAccounting">
+        update fin_cost_accounting
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="deptId != null">dept_id = #{deptId},</if>
+            <if test="accountingNo != null and accountingNo != ''">accounting_no = #{accountingNo},</if>
+            <if test="startDate != null">start_date = #{startDate},</if>
+            <if test="endDate != null">end_date = #{endDate},</if>
+            <if test="totalExpense != null">total_expense = #{totalExpense},</if>
+            <if test="totalPurchase != null">total_purchase = #{totalPurchase},</if>
+            <if test="totalSale != null">total_sale = #{totalSale},</if>
+            <if test="totalPayment != null">total_payment = #{totalPayment},</if>
+            <if test="totalInvest != null">total_invest = #{totalInvest},</if>
+            <if test="currentAdvance != null">current_advance = #{currentAdvance},</if>
+            <if test="returnSituation != null">return_situation = #{returnSituation},</if>
+            <if test="delFlag != null">del_flag = #{delFlag},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where accounting_id = #{accountingId}
+    </update>
+
+    <select id="checkAlreadyProfit" resultType="boolean">
+        select exists (
+            select 1 from fin_cost_accounting
+            where return_situation &gt;= 0 and del_flag = '0'
+            limit 1
+        )
+    </select>
+
+    <select id="countUnverifiedExpense" resultType="int">
+        select count(*) from fin_expense
+        where status = '0' and del_flag = '0'
+        <if test="deptId != null"> and dept_id = #{deptId}</if>
+    </select>
+
+    <delete id="deleteFinCostAccountingByAccountingId" parameterType="Long">
+        update fin_cost_accounting set del_flag = '2' where accounting_id = #{accountingId}
+    </delete>
+
+    <delete id="deleteFinCostAccountingByAccountingIds" parameterType="Long">
+        update fin_cost_accounting set del_flag = '2' where accounting_id in
+        <foreach item="accountingId" collection="array" open="(" separator="," close=")">
+            #{accountingId}
+        </foreach>
+    </delete>
+</mapper>

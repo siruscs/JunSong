@@ -1,0 +1,3 @@
+mybatis:
+  typeAliasesPackage: com.junsong.gen.domain
+  mapperLocations: classpath*:mapper/**/*.xml

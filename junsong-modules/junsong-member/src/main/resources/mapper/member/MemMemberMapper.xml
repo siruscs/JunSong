@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.member.mapper.MemMemberMapper">
+
+    <resultMap type="com.junsong.member.domain.MemMember" id="MemMemberResult">
+        <id property="memberId" column="member_id"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="memberNo" column="member_no"/>
+        <result property="memberName" column="member_name"/>
+        <result property="phone" column="phone"/>
+        <result property="age" column="age"/>
+        <result property="address" column="address"/>
+        <result property="idCard" column="id_card"/>
+        <result property="cardType" column="card_type"/>
+        <result property="cardId" column="card_id"/>
+        <result property="joinDate" column="join_date"/>
+        <result property="expireDate" column="expire_date"/>
+        <result property="totalPoints" column="total_points"/>
+        <result property="availablePoints" column="available_points"/>
+        <result property="seckillCount" column="seckill_count"/>
+        <result property="status" column="status"/>
+        <result property="remark" column="remark"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="selectMemMemberVo">
+        select member_id, dept_id, member_no, member_name, phone, age, address, id_card,
+               card_type, card_id, join_date, expire_date, total_points,
+               (select COALESCE(balance, 0) from mem_points_record r where r.member_id = mem_member.member_id and r.del_flag = '0' order by r.create_time desc limit 1) as available_points,
+               (select count(1) from mem_seckill_record sr where sr.member_id = mem_member.member_id and sr.del_flag = '0') as seckill_count,
+               status, remark, del_flag, create_by, create_time, update_by, update_time
+        from mem_member
+    </sql>
+
+    <select id="selectMemMemberList" parameterType="com.junsong.member.domain.MemMember" resultMap="MemMemberResult">
+        <include refid="selectMemMemberVo"/>
+        <where>
+            <if test="memberNo != null and memberNo != ''">
+                AND member_no like concat('%', #{memberNo}, '%')
+            </if>
+            <if test="memberName != null and memberName != ''">
+                AND member_name like concat('%', #{memberName}, '%')
+            </if>
+            <if test="phone != null and phone != ''">
+                AND phone like concat('%', #{phone}, '%')
+            </if>
+            <if test="cardType != null and cardType != ''">
+                AND card_type = #{cardType}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                AND date_format(create_time,'%Y%m%d') &gt;= date_format(#{params.beginTime},'%Y%m%d')
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                AND date_format(create_time,'%Y%m%d') &lt;= date_format(#{params.endTime},'%Y%m%d')
+            </if>
+            AND del_flag = '0'
+            ${params.dataScope}
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="selectMemMemberByMemberId" parameterType="Long" resultMap="MemMemberResult">
+        <include refid="selectMemMemberVo"/>
+        where member_id = #{memberId} and del_flag = '0'
+    </select>
+
+    <select id="checkMemberNoUnique" parameterType="com.junsong.member.domain.MemMember" resultType="int">
+        select count(1) from mem_member where member_no = #{memberNo} and del_flag = '0'
+        <if test="memberId != null and memberId != 0">
+            AND member_id != #{memberId}
+        </if>
+    </select>
+    
+    <select id="selectNextMemberNo" parameterType="String" resultType="String">
+        select concat(#{prefix}, lpad(coalesce(max(cast(substr(member_no, length(#{prefix}) + 1) as signed)), 0) + 1, 5, '0'))
+        from mem_member
+        where member_no like concat(#{prefix}, '%') and del_flag = '0'
+    </select>
+    
+    <select id="selectDeptNameById" parameterType="Long" resultType="String">
+        select dept_name from sys_dept where dept_id = #{deptId} and del_flag = '0'
+    </select>
+
+    <select id="selectMemMemberByMemberNo" parameterType="String" resultMap="MemMemberResult">
+        <include refid="selectMemMemberVo"/>
+        where member_no like concat('%', #{memberNo}, '%') and del_flag = '0'
+    </select>
+
+    <select id="selectMemMemberByNoAndDept" resultMap="MemMemberResult">
+        <include refid="selectMemMemberVo"/>
+        where member_no like concat('%', #{memberNo}, '%') and dept_id = #{deptId} and del_flag = '0'
+        limit 1
+    </select>
+
+    <select id="selectActiveMembersForSeckill" resultMap="MemMemberResult">
+        <include refid="selectMemMemberVo"/>
+        where dept_id = #{deptId}
+          and del_flag = '0'
+          and status = '0'
+        <if test="seckillDate != null">
+            and (expire_date is null or expire_date &gt;= #{seckillDate})
+        </if>
+        order by member_no
+    </select>
+
+    <insert id="insertMemMember" parameterType="com.junsong.member.domain.MemMember" useGeneratedKeys="true" keyProperty="memberId">
+        insert into mem_member
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="deptId != null">dept_id,</if>
+            <if test="memberNo != null and memberNo != ''">member_no,</if>
+            <if test="memberName != null and memberName != ''">member_name,</if>
+            <if test="phone != null">phone,</if>
+            <if test="age != null">age,</if>
+            <if test="address != null">address,</if>
+            <if test="idCard != null">id_card,</if>
+            <if test="cardType != null">card_type,</if>
+            <if test="cardId != null">card_id,</if>
+            <if test="joinDate != null">join_date,</if>
+            <if test="expireDate != null">expire_date,</if>
+            <if test="totalPoints != null">total_points,</if>
+            <if test="availablePoints != null">available_points,</if>
+            <if test="status != null">status,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="remark != null">remark,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="deptId != null">#{deptId},</if>
+            <if test="memberNo != null and memberNo != ''">#{memberNo},</if>
+            <if test="memberName != null and memberName != ''">#{memberName},</if>
+            <if test="phone != null">#{phone},</if>
+            <if test="age != null">#{age},</if>
+            <if test="address != null">#{address},</if>
+            <if test="idCard != null">#{idCard},</if>
+            <if test="cardType != null">#{cardType},</if>
+            <if test="cardId != null">#{cardId},</if>
+            <if test="joinDate != null">#{joinDate},</if>
+            <if test="expireDate != null">#{expireDate},</if>
+            <if test="totalPoints != null">#{totalPoints},</if>
+            <if test="availablePoints != null">#{availablePoints},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="remark != null">#{remark},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <update id="updateMemMember" parameterType="com.junsong.member.domain.MemMember">
+        update mem_member
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="deptId != null">dept_id = #{deptId},</if>
+            <if test="memberNo != null and memberNo != ''">member_no = #{memberNo},</if>
+            <if test="memberName != null and memberName != ''">member_name = #{memberName},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="age != null">age = #{age},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="idCard != null">id_card = #{idCard},</if>
+            <if test="cardType != null">card_type = #{cardType},</if>
+            <if test="cardId != null">card_id = #{cardId},</if>
+            <if test="joinDate != null">join_date = #{joinDate},</if>
+            <if test="expireDate != null">expire_date = #{expireDate},</if>
+            <if test="totalPoints != null">total_points = #{totalPoints},</if>
+            <if test="availablePoints != null">available_points = #{availablePoints},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </trim>
+        where member_id = #{memberId}
+    </update>
+
+    <delete id="deleteMemMemberByMemberId" parameterType="Long">
+        update mem_member set del_flag = '2' where member_id = #{memberId}
+    </delete>
+
+    <delete id="deleteMemMemberByMemberIds" parameterType="Long">
+        update mem_member set del_flag = '2' where member_id in
+        <foreach item="memberId" collection="array" open="(" separator="," close=")">
+            #{memberId}
+        </foreach>
+    </delete>
+
+</mapper>

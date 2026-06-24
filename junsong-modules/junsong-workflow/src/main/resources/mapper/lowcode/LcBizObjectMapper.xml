@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.workflow.lowcode.mapper.LcBizObjectMapper">
+
+    <resultMap id="LcBizObjectResult" type="com.junsong.workflow.lowcode.domain.LcBizObject">
+        <id property="id" column="id"/>
+        <result property="bizCode" column="biz_code"/>
+        <result property="bizName" column="biz_name"/>
+        <result property="storageMode" column="storage_mode"/>
+        <result property="tableName" column="table_name"/>
+        <result property="pkField" column="pk_field"/>
+        <result property="orderNoField" column="order_no_field"/>
+        <result property="orderNoPrefix" column="order_no_prefix"/>
+        <result property="statusField" column="status_field"/>
+        <result property="workflowEnabled" column="workflow_enabled"/>
+        <result property="processKey" column="process_key"/>
+        <result property="fulfillmentEnabled" column="fulfillment_enabled"/>
+        <result property="menuParentPath" column="menu_parent_path"/>
+        <result property="submitValidators" column="submit_validators"/>
+        <result property="status" column="status"/>
+        <result property="configStatus" column="config_status"/>
+        <result property="publishedVersion" column="published_version"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="selectLcBizObjectVo">
+        select id, biz_code, biz_name, storage_mode, table_name, pk_field, order_no_field,
+               order_no_prefix, status_field, workflow_enabled, process_key, fulfillment_enabled,
+               menu_parent_path, submit_validators, status, config_status, published_version, del_flag,
+               create_by, create_time, update_by, update_time
+        from lc_biz_object
+    </sql>
+
+    <select id="selectLcBizObjectList" parameterType="com.junsong.workflow.lowcode.domain.LcBizObject" resultMap="LcBizObjectResult">
+        <include refid="selectLcBizObjectVo"/>
+        <where>
+            del_flag = '0'
+            <if test="bizCode != null and bizCode != ''">and biz_code like concat('%', #{bizCode}, '%')</if>
+            <if test="bizName != null and bizName != ''">and biz_name like concat('%', #{bizName}, '%')</if>
+            <if test="storageMode != null and storageMode != ''">and storage_mode = #{storageMode}</if>
+            <if test="status != null and status != ''">and status = #{status}</if>
+            <if test="processKey != null and processKey != ''">and process_key = #{processKey}</if>
+        </where>
+        order by id desc
+    </select>
+
+    <select id="selectLcBizObjectById" parameterType="Long" resultMap="LcBizObjectResult">
+        <include refid="selectLcBizObjectVo"/>
+        where id = #{id} and del_flag = '0'
+    </select>
+
+    <select id="selectLcBizObjectByBizCode" parameterType="String" resultMap="LcBizObjectResult">
+        <include refid="selectLcBizObjectVo"/>
+        where biz_code = #{bizCode} and del_flag = '0'
+    </select>
+
+    <insert id="insertLcBizObject" parameterType="com.junsong.workflow.lowcode.domain.LcBizObject" useGeneratedKeys="true" keyProperty="id">
+        insert into lc_biz_object(
+            biz_code, biz_name, storage_mode, table_name, pk_field, order_no_field,
+            order_no_prefix, status_field, workflow_enabled, process_key, fulfillment_enabled,
+            menu_parent_path, submit_validators, status, del_flag, create_by, create_time, update_by, update_time
+        ) values (
+            #{bizCode}, #{bizName}, #{storageMode}, #{tableName}, #{pkField}, #{orderNoField},
+            #{orderNoPrefix}, #{statusField}, #{workflowEnabled}, #{processKey}, #{fulfillmentEnabled},
+            #{menuParentPath}, #{submitValidators}, #{status}, #{delFlag}, #{createBy}, sysdate(), #{updateBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateLcBizObject" parameterType="com.junsong.workflow.lowcode.domain.LcBizObject">
+        update lc_biz_object
+        <set>
+            <if test="bizName != null">biz_name = #{bizName},</if>
+            <if test="storageMode != null">storage_mode = #{storageMode},</if>
+            <if test="tableName != null">table_name = #{tableName},</if>
+            <if test="pkField != null">pk_field = #{pkField},</if>
+            <if test="orderNoField != null">order_no_field = #{orderNoField},</if>
+            <if test="orderNoPrefix != null">order_no_prefix = #{orderNoPrefix},</if>
+            <if test="statusField != null">status_field = #{statusField},</if>
+            <if test="workflowEnabled != null">workflow_enabled = #{workflowEnabled},</if>
+            <if test="processKey != null">process_key = #{processKey},</if>
+            <if test="fulfillmentEnabled != null">fulfillment_enabled = #{fulfillmentEnabled},</if>
+            <if test="menuParentPath != null">menu_parent_path = #{menuParentPath},</if>
+            <if test="submitValidators != null">submit_validators = #{submitValidators},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="configStatus != null">config_status = #{configStatus},</if>
+            <if test="publishedVersion != null">published_version = #{publishedVersion},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <update id="deleteLcBizObjectByIds" parameterType="Long">
+        update lc_biz_object
+        set del_flag = '2', update_time = sysdate()
+        where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+</mapper>

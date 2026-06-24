@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.workflow.lowcode.mapper.LcBizInstanceMapper">
+
+    <resultMap id="LcBizInstanceResult" type="com.junsong.workflow.lowcode.domain.LcBizInstance">
+        <id property="id" column="id"/>
+        <result property="bizCode" column="biz_code"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="formData" column="form_data"/>
+        <result property="processInstanceId" column="process_instance_id"/>
+        <result property="processDefinitionKey" column="process_definition_key"/>
+        <result property="workflowStatus" column="workflow_status"/>
+        <result property="currentTaskName" column="current_task_name"/>
+        <result property="submitter" column="submitter"/>
+        <result property="submitTime" column="submit_time"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="selectLcBizInstanceVo">
+        select id, biz_code, order_no, form_data, process_instance_id, process_definition_key,
+               workflow_status, current_task_name, submitter, submit_time, del_flag,
+               create_by, create_time, update_by, update_time
+        from lc_biz_instance
+    </sql>
+
+    <select id="selectLcBizInstanceList" parameterType="com.junsong.workflow.lowcode.domain.LcBizInstance" resultMap="LcBizInstanceResult">
+        <include refid="selectLcBizInstanceVo"/>
+        <where>
+            del_flag = '0'
+            <if test="bizCode != null and bizCode != ''">and biz_code = #{bizCode}</if>
+            <if test="orderNo != null and orderNo != ''">and order_no like concat('%', #{orderNo}, '%')</if>
+            <if test="workflowStatus != null and workflowStatus != ''">and workflow_status = #{workflowStatus}</if>
+            <if test="submitter != null and submitter != ''">and submitter = #{submitter}</if>
+        </where>
+        order by id desc
+    </select>
+
+    <select id="selectLcBizInstanceById" parameterType="Long" resultMap="LcBizInstanceResult">
+        <include refid="selectLcBizInstanceVo"/>
+        where id = #{id} and del_flag = '0'
+    </select>
+
+    <select id="selectByBizCodeAndOrderNo" resultMap="LcBizInstanceResult">
+        <include refid="selectLcBizInstanceVo"/>
+        where biz_code = #{bizCode} and order_no = #{orderNo} and del_flag = '0'
+    </select>
+
+    <select id="selectByProcessInstanceId" parameterType="String" resultMap="LcBizInstanceResult">
+        <include refid="selectLcBizInstanceVo"/>
+        where process_instance_id = #{processInstanceId} and del_flag = '0'
+    </select>
+
+    <insert id="insertLcBizInstance" parameterType="com.junsong.workflow.lowcode.domain.LcBizInstance" useGeneratedKeys="true" keyProperty="id">
+        insert into lc_biz_instance(
+            biz_code, order_no, form_data, process_instance_id, process_definition_key,
+            workflow_status, current_task_name, submitter, submit_time, del_flag,
+            create_by, create_time, update_by, update_time
+        ) values (
+            #{bizCode}, #{orderNo}, #{formData}, #{processInstanceId}, #{processDefinitionKey},
+            #{workflowStatus}, #{currentTaskName}, #{submitter}, #{submitTime}, #{delFlag},
+            #{createBy}, sysdate(), #{updateBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateLcBizInstance" parameterType="com.junsong.workflow.lowcode.domain.LcBizInstance">
+        update lc_biz_instance
+        <set>
+            <if test="bizCode != null">biz_code = #{bizCode},</if>
+            <if test="orderNo != null">order_no = #{orderNo},</if>
+            <if test="formData != null">form_data = #{formData},</if>
+            <if test="processInstanceId != null">process_instance_id = #{processInstanceId},</if>
+            <if test="processDefinitionKey != null">process_definition_key = #{processDefinitionKey},</if>
+            <if test="workflowStatus != null">workflow_status = #{workflowStatus},</if>
+            <if test="currentTaskName != null">current_task_name = #{currentTaskName},</if>
+            <if test="submitter != null">submitter = #{submitter},</if>
+            <if test="submitTime != null">submit_time = #{submitTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <update id="updateWorkflowSnapshot" parameterType="com.junsong.workflow.lowcode.domain.LcBizInstance">
+        update lc_biz_instance
+        <set>
+            <if test="processInstanceId != null">process_instance_id = #{processInstanceId},</if>
+            <if test="processDefinitionKey != null">process_definition_key = #{processDefinitionKey},</if>
+            <if test="workflowStatus != null">workflow_status = #{workflowStatus},</if>
+            <if test="currentTaskName != null">current_task_name = #{currentTaskName},</if>
+            <if test="submitter != null">submitter = #{submitter},</if>
+            <if test="submitTime != null">submit_time = #{submitTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        <choose>
+            <when test="id != null">where id = #{id}</when>
+            <otherwise>where process_instance_id = #{processInstanceId}</otherwise>
+        </choose>
+    </update>
+
+    <update id="deleteLcBizInstanceByIds" parameterType="Long">
+        update lc_biz_instance
+        set del_flag = '2', update_time = sysdate()
+        where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+</mapper>

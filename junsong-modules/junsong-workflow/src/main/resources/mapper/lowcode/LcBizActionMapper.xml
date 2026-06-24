@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.workflow.lowcode.mapper.LcBizActionMapper">
+
+    <resultMap id="LcBizActionResult" type="com.junsong.workflow.lowcode.domain.LcBizAction">
+        <id property="id" column="id"/>
+        <result property="bizCode" column="biz_code"/>
+        <result property="actionCode" column="action_code"/>
+        <result property="actionName" column="action_name"/>
+        <result property="actionType" column="action_type"/>
+        <result property="triggerStatus" column="trigger_status"/>
+        <result property="apiEndpoint" column="api_endpoint"/>
+        <result property="buttonStyle" column="button_style"/>
+        <result property="buttonIcon" column="button_icon"/>
+        <result property="sortOrder" column="sort_order"/>
+        <result property="status" column="status"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="selectLcBizActionVo">
+        select id, biz_code, action_code, action_name, action_type, trigger_status, api_endpoint,
+               button_style, button_icon, sort_order, status, del_flag, create_by, create_time,
+               update_by, update_time
+        from lc_biz_action
+    </sql>
+
+    <select id="selectByBizCode" parameterType="String" resultMap="LcBizActionResult">
+        <include refid="selectLcBizActionVo"/>
+        where biz_code = #{bizCode} and del_flag = '0' and status = '0'
+        order by sort_order asc, id asc
+    </select>
+
+    <insert id="insertAction" parameterType="com.junsong.workflow.lowcode.domain.LcBizAction" useGeneratedKeys="true" keyProperty="id">
+        insert into lc_biz_action(
+            biz_code, action_code, action_name, action_type, trigger_status, api_endpoint,
+            button_style, button_icon, sort_order, status, del_flag, create_by, create_time,
+            update_by, update_time
+        ) values (
+            #{bizCode}, #{actionCode}, #{actionName}, #{actionType}, #{triggerStatus}, #{apiEndpoint},
+            #{buttonStyle}, #{buttonIcon}, #{sortOrder}, #{status}, #{delFlag}, #{createBy}, sysdate(),
+            #{updateBy}, sysdate()
+        )
+    </insert>
+
+    <delete id="physicalDeleteByBizCode" parameterType="String">
+        delete from lc_biz_action where biz_code = #{bizCode}
+    </delete>
+
+</mapper>

@@ -1,0 +1,18 @@
+# 基础镜像
+FROM eclipse-temurin:17
+# author
+MAINTAINER junsong
+
+# 安装费用图片识别运行依赖
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-chi-sim \
+    && rm -rf /var/lib/apt/lists/*
+
+# 创建目录
+RUN mkdir -p /home/junsong
+# 指定路径
+WORKDIR /home/junsong
+# 复制jar文件到路径
+COPY ./jar/junsong-modules-finance.jar /home/junsong/junsong-modules-finance.jar
+# 启动财务服务
+ENTRYPOINT ["java","-jar","junsong-modules-finance.jar"]

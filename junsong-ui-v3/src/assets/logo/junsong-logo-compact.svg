@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64" width="240" height="64">
+  <defs>
+    <linearGradient id="bg3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0071E3"/>
+      <stop offset="100%" stop-color="#004999"/>
+    </linearGradient>
+    <linearGradient id="peakLight3" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#E6F0FA" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="peakBase3" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.28"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(8 8)">
+    <rect width="48" height="48" rx="11" fill="url(#bg3)"/>
+    <path d="M24 23 L37.5 37.5 L10.5 37.5 Z" fill="url(#peakBase3)"/>
+    <path d="M24 11 L33 28.5 L15 28.5 Z" fill="url(#peakLight3)"/>
+  </g>
+  <text x="68" y="40" font-family="'Cormorant Garamond','Source Han Serif SC',serif" font-size="28" font-weight="500" fill="#0F2A4A" letter-spacing="2.5">Genesis</text>
+</svg>

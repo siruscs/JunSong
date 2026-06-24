@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.FinPurchaseDetailMapper">
+    
+    <resultMap type="FinPurchaseDetail" id="FinPurchaseDetailResult">
+        <id     property="detailId"         column="detail_id"         />
+
+        <result property="purchaseId"       column="purchase_id"       />
+        <result property="productId"        column="product_id"        />
+        <result property="productName"      column="product_name"      />
+        <result property="unit"             column="unit"              />
+        <result property="quantity"         column="quantity"          />
+        <result property="price"            column="price"             />
+        <result property="amount"           column="amount"            />
+        <result property="isGift"           column="is_gift"           />
+        <result property="delFlag"          column="del_flag"          />
+        <result property="deptId"           column="dept_id" />
+        <result property="createBy"         column="create_by"         />
+        <result property="createTime"       column="create_time"       />
+        <result property="updateBy"         column="update_by"         />
+        <result property="updateTime"       column="update_time"       />
+        <result property="remark"           column="remark"            />
+    </resultMap>
+    
+    <sql id="selectFinPurchaseDetailVo">
+        select detail_id, purchase_id, product_id, product_name, unit, quantity, price, amount, is_gift, del_flag, create_by, create_time, update_by, update_time, remark 
+        from fin_purchase_detail
+    </sql>
+
+    <select id="selectFinPurchaseDetailList" parameterType="FinPurchaseDetail" resultMap="FinPurchaseDetailResult">
+        <include refid="selectFinPurchaseDetailVo"/>
+        <where>
+            del_flag = '0'
+            <if test="deptId != null"> and dept_id = #{deptId}</if>
+            <if test="purchaseId != null"> and purchase_id = #{purchaseId}</if>
+            <if test="productId != null"> and product_id = #{productId}</if>
+        </where>
+        order by create_time desc
+    </select>
+    
+    <select id="selectFinPurchaseDetailByDetailId" parameterType="Long" resultMap="FinPurchaseDetailResult">
+        <include refid="selectFinPurchaseDetailVo"/>
+        where detail_id = #{detailId}
+    </select>
+
+    <select id="selectFinPurchaseDetailByPurchaseId" parameterType="Long" resultMap="FinPurchaseDetailResult">
+        <include refid="selectFinPurchaseDetailVo"/>
+        where purchase_id = #{purchaseId} and del_flag = '0'
+    </select>
+        
+    <insert id="insertFinPurchaseDetail" parameterType="FinPurchaseDetail" useGeneratedKeys="true" keyProperty="detailId">
+        insert into fin_purchase_detail
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="purchaseId != null">purchase_id,</if>
+            <if test="productId != null">product_id,</if>
+            <if test="productName != null">product_name,</if>
+            <if test="unit != null">unit,</if>
+            <if test="quantity != null">quantity,</if>
+            <if test="price != null">price,</if>
+            <if test="amount != null">amount,</if>
+            <if test="isGift != null and isGift != ''">is_gift,</if>
+
+            <if test="delFlag != null">del_flag,</if>
+            <if test="deptId != null">dept_id,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time,
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="purchaseId != null">#{purchaseId},</if>
+            <if test="productId != null">#{productId},</if>
+            <if test="productName != null">#{productName},</if>
+            <if test="unit != null">#{unit},</if>
+            <if test="quantity != null">#{quantity},</if>
+            <if test="price != null">#{price},</if>
+            <if test="amount != null">#{amount},</if>
+            <if test="isGift != null and isGift != ''">#{isGift},</if>
+            <if test="delFlag != null">#{delFlag},</if>
+            <if test="deptId != null">#{deptId},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate(),
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateFinPurchaseDetail" parameterType="FinPurchaseDetail">
+        update fin_purchase_detail
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="purchaseId != null">purchase_id = #{purchaseId},</if>
+            <if test="productId != null">product_id = #{productId},</if>
+            <if test="productName != null">product_name = #{productName},</if>
+            <if test="unit != null">unit = #{unit},</if>
+            <if test="quantity != null">quantity = #{quantity},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="isGift != null and isGift != ''">is_gift = #{isGift},</if>
+            <if test="delFlag != null">del_flag = #{delFlag},</if>
+            <if test="deptId != null">dept_id = #{deptId},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where detail_id = #{detailId}
+    </update>
+
+    <update id="deleteFinPurchaseDetailByDetailId" parameterType="Long">
+        update fin_purchase_detail set del_flag = '2' where detail_id = #{detailId}
+    </update>
+
+    <update id="deleteFinPurchaseDetailByDetailIds" parameterType="Long">
+        update fin_purchase_detail set del_flag = '2' where detail_id in 
+        <foreach item="detailId" collection="array" open="(" separator="," close=")">
+            #{detailId}
+        </foreach>
+    </update>
+</mapper>

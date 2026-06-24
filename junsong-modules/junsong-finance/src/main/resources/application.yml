@@ -1,0 +1,3 @@
+mybatis:
+  typeAliasesPackage: com.junsong.finance
+  mapperLocations: classpath*:mapper/**/*.xml

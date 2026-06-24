@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.workflow.lowcode.mapper.LcBizTemplateMapper">
+
+    <resultMap id="LcBizTemplateResult" type="com.junsong.workflow.lowcode.domain.LcBizTemplate">
+        <id property="id" column="id"/>
+        <result property="templateCode" column="template_code"/>
+        <result property="templateName" column="template_name"/>
+        <result property="category" column="category"/>
+        <result property="description" column="description"/>
+        <result property="thumbnail" column="thumbnail"/>
+        <result property="processKey" column="process_key"/>
+        <result property="configJson" column="config_json"/>
+        <result property="usageCount" column="usage_count"/>
+        <result property="isStarter" column="is_starter"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <!-- 模板列表（不返回 configJson，减少数据传输） -->
+    <select id="selectTemplateList" resultMap="LcBizTemplateResult">
+        SELECT id, template_code, template_name, category, description, process_key,
+               usage_count, is_starter, del_flag, create_by, create_time, remark
+        FROM lc_biz_template
+        WHERE del_flag = '0'
+        <if test="category != null and category != ''">
+          AND category = #{category}
+        </if>
+        ORDER BY is_starter DESC, usage_count DESC, id DESC
+    </select>
+
+    <!-- 模板详情（含 configJson） -->
+    <select id="selectTemplateById" resultMap="LcBizTemplateResult">
+        SELECT id, template_code, template_name, category, description, process_key,
+               config_json, usage_count, is_starter, del_flag, create_by, create_time, remark
+        FROM lc_biz_template
+        WHERE id = #{id} AND del_flag = '0'
+    </select>
+
+    <select id="selectTemplateByCode" resultMap="LcBizTemplateResult">
+        SELECT id, template_code, template_name, category, description, process_key,
+               config_json, usage_count, is_starter, del_flag, create_by, create_time, remark
+        FROM lc_biz_template
+        WHERE template_code = #{templateCode} AND del_flag = '0'
+    </select>
+
+    <insert id="insertTemplate" parameterType="com.junsong.workflow.lowcode.domain.LcBizTemplate"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO lc_biz_template
+            (template_code, template_name, category, description, thumbnail, process_key,
+             config_json, usage_count, is_starter, del_flag, create_by, create_time, remark)
+        VALUES
+            (#{templateCode}, #{templateName}, #{category}, #{description}, #{thumbnail},
+             #{processKey}, #{configJson}, 0, #{isStarter}, '0',
+             #{createBy}, NOW(), #{remark})
+    </insert>
+
+    <update id="incrementUsageCount">
+        UPDATE lc_biz_template SET usage_count = usage_count + 1 WHERE id = #{id}
+    </update>
+
+    <update id="deleteTemplateByIds">
+        UPDATE lc_biz_template SET del_flag = '2' WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </update>
+
+</mapper>

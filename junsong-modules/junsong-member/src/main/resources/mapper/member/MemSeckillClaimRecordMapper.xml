@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.member.mapper.MemSeckillClaimRecordMapper">
+
+    <resultMap type="com.junsong.member.domain.MemSeckillClaimRecord" id="MemSeckillClaimRecordResult">
+        <id property="claimId" column="claim_id"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="recordId" column="record_id"/>
+        <result property="seckillId" column="seckill_id"/>
+        <result property="memberId" column="member_id"/>
+        <result property="memberNo" column="member_no"/>
+        <result property="memberName" column="member_name"/>
+        <result property="claimShares" column="claim_shares"/>
+        <result property="claimTime" column="claim_time"/>
+        <result property="claimBy" column="claim_by"/>
+        <result property="remark" column="remark"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="seckillName" column="seckill_name"/>
+    </resultMap>
+
+    <select id="selectMemSeckillClaimRecordList" parameterType="com.junsong.member.domain.MemSeckillClaimRecord" resultMap="MemSeckillClaimRecordResult">
+        select c.claim_id, c.dept_id, c.record_id, c.seckill_id, c.member_id,
+               c.member_no, c.member_name, c.claim_shares, c.claim_time,
+               c.claim_by, c.remark, c.del_flag, c.create_by, c.create_time,
+               s.seckill_name
+        from mem_seckill_claim_record c
+        left join mem_seckill_record r on c.record_id = r.record_id
+        left join mem_seckill s on c.seckill_id = s.seckill_id
+        <where>
+            c.del_flag = '0'
+            <if test="recordId != null">and c.record_id = #{recordId}</if>
+            <if test="seckillId != null">and c.seckill_id = #{seckillId}</if>
+            <if test="memberNo != null and memberNo != ''">and c.member_no like concat('%', #{memberNo}, '%')</if>
+            ${params.dataScope}
+        </where>
+        order by c.claim_time desc, c.claim_id desc
+    </select>
+
+    <insert id="insertMemSeckillClaimRecord" parameterType="com.junsong.member.domain.MemSeckillClaimRecord" useGeneratedKeys="true" keyProperty="claimId">
+        insert into mem_seckill_claim_record
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="deptId != null">dept_id,</if>
+            <if test="recordId != null">record_id,</if>
+            <if test="seckillId != null">seckill_id,</if>
+            <if test="memberId != null">member_id,</if>
+            <if test="memberNo != null">member_no,</if>
+            <if test="memberName != null">member_name,</if>
+            <if test="claimShares != null">claim_shares,</if>
+            <if test="claimBy != null">claim_by,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            claim_time,
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="deptId != null">#{deptId},</if>
+            <if test="recordId != null">#{recordId},</if>
+            <if test="seckillId != null">#{seckillId},</if>
+            <if test="memberId != null">#{memberId},</if>
+            <if test="memberNo != null">#{memberNo},</if>
+            <if test="memberName != null">#{memberName},</if>
+            <if test="claimShares != null">#{claimShares},</if>
+            <if test="claimBy != null">#{claimBy},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            #{claimTime},
+            sysdate()
+        </trim>
+    </insert>
+
+    <delete id="deleteMemSeckillClaimRecordByRecordIds" parameterType="Long">
+        update mem_seckill_claim_record set del_flag = '1' where record_id in
+        <foreach item="recordId" collection="array" open="(" separator="," close=")">
+            #{recordId}
+        </foreach>
+    </delete>
+
+</mapper>

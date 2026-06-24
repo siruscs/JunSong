@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+             targetNamespace="http://junsong.com/workflow"
+             id="leaveApplyDef">
+
+    <process id="leave_apply" name="请假申请" isExecutable="true">
+
+        <!-- 起点 -->
+        <startEvent id="start" name="发起申请" flowable:initiator="initiator"/>
+        <sequenceFlow id="flow1" sourceRef="start" targetRef="taskLeader"/>
+
+        <!-- 直属上级审批：优先使用流程变量 leaderUser；否则按 initiator 通过身份服务解析 -->
+        <userTask id="taskLeader" name="直属上级审批"
+                  flowable:assignee="${leaderUser != null ? leaderUser : deptUserResolveService.getDirectLeader(initiator)}">
+            <documentation>由直属上级审核请假申请。</documentation>
+        </userTask>
+        <sequenceFlow id="flow2" sourceRef="taskLeader" targetRef="gatewayDays"/>
+
+        <!-- 排他网关：天数判断 -->
+        <exclusiveGateway id="gatewayDays" name="天数判断"/>
+        <sequenceFlow id="flowLong" sourceRef="gatewayDays" targetRef="taskDeptHead">
+            <conditionExpression xsi:type="tFormalExpression"
+                                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${days &gt; 3}</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="flowShort" sourceRef="gatewayDays" targetRef="taskHr">
+            <conditionExpression xsi:type="tFormalExpression"
+                                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${days &lt;= 3}</conditionExpression>
+        </sequenceFlow>
+
+        <!-- 部门负责人审批（仅 >3 天）：优先使用流程变量 deptHeadUser；否则按 initiator 解析部门 leader -->
+        <userTask id="taskDeptHead" name="部门负责人审批"
+                  flowable:assignee="${deptHeadUser != null ? deptHeadUser : deptUserResolveService.getDeptLeader(initiator)}"/>
+        <sequenceFlow id="flow3" sourceRef="taskDeptHead" targetRef="taskHr"/>
+
+        <!-- HR 备案 -->
+        <userTask id="taskHr" name="HR 备案" flowable:candidateGroups="hr"/>
+        <sequenceFlow id="flow4" sourceRef="taskHr" targetRef="end"/>
+
+        <!-- 终点 -->
+        <endEvent id="end" name="申请完结"/>
+
+    </process>
+    <bpmndi:BPMNDiagram id="BPMNDiagram_leaveApply">
+        <bpmndi:BPMNPlane id="BPMNPlane_leaveApply" bpmnElement="leave_apply">
+            <bpmndi:BPMNShape id="BPMNShape_start" bpmnElement="start">
+                <omgdc:Bounds x="250" y="240" width="30" height="30"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="BPMNShape_taskLeader" bpmnElement="taskLeader">
+                <omgdc:Bounds x="400" y="200" width="100" height="80"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="BPMNShape_gatewayDays" bpmnElement="gatewayDays">
+                <omgdc:Bounds x="580" y="230" width="40" height="40"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="BPMNShape_taskDeptHead" bpmnElement="taskDeptHead">
+                <omgdc:Bounds x="700" y="120" width="100" height="80"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="BPMNShape_taskHr" bpmnElement="taskHr">
+                <omgdc:Bounds x="700" y="280" width="100" height="80"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="BPMNShape_end" bpmnElement="end">
+                <omgdc:Bounds x="880" y="300" width="30" height="30"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNEdge id="BPMNEdge_flow1" bpmnElement="flow1">
+                <omgdi:waypoint x="280" y="255"/>
+                <omgdi:waypoint x="400" y="240"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="BPMNEdge_flow2" bpmnElement="flow2">
+                <omgdi:waypoint x="500" y="240"/>
+                <omgdi:waypoint x="580" y="250"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="BPMNEdge_flowLong" bpmnElement="flowLong">
+                <omgdi:waypoint x="620" y="230"/>
+                <omgdi:waypoint x="620" y="160"/>
+                <omgdi:waypoint x="700" y="160"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="BPMNEdge_flowShort" bpmnElement="flowShort">
+                <omgdi:waypoint x="620" y="270"/>
+                <omgdi:waypoint x="620" y="320"/>
+                <omgdi:waypoint x="700" y="320"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="BPMNEdge_flow3" bpmnElement="flow3">
+                <omgdi:waypoint x="800" y="160"/>
+                <omgdi:waypoint x="800" y="320"/>
+                <omgdi:waypoint x="700" y="320"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="BPMNEdge_flow4" bpmnElement="flow4">
+                <omgdi:waypoint x="800" y="320"/>
+                <omgdi:waypoint x="880" y="315"/>
+            </bpmndi:BPMNEdge>
+        </bpmndi:BPMNPlane>
+    </bpmndi:BPMNDiagram>
+</definitions>

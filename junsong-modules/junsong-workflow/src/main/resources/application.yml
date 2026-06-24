@@ -1,0 +1,25 @@
+mybatis:
+  typeAliasesPackage: com.junsong.workflow.domain
+  mapperLocations: classpath*:mapper/**/*.xml
+
+# Flowable 工作流引擎配置（Flowable 8.0.0）
+flowable:
+  database-schema-update: true
+  idm:
+    enabled: false
+  form:
+    enabled: false
+  content:
+    enabled: false
+  dmn:
+    enabled: false
+  cmmn:
+    enabled: false
+  async-executor-activate: true
+  history-level: full
+  process-definition-location-prefix: classpath:/processes/
+  process-definition-location-suffixes:
+    - "**.bpmn"
+    - "**.bpmn20.xml"
+  check-process-definitions: true
+  variable-json-mapper: jackson2

@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.FinProfitShareRecordMapper">
+    <resultMap type="FinProfitShareRecord" id="FinProfitShareRecordResult">
+        <id property="shareId" column="share_id"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="periodId" column="period_id"/>
+        <result property="shareNo" column="share_no"/>
+        <result property="netProfit" column="net_profit"/>
+        <result property="managerProfitRate" column="manager_profit_rate"/>
+        <result property="managerProfitAmount" column="manager_profit_amount"/>
+        <result property="investorProfitAmount" column="investor_profit_amount"/>
+        <result property="status" column="status"/>
+        <result property="shareTime" column="share_time"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+        <collection property="details" ofType="FinProfitShareDetail" select="com.junsong.finance.mapper.FinProfitShareDetailMapper.selectFinProfitShareDetailByShareId" column="share_id"/>
+    </resultMap>
+    <sql id="selectVo">select s.share_id, s.dept_id, s.period_id, s.share_no, s.net_profit, s.manager_profit_rate, s.manager_profit_amount, s.investor_profit_amount, s.status, s.share_time, s.del_flag, s.create_by, s.create_time, s.update_by, s.update_time, s.remark from fin_profit_share_record s</sql>
+    <select id="selectFinProfitShareRecordByShareId" resultMap="FinProfitShareRecordResult"><include refid="selectVo"/> where share_id=#{shareId}</select>
+    <select id="selectFinProfitShareRecordByPeriodId" resultMap="FinProfitShareRecordResult"><include refid="selectVo"/> where period_id=#{periodId} and status != '2' and del_flag='0' limit 1</select>
+    <select id="selectFinProfitShareRecordList" resultMap="FinProfitShareRecordResult">
+        <include refid="selectVo"/>
+        <where>
+            s.del_flag='0'
+            <if test="deptId != null"> and s.dept_id=#{deptId}</if>
+            <if test="periodId != null"> and s.period_id=#{periodId}</if>
+            <if test="shareNo != null and shareNo != ''"> and s.share_no like concat('%', #{shareNo}, '%')</if>
+            <if test="status != null and status != ''"> and s.status=#{status}</if>
+        </where>
+        order by share_time desc
+    </select>
+    <insert id="insertFinProfitShareRecord" parameterType="FinProfitShareRecord" useGeneratedKeys="true" keyProperty="shareId">
+        insert into fin_profit_share_record(dept_id, period_id, share_no, net_profit, manager_profit_rate, manager_profit_amount, investor_profit_amount, status, share_time, del_flag, create_by, create_time, remark)
+        values(#{deptId}, #{periodId}, #{shareNo}, #{netProfit}, #{managerProfitRate}, #{managerProfitAmount}, #{investorProfitAmount}, #{status}, #{shareTime}, '0', #{createBy}, sysdate(), #{remark})
+    </insert>
+    <update id="updateFinProfitShareRecord" parameterType="FinProfitShareRecord">
+        update fin_profit_share_record
+        <trim prefix="set" suffixOverrides=",">
+            <if test="status != null">status=#{status},</if>
+            <if test="updateBy != null">update_by=#{updateBy},</if>
+            update_time=sysdate(),
+            <if test="remark != null">remark=#{remark},</if>
+        </trim>
+        where share_id=#{shareId}
+    </update>
+    <delete id="deleteFinProfitShareRecordByShareId">update fin_profit_share_record set del_flag='2' where share_id=#{shareId}</delete>
+    <delete id="deleteFinProfitShareRecordByShareIds">update fin_profit_share_record set del_flag='2' where share_id in <foreach item="shareId" collection="array" open="(" separator="," close=")">#{shareId}</foreach></delete>
+    
+    <select id="selectProfitShareTotal" resultType="java.math.BigDecimal">
+        select ifnull(sum(manager_profit_amount + investor_profit_amount), 0)
+        from fin_profit_share_record
+        where del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in
+            <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+        <if test="startTime != null">
+            and share_time &gt;= #{startTime}
+        </if>
+        <if test="endTime != null">
+            and share_time &lt;= #{endTime}
+        </if>
+    </select>
+    
+    <select id="selectManagerProfitTotal" resultType="java.math.BigDecimal">
+        select ifnull(sum(manager_profit_amount), 0)
+        from fin_profit_share_record
+        where del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in
+            <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+        <if test="startTime != null">
+            and share_time &gt;= #{startTime}
+        </if>
+        <if test="endTime != null">
+            and share_time &lt;= #{endTime}
+        </if>
+    </select>
+    
+    <select id="selectInvestorProfitTotal" resultType="java.math.BigDecimal">
+        select ifnull(sum(investor_profit_amount), 0)
+        from fin_profit_share_record
+        where del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in
+            <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+        <if test="startTime != null">
+            and share_time &gt;= #{startTime}
+        </if>
+        <if test="endTime != null">
+            and share_time &lt;= #{endTime}
+        </if>
+    </select>
+    
+    <select id="selectManagerProfitByDept" resultType="java.util.HashMap">
+        select s.dept_id as deptId,
+               d.dept_name as deptName,
+               ifnull(sum(s.manager_profit_amount), 0) as amount
+        from fin_profit_share_record s
+        left join sys_dept d on s.dept_id = d.dept_id
+        where s.del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and s.dept_id in
+            <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+        <if test="startTime != null">
+            and s.share_time &gt;= #{startTime}
+        </if>
+        <if test="endTime != null">
+            and s.share_time &lt;= #{endTime}
+        </if>
+        group by s.dept_id, d.dept_name
+        order by amount desc
+    </select>
+    
+    <select id="selectInvestorProfitByDept" resultType="java.util.HashMap">
+        select s.dept_id as deptId,
+               d.dept_name as deptName,
+               ifnull(sum(s.investor_profit_amount), 0) as amount
+        from fin_profit_share_record s
+        left join sys_dept d on s.dept_id = d.dept_id
+        where s.del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and s.dept_id in
+            <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+        <if test="startTime != null">
+            and s.share_time &gt;= #{startTime}
+        </if>
+        <if test="endTime != null">
+            and s.share_time &lt;= #{endTime}
+        </if>
+        group by s.dept_id, d.dept_name
+        order by amount desc
+    </select>
+    
+    <select id="selectProfitShareTrend" resultType="java.util.HashMap">
+        select date_format(s.share_time, '%Y-%m-%d') as dateStr,
+               s.dept_id as deptId,
+               d.dept_name as deptName,
+               ifnull(sum(s.manager_profit_amount + s.investor_profit_amount), 0) as totalAmount,
+               ifnull(sum(s.manager_profit_amount), 0) as managerAmount,
+               ifnull(sum(s.investor_profit_amount), 0) as investorAmount
+        from fin_profit_share_record s
+        left join sys_dept d on s.dept_id = d.dept_id
+        where s.del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and s.dept_id in
+            <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+        <if test="startTime != null">
+            and s.share_time &gt;= #{startTime}
+        </if>
+        <if test="endTime != null">
+            and s.share_time &lt;= #{endTime}
+        </if>
+        group by date_format(s.share_time, '%Y-%m-%d'), s.dept_id, d.dept_name
+        order by dateStr, s.dept_id
+    </select>
+</mapper>

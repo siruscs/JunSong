@@ -1,0 +1,9 @@
+spring:
+  security:
+    user:
+      name: junsong
+      password: change-me
+  boot:
+    admin:
+      ui:
+        title: 峻松服务状态监控

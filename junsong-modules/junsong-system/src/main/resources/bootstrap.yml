@@ -1,0 +1,25 @@
+server:
+  port: 9201
+
+spring:
+  application:
+    name: junsong-system
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  cloud:
+    nacos:
+      discovery:
+        server-addr: junsong-nacos:8848
+        username: nacos
+        password: ${NACOS_PASSWORD:nacos}
+      config:
+        server-addr: junsong-nacos:8848
+        username: nacos
+        password: ${NACOS_PASSWORD:nacos}
+        file-extension: yml
+  config:
+    import:
+      - optional:nacos:application-${SPRING_PROFILES_ACTIVE:dev}.yml
+      - optional:nacos:redis-${SPRING_PROFILES_ACTIVE:dev}.yml
+      - optional:nacos:datasource-druid-${SPRING_PROFILES_ACTIVE:dev}.yml
+      - optional:nacos:junsong-system-${SPRING_PROFILES_ACTIVE:dev}.yml

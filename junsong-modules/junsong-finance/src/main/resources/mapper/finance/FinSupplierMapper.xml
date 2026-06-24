@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.FinSupplierMapper">
+    
+    <resultMap type="FinSupplier" id="FinSupplierResult">
+        <id     property="supplierId"      column="supplier_id"      />
+
+        <result property="supplierCode"    column="supplier_code"    />
+        <result property="supplierName"    column="supplier_name"    />
+        <result property="contactPerson"   column="contact_person"   />
+        <result property="contactPhone"    column="contact_phone"    />
+        <result property="address"         column="address"          />
+        <result property="status"          column="status"           />
+        <result property="delFlag"         column="del_flag"         />
+        <result property="createBy"        column="create_by"        />
+        <result property="createTime"      column="create_time"      />
+        <result property="updateBy"        column="update_by"        />
+        <result property="updateTime"      column="update_time"      />
+        <result property="remark"          column="remark"           />
+    </resultMap>
+    
+    <sql id="selectFinSupplierVo">
+        select s.supplier_id, s.supplier_code, s.supplier_name, s.contact_person, s.contact_phone, s.address, s.status, s.del_flag, s.create_by, s.create_time, s.update_by, s.update_time, s.remark 
+        from fin_supplier s
+    </sql>
+
+    <select id="selectFinSupplierList" parameterType="FinSupplier" resultMap="FinSupplierResult">
+        <include refid="selectFinSupplierVo"/>
+        <where>
+            s.del_flag = '0'
+            <if test="deptId != null"> and s.dept_id = #{deptId}</if>
+            <if test="supplierCode != null  and supplierCode != ''"> and s.supplier_code like concat('%', #{supplierCode}, '%')</if>
+            <if test="supplierName != null  and supplierName != ''"> and s.supplier_name like concat('%', #{supplierName}, '%')</if>
+            <if test="status != null  and status != ''"> and s.status = #{status}</if>
+            <if test="params.beginTime != null and params.beginTime != ''"><!-- 开始时间检索 -->
+                and date_format(s.create_time,'%Y%m%d') &gt;= date_format(#{params.beginTime},'%Y%m%d')
+            </if>
+            <if test="params.endTime != null and params.endTime != ''"><!-- 结束时间检索 -->
+                and date_format(s.create_time,'%Y%m%d') &lt;= date_format(#{params.endTime},'%Y%m%d')
+            </if>
+        </where>
+        order by s.create_time desc
+    </select>
+    
+    <select id="selectFinSupplierBySupplierId" parameterType="Long" resultMap="FinSupplierResult">
+        <include refid="selectFinSupplierVo"/>
+        where s.supplier_id = #{supplierId}
+    </select>
+
+    <select id="checkSupplierCodeUnique" parameterType="String" resultMap="FinSupplierResult">
+        <include refid="selectFinSupplierVo"/>
+        where s.supplier_code = #{supplierCode} and s.del_flag = '0' limit 1
+    </select>
+        
+    <insert id="insertFinSupplier" parameterType="FinSupplier" useGeneratedKeys="true" keyProperty="supplierId">
+        insert into fin_supplier
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="supplierCode != null and supplierCode != ''">supplier_code,</if>
+            <if test="supplierName != null and supplierName != ''">supplier_name,</if>
+            <if test="contactPerson != null">contact_person,</if>
+            <if test="contactPhone != null">contact_phone,</if>
+            <if test="address != null">address,</if>
+            <if test="status != null">status,</if>
+            <if test="delFlag != null">del_flag,</if>
+            <if test="deptId != null">dept_id,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time,
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="supplierCode != null and supplierCode != ''">#{supplierCode},</if>
+            <if test="supplierName != null and supplierName != ''">#{supplierName},</if>
+            <if test="contactPerson != null">#{contactPerson},</if>
+            <if test="contactPhone != null">#{contactPhone},</if>
+            <if test="address != null">#{address},</if>
+            <if test="status != null">#{status},</if>
+            <if test="delFlag != null">#{delFlag},</if>
+            <if test="deptId != null">#{deptId},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate(),
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateFinSupplier" parameterType="FinSupplier">
+        update fin_supplier
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="supplierCode != null and supplierCode != ''">supplier_code = #{supplierCode},</if>
+            <if test="supplierName != null and supplierName != ''">supplier_name = #{supplierName},</if>
+            <if test="contactPerson != null">contact_person = #{contactPerson},</if>
+            <if test="contactPhone != null">contact_phone = #{contactPhone},</if>
+            <if test="address != null">address = #{address},</if>
+
+            <if test="status != null">status = #{status},</if>
+            <if test="delFlag != null">del_flag = #{delFlag},</if>
+            <if test="deptId != null">dept_id = #{deptId},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where supplier_id = #{supplierId}
+    </update>
+
+    <update id="deleteFinSupplierBySupplierId" parameterType="Long">
+        update fin_supplier set del_flag = '2' where supplier_id = #{supplierId}
+    </update>
+
+    <update id="deleteFinSupplierBySupplierIds" parameterType="Long">
+        update fin_supplier set del_flag = '2' where supplier_id in 
+        <foreach item="supplierId" collection="array" open="(" separator="," close=")">
+            #{supplierId}
+        </foreach>
+    </update>
+</mapper>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.member.mapper.MemMpRoleModuleMapper">
+
+    <resultMap type="com.junsong.member.domain.MemMpRoleModule" id="MpRoleModuleResult">
+        <result property="id" column="id"/>
+        <result property="roleId" column="role_id"/>
+        <result property="moduleKey" column="module_key"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="roleName" column="role_name"/>
+        <result property="roleKey" column="role_key"/>
+    </resultMap>
+
+    <sql id="selectVo">
+        SELECT p.id, p.role_id, p.module_key, p.dept_id, r.role_name, r.role_key
+        FROM mem_mp_role_module p
+        LEFT JOIN sys_role r ON p.role_id = r.role_id
+    </sql>
+
+    <select id="selectMpRoleModuleList" parameterType="com.junsong.member.domain.MemMpRoleModule" resultMap="MpRoleModuleResult">
+        <include refid="selectVo"/>
+        <where>
+            <if test="roleId != null">AND p.role_id = #{roleId}</if>
+            <if test="deptId != null">AND p.dept_id = #{deptId}</if>
+            <if test="moduleKey != null and moduleKey != ''">AND p.module_key = #{moduleKey}</if>
+        </where>
+        ORDER BY p.role_id, p.module_key
+    </select>
+
+    <select id="selectByRoleIdAndDeptId" resultMap="MpRoleModuleResult">
+        <include refid="selectVo"/>
+        WHERE p.role_id = #{roleId} AND p.dept_id = #{deptId}
+        ORDER BY p.module_key
+    </select>
+
+    <select id="selectModuleKeysByRoleIds" resultType="String">
+        SELECT DISTINCT module_key FROM mem_mp_role_module
+        WHERE (dept_id = #{deptId} OR dept_id IS NULL OR dept_id = 0) AND role_id IN
+        <foreach item="rid" collection="roleIds" open="(" separator="," close=")">
+            #{rid}
+        </foreach>
+    </select>
+
+    <insert id="insertMpRoleModule" parameterType="com.junsong.member.domain.MemMpRoleModule" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO mem_mp_role_module (role_id, module_key, dept_id)
+        VALUES (#{roleId}, #{moduleKey}, #{deptId})
+    </insert>
+
+    <delete id="deleteByRoleIdAndDeptId">
+        DELETE FROM mem_mp_role_module WHERE role_id = #{roleId} AND dept_id = #{deptId}
+    </delete>
+
+    <delete id="deleteByRoleId">
+        DELETE FROM mem_mp_role_module WHERE role_id = #{roleId}
+    </delete>
+
+    <delete id="deleteById" parameterType="Long">
+        DELETE FROM mem_mp_role_module WHERE id = #{id}
+    </delete>
+
+    <select id="selectAllRoles" resultType="java.util.LinkedHashMap">
+        SELECT role_id AS roleId, role_name AS roleName, role_key AS roleKey
+        FROM sys_role
+        WHERE del_flag = '0' AND status = '0'
+        ORDER BY role_sort, role_id
+    </select>
+
+    <select id="selectRoleIdsByRoleKeys" resultType="Long">
+        SELECT role_id
+        FROM sys_role
+        WHERE del_flag = '0' AND status = '0' AND role_key IN
+        <foreach item="roleKey" collection="roleKeys" open="(" separator="," close=")">
+            #{roleKey}
+        </foreach>
+        ORDER BY role_sort, role_id
+    </select>
+
+</mapper>

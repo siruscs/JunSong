@@ -1,0 +1,87 @@
+// 现代化表格和卡片组件样式
+
+// 表格优化
+.modern-table-container {
+  background: rgba(255, 255, 255, 0.84);
+  border-radius: 18px;
+  box-shadow: var(--theme-card-shadow, 0 18px 50px rgba(31, 45, 82, 0.1));
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  overflow: hidden;
+
+  .el-table {
+    border: none;
+    box-shadow: none;
+
+    th.el-table__cell {
+      background: linear-gradient(180deg, rgba(var(--theme-primary-rgb), 0.07), rgba(248, 250, 252, 0.94));
+      color: #475467;
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    tr {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+      &:hover > td {
+        background: rgba(var(--theme-primary-rgb), 0.04) !important;
+      }
+    }
+
+    td.el-table__cell {
+      color: var(--theme-app-muted, #4b5563);
+      font-size: 14px;
+    }
+  }
+}
+
+// 搜索和过滤区域
+.search-container {
+  background: rgba(255, 255, 255, 0.84);
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--theme-card-shadow, 0 18px 50px rgba(31, 45, 82, 0.1));
+  border: 1px solid rgba(255, 255, 255, 0.78);
+
+  .search-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--theme-app-text, #1f2937);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    &::before {
+      content: '';
+      width: 4px;
+      height: 16px;
+      background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-light) 100%);
+      border-radius: 2px;
+    }
+  }
+}
+
+// Modern Card Style
+.modern-card {
+  background: rgba(255, 255, 255, 0.84);
+  border-radius: 18px;
+  box-shadow: var(--theme-card-shadow, 0 18px 50px rgba(31, 45, 82, 0.1));
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  transition: all 0.3s ease;
+
+  &:hover {
+    box-shadow: 0 22px 54px rgba(var(--theme-primary-rgb), 0.14);
+    transform: translateY(-2px);
+  }
+}
+
+// Gradient Text
+.gradient-text {
+  background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

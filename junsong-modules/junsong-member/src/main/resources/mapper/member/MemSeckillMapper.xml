@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.member.mapper.MemSeckillMapper">
+
+    <resultMap type="com.junsong.member.domain.MemSeckill" id="MemSeckillResult">
+        <result property="seckillId" column="seckill_id"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="seckillNo" column="seckill_no"/>
+        <result property="seckillName" column="seckill_name"/>
+        <result property="seckillType" column="seckill_type"/>
+        <result property="seckillDate" column="seckill_date"/>
+        <result property="endDate" column="end_date"/>
+        <result property="seckillTime" column="seckill_time"/>
+        <result property="seckillAmount" column="seckill_amount"/>
+        <result property="seckillPrice" column="seckill_price"/>
+        <result property="totalShares" column="total_shares"/>
+        <result property="remainShares" column="remain_shares"/>
+        <result property="policy" column="policy"/>
+        <result property="status" column="status"/>
+        <result property="remark" column="remark"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="selectMemSeckillVo">
+        select seckill_id, dept_id, seckill_no, seckill_name, seckill_type, seckill_date, end_date,
+               seckill_time, seckill_amount, seckill_price, total_shares, remain_shares,
+               policy, status, remark, del_flag, create_by, create_time, update_by, update_time
+        from mem_seckill
+    </sql>
+
+    <select id="selectMemSeckillList" parameterType="com.junsong.member.domain.MemSeckill" resultMap="MemSeckillResult">
+        <include refid="selectMemSeckillVo"/>
+        <where>
+            <if test="seckillNo != null and seckillNo != ''">
+                AND seckill_no like concat('%', #{seckillNo}, '%')
+            </if>
+            <if test="seckillName != null and seckillName != ''">
+                AND seckill_name like concat('%', #{seckillName}, '%')
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            <if test="seckillType != null">
+                AND seckill_type = #{seckillType}
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                AND date_format(seckill_date,'%y%m%d') &gt;= date_format(#{params.beginTime},'%y%m%d')
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                AND date_format(seckill_date,'%y%m%d') &lt;= date_format(#{params.endTime},'%y%m%d')
+            </if>
+            AND del_flag = '0'
+            ${params.dataScope}
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="selectMemSeckillById" parameterType="Long" resultMap="MemSeckillResult">
+        <include refid="selectMemSeckillVo"/>
+        where seckill_id = #{seckillId} and del_flag = '0'
+    </select>
+
+    <select id="checkMemSeckillNoUnique" parameterType="com.junsong.member.domain.MemSeckill" resultType="int">
+        select count(1) from mem_seckill where seckill_no = #{seckillNo} and del_flag = '0'
+        <if test="seckillId != null and seckillId != 0">
+            AND seckill_id != #{seckillId}
+        </if>
+    </select>
+
+    <insert id="insertMemSeckill" parameterType="com.junsong.member.domain.MemSeckill" useGeneratedKeys="true" keyProperty="seckillId">
+        insert into mem_seckill
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            seckill_no,
+            <if test="deptId != null">dept_id,</if>
+            <if test="seckillName != null and seckillName != ''">seckill_name,</if>
+            <if test="seckillType != null">seckill_type,</if>
+            <if test="seckillDate != null">seckill_date,</if>
+            <if test="endDate != null">end_date,</if>
+            <if test="seckillTime != null">seckill_time,</if>
+            <if test="seckillAmount != null">seckill_amount,</if>
+            <if test="seckillPrice != null">seckill_price,</if>
+            <if test="totalShares != null">total_shares,</if>
+            <if test="remainShares != null">remain_shares,</if>
+            <if test="policy != null">policy,</if>
+            <if test="status != null">status,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            #{seckillNo},
+            <if test="deptId != null">#{deptId},</if>
+            <if test="seckillName != null and seckillName != ''">#{seckillName},</if>
+            <if test="seckillType != null">#{seckillType},</if>
+            <if test="seckillDate != null">#{seckillDate},</if>
+            <if test="endDate != null">#{endDate},</if>
+            <if test="seckillTime != null">#{seckillTime},</if>
+            <if test="seckillAmount != null">#{seckillAmount},</if>
+            <if test="seckillPrice != null">#{seckillPrice},</if>
+            <if test="totalShares != null">#{totalShares},</if>
+            <if test="remainShares != null">#{remainShares},</if>
+            <if test="policy != null">#{policy},</if>
+            <if test="status != null">#{status},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <update id="updateMemSeckill" parameterType="com.junsong.member.domain.MemSeckill">
+        update mem_seckill
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="seckillNo != null and seckillNo != ''">seckill_no = #{seckillNo},</if>
+            <if test="seckillName != null and seckillName != ''">seckill_name = #{seckillName},</if>
+            <if test="seckillType != null">seckill_type = #{seckillType},</if>
+            <if test="seckillDate != null">seckill_date = #{seckillDate},</if>
+            <if test="endDate != null">end_date = #{endDate},</if>
+            <if test="seckillTime != null">seckill_time = #{seckillTime},</if>
+            <if test="seckillAmount != null">seckill_amount = #{seckillAmount},</if>
+            <if test="seckillPrice != null">seckill_price = #{seckillPrice},</if>
+            <if test="totalShares != null">total_shares = #{totalShares},</if>
+            <if test="remainShares != null">remain_shares = #{remainShares},</if>
+            <if test="policy != null">policy = #{policy},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where seckill_id = #{seckillId}
+    </update>
+
+    <delete id="deleteMemSeckillById" parameterType="Long">
+        update mem_seckill set del_flag = '1' where seckill_id = #{seckillId}
+    </delete>
+
+    <delete id="deleteMemSeckillByIds" parameterType="Long">
+        update mem_seckill set del_flag = '1' where seckill_id in
+        <foreach item="seckillId" collection="array" open="(" separator="," close=")">
+            #{seckillId}
+        </foreach>
+    </delete>
+
+</mapper>

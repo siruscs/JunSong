@@ -1,0 +1,184 @@
+######################################################################
+# Build Tools
+
+.gradle
+/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+######################################################################
+# IDE
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### VS Code / Trae ###
+.vscode/
+.history/
+
+### JRebel ###
+rebel.xml
+### NetBeans ###
+nbproject/private/
+build/*
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+######################################################################
+# OS
+
+.DS_Store
+Thumbs.db
+
+######################################################################
+# Logs & Others
+*.log
+logs/
+*.xml.versionsBackup
+*.swp
+
+!*/build/*.java
+!*/build/*.html
+!*/build/*.xml
+
+######################################################################
+# Node / Frontend
+
+node_modules
+junsong-ui-v3/node_modules
+junsong-ui/node_modules
+.npmrc
+.pnpm-store/
+
+######################################################################
+# Build Artifacts (JAR / WAR / 前端 dist)
+
+*.jar
+*.war
+!**/wrapper/*.jar
+!.mvn/wrapper/maven-wrapper.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# 后端打包产物挂载目录
+docker/junsong/**/jar/
+docker/**/app.jar
+
+# 前端构建产物
+junsong-ui-v3/dist/
+junsong-ui/dist/
+docker/nginx/html/dist/
+docker/nginx/html/static/
+*.tar
+dist.tar
+
+# JAR 解压残留 / Spring Boot 解包目录
+/BOOT-INF/
+/META-INF/
+/org/
+/com/
+/banner.txt
+
+# 用户上传文件
+docker/junsong/uploadPath/
+
+######################################################################
+# 业务数据文件 (真实门店/会员数据，勿提交)
+
+*.xlsx
+*.xls
+
+######################################################################
+# Backups & Database dumps
+
+backup/
+docker/nacos/backup/
+*.tar.gz
+*.zip
+*.sql.gz
+sql/*.bak
+
+######################################################################
+# Secrets & Environment
+
+.env
+.env.*
+!*.env.example
+docker/.env
+docker/.env.*
+!docker/.env.example
+
+######################################################################
+# Nacos runtime data & logs (运行时产生，勿提交)
+
+docker/nacos/logs/
+docker/nacos/data/
+docker/nacos/work/
+docker/nacos/target/
+
+######################################################################
+# Redis / MySQL runtime data
+
+docker/redis/data/
+docker/mysql/data/
+docker/mysql/conf/*.cnf.bak
+
+######################################################################
+# MinIO runtime data
+
+docker/minio/data/
+
+######################################################################
+# Tooling / local caches
+
+.codegraph/
+.trae/
+.cursor/
+
+######################################################################
+# AI 工具配置 (不上传)
+
+.agents/
+.claude/
+.superpowers/
+.github/
+CLAUDE.md
+skills-lock.json
+
+######################################################################
+# 文档 (部署更新文档 / AI 生成文档，逐个确认后再上传)
+
+docs/
+DEPLOYMENT_GUIDE.md
+TROUBLESHOOTING.md
+PROD部署更新文档.md
+小程序模块安装部署更新文档.md
+项目部署及启动说明.md
+debug-user-update-404-error.md
+LOGO.md
+
+# 显式保留 README 与 LICENSE
+!README.md
+!LICENSE
+
+######################################################################
+# RuoYi 残留 / 临时网关脚本 (不上传)
+
+original-ruoyi-*
+dev_gw_update.sql
+gen_dev_gw_update.py
+gateway_config_content.txt

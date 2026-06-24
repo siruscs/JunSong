@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.workflow.lowcode.mapper.LcBizNodeAssigneeMapper">
+
+    <resultMap id="LcBizNodeAssigneeResult" type="com.junsong.workflow.lowcode.domain.LcBizNodeAssignee">
+        <id property="id" column="id"/>
+        <result property="bizCode" column="biz_code"/>
+        <result property="taskKey" column="task_key"/>
+        <result property="taskName" column="task_name"/>
+        <result property="assigneeSource" column="assignee_source"/>
+        <result property="assigneeValue" column="assignee_value"/>
+        <result property="assigneeExpr" column="assignee_expr"/>
+        <result property="processVarName" column="process_var_name"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="selectLcBizNodeAssigneeVo">
+        select id, biz_code, task_key, task_name, assignee_source, assignee_value, assignee_expr,
+               process_var_name, del_flag, create_by, create_time, update_by, update_time
+        from lc_biz_node_assignee
+    </sql>
+
+    <select id="selectLcBizNodeAssigneeList" parameterType="com.junsong.workflow.lowcode.domain.LcBizNodeAssignee" resultMap="LcBizNodeAssigneeResult">
+        <include refid="selectLcBizNodeAssigneeVo"/>
+        <where>
+            del_flag = '0'
+            <if test="bizCode != null and bizCode != ''">and biz_code = #{bizCode}</if>
+            <if test="taskKey != null and taskKey != ''">and task_key = #{taskKey}</if>
+            <if test="assigneeSource != null and assigneeSource != ''">and assignee_source = #{assigneeSource}</if>
+        </where>
+        order by id asc
+    </select>
+
+    <select id="selectLcBizNodeAssigneeById" parameterType="Long" resultMap="LcBizNodeAssigneeResult">
+        <include refid="selectLcBizNodeAssigneeVo"/>
+        where id = #{id} and del_flag = '0'
+    </select>
+
+    <select id="selectByBizCode" parameterType="String" resultMap="LcBizNodeAssigneeResult">
+        <include refid="selectLcBizNodeAssigneeVo"/>
+        where biz_code = #{bizCode} and del_flag = '0'
+        order by id asc
+    </select>
+
+    <insert id="insertLcBizNodeAssignee" parameterType="com.junsong.workflow.lowcode.domain.LcBizNodeAssignee" useGeneratedKeys="true" keyProperty="id">
+        insert into lc_biz_node_assignee(
+            biz_code, task_key, task_name, assignee_source, assignee_value, assignee_expr, process_var_name,
+            del_flag, create_by, create_time, update_by, update_time
+        ) values (
+            #{bizCode}, #{taskKey}, #{taskName}, #{assigneeSource}, #{assigneeValue}, #{assigneeExpr}, #{processVarName},
+            #{delFlag}, #{createBy}, sysdate(), #{updateBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateLcBizNodeAssignee" parameterType="com.junsong.workflow.lowcode.domain.LcBizNodeAssignee">
+        update lc_biz_node_assignee
+        <set>
+            <if test="bizCode != null">biz_code = #{bizCode},</if>
+            <if test="taskKey != null">task_key = #{taskKey},</if>
+            <if test="taskName != null">task_name = #{taskName},</if>
+            <if test="assigneeSource != null">assignee_source = #{assigneeSource},</if>
+            <if test="assigneeValue != null">assignee_value = #{assigneeValue},</if>
+            <if test="assigneeExpr != null">assignee_expr = #{assigneeExpr},</if>
+            <if test="processVarName != null">process_var_name = #{processVarName},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <update id="deleteLcBizNodeAssigneeByIds" parameterType="Long">
+        update lc_biz_node_assignee
+        set del_flag = '2', update_time = sysdate()
+        where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <delete id="physicalDeleteByBizCode" parameterType="String">
+        delete from lc_biz_node_assignee where biz_code = #{bizCode}
+    </delete>
+
+</mapper>

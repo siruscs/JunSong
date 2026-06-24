@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.workflow.lowcode.mapper.LcBizNodeTimerMapper">
+
+    <resultMap id="LcBizNodeTimerResult" type="com.junsong.workflow.lowcode.domain.LcBizNodeTimer">
+        <id property="id" column="id"/>
+        <result property="bizCode" column="biz_code"/>
+        <result property="taskKey" column="task_key"/>
+        <result property="taskName" column="task_name"/>
+        <result property="duration" column="duration"/>
+        <result property="timeoutAction" column="timeout_action"/>
+        <result property="targetStatus" column="target_status"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="selectLcBizNodeTimerVo">
+        select id, biz_code, task_key, task_name, duration, timeout_action, target_status,
+               del_flag, create_by, create_time, update_by, update_time
+        from lc_biz_node_timer
+    </sql>
+
+    <select id="selectLcBizNodeTimerList" parameterType="com.junsong.workflow.lowcode.domain.LcBizNodeTimer" resultMap="LcBizNodeTimerResult">
+        <include refid="selectLcBizNodeTimerVo"/>
+        <where>
+            del_flag = '0'
+            <if test="bizCode != null and bizCode != ''">and biz_code = #{bizCode}</if>
+            <if test="taskKey != null and taskKey != ''">and task_key = #{taskKey}</if>
+            <if test="timeoutAction != null and timeoutAction != ''">and timeout_action = #{timeoutAction}</if>
+        </where>
+        order by id asc
+    </select>
+
+    <select id="selectLcBizNodeTimerById" parameterType="Long" resultMap="LcBizNodeTimerResult">
+        <include refid="selectLcBizNodeTimerVo"/>
+        where id = #{id} and del_flag = '0'
+    </select>
+
+    <select id="selectByBizCode" parameterType="String" resultMap="LcBizNodeTimerResult">
+        <include refid="selectLcBizNodeTimerVo"/>
+        where biz_code = #{bizCode} and del_flag = '0'
+        order by id asc
+    </select>
+
+    <insert id="insertLcBizNodeTimer" parameterType="com.junsong.workflow.lowcode.domain.LcBizNodeTimer" useGeneratedKeys="true" keyProperty="id">
+        insert into lc_biz_node_timer(
+            biz_code, task_key, task_name, duration, timeout_action, target_status,
+            del_flag, create_by, create_time, update_by, update_time
+        ) values (
+            #{bizCode}, #{taskKey}, #{taskName}, #{duration}, #{timeoutAction}, #{targetStatus},
+            #{delFlag}, #{createBy}, sysdate(), #{updateBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateLcBizNodeTimer" parameterType="com.junsong.workflow.lowcode.domain.LcBizNodeTimer">
+        update lc_biz_node_timer
+        <set>
+            <if test="bizCode != null">biz_code = #{bizCode},</if>
+            <if test="taskKey != null">task_key = #{taskKey},</if>
+            <if test="taskName != null">task_name = #{taskName},</if>
+            <if test="duration != null">duration = #{duration},</if>
+            <if test="timeoutAction != null">timeout_action = #{timeoutAction},</if>
+            <if test="targetStatus != null">target_status = #{targetStatus},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <update id="deleteLcBizNodeTimerByIds" parameterType="Long">
+        update lc_biz_node_timer
+        set del_flag = '2', update_time = sysdate()
+        where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <delete id="physicalDeleteByBizCode" parameterType="String">
+        delete from lc_biz_node_timer where biz_code = #{bizCode}
+    </delete>
+
+</mapper>

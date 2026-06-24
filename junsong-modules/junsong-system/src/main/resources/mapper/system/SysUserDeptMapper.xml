@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.system.mapper.SysUserDeptMapper">
+    
+    <resultMap type="SysUserDept" id="SysUserDeptResult">
+        <id     property="userDeptId"   column="user_dept_id"  />
+        <result property="userId"       column="user_id"       />
+        <result property="deptId"       column="dept_id"       />
+        <result property="status"       column="status"        />
+        <result property="hireDate"     column="hire_date"     />
+        <result property="leaveDate"    column="leave_date"    />
+        <result property="createBy"     column="create_by"     />
+        <result property="createTime"   column="create_time"   />
+        <result property="updateBy"     column="update_by"     />
+        <result property="updateTime"   column="update_time"   />
+        <result property="remark"       column="remark"        />
+        <result property="nickName"     column="nick_name"     />
+    </resultMap>
+
+    <sql id="selectSysUserDeptVo">
+        select user_dept_id, user_id, dept_id, status, hire_date, leave_date, create_by, create_time, update_by, update_time, remark 
+        from sys_user_dept
+    </sql>
+
+    <select id="selectSysUserDeptList" parameterType="SysUserDept" resultMap="SysUserDeptResult">
+        <include refid="selectSysUserDeptVo"/>
+        <where>  
+            <if test="userId != null "> and user_id = #{userId}</if>
+            <if test="deptId != null "> and dept_id = #{deptId}</if>
+            <if test="status != null  and status != ''"> and status = #{status}</if>
+        </where>
+        order by create_time desc
+    </select>
+    
+    <select id="selectUserDeptByUserId" parameterType="Long" resultMap="SysUserDeptResult">
+        <include refid="selectSysUserDeptVo"/>
+        where user_id = #{userId}
+        order by create_time desc
+    </select>
+    
+    <select id="selectUserDeptByUserIdAndDeptId" resultMap="SysUserDeptResult">
+        <include refid="selectSysUserDeptVo"/>
+        where user_id = #{userId} and dept_id = #{deptId}
+    </select>
+        
+    <insert id="insertSysUserDept" parameterType="SysUserDept" useGeneratedKeys="true" keyProperty="userDeptId">
+        insert into sys_user_dept
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="deptId != null">dept_id,</if>
+            <if test="status != null">status,</if>
+            <if test="hireDate != null">hire_date,</if>
+            <if test="leaveDate != null">leave_date,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time,
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId},</if>
+            <if test="deptId != null">#{deptId},</if>
+            <if test="status != null">#{status},</if>
+            <if test="hireDate != null">#{hireDate},</if>
+            <if test="leaveDate != null">#{leaveDate},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate(),
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateSysUserDept" parameterType="SysUserDept">
+        update sys_user_dept
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="deptId != null">dept_id = #{deptId},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="hireDate != null">hire_date = #{hireDate},</if>
+            <if test="leaveDate != null">leave_date = #{leaveDate},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where user_dept_id = #{userDeptId}
+    </update>
+
+    <delete id="deleteSysUserDeptByUserDeptId" parameterType="Long">
+        delete from sys_user_dept where user_dept_id = #{userDeptId}
+    </delete>
+
+    <delete id="deleteSysUserDeptByUserDeptIds" parameterType="Long">
+        delete from sys_user_dept where user_dept_id in
+        <foreach item="userDeptId" collection="array" open="(" separator="," close=")">
+            #{userDeptId}
+        </foreach>
+    </delete>
+    
+    <delete id="deleteUserDeptByUserId" parameterType="Long">
+        delete from sys_user_dept where user_id=#{userId}
+    </delete>
+    
+    <select id="countUserDeptById" resultType="Integer">
+        select count(1) from sys_user_dept where dept_id=#{deptId}  
+    </select>
+    
+    <insert id="batchUserDept">
+        insert into sys_user_dept(user_id, dept_id, status, hire_date, create_by, create_time, remark) values
+        <foreach item="item" index="index" collection="list" separator=",">
+            (#{item.userId}, #{item.deptId}, #{item.status}, #{item.hireDate}, #{item.createBy}, sysdate(), #{item.remark})
+        </foreach>
+    </insert>
+    
+    <select id="selectStaffByDeptId" resultMap="SysUserDeptResult">
+        select ud.user_dept_id, ud.user_id, ud.dept_id, ud.status, ud.hire_date,
+               u.nick_name
+        from sys_user_dept ud
+        left join sys_user u on ud.user_id = u.user_id
+        where ud.dept_id = #{deptId} and ud.status = '0'
+        order by u.nick_name
+    </select>
+    
+</mapper>

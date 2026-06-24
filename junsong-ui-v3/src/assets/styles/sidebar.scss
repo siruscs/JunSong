@@ -1,0 +1,448 @@
+@use './variables.scss' as *;
+
+#app {
+
+  .main-container {
+    height: 100%;
+    transition: margin-left .3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-left: $base-sidebar-width;
+    position: relative;
+  }
+
+  .sidebarHide {
+    margin-left: 0!important;
+  }
+
+  .sidebar-container {
+    -webkit-transition: width .3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    width: $base-sidebar-width !important;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 28%),
+      linear-gradient(160deg, var(--theme-sidebar-bg), var(--theme-sidebar-submenu-bg));
+    height: 100%;
+    position: fixed;
+    font-size: 0px;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1001;
+    overflow: hidden;
+    box-shadow: 10px 0 36px rgba(15, 23, 42, 0.16);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.56;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+
+    // reset element-plus css
+    .horizontal-collapse-transition {
+      transition: 0s width ease-in-out, 0s padding-left ease-in-out, 0s padding-right ease-in-out;
+    }
+
+    .scrollbar-wrapper {
+      overflow-x: hidden !important;
+    }
+
+    .el-scrollbar__bar.is-vertical {
+      right: 0px;
+      opacity: 0.3;
+
+      &:hover {
+        opacity: 0.6;
+      }
+    }
+
+    .el-scrollbar {
+      height: 100%;
+    }
+
+    &.has-logo {
+      .el-scrollbar {
+        height: calc(100% - 72px);
+      }
+    }
+
+    .is-horizontal {
+      display: none;
+    }
+
+    a {
+      display: inline-block;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .svg-icon {
+      margin-right: 12px !important;
+      width: 18px !important;
+      height: 18px !important;
+      font-size: 18px;
+    }
+
+    .el-menu {
+      border: none;
+      height: 100%;
+      width: 100% !important;
+      background-color: transparent !important;
+    }
+
+    .el-menu-item, .el-sub-menu__title {
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+      height: 44px !important;
+      line-height: 44px !important;
+      margin: 4px 12px;
+      border-radius: 13px !important;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    // menu hover
+    .submenu-title-noDropdown,
+    .el-sub-menu__title {
+      &:hover {
+        background-color: var(--theme-sidebar-hover) !important;
+      }
+    }
+
+    & .theme-dark .is-active > .el-sub-menu__title {
+      color: $base-menu-color-active !important;
+    }
+
+    & .nest-menu .el-sub-menu>.el-sub-menu__title,
+    & .el-sub-menu .el-menu-item {
+      min-width: $base-sidebar-width !important;
+      margin: 2px 8px;
+      border-radius: 8px !important;
+
+      &:hover {
+        background-color: var(--theme-sidebar-hover) !important;
+      }
+    }
+
+    & .theme-dark .nest-menu .el-sub-menu>.el-sub-menu__title,
+    & .theme-dark .el-sub-menu .el-menu-item {
+      background-color: $base-sub-menu-background !important;
+
+      &:hover {
+        background-color: $base-sub-menu-hover !important;
+      }
+    }
+
+    // theme-dark 深色主题 - Green
+    &.theme-dark {
+      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+
+      .el-menu-item.is-active {
+        position: relative;
+        background: linear-gradient(135deg, var(--theme-sidebar-active-start) 0%, var(--theme-sidebar-active-end) 100%) !important;
+        color: var(--theme-sidebar-active-text) !important;
+        box-shadow: var(--theme-sidebar-active-shadow);
+        font-weight: 650;
+
+        &::before {
+          display: none;
+        }
+      }
+
+      .el-sub-menu.is-active > .el-sub-menu__title {
+        color: var(--theme-sidebar-active-text) !important;
+        background: linear-gradient(135deg, var(--theme-sidebar-active-start) 0%, var(--theme-sidebar-active-end) 100%) !important;
+        box-shadow: var(--theme-sidebar-active-shadow);
+        font-weight: 650;
+      }
+
+      .el-menu-item:not(.is-active),
+      .submenu-title-noDropdown,
+      .el-sub-menu__title {
+        position: relative;
+        color: var(--theme-sidebar-text);
+
+        &::before {
+          display: none;
+        }
+
+        &:hover {
+          color: var(--theme-sidebar-hover-text) !important;
+        }
+      }
+    }
+
+    // theme-light 浅色主题 - Green
+    &.theme-light {
+      border-right: 1px solid #E5E7EB;
+      box-shadow: 2px 0 12px rgba(0, 0, 0, 0.05);
+      background:
+        linear-gradient(180deg, rgba(var(--theme-primary-rgb), 0.04), transparent 30%),
+        var(--theme-sidebar-bg) !important;
+
+      .el-menu-item,
+      .el-sub-menu__title {
+        color: var(--theme-sidebar-text);
+      }
+
+      .el-menu-item.is-active {
+        color: var(--theme-sidebar-active-text) !important;
+        position: relative;
+        background: linear-gradient(135deg, var(--theme-sidebar-active-start) 0%, var(--theme-sidebar-active-end) 100%) !important;
+        box-shadow: var(--theme-sidebar-active-shadow);
+        font-weight: 650;
+
+        &::before {
+          display: none;
+        }
+      }
+
+      .el-sub-menu.is-active > .el-sub-menu__title {
+        color: var(--theme-sidebar-hover-text) !important;
+        background-color: var(--theme-hover-bg) !important;
+      }
+
+      .el-menu-item:not(.is-active):hover,
+      .submenu-title-noDropdown:hover,
+      .el-sub-menu__title:hover {
+        background-color: var(--theme-hover-bg) !important;
+        color: var(--theme-sidebar-hover-text) !important;
+      }
+
+      .nest-menu .el-sub-menu > .el-sub-menu__title,
+      .el-sub-menu .el-menu-item {
+        background-color: rgba(var(--theme-primary-rgb), 0.04) !important;
+
+        &:hover {
+          background-color: var(--theme-hover-bg) !important;
+          color: var(--theme-primary) !important;
+        }
+      }
+    }
+  }
+
+  .hideSidebar {
+    .sidebar-container {
+      width: 72px !important;
+    }
+
+    .main-container {
+      margin-left: 72px;
+    }
+
+    .el-menu:not(.el-menu--horizontal) {
+      .submenu-title-noDropdown {
+        padding: 0 !important;
+        position: relative;
+        width: 56px !important;
+        height: 48px !important;
+        margin: 4px 8px;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+
+        .el-tooltip {
+          padding: 0 !important;
+          width: 56px !important;
+          height: 48px !important;
+          display: flex !important;
+          align-items: center;
+          justify-content: center;
+
+          .svg-icon {
+            margin: 0 !important;
+            width: 24px !important;
+            height: 24px !important;
+            font-size: 24px !important;
+          }
+        }
+      }
+    }
+
+    .el-sub-menu {
+      overflow: hidden;
+
+      &>.el-sub-menu__title {
+        padding: 0 !important;
+        width: 56px !important;
+        height: 48px !important;
+        margin: 4px 8px;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+
+        .svg-icon {
+          margin: 0 !important;
+          width: 24px !important;
+          height: 24px !important;
+          font-size: 24px !important;
+        }
+
+      }
+    }
+
+    .el-menu--collapse {
+      .el-sub-menu {
+        &>.el-sub-menu__title {
+          &>span {
+            height: 0;
+            width: 0;
+            overflow: hidden;
+            visibility: hidden;
+            display: inline-block;
+          }
+        }
+      }
+    }
+  }
+
+  .el-menu--collapse .el-menu .el-sub-menu {
+    min-width: $base-sidebar-width !important;
+  }
+
+  // mobile responsive
+  .mobile {
+    .main-container {
+      margin-left: 0px;
+    }
+
+    .sidebar-container {
+      transition: transform .3s cubic-bezier(0.4, 0, 0.2, 1);
+      width: $base-sidebar-width !important;
+    }
+
+    &.hideSidebar {
+      .sidebar-container {
+        pointer-events: none;
+        transition-duration: 0.3s;
+        transform: translate3d(-$base-sidebar-width, 0, 0);
+      }
+    }
+  }
+
+  .withoutAnimation {
+
+    .main-container,
+    .sidebar-container {
+      transition: none;
+    }
+  }
+}
+
+// when menu collapsed
+.el-menu--vertical {
+  &>.el-menu {
+    .svg-icon {
+      margin-right: 16px;
+    }
+  }
+
+  .nest-menu .el-sub-menu>.el-sub-menu__title,
+  .el-menu-item {
+    &:hover {
+      background-color: var(--theme-hover-bg-light) !important;
+    }
+  }
+
+  // the scroll bar appears when the subMenu is too long
+  >.el-menu--popup {
+    max-height: 100vh;
+    overflow-y: auto;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15) !important;
+
+    &::-webkit-scrollbar-track-piece {
+      background: #E5E7EB;
+      border-radius: 3px;
+    }
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #9CA3AF;
+      border-radius: 3px;
+
+      &:hover {
+        background: #6B7280;
+      }
+    }
+  }
+}
+
+// Sidebar Logo Style
+.sidebar-logo-container {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent),
+    var(--theme-sidebar-bg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+  .sidebar-title {
+    display: block;
+    min-width: 0;
+    font-size: 15px;
+    font-weight: 750;
+    line-height: 1;
+    color: var(--theme-sidebar-logo-text);
+    letter-spacing: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sidebar-logo {
+    width: 32px;
+    height: 32px;
+    margin-right: 12px;
+  }
+}
+
+#app .sidebar-container .sidebar-logo-link {
+  display: grid !important;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  justify-content: start;
+  gap: 12px;
+  width: 100%;
+  height: 72px;
+  padding: 0 20px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+#app .hideSidebar .sidebar-container .sidebar-logo-link,
+#app .sidebar-container .sidebar-logo-container.collapse .sidebar-logo-link {
+  grid-template-columns: 40px;
+  justify-content: center;
+  padding: 0;
+}
+
+#app .sidebar-container .sidebar-logo-mark {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+#app .sidebar-container .sidebar-title {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+// For light theme logo
+.theme-light .sidebar-logo-container {
+  background:
+    linear-gradient(135deg, rgba(var(--theme-primary-rgb), 0.04), transparent),
+    var(--theme-sidebar-bg);
+  border-bottom: 1px solid var(--theme-app-border, #E5E7EB);
+}

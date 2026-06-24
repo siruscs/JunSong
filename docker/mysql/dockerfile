@@ -1,0 +1,7 @@
+# 基础镜像
+FROM mysql:9.2
+# author
+MAINTAINER junsong
+
+# 初始SQL脚本已存在于data目录，无需重复导入
+# 如需在首次启动时执行初始化脚本，请将.sql文件放入db/目录

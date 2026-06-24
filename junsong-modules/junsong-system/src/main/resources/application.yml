@@ -1,0 +1,4 @@
+# MyBatis 映射文件位于 jar 内 classpath，须在本地声明扫描路径（业务数据源等配置在 Nacos）
+mybatis:
+  typeAliasesPackage: com.junsong.system
+  mapperLocations: classpath*:mapper/**/*.xml

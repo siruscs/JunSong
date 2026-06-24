@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.FinProfitShareDetailMapper">
+    <resultMap type="FinProfitShareDetail" id="FinProfitShareDetailResult">
+        <id property="detailId" column="detail_id"/>
+        <result property="shareId" column="share_id"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="periodId" column="period_id"/>
+        <result property="receiverType" column="receiver_type"/>
+        <result property="receiverId" column="receiver_id"/>
+        <result property="receiverName" column="receiver_name"/>
+        <result property="investAmount" column="invest_amount"/>
+        <result property="investRatio" column="invest_ratio"/>
+        <result property="shareAmount" column="share_amount"/>
+        <result property="paymentId" column="payment_id"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+    <select id="selectFinProfitShareDetailByShareId" resultMap="FinProfitShareDetailResult">
+        select detail_id, share_id, dept_id, period_id, receiver_type, receiver_id, receiver_name, invest_amount, invest_ratio, share_amount, payment_id, create_time
+        from fin_profit_share_detail where share_id=#{shareId} order by detail_id asc
+    </select>
+    <insert id="insertFinProfitShareDetail" parameterType="FinProfitShareDetail" useGeneratedKeys="true" keyProperty="detailId">
+        insert into fin_profit_share_detail(share_id, dept_id, period_id, receiver_type, receiver_id, receiver_name, invest_amount, invest_ratio, share_amount, payment_id, create_time)
+        values(#{shareId}, #{deptId}, #{periodId}, #{receiverType}, #{receiverId}, #{receiverName}, #{investAmount}, #{investRatio}, #{shareAmount}, #{paymentId}, sysdate())
+    </insert>
+    <update id="updateFinProfitShareDetail" parameterType="FinProfitShareDetail">
+        update fin_profit_share_detail
+        <trim prefix="set" suffixOverrides=",">
+            <if test="paymentId != null">payment_id=#{paymentId},</if>
+        </trim>
+        where detail_id=#{detailId}
+    </update>
+</mapper>

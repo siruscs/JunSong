@@ -1,0 +1,13 @@
+# 基础镜像
+FROM eclipse-temurin:17
+# author
+MAINTAINER junsong
+
+# 创建目录
+RUN mkdir -p /home/junsong
+# 指定路径
+WORKDIR /home/junsong
+# 复制jar文件到路径
+COPY ./jar/junsong-modules-gen.jar /home/junsong/junsong-modules-gen.jar
+# 启动代码生成服务
+ENTRYPOINT ["java","-jar","junsong-modules-gen.jar"]

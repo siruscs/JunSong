@@ -1,0 +1,110 @@
+@use './variables.scss' as *;
+
+@mixin colorBtn($color) {
+  background: $color;
+
+  &:hover {
+    color: $color;
+
+    &:before,
+    &:after {
+      background: $color;
+    }
+  }
+}
+
+.primary-btn {
+  @include colorBtn($primary)
+}
+
+.secondary-btn {
+  @include colorBtn($secondary)
+}
+
+.danger-btn {
+  @include colorBtn($danger)
+}
+
+.warning-btn {
+  @include colorBtn($warning)
+}
+
+.success-btn {
+  @include colorBtn($accent)
+}
+
+.purple-btn {
+  @include colorBtn($primary-light)
+}
+
+.pan-btn {
+  font-size: 14px;
+  color: #fff;
+  padding: 14px 36px;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  display: inline-block;
+  background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-light) 100%);
+  box-shadow: 0 4px 12px rgba(var(--theme-primary-rgb), 0.3);
+
+  &:hover {
+    background: #fff;
+    color: var(--theme-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(var(--theme-primary-rgb), 0.4);
+
+    &:before,
+    &:after {
+      width: 100%;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+  }
+
+  &:before,
+  &:after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 2px;
+    width: 0;
+    background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-light) 100%);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  &::after {
+    right: inherit;
+    top: inherit;
+    left: 0;
+    bottom: 0;
+  }
+}
+
+.custom-button {
+  display: inline-block;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-dark) 100%);
+  color: #fff;
+  -webkit-appearance: none;
+  text-align: center;
+  box-sizing: border-box;
+  outline: 0;
+  margin: 0;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  border: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(var(--theme-primary-rgb), 0.25);
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(var(--theme-primary-rgb), 0.35);
+  }
+}

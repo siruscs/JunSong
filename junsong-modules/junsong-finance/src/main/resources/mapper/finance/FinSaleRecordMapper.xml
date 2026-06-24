@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.FinSaleRecordMapper">
+    
+    <resultMap type="FinSaleRecord" id="FinSaleRecordResult">
+        <id property="saleId" column="sale_id" />
+        <result property="deptId" column="dept_id" />
+        <result property="periodId" column="period_id" />
+        <result property="saleNo" column="sale_no" />
+        <result property="productId" column="product_id" />
+        <result property="productName" column="product_name" />
+        <result property="saleQuantity" column="sale_quantity" />
+        <result property="giftQuantity" column="gift_quantity" />
+        <result property="totalQuantity" column="total_quantity" />
+        <result property="saleAmount" column="sale_amount" />
+        <result property="unitPrice" column="unit_price" />
+        <result property="paidAmount" column="paid_amount" />
+        <result property="saleDate" column="sale_date" />
+        <result property="status" column="status" />
+        <result property="delFlag" column="del_flag" />
+        <result property="createBy" column="create_by" />
+        <result property="createTime" column="create_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="updateTime" column="update_time" />
+        <result property="remark" column="remark" />
+    </resultMap>
+    
+    <sql id="selectFinSaleRecordVo">
+        select r.sale_id, r.dept_id, r.period_id, r.sale_no, r.product_id, r.product_name, r.sale_quantity, r.gift_quantity, r.total_quantity, r.sale_amount, r.unit_price, r.paid_amount, r.sale_date, r.status, r.del_flag, r.create_by, r.create_time, r.update_by, r.update_time, r.remark
+        from fin_sale_record r
+    </sql>
+
+    <select id="selectFinSaleRecordList" parameterType="FinSaleRecord" resultMap="FinSaleRecordResult">
+        <include refid="selectFinSaleRecordVo"/>
+        <where>  
+            r.del_flag = '0'
+            <if test="deptId != null"> and r.dept_id = #{deptId}</if>
+            <if test="periodId != null"> and r.period_id = #{periodId}</if>
+            <if test="saleNo != null and saleNo != ''"> and r.sale_no like concat('%', #{saleNo}, '%')</if>
+            <if test="productName != null and productName != ''"> and r.product_name like concat('%', #{productName}, '%')</if>
+            <if test="status != null and status != ''"> and r.status = #{status}</if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                and date_format(r.sale_date,'%Y%m%d') &gt;= date_format(#{params.beginTime},'%Y%m%d')
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and date_format(r.sale_date,'%Y%m%d') &lt;= date_format(#{params.endTime},'%Y%m%d')
+            </if>
+        </where>
+        order by r.create_time desc
+    </select>
+    
+    <select id="selectFinSaleRecordBySaleId" parameterType="Long" resultMap="FinSaleRecordResult">
+        <include refid="selectFinSaleRecordVo"/>
+        where r.sale_id = #{saleId}
+    </select>
+
+    <select id="checkSaleNoUnique" parameterType="String" resultMap="FinSaleRecordResult">
+        <include refid="selectFinSaleRecordVo"/>
+        where r.sale_no = #{saleNo} and r.del_flag = '0' limit 1
+    </select>
+
+    <select id="countTodaySales" resultType="int">
+        select count(*) from fin_sale_record where date(create_time) = curdate()
+    </select>
+        
+    <insert id="insertFinSaleRecord" parameterType="FinSaleRecord" useGeneratedKeys="true" keyProperty="saleId">
+        insert into fin_sale_record
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="deptId != null">dept_id,</if>
+            <if test="periodId != null">period_id,</if>
+            <if test="saleNo != null and saleNo != ''">sale_no,</if>
+            <if test="productId != null">product_id,</if>
+            <if test="productName != null and productName != ''">product_name,</if>
+            <if test="saleQuantity != null">sale_quantity,</if>
+            <if test="giftQuantity != null">gift_quantity,</if>
+            <if test="totalQuantity != null">total_quantity,</if>
+            <if test="saleAmount != null">sale_amount,</if>
+            <if test="unitPrice != null">unit_price,</if>
+            <if test="paidAmount != null">paid_amount,</if>
+            <if test="saleDate != null">sale_date,</if>
+            <if test="status != null">status,</if>
+            <if test="delFlag != null">del_flag,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time,
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="deptId != null">#{deptId},</if>
+            <if test="periodId != null">#{periodId},</if>
+            <if test="saleNo != null and saleNo != ''">#{saleNo},</if>
+            <if test="productId != null">#{productId},</if>
+            <if test="productName != null and productName != ''">#{productName},</if>
+            <if test="saleQuantity != null">#{saleQuantity},</if>
+            <if test="giftQuantity != null">#{giftQuantity},</if>
+            <if test="totalQuantity != null">#{totalQuantity},</if>
+            <if test="saleAmount != null">#{saleAmount},</if>
+            <if test="unitPrice != null">#{unitPrice},</if>
+            <if test="paidAmount != null">#{paidAmount},</if>
+            <if test="saleDate != null">#{saleDate},</if>
+            <if test="status != null">#{status},</if>
+            <if test="delFlag != null">#{delFlag},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate(),
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateFinSaleRecord" parameterType="FinSaleRecord">
+        update fin_sale_record
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="deptId != null">dept_id = #{deptId},</if>
+            <if test="periodId != null">period_id = #{periodId},</if>
+            <if test="saleNo != null and saleNo != ''">sale_no = #{saleNo},</if>
+            <if test="productId != null">product_id = #{productId},</if>
+            <if test="productName != null and productName != ''">product_name = #{productName},</if>
+            <if test="saleQuantity != null">sale_quantity = #{saleQuantity},</if>
+            <if test="giftQuantity != null">gift_quantity = #{giftQuantity},</if>
+            <if test="totalQuantity != null">total_quantity = #{totalQuantity},</if>
+            <if test="saleAmount != null">sale_amount = #{saleAmount},</if>
+            <if test="unitPrice != null">unit_price = #{unitPrice},</if>
+            <if test="paidAmount != null">paid_amount = #{paidAmount},</if>
+            <if test="saleDate != null">sale_date = #{saleDate},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="delFlag != null">del_flag = #{delFlag},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate(),
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where sale_id = #{saleId}
+    </update>
+
+    <delete id="deleteFinSaleRecordBySaleId" parameterType="Long">
+        update fin_sale_record set del_flag = '2' where sale_id = #{saleId}
+    </delete>
+
+    <delete id="deleteFinSaleRecordBySaleIds" parameterType="Long">
+        update fin_sale_record set del_flag = '2' where sale_id in 
+        <foreach item="saleId" collection="array" open="(" separator="," close=")">
+            #{saleId}
+        </foreach>
+    </delete>
+    <select id="selectSaleTrendStats" resultType="java.util.HashMap">
+        select date_format(r.sale_date, '%Y-%m-%d') as dateStr,
+               r.dept_id as deptId,
+               d.dept_name as deptName,
+               ifnull(sum(r.sale_amount), 0) as totalSales
+        from fin_sale_record r
+        left join sys_dept d on r.dept_id = d.dept_id
+        where r.del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and r.dept_id in
+            <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+        <if test="startTime != null">
+            and r.sale_date &gt;= #{startTime}
+        </if>
+        <if test="endTime != null">
+            and r.sale_date &lt;= #{endTime}
+        </if>
+        group by date_format(r.sale_date, '%Y-%m-%d'), r.dept_id, d.dept_name
+        order by dateStr, r.dept_id
+    </select>
+
+</mapper>

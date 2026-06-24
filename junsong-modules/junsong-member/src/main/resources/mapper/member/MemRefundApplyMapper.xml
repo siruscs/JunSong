@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.member.mapper.MemRefundApplyMapper">
+
+    <resultMap id="MemRefundApplyResult" type="com.junsong.member.domain.MemRefundApply">
+        <id property="id" column="id"/>
+        <result property="refundNo" column="refund_no"/>
+        <result property="memberId" column="member_id"/>
+        <result property="memberName" column="member_name"/>
+        <result property="memberPhone" column="member_phone"/>
+        <result property="storeId" column="store_id"/>
+        <result property="storeName" column="store_name"/>
+        <result property="refundAmount" column="refund_amount"/>
+        <result property="refundReason" column="refund_reason"/>
+        <result property="refundRemark" column="refund_remark"/>
+        <result property="storeApprover" column="store_approver"/>
+        <result property="financeApprover" column="finance_approver"/>
+        <result property="processInstanceId" column="process_instance_id"/>
+        <result property="processDefinitionKey" column="process_definition_key"/>
+        <result property="workflowStatus" column="workflow_status"/>
+        <result property="currentTaskName" column="current_task_name"/>
+        <result property="submitter" column="submitter"/>
+        <result property="submitTime" column="submit_time"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="selectMemRefundApplyVo">
+        select id, refund_no, member_id, member_name, member_phone, store_id, store_name,
+               refund_amount, refund_reason, refund_remark, store_approver, finance_approver,
+               process_instance_id, process_definition_key, workflow_status, current_task_name,
+               submitter, submit_time, del_flag, create_by, create_time, update_by, update_time
+        from mem_refund_apply
+    </sql>
+
+    <select id="selectMemRefundApplyList" parameterType="com.junsong.member.domain.MemRefundApply" resultMap="MemRefundApplyResult">
+        <include refid="selectMemRefundApplyVo"/>
+        <where>
+            del_flag = '0'
+            <if test="refundNo != null and refundNo != ''">and refund_no like concat('%', #{refundNo}, '%')</if>
+            <if test="memberName != null and memberName != ''">and member_name like concat('%', #{memberName}, '%')</if>
+            <if test="storeName != null and storeName != ''">and store_name like concat('%', #{storeName}, '%')</if>
+            <if test="workflowStatus != null and workflowStatus != ''">and workflow_status = #{workflowStatus}</if>
+        </where>
+        order by id desc
+    </select>
+
+    <select id="selectMemRefundApplyById" parameterType="Long" resultMap="MemRefundApplyResult">
+        <include refid="selectMemRefundApplyVo"/>
+        where id = #{id} and del_flag = '0'
+    </select>
+
+    <select id="selectMemRefundApplyByRefundNo" parameterType="String" resultMap="MemRefundApplyResult">
+        <include refid="selectMemRefundApplyVo"/>
+        where refund_no = #{refundNo} and del_flag = '0'
+    </select>
+
+    <insert id="insertMemRefundApply" parameterType="com.junsong.member.domain.MemRefundApply" useGeneratedKeys="true" keyProperty="id">
+        insert into mem_refund_apply(
+            refund_no, member_id, member_name, member_phone, store_id, store_name,
+            refund_amount, refund_reason, refund_remark, store_approver, finance_approver,
+            process_instance_id, process_definition_key, workflow_status, current_task_name,
+            submitter, submit_time, del_flag, create_by, create_time, update_by, update_time
+        ) values (
+            #{refundNo}, #{memberId}, #{memberName}, #{memberPhone}, #{storeId}, #{storeName},
+            #{refundAmount}, #{refundReason}, #{refundRemark}, #{storeApprover}, #{financeApprover},
+            #{processInstanceId}, #{processDefinitionKey}, #{workflowStatus}, #{currentTaskName},
+            #{submitter}, #{submitTime}, #{delFlag}, #{createBy}, sysdate(), #{updateBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateMemRefundApply" parameterType="com.junsong.member.domain.MemRefundApply">
+        update mem_refund_apply
+        <set>
+            <if test="memberId != null">member_id = #{memberId},</if>
+            <if test="memberName != null">member_name = #{memberName},</if>
+            <if test="memberPhone != null">member_phone = #{memberPhone},</if>
+            <if test="storeId != null">store_id = #{storeId},</if>
+            <if test="storeName != null">store_name = #{storeName},</if>
+            <if test="refundAmount != null">refund_amount = #{refundAmount},</if>
+            <if test="refundReason != null">refund_reason = #{refundReason},</if>
+            <if test="refundRemark != null">refund_remark = #{refundRemark},</if>
+            <if test="storeApprover != null">store_approver = #{storeApprover},</if>
+            <if test="financeApprover != null">finance_approver = #{financeApprover},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <update id="updateWorkflowSnapshot" parameterType="com.junsong.member.domain.MemRefundApply">
+        update mem_refund_apply
+        <set>
+            <if test="processInstanceId != null">process_instance_id = #{processInstanceId},</if>
+            <if test="processDefinitionKey != null">process_definition_key = #{processDefinitionKey},</if>
+            <if test="workflowStatus != null">workflow_status = #{workflowStatus},</if>
+            <if test="currentTaskName != null">current_task_name = #{currentTaskName},</if>
+            <if test="submitter != null">submitter = #{submitter},</if>
+            <if test="submitTime != null">submit_time = #{submitTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        <choose>
+            <when test="id != null">where id = #{id}</when>
+            <otherwise>where process_instance_id = #{processInstanceId}</otherwise>
+        </choose>
+    </update>
+
+    <update id="deleteMemRefundApplyByIds" parameterType="Long">
+        update mem_refund_apply
+        set del_flag = '2', update_time = sysdate()
+        where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+</mapper>

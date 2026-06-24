@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.member.mapper.MemSeckillRecordMapper">
+
+    <resultMap type="com.junsong.member.domain.MemSeckillRecord" id="MemSeckillRecordResult">
+        <result property="recordId" column="record_id"/>
+        <result property="seckillId" column="seckill_id"/>
+        <result property="memberId" column="member_id"/>
+        <result property="memberNo" column="member_no"/>
+        <result property="memberName" column="member_name"/>
+        <result property="seckillDate" column="seckill_date"/>
+        <result property="paymentMethod" column="payment_method"/>
+        <result property="shares" column="shares"/>
+        <result property="claimedShares" column="claimed_shares"/>
+        <result property="remainingShares" column="remaining_shares"/>
+        <result property="totalAmount" column="total_amount"/>
+        <result property="status" column="status"/>
+        <result property="claimTime" column="claim_time"/>
+        <result property="claimBy" column="claim_by"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="remark" column="remark"/>
+        <result property="seckillName" column="seckill_name"/>
+        <result property="seckillPrice" column="seckill_price"/>
+        <result property="deptId" column="dept_id"/>
+    </resultMap>
+
+    <sql id="selectMemSeckillRecordVo">
+        select r.record_id, r.seckill_id, r.member_id, r.member_no, r.member_name,
+               r.seckill_date, r.payment_method, r.shares, r.total_amount,
+               case
+                   when r.status = '1' and coalesce(cs.claimed_shares, 0) = 0 then coalesce(r.shares, 0)
+                   else coalesce(cs.claimed_shares, 0)
+               end as claimed_shares,
+               greatest(coalesce(r.shares, 0) - case
+                   when r.status = '1' and coalesce(cs.claimed_shares, 0) = 0 then coalesce(r.shares, 0)
+                   else coalesce(cs.claimed_shares, 0)
+               end, 0) as remaining_shares,
+               r.status, r.claim_time, r.claim_by, r.create_by, r.create_time,
+               r.update_by, r.update_time, r.del_flag, r.remark,
+               s.seckill_name, s.seckill_price, r.dept_id
+        from mem_seckill_record r
+        left join mem_seckill s on r.seckill_id = s.seckill_id
+        left join (
+            select record_id, sum(claim_shares) as claimed_shares
+            from mem_seckill_claim_record
+            where del_flag = '0'
+            group by record_id
+        ) cs on r.record_id = cs.record_id
+    </sql>
+
+    <select id="selectMemSeckillRecordList" parameterType="com.junsong.member.domain.MemSeckillRecord" resultMap="MemSeckillRecordResult">
+        <include refid="selectMemSeckillRecordVo"/>
+        <where>
+            r.del_flag = '0'
+            <if test="memberNo != null and memberNo != ''">
+                AND r.member_no like concat('%', #{memberNo}, '%')
+            </if>
+            <if test="seckillId != null">
+                AND r.seckill_id = #{seckillId}
+            </if>
+            <if test="memberId != null">
+                AND r.member_id = #{memberId}
+            </if>
+            <if test="status != null and status != ''">
+                AND r.status = #{status}
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                AND date_format(r.seckill_date,'%y%m%d') &gt;= date_format(#{params.beginTime},'%y%m%d')
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                AND date_format(r.seckill_date,'%y%m%d') &lt;= date_format(#{params.endTime},'%y%m%d')
+            </if>
+            ${params.dataScope}
+        </where>
+        order by r.create_time desc
+    </select>
+
+    <select id="selectMemSeckillRecordById" parameterType="Long" resultMap="MemSeckillRecordResult">
+        <include refid="selectMemSeckillRecordVo"/>
+        where r.record_id = #{recordId} and r.del_flag = '0'
+    </select>
+
+    <insert id="insertMemSeckillRecord" parameterType="com.junsong.member.domain.MemSeckillRecord" useGeneratedKeys="true" keyProperty="recordId">
+        insert into mem_seckill_record
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="seckillId != null">seckill_id,</if>
+            <if test="deptId != null">dept_id,</if>
+            <if test="memberId != null">member_id,</if>
+            <if test="memberNo != null and memberNo != ''">member_no,</if>
+            <if test="memberName != null and memberName != ''">member_name,</if>
+            <if test="seckillDate != null">seckill_date,</if>
+            <if test="paymentMethod != null and paymentMethod != ''">payment_method,</if>
+            <if test="shares != null">shares,</if>
+            <if test="totalAmount != null">total_amount,</if>
+            <if test="status != null">status,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="remark != null">remark,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="seckillId != null">#{seckillId},</if>
+            <if test="deptId != null">#{deptId},</if>
+            <if test="memberId != null">#{memberId},</if>
+            <if test="memberNo != null and memberNo != ''">#{memberNo},</if>
+            <if test="memberName != null and memberName != ''">#{memberName},</if>
+            <if test="seckillDate != null">#{seckillDate},</if>
+            <if test="paymentMethod != null and paymentMethod != ''">#{paymentMethod},</if>
+            <if test="shares != null">#{shares},</if>
+            <if test="totalAmount != null">#{totalAmount},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="remark != null">#{remark},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <update id="updateMemSeckillRecord" parameterType="com.junsong.member.domain.MemSeckillRecord">
+        update mem_seckill_record
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="seckillId != null">seckill_id = #{seckillId},</if>
+            <if test="memberId != null">member_id = #{memberId},</if>
+            <if test="memberNo != null">member_no = #{memberNo},</if>
+            <if test="memberName != null">member_name = #{memberName},</if>
+            <if test="seckillDate != null">seckill_date = #{seckillDate},</if>
+            <if test="paymentMethod != null">payment_method = #{paymentMethod},</if>
+            <if test="shares != null">shares = #{shares},</if>
+            <if test="totalAmount != null">total_amount = #{totalAmount},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="claimTime != null">claim_time = #{claimTime},</if>
+            <if test="claimBy != null">claim_by = #{claimBy},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </trim>
+        where record_id = #{recordId}
+    </update>
+
+    <update id="updateClaimStatus">
+        update mem_seckill_record
+        set status = #{status}, claim_time = sysdate(), claim_by = #{claimBy}, update_time = sysdate()
+        where record_id = #{recordId} and del_flag = '0'
+    </update>
+
+    <!-- 秒杀记录统计 -->
+    <select id="selectRecordStatistics" parameterType="com.junsong.member.domain.MemSeckillRecord" resultType="java.util.Map">
+        select
+            count(*) as totalPeople,
+            coalesce(sum(r.shares), 0) as totalShares,
+            coalesce(sum(r.total_amount), 0) as totalAmount,
+            coalesce(sum(case when r.status = '1' and coalesce(cs.claimed_shares, 0) = 0 then coalesce(r.shares, 0) else coalesce(cs.claimed_shares, 0) end), 0) as claimedShares,
+            count(case when (case when r.status = '1' and coalesce(cs.claimed_shares, 0) = 0 then coalesce(r.shares, 0) else coalesce(cs.claimed_shares, 0) end) &gt; 0 then 1 end) as claimedPeople
+        from mem_seckill_record r
+        left join (
+            select record_id, sum(claim_shares) as claimed_shares
+            from mem_seckill_claim_record
+            where del_flag = '0'
+            group by record_id
+        ) cs on r.record_id = cs.record_id
+        where r.del_flag = '0'
+            <if test="seckillId != null">and r.seckill_id = #{seckillId}</if>
+            <if test="memberNo != null and memberNo != ''">and r.member_no like concat('%', #{memberNo}, '%')</if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                AND date_format(r.seckill_date,'%y%m%d') &gt;= date_format(#{params.beginTime},'%y%m%d')
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                AND date_format(r.seckill_date,'%y%m%d') &lt;= date_format(#{params.endTime},'%y%m%d')
+            </if>
+    </select>
+
+    <!-- 按付款方式统计 -->
+    <select id="selectPaymentMethodStats" parameterType="com.junsong.member.domain.MemSeckillRecord" resultType="java.util.Map">
+        select
+            coalesce(d.dict_label, r.payment_method, '其他') as paymentMethodName,
+            count(*) as recordCount,
+            coalesce(sum(r.shares), 0) as shares,
+            coalesce(sum(r.total_amount), 0) as amount
+        from mem_seckill_record r
+        left join sys_dict_data d on d.dict_type = 'finance_payment_method'
+            and d.status = '0'
+            and d.dict_value = r.payment_method
+        where r.del_flag = '0'
+            <if test="seckillId != null">and r.seckill_id = #{seckillId}</if>
+            <if test="memberNo != null and memberNo != ''">and r.member_no like concat('%', #{memberNo}, '%')</if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                AND date_format(r.seckill_date,'%y%m%d') &gt;= date_format(#{params.beginTime},'%y%m%d')
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                AND date_format(r.seckill_date,'%y%m%d') &lt;= date_format(#{params.endTime},'%y%m%d')
+            </if>
+        group by coalesce(d.dict_label, r.payment_method, '其他')
+        order by recordCount desc
+    </select>
+
+    <delete id="deleteMemSeckillRecordById" parameterType="Long">
+        update mem_seckill_record set del_flag = '1' where record_id = #{recordId}
+    </delete>
+
+    <delete id="deleteMemSeckillRecordByIds" parameterType="Long">
+        update mem_seckill_record set del_flag = '1' where record_id in
+        <foreach item="recordId" collection="array" open="(" separator="," close=")">
+            #{recordId}
+        </foreach>
+    </delete>
+    <select id="selectMemberIdsBySeckillAndDate" resultType="java.lang.Long">
+        select member_id
+        from mem_seckill_record
+        where del_flag = '0'
+          and dept_id = #{deptId}
+          and seckill_id = #{seckillId}
+          <if test="seckillDate != null">
+              and date_format(seckill_date, '%Y-%m-%d') = date_format(#{seckillDate}, '%Y-%m-%d')
+          </if>
+    </select>
+
+</mapper>

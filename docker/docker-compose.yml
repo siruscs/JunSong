@@ -1,0 +1,308 @@
+services:
+  junsong-nacos:
+    container_name: junsong-nacos
+    image: nacos/nacos-server:latest
+    environment:
+      - MODE=standalone
+      - PREFER_HOST_MODE=hostname
+      - NACOS_SERVER_PORT=8848
+      - SPRING_DATASOURCE_PLATFORM=mysql
+      - MYSQL_SERVICE_HOST=junsong-mysql
+      - MYSQL_SERVICE_PORT=3306
+      - MYSQL_SERVICE_DB_NAME=junsong-config
+      - MYSQL_SERVICE_USER=root
+      - MYSQL_SERVICE_PASSWORD=${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
+      - MYSQL_SERVICE_DB_PARAM=characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useUnicode=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - NACOS_AUTH_ENABLE=false
+      - NACOS_AUTH_TOKEN=${NACOS_AUTH_TOKEN:?NACOS_AUTH_TOKEN is required}
+      - NACOS_AUTH_IDENTITY_KEY=serverIdentity
+      - NACOS_AUTH_IDENTITY_VALUE=security
+    volumes:
+      - ./nacos/logs/:/home/nacos/logs
+      - ./nacos/conf/junsong-gateway-dev.yml:/home/nacos/conf/junsong-gateway-dev.yml
+      - ./nacos/conf/junsong-gateway-prod.yml:/home/nacos/conf/junsong-gateway-prod.yml
+      - ./nacos/conf/junsong-member-dev.yml:/home/nacos/conf/junsong-member-dev.yml
+      - ./nacos/conf/junsong-member-prod.yml:/home/nacos/conf/junsong-member-prod.yml
+      - ./nacos/conf/junsong-system-dev.yml:/home/nacos/conf/junsong-system-dev.yml
+      - ./nacos/conf/junsong-system-prod.yml:/home/nacos/conf/junsong-system-prod.yml
+      - ./nacos/conf/junsong-auth-dev.yml:/home/nacos/conf/junsong-auth-dev.yml
+      - ./nacos/conf/junsong-auth-prod.yml:/home/nacos/conf/junsong-auth-prod.yml
+      - ./nacos/conf/junsong-finance-dev.yml:/home/nacos/conf/junsong-finance-dev.yml
+      - ./nacos/conf/junsong-finance-prod.yml:/home/nacos/conf/junsong-finance-prod.yml
+      - ./nacos/conf/junsong-gen-dev.yml:/home/nacos/conf/junsong-gen-dev.yml
+      - ./nacos/conf/junsong-gen-prod.yml:/home/nacos/conf/junsong-gen-prod.yml
+      - ./nacos/conf/junsong-job-dev.yml:/home/nacos/conf/junsong-job-dev.yml
+      - ./nacos/conf/junsong-job-prod.yml:/home/nacos/conf/junsong-job-prod.yml
+      - ./nacos/conf/junsong-file-dev.yml:/home/nacos/conf/junsong-file-dev.yml
+      - ./nacos/conf/junsong-file-prod.yml:/home/nacos/conf/junsong-file-prod.yml
+      - ./nacos/conf/junsong-workflow-dev.yml:/home/nacos/conf/junsong-workflow-dev.yml
+      - ./nacos/conf/junsong-workflow-prod.yml:/home/nacos/conf/junsong-workflow-prod.yml
+      - ./nacos/conf/application-dev.yml:/home/nacos/conf/application-dev.yml
+      - ./nacos/conf/redis-dev.yml:/home/nacos/conf/redis-dev.yml
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+      - "9849:9849"
+      - "7080:8080"
+    depends_on:
+      - junsong-mysql
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8848/nacos/"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+  junsong-mysql:
+    container_name: junsong-mysql
+    build:
+      context: ./mysql
+      dockerfile: dockerfile
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql/data:/var/lib/mysql
+    command: [
+          'mysqld',
+          '--innodb-buffer-pool-size=80M',
+          '--character-set-server=utf8mb4',
+          '--collation-server=utf8mb4_unicode_ci',
+          '--default-time-zone=+8:00',
+          '--lower-case-table-names=1'
+        ]
+    environment:
+      MYSQL_DATABASE: 'junsong-config'
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
+  junsong-redis:
+    container_name: junsong-redis
+    image: redis
+    build:
+      context: ./redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis/conf/redis.conf:/home/junsong/redis/redis.conf
+      - ./redis/data:/data
+    command: redis-server /home/junsong/redis/redis.conf
+  junsong-nginx:
+    container_name: junsong-nginx
+    image: nginx
+    build:
+      context: ./nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/html/dist:/home/junsong/projects/junsong-ui
+      - ./nginx/conf/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/logs:/var/log/nginx
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - junsong-gateway
+    links:
+      - junsong-gateway
+  junsong-gateway:
+    container_name: junsong-gateway
+    build:
+      context: ./junsong/gateway
+      dockerfile: dockerfile
+    ports:
+      - "8081:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
+      - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
+      - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
+    depends_on:
+      junsong-nacos:
+        condition: service_healthy
+      junsong-redis:
+        condition: service_started
+    links:
+      - junsong-redis
+      - junsong-nacos
+  junsong-auth:
+    container_name: junsong-auth
+    build:
+      context: ./junsong/auth
+      dockerfile: dockerfile
+    ports:
+      - "9200:9200"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
+      - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
+      - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
+    depends_on:
+      junsong-nacos:
+        condition: service_healthy
+      junsong-redis:
+        condition: service_started
+    links:
+      - junsong-redis
+      - junsong-nacos
+  junsong-modules-system:
+    container_name: junsong-modules-system
+    init: true
+    build:
+      context: ./junsong/modules/system
+      dockerfile: dockerfile
+    ports:
+      - "9201:9201"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
+      - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
+      - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
+    depends_on:
+      junsong-nacos:
+        condition: service_healthy
+      junsong-redis:
+        condition: service_started
+      junsong-mysql:
+        condition: service_started
+    links:
+      - junsong-redis
+      - junsong-mysql
+      - junsong-nacos
+  junsong-modules-gen:
+    container_name: junsong-modules-gen
+    build:
+      context: ./junsong/modules/gen
+      dockerfile: dockerfile
+    ports:
+      - "9202:9202"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
+      - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
+      - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
+    depends_on:
+      junsong-nacos:
+        condition: service_healthy
+      junsong-mysql:
+        condition: service_started
+    links:
+      - junsong-mysql
+      - junsong-nacos
+  junsong-modules-job:
+    container_name: junsong-modules-job
+    build:
+      context: ./junsong/modules/job
+      dockerfile: dockerfile
+    ports:
+      - "9203:9203"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
+      - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
+      - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
+    depends_on:
+      junsong-nacos:
+        condition: service_healthy
+      junsong-mysql:
+        condition: service_started
+    links:
+      - junsong-mysql
+      - junsong-nacos
+  junsong-modules-file:
+    container_name: junsong-modules-file
+    build:
+      context: ./junsong/modules/file
+      dockerfile: dockerfile
+    ports:
+      - "9300:9300"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
+      - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
+      - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
+    volumes:
+    - ./junsong/uploadPath:/home/junsong/uploadPath
+    depends_on:
+      junsong-nacos:
+        condition: service_healthy
+    links:
+      - junsong-nacos
+  junsong-modules-member:
+    container_name: junsong-modules-member
+    build:
+      context: ./junsong/modules/member
+      dockerfile: dockerfile
+    ports:
+      - "9206:9206"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
+      - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
+      - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
+    depends_on:
+      junsong-nacos:
+        condition: service_healthy
+      junsong-redis:
+        condition: service_started
+      junsong-mysql:
+        condition: service_started
+    links:
+      - junsong-redis
+      - junsong-mysql
+      - junsong-nacos
+  junsong-modules-finance:
+    container_name: junsong-modules-finance
+    build:
+      context: ./junsong/modules/finance
+      dockerfile: dockerfile
+    ports:
+      - "9205:9205"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
+      - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
+      - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
+    depends_on:
+      junsong-nacos:
+        condition: service_healthy
+      junsong-redis:
+        condition: service_started
+      junsong-mysql:
+        condition: service_started
+    links:
+      - junsong-redis
+      - junsong-mysql
+      - junsong-nacos
+  junsong-modules-workflow:
+    container_name: junsong-modules-workflow
+    init: true
+    build:
+      context: ./junsong/modules/workflow
+      dockerfile: dockerfile
+    ports:
+      - "9207:9207"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
+      - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
+      - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
+    depends_on:
+      junsong-nacos:
+        condition: service_healthy
+      junsong-redis:
+        condition: service_started
+      junsong-mysql:
+        condition: service_started
+    links:
+      - junsong-redis
+      - junsong-mysql
+      - junsong-nacos
+  junsong-visual-monitor:
+    container_name: junsong-visual-monitor
+    build:
+      context: ./junsong/visual/monitor
+      dockerfile: dockerfile
+    ports:
+      - "9100:9100"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
+      - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
+      - spring.cloud.nacos.config.server-addr=junsong-nacos:8848

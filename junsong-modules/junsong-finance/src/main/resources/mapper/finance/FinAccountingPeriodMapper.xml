@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.FinAccountingPeriodMapper">
+    <resultMap type="FinAccountingPeriod" id="FinAccountingPeriodResult">
+        <id property="periodId" column="period_id"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="periodNo" column="period_no"/>
+        <result property="startTime" column="start_time"/>
+        <result property="endTime" column="end_time"/>
+        <result property="status" column="status"/>
+        <result property="breakEvenTime" column="break_even_time"/>
+        <result property="carryForwardTime" column="carry_forward_time"/>
+        <result property="totalVerifiedExpense" column="total_verified_expense"/>
+        <result property="totalPurchase" column="total_purchase"/>
+        <result property="totalSalePayment" column="total_sale_payment"/>
+        <result property="totalSaleAmount" column="total_sale_amount"/>
+        <result property="totalUnverifiedAdvance" column="total_unverified_advance"/>
+        <result property="netProfit" column="net_profit"/>
+        <result property="managerProfitRate" column="manager_profit_rate"/>
+        <result property="managerProfitAmount" column="manager_profit_amount"/>
+        <result property="investorProfitAmount" column="investor_profit_amount"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+    <sql id="selectVo">select p.period_id, p.dept_id, p.period_no, p.start_time, p.end_time, p.status, p.break_even_time, p.carry_forward_time, p.total_verified_expense, p.total_purchase, p.total_sale_payment, p.total_sale_amount, p.total_unverified_advance, p.net_profit, p.manager_profit_rate, p.manager_profit_amount, p.investor_profit_amount, p.del_flag, p.create_by, p.create_time, p.update_by, p.update_time, p.remark from fin_accounting_period p</sql>
+    <select id="selectFinAccountingPeriodByPeriodId" resultMap="FinAccountingPeriodResult"><include refid="selectVo"/> where period_id=#{periodId}</select>
+    <select id="selectCurrentPeriodByDeptId" resultMap="FinAccountingPeriodResult"><include refid="selectVo"/> where dept_id=#{deptId} and status='0' and del_flag='0' order by start_time desc limit 1</select>
+    <select id="selectLatestCarriedPeriodByDeptId" resultMap="FinAccountingPeriodResult"><include refid="selectVo"/> where dept_id=#{deptId} and status='2' and del_flag='0' order by carry_forward_time desc limit 1</select>
+    <select id="selectFinAccountingPeriodList" resultMap="FinAccountingPeriodResult">
+        <include refid="selectVo"/>
+        <where>
+            p.del_flag='0'
+            <if test="deptId != null"> and p.dept_id=#{deptId}</if>
+            <if test="status != null and status != ''"> and p.status=#{status}</if>
+            <if test="periodNo != null and periodNo != ''"> and p.period_no like concat('%', #{periodNo}, '%')</if>
+        </where>
+        order by start_time desc
+    </select>
+    <insert id="insertFinAccountingPeriod" parameterType="FinAccountingPeriod" useGeneratedKeys="true" keyProperty="periodId">
+        insert into fin_accounting_period(dept_id, period_no, start_time, end_time, status, break_even_time, carry_forward_time, total_verified_expense, total_purchase, total_sale_payment, total_sale_amount, total_unverified_advance, net_profit, manager_profit_rate, manager_profit_amount, investor_profit_amount, del_flag, create_by, create_time, remark)
+        values(#{deptId}, #{periodNo}, #{startTime}, #{endTime}, #{status}, #{breakEvenTime}, #{carryForwardTime}, #{totalVerifiedExpense}, #{totalPurchase}, #{totalSalePayment}, #{totalSaleAmount}, #{totalUnverifiedAdvance}, #{netProfit}, #{managerProfitRate}, #{managerProfitAmount}, #{investorProfitAmount}, '0', #{createBy}, sysdate(), #{remark})
+    </insert>
+    <update id="updateFinAccountingPeriod" parameterType="FinAccountingPeriod">
+        update fin_accounting_period
+        <trim prefix="set" suffixOverrides=",">
+            <if test="endTime != null">end_time=#{endTime},</if>
+            <if test="status != null">status=#{status},</if>
+            <if test="breakEvenTime != null">break_even_time=#{breakEvenTime},</if>
+            <if test="carryForwardTime != null">carry_forward_time=#{carryForwardTime},</if>
+            <if test="totalVerifiedExpense != null">total_verified_expense=#{totalVerifiedExpense},</if>
+            <if test="totalPurchase != null">total_purchase=#{totalPurchase},</if>
+            <if test="totalSalePayment != null">total_sale_payment=#{totalSalePayment},</if>
+            <if test="totalSaleAmount != null">total_sale_amount=#{totalSaleAmount},</if>
+            <if test="totalUnverifiedAdvance != null">total_unverified_advance=#{totalUnverifiedAdvance},</if>
+            <if test="netProfit != null">net_profit=#{netProfit},</if>
+            <if test="managerProfitRate != null">manager_profit_rate=#{managerProfitRate},</if>
+            <if test="managerProfitAmount != null">manager_profit_amount=#{managerProfitAmount},</if>
+            <if test="investorProfitAmount != null">investor_profit_amount=#{investorProfitAmount},</if>
+            <if test="updateBy != null">update_by=#{updateBy},</if>
+            update_time=sysdate(),
+            <if test="remark != null">remark=#{remark},</if>
+        </trim>
+        where period_id=#{periodId}
+    </update>
+    <update id="resetCarryForwardByPeriodId">
+        update fin_accounting_period
+        set status='0',
+            carry_forward_time=null,
+            total_sale_amount=0,
+            manager_profit_rate=0,
+            manager_profit_amount=0,
+            investor_profit_amount=0,
+            update_by=#{updateBy},
+            update_time=sysdate()
+        where period_id=#{periodId}
+          and del_flag='0'
+    </update>
+    <delete id="deleteFinAccountingPeriodByPeriodId">update fin_accounting_period set del_flag='2' where period_id=#{periodId}</delete>
+    <delete id="deleteFinAccountingPeriodByPeriodIds">update fin_accounting_period set del_flag='2' where period_id in <foreach item="periodId" collection="array" open="(" separator="," close=")">#{periodId}</foreach></delete>
+
+    <!-- 按 period_id 统计已核销费用，兼容 period_id 为 NULL 的老数据用 deptId+日期范围 -->
+    <select id="selectTotalVerifiedExpense" resultType="java.math.BigDecimal">
+        select coalesce(sum(expense_amount), 0)
+        from fin_expense
+        where del_flag='0'
+          and status='1'
+          and (period_id=#{periodId} or (period_id is null and dept_id=#{deptId} and expense_date &gt;= #{startTime}
+              <if test="endTime != null">
+                and expense_date &lt; #{endTime}
+              </if>
+          ))
+    </select>
+
+    <select id="selectTotalPurchase" resultType="java.math.BigDecimal">
+        select coalesce(sum(total_amount), 0)
+        from fin_purchase
+        where del_flag='0'
+          and status in ('1', '2')
+          and (period_id=#{periodId} or (period_id is null and dept_id=#{deptId} and purchase_date &gt;= #{startTime}
+              <if test="endTime != null">
+                and purchase_date &lt; #{endTime}
+              </if>
+          ))
+    </select>
+
+    <select id="selectTotalSalePayment" resultType="java.math.BigDecimal">
+        select coalesce(sum(payment_amount), 0)
+        from fin_sale_payment
+        where del_flag='0'
+          and (period_id=#{periodId} or (period_id is null and dept_id=#{deptId} and payment_date &gt;= #{startTime}
+              <if test="endTime != null">
+                and payment_date &lt; #{endTime}
+              </if>
+          ))
+    </select>
+
+    <select id="selectTotalSaleAmount" resultType="java.math.BigDecimal">
+        select coalesce(sum(sale_amount), 0)
+        from fin_sale_record
+        where del_flag='0'
+          and (period_id=#{periodId} or (period_id is null and dept_id=#{deptId} and sale_date &gt;= #{startTime}
+              <if test="endTime != null">
+                and sale_date &lt; #{endTime}
+              </if>
+          ))
+    </select>
+
+    <select id="selectTotalUnverifiedAdvance" resultType="java.math.BigDecimal">
+        select coalesce(sum(advance_amount), 0)
+        from fin_advance
+        where del_flag='0'
+          and status='0'
+          and (period_id=#{periodId} or (period_id is null and dept_id=#{deptId} and advance_date &gt;= #{startTime}
+              <if test="endTime != null">
+                and advance_date &lt; #{endTime}
+              </if>
+          ))
+    </select>
+</mapper>

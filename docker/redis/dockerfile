@@ -1,0 +1,13 @@
+# 基础镜像
+FROM redis
+# author
+MAINTAINER junsong
+
+# 挂载目录
+VOLUME /home/junsong/redis
+# 创建目录
+RUN mkdir -p /home/junsong/redis
+# 指定路径
+WORKDIR /home/junsong/redis
+# 复制conf文件到路径
+COPY ./conf/redis.conf /home/junsong/redis/redis.conf

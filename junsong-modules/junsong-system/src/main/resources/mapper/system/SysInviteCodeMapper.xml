@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.system.mapper.SysInviteCodeMapper">
+
+    <resultMap type="com.junsong.system.domain.SysInviteCode" id="SysInviteCodeResult">
+        <id     property="id"             column="id"              />
+        <result property="code"           column="code"            />
+        <result property="inviterUserId"  column="inviter_user_id" />
+        <result property="inviterName"    column="inviter_name"    />
+        <result property="status"        column="status"           />
+        <result property="inviteeUserId"  column="invitee_user_id" />
+        <result property="createTime"     column="create_time"     />
+        <result property="useTime"        column="use_time"        />
+    </resultMap>
+
+    <select id="selectByCode" parameterType="String" resultMap="SysInviteCodeResult">
+        select id, code, inviter_user_id, inviter_name, status, invitee_user_id, create_time, use_time
+        from sys_invite_code
+        where code = #{code} and status = '0'
+        limit 1
+    </select>
+
+    <insert id="insertInviteCode" parameterType="com.junsong.system.domain.SysInviteCode" useGeneratedKeys="true" keyProperty="id">
+        insert into sys_invite_code(code, inviter_user_id, inviter_name, status, create_time)
+        values(#{code}, #{inviterUserId}, #{inviterName}, '0', sysdate())
+    </insert>
+
+    <update id="updateInviteCodeUsed">
+        update sys_invite_code
+        set status = '1', invitee_user_id = #{inviteeUserId}, use_time = sysdate()
+        where code = #{code} and status = '0'
+    </update>
+
+</mapper>

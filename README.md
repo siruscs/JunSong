@@ -72,56 +72,71 @@
 
 ```mermaid
 flowchart TB
+    subgraph Deploy["部署层"]
+        direction TB
+        Docker["Docker / Docker Compose<br/>容器化部署"]
+        K8S["Kubernetes<br/>（可选）容器编排"]
+    end
+
     subgraph Client["客户端层"]
-        WEB["Web 管理后台<br/>Vue3 + Vite + TS"]
+        WEB["Web 管理后台<br/>Vue3 + Vite + TS + Element Plus"]
         MP["微信小程序<br/>uni-app + Vue3"]
     end
 
     subgraph Gateway["网关层"]
-        GW["junsong-gateway<br/>统一网关 :8080<br/>路由 / 鉴权 / 限流"]
+        GW["Spring Cloud Gateway<br/>junsong-gateway :8080<br/>路由 / 鉴权 / 限流 / Sentinel"]
     end
 
     subgraph Auth["认证中心"]
-        AUTH["junsong-auth :9200<br/>登录 / 令牌 / 鉴权"]
+        AUTH["Spring Boot<br/>junsong-auth :9200<br/>登录 / 令牌 / JWT 鉴权"]
     end
 
-    subgraph Business["业务服务层"]
-        SYS["junsong-system :9201<br/>系统管理 / 门店地图 / 行政区域"]
-        MEM["junsong-member<br/>会员 / 积分 / 秒杀 / 退款"]
-        FIN["junsong-finance<br/>进销存 / 投资分润 / 财务报表"]
-        WF["junsong-workflow<br/>Flowable 工作流 / 低代码引擎"]
-        GEN["junsong-gen :9202<br/>代码生成"]
-        JOB["junsong-job :9203<br/>定时任务"]
-        FILE["junsong-file :9300<br/>文件服务"]
+    subgraph Business["业务服务层<br/>Spring Boot + Spring Cloud Alibaba"]
+        SYS["Spring Boot<br/>junsong-system :9201<br/>系统管理 / 门店地图 / 行政区域"]
+        MEM["Spring Boot<br/>junsong-member<br/>会员 / 积分 / 秒杀 / 退款"]
+        FIN["Spring Boot<br/>junsong-finance<br/>进销存 / 投资分润 / 财务报表"]
+        WF["Spring Boot<br/>junsong-workflow<br/>Flowable 工作流 / 低代码引擎"]
+        GEN["Spring Boot<br/>junsong-gen :9202<br/>代码生成"]
+        JOB["Spring Boot<br/>junsong-job :9203<br/>定时任务调度"]
+        FILE["Spring Boot<br/>junsong-file :9300<br/>文件服务 / MinIO 存储"]
     end
 
-    subgraph Infra["基础设施"]
-        NACOS["Nacos 3.x<br/>注册 / 配置中心"]
-        REDIS[("Redis<br/>缓存 / 鉴权")]
-        MYSQL[("MySQL<br/>业务数据")]
-        MINIO[("MinIO<br/>对象存储")]
-        AMAP["高德地图 API<br/>地理编码 / POI"]
+    subgraph Infra["基础设施层<br/>Docker 容器化"]
+        NACOS["Nacos 3.x<br/>Docker 部署<br/>注册中心 / 配置中心"]
+        REDIS[("Redis<br/>Docker 部署<br/>缓存 / 会话 / 鉴权")]
+        MYSQL[("MySQL 8.0<br/>Docker 部署<br/>业务数据持久化")]
+        MINIO[("MinIO<br/>Docker 部署<br/>对象存储")]
+        SENTINEL["Sentinel<br/>Docker 部署<br/>流量控制 / 熔断"]
+        AMAP["高德地图 API<br/>地理编码 / 逆地理编码 / POI"]
     end
 
-    WEB --> GW
-    MP --> GW
-    GW --> AUTH
-    GW --> SYS
-    GW --> MEM
-    GW --> FIN
-    GW --> WF
-    GW --> GEN
-    GW --> JOB
-    GW --> FILE
+    WEB & MP --> Gateway
+    Gateway --> Auth
+    Gateway --> SYS
+    Gateway --> MEM
+    Gateway --> FIN
+    Gateway --> WF
+    Gateway --> GEN
+    Gateway --> JOB
+    Gateway --> FILE
 
     AUTH -.-> REDIS
     SYS --> AMAP
+
     Business --> NACOS
     Business --> MYSQL
     Business -.-> REDIS
     FILE --> MINIO
-    Gateway --> NACOS
-    Auth --> NACOS
+    Gateway -.-> SENTINEL
+
+    Deploy --> Gateway
+    Deploy --> Auth
+    Deploy --> Business
+    Deploy --> NACOS
+    Deploy --> REDIS
+    Deploy --> MYSQL
+    Deploy --> MINIO
+    Deploy --> SENTINEL
 ```
 
 ---

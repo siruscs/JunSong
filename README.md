@@ -10,7 +10,7 @@
   <img alt="JDK" src="https://img.shields.io/badge/JDK-17-orange?logo=openjdk&logoColor=white">
   <img alt="Vue" src="https://img.shields.io/badge/Vue-3.5-42b883?logo=vuedotjs&logoColor=white">
   <img alt="Vite" src="https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white">
-  <img alt="License" src="https://img.shields.io/badge/license-MIT-blue.svg">
+  <img alt="License" src="https://img.shields.io/badge/license-%E5%B3%BB%E6%9D%BE%E4%BA%91%E5%8D%8F%E8%AE%AE-blue.svg">
 </p>
 
 ---
@@ -287,4 +287,9 @@ JunSong-Cloud
 
 ## 十、License
 
-本项目采用 [MIT](./LICENSE) 协议开源。
+本项目采用 **峻松云软件使用许可协议** 开源，核心要点：
+- **可自由使用**：允许下载、使用、复制、修改、分发本软件。
+- **不提供技术支持**：开发者不提供任何形式的技术支持、咨询或问题解决方案。
+- **免责声明**：软件按"原样"提供，因使用本软件导致的任何直接或间接损失，开发者不承担任何责任。
+
+完整协议内容请参阅 [LICENSE](./LICENSE) 文件。

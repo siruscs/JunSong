@@ -5,6 +5,7 @@ import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.junsong.workflow.lowcode.service.LcExpressionService;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.expression.EvaluationContext;
@@ -19,6 +20,10 @@ public class LcExpressionServiceImpl implements LcExpressionService
     private static final Logger log = LoggerFactory.getLogger(LcExpressionServiceImpl.class);
 
     private static final SpelExpressionParser PARSER = new SpelExpressionParser();
+
+    /** SpEL 表达式编译缓存（LRU，上限 1000） */
+    private final Map<String, Expression> exprCache = new ConcurrentHashMap<>(256);
+    private static final int MAX_CACHE_SIZE = 1000;
 
     @Override
     public boolean evaluateCondition(String conditionJson, Map<String, Object> fieldValues)
@@ -148,7 +153,12 @@ public class LcExpressionServiceImpl implements LcExpressionService
         }
         try
         {
-            Expression exp = PARSER.parseExpression(expression);
+            Expression exp = exprCache.computeIfAbsent(expression, key -> {
+                if (exprCache.size() >= MAX_CACHE_SIZE) {
+                    exprCache.clear();
+                }
+                return PARSER.parseExpression(key);
+            });
             return exp.getValue(context);
         }
         catch (Exception e)
@@ -156,5 +166,15 @@ public class LcExpressionServiceImpl implements LcExpressionService
             log.warn("SpEL 求值异常: expression={}", expression, e);
             return null;
         }
+    }
+
+    /**
+     * 清空 SpEL 表达式编译缓存。
+     * 业务配置变更后调用，确保旧表达式不残留。
+     */
+    public void clearCache()
+    {
+        exprCache.clear();
+        log.info("SpEL 表达式编译缓存已清空，条目数={}", exprCache.size());
     }
 }

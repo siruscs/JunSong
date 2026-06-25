@@ -15,6 +15,7 @@ import com.junsong.workflow.lowcode.mapper.LcBizConfigSnapshotMapper;
 import com.junsong.workflow.lowcode.mapper.LcBizObjectMapper;
 import com.junsong.workflow.lowcode.service.LcConfigVersionService;
 import com.junsong.workflow.lowcode.service.LcMetadataService;
+import com.junsong.workflow.lowcode.service.LcNativeTableGenerator;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +36,9 @@ public class LcConfigVersionServiceImpl implements LcConfigVersionService
 
     @Autowired
     private LcMetadataService metadataService;
+
+    @Autowired
+    private LcNativeTableGenerator nativeTableGenerator;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -70,6 +74,12 @@ public class LcConfigVersionServiceImpl implements LcConfigVersionService
         bizObject.setConfigStatus("PUBLISHED");
         bizObject.setPublishedVersion(newVersionNo);
         lcBizObjectMapper.updateLcBizObject(bizObject);
+
+        // 6. NATIVE 存储模式：自动建表/加列
+        if ("NATIVE".equalsIgnoreCase(bizObject.getStorageMode()))
+        {
+            nativeTableGenerator.generateOrUpdateTable(bizObject, config.getFields());
+        }
 
         log.info("配置发布成功: bizCode={}, version={}", bizCode, newVersionNo);
         return snapshot;

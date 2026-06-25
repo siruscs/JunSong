@@ -18,11 +18,13 @@ import com.junsong.workflow.lowcode.mapper.LcBizNodeTimerMapper;
 import com.junsong.workflow.lowcode.mapper.LcBizObjectMapper;
 import com.junsong.workflow.lowcode.mapper.LcBizPageSchemaMapper;
 import com.junsong.workflow.lowcode.mapper.LcBizPostActionMapper;
+import com.junsong.workflow.lowcode.event.LcConfigPublishedEvent;
 import com.junsong.workflow.lowcode.service.LcMetadataService;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,6 +54,9 @@ public class LcMetadataServiceImpl implements LcMetadataService
 
     @Autowired
     private LcBizNodeTimerMapper lcBizNodeTimerMapper;
+
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     // ===== 聚合配置（可视化后台用）=====
     @Override
@@ -99,6 +104,9 @@ public class LcMetadataServiceImpl implements LcMetadataService
         // 保存配置后标记为草稿状态（需发布才生效）
         obj.setConfigStatus("DRAFT");
         lcBizObjectMapper.updateLcBizObject(obj);
+
+        // 发布配置变更事件，驱动监听器刷新缓存
+        eventPublisher.publishEvent(new LcConfigPublishedEvent(this, bizCode));
     }
 
     private void replaceFields(String bizCode, List<LcBizField> list)

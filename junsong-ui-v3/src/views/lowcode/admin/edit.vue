@@ -55,8 +55,18 @@
       <el-tab-pane :label="'字段（' + (config.fields?.length || 0) + '）'" name="fields">
         <div class="tab-toolbar">
           <el-button type="primary" :icon="Plus" @click="addField">新增字段</el-button>
+          <el-button type="success" :disabled="!selectedFields.length" @click="batchSetRequired">批量必填</el-button>
+          <el-button type="success" :disabled="!selectedFields.length" @click="batchSetList">批量列表</el-button>
+          <el-button type="success" :disabled="!selectedFields.length" @click="batchSetQuery">批量查询</el-button>
+          <el-button type="danger" :disabled="!selectedFields.length" @click="batchDeleteFields">批量删除</el-button>
         </div>
-        <el-table :data="config.fields" border size="small">
+        <el-table ref="fieldTableRef" :data="config.fields" border size="small" row-key="fieldKey" @selection-change="handleFieldSelectionChange">
+          <el-table-column type="selection" width="40" align="center" />
+          <el-table-column width="40" align="center">
+            <template #default>
+              <el-icon class="drag-handle" style="cursor: move; color: #909399"><Sort /></el-icon>
+            </template>
+          </el-table-column>
           <el-table-column label="字段Key" prop="fieldKey" width="140">
             <template #default="{ row }">
               <el-input v-model="row.fieldKey" size="small" placeholder="如 applicant" />
@@ -109,8 +119,9 @@
               <el-input-number v-model="row.orderNum" :min="0" size="small" controls-position="right" style="width: 70px" />
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="80" align="center" fixed="right">
-            <template #default="{ $index }">
+          <el-table-column label="操作" width="100" align="center" fixed="right">
+            <template #default="{ row, $index }">
+              <el-button link type="primary" @click="copyField(row)">复制</el-button>
               <el-button link type="danger" @click="removeField($index)">删除</el-button>
             </template>
           </el-table-column>
@@ -332,10 +343,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Sort } from '@element-plus/icons-vue'
+import Sortable from 'sortablejs'
 import {
   getBizConfig, saveBizConfig, generateMenu,
   publishConfig, listConfigHistory, rollbackConfig,
@@ -376,6 +388,10 @@ const config = reactive<any>({
 })
 
 const basicFormRef = ref()
+const fieldTableRef = ref<any>(null)
+const selectedFields = ref<any[]>([])
+let fieldSortable: Sortable | null = null
+
 const basicRules = {
   bizCode: [{ required: true, message: '业务编码不能为空', trigger: 'blur' }],
   bizName: [{ required: true, message: '业务名称不能为空', trigger: 'blur' }],
@@ -406,6 +422,9 @@ function loadConfig() {
         config.postActions = data.postActions || []
       }
       loading.value = false
+      if (activeTab.value === 'fields') {
+        nextTick(() => initFieldSortable())
+      }
     })
     .catch(() => {
       loading.value = false
@@ -425,10 +444,77 @@ function addField() {
     dictType: '',
     orderNum: config.fields.length + 1,
   })
+  if (activeTab.value === 'fields') {
+    nextTick(() => initFieldSortable())
+  }
 }
 
 function removeField(index: number) {
   config.fields.splice(index, 1)
+}
+
+function handleFieldSelectionChange(val: any[]) {
+  selectedFields.value = val
+}
+
+function initFieldSortable() {
+  if (fieldSortable) {
+    fieldSortable.destroy()
+    fieldSortable = null
+  }
+  const el = fieldTableRef.value?.$el.querySelector('.el-table__body-wrapper tbody')
+  if (!el) return
+  fieldSortable = Sortable.create(el, {
+    handle: '.drag-handle',
+    animation: 150,
+    onEnd: (evt) => {
+      const { oldIndex, newIndex } = evt
+      if (oldIndex === newIndex || oldIndex == null || newIndex == null) return
+      const moved = config.fields.splice(oldIndex, 1)[0]
+      config.fields.splice(newIndex, 0, moved)
+      config.fields.forEach((f: any, i: number) => { f.orderNum = i + 1 })
+      fieldSortable?.sort(config.fields.map((_: any, i: number) => i.toString()), true)
+      ElMessage.success('字段排序已更新')
+    },
+  })
+}
+
+function copyField(row: any) {
+  const copy = { ...row, fieldKey: row.fieldKey + '_copy', orderNum: config.fields.length + 1 }
+  config.fields.push(copy)
+  ElMessage.success('已复制字段')
+  if (activeTab.value === 'fields') {
+    nextTick(() => initFieldSortable())
+  }
+}
+
+function batchSetRequired() {
+  selectedFields.value.forEach((row: any) => { row.required = '1' })
+  ElMessage.success('已批量设为必填')
+}
+
+function batchSetList() {
+  selectedFields.value.forEach((row: any) => { row.isList = '1' })
+  ElMessage.success('已批量设为列表显示')
+}
+
+function batchSetQuery() {
+  selectedFields.value.forEach((row: any) => { row.isQuery = '1' })
+  ElMessage.success('已批量设为查询条件')
+}
+
+function batchDeleteFields() {
+  ElMessageBox.confirm('确认删除选中的 ' + selectedFields.value.length + ' 个字段吗？', '批量删除', { type: 'warning' })
+    .then(() => {
+      const keys = new Set(selectedFields.value.map((r: any) => r.fieldKey))
+      config.fields = config.fields.filter((f: any) => !keys.has(f.fieldKey))
+      selectedFields.value = []
+      ElMessage.success('批量删除成功')
+      if (activeTab.value === 'fields') {
+        nextTick(() => initFieldSortable())
+      }
+    })
+    .catch(() => {})
 }
 
 function handleSave() {
@@ -597,6 +683,12 @@ function goBack() {
   router.push('/lowcode/admin')
 }
 
+watch(() => activeTab.value, (val) => {
+  if (val === 'fields') {
+    nextTick(() => initFieldSortable())
+  }
+})
+
 onMounted(() => {
   loadConfig()
 })
@@ -621,5 +713,11 @@ onMounted(() => {
 }
 .tab-toolbar {
   margin-bottom: 12px;
+}
+.drag-handle {
+  font-size: 16px;
+}
+.drag-handle:hover {
+  color: #409eff !important;
 }
 </style>

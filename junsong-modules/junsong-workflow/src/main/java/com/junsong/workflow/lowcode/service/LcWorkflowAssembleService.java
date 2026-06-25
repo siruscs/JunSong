@@ -3,15 +3,12 @@ package com.junsong.workflow.lowcode.service;
 import com.junsong.workflow.lowcode.domain.LcBizBranchRule;
 import com.junsong.workflow.lowcode.domain.LcBizField;
 import com.junsong.workflow.lowcode.domain.LcBizNodeAssignee;
-import com.junsong.workflow.lowcode.service.LcExpressionService;
+import com.junsong.workflow.lowcode.engine.LcBranchRuleEngine;
 import com.junsong.workflow.service.identity.DeptUserResolveService;
-import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
@@ -95,7 +92,7 @@ public class LcWorkflowAssembleService
                 String targetVar = rule.getTargetVarName();
                 if (targetVar != null && !targetVar.isBlank())
                 {
-                    boolean matched = evaluateRule(rule, form);
+                    boolean matched = LcBranchRuleEngine.evaluate(rule, form);
                     variables.put(targetVar, matched);
                 }
             }
@@ -185,125 +182,4 @@ public class LcWorkflowAssembleService
         }
     }
 
-    /**
-     * 分支规则判定：将 form[fieldKey] 与 compareValue 按 operator 比较，返回布尔。
-     * 支持操作符：EQ NE GT GE LT LE IN NOT_IN CONTAINS EMPTY NOT_EMPTY。
-     */
-    private boolean evaluateRule(LcBizBranchRule rule, Map<String, Object> form)
-    {
-        String operator = rule.getOperator() == null ? "EQ" : rule.getOperator().trim().toUpperCase();
-        Object actual = form.get(rule.getFieldKey());
-        String compare = rule.getCompareValue();
-
-        switch (operator)
-        {
-            case "EMPTY":
-                return isEmpty(actual);
-            case "NOT_EMPTY":
-                return !isEmpty(actual);
-            case "EQ":
-                return compareEquals(actual, compare);
-            case "NE":
-                return !compareEquals(actual, compare);
-            case "GT":
-            case "GE":
-            case "LT":
-            case "LE":
-                return compareNumeric(actual, compare, operator);
-            case "IN":
-                return splitCompare(compare).contains(asText(actual));
-            case "NOT_IN":
-                return !splitCompare(compare).contains(asText(actual));
-            case "CONTAINS":
-                return actual != null && compare != null && asText(actual).contains(compare);
-            default:
-                return false;
-        }
-    }
-
-    private boolean compareEquals(Object actual, String compare)
-    {
-        if (actual == null)
-        {
-            return compare == null || compare.isEmpty();
-        }
-        BigDecimal a = toDecimal(actual);
-        BigDecimal b = compare == null ? null : toDecimal(compare);
-        if (a != null && b != null)
-        {
-            return a.compareTo(b) == 0;
-        }
-        return asText(actual).equals(compare);
-    }
-
-    private boolean compareNumeric(Object actual, String compare, String operator)
-    {
-        BigDecimal a = toDecimal(actual);
-        BigDecimal b = compare == null ? null : toDecimal(compare);
-        if (a == null || b == null)
-        {
-            return false;
-        }
-        int cmp = a.compareTo(b);
-        switch (operator)
-        {
-            case "GT":
-                return cmp > 0;
-            case "GE":
-                return cmp >= 0;
-            case "LT":
-                return cmp < 0;
-            case "LE":
-                return cmp <= 0;
-            default:
-                return false;
-        }
-    }
-
-    private boolean isEmpty(Object value)
-    {
-        if (value == null)
-        {
-            return true;
-        }
-        if (value instanceof String)
-        {
-            return ((String) value).isBlank();
-        }
-        if (value instanceof java.util.Collection)
-        {
-            return ((java.util.Collection<?>) value).isEmpty();
-        }
-        return false;
-    }
-
-    private List<String> splitCompare(String compare)
-    {
-        if (compare == null || compare.isBlank())
-        {
-            return List.of();
-        }
-        return Arrays.stream(compare.split(",")).map(String::trim).toList();
-    }
-
-    private String asText(Object value)
-    {
-        return value == null ? null : String.valueOf(value);
-    }
-
-    private BigDecimal toDecimal(Object value)
-    {
-        if (value == null)
-        {
-            return null;
-        }
-        try
-        {
-            return new BigDecimal(String.valueOf(value).trim());
-        }
-        catch (NumberFormatException ex)
-        {
-            return null;
-        }
-    }
 }

@@ -55,10 +55,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 AND status = #{status}
             </if>
             <if test="params.beginTime != null and params.beginTime != ''">
-                AND date_format(create_time,'%y%m%d') &gt;= date_format(#{params.beginTime},'%y%m%d')
+                AND create_time &gt;= #{params.beginTime}
             </if>
             <if test="params.endTime != null and params.endTime != ''">
-                AND date_format(create_time,'%y%m%d') &lt;= date_format(#{params.endTime},'%y%m%d')
+                AND create_time &lt; DATE_ADD(#{params.endTime}, INTERVAL 1 DAY)
             </if>
             AND del_flag = '0'
             ${params.dataScope}

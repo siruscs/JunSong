@@ -71,6 +71,17 @@ public interface MemSeckillRecordMapper {
     int updateClaimStatus(@Param("recordId") Long recordId, @Param("status") String status, @Param("claimBy") String claimBy);
 
     /**
+     * 乐观锁领取秒杀记录
+     *
+     * @param recordId 秒杀记录ID
+     * @param status 状态
+     * @param claimBy 领取人
+     * @param version 版本号
+     * @return 影响行数
+     */
+    int updateClaimStatusWithVersion(@Param("recordId") Long recordId, @Param("status") String status, @Param("claimBy") String claimBy, @Param("version") Integer version);
+
+    /**
      * 统计秒杀记录（总人数、总份额、总金额、已领取）
      *
      * @param record 查询条件

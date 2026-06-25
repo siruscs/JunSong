@@ -91,7 +91,7 @@ flowchart TB
         AUTH["Spring Boot<br/>junsong-auth :9200<br/>登录 / 令牌 / JWT 鉴权"]
     end
 
-    subgraph Business["业务服务层<br/>Spring Boot + Spring Cloud Alibaba"]
+    subgraph Business["业务服务层<br/>Spring Boot + Spring Cloud Alibaba<br/>服务间：OpenFeign + LoadBalancer"]
         SYS["Spring Boot<br/>junsong-system :9201<br/>系统管理 / 门店地图 / 行政区域"]
         MEM["Spring Boot<br/>junsong-member<br/>会员 / 积分 / 秒杀 / 退款"]
         FIN["Spring Boot<br/>junsong-finance<br/>进销存 / 投资分润 / 财务报表"]
@@ -102,7 +102,7 @@ flowchart TB
     end
 
     subgraph Infra["基础设施层<br/>Docker 容器化"]
-        NACOS["Nacos 3.x<br/>Docker 部署<br/>注册中心 / 配置中心"]
+        NACOS["Nacos 3.x<br/>Docker 部署<br/>注册中心 / 配置中心 / 服务发现"]
         REDIS[("Redis<br/>Docker 部署<br/>缓存 / 会话 / 鉴权")]
         MYSQL[("MySQL 8.0<br/>Docker 部署<br/>业务数据持久化")]
         MINIO[("MinIO<br/>Docker 部署<br/>对象存储")]
@@ -119,6 +119,19 @@ flowchart TB
     Gateway --> GEN
     Gateway --> JOB
     Gateway --> FILE
+
+    %% 服务间调用：OpenFeign 声明式 REST（基于 Nacos 服务发现 + LoadBalancer 负载均衡）
+    AUTH -. "Feign 调用<br/>查用户/权限" .-> SYS
+    MEM -. "Feign 调用" .-> SYS
+    FIN -. "Feign 调用" .-> SYS
+    WF -. "Feign 调用" .-> SYS
+    MEM -. "Feign 文件上传" .-> FILE
+    FIN -. "Feign 文件上传" .-> FILE
+    WF -. "Feign 业务联动" .-> FIN
+
+    %% 服务发现与负载均衡：所有服务注册到 Nacos，Feign 经 LoadBalancer 选址
+    Business -. "服务注册/发现" .-> NACOS
+    AUTH -. "服务注册/发现" .-> NACOS
 
     AUTH -.-> REDIS
     SYS --> AMAP
@@ -138,6 +151,13 @@ flowchart TB
     Deploy --> MINIO
     Deploy --> SENTINEL
 ```
+
+> **服务间调用技术说明**
+> - **OpenFeign**：服务间采用声明式 REST 调用，接口定义集中在 `junsong-api` 模块（如 `junsong-api-system`），调用方注入即用。
+> - **Nacos 服务发现**：所有服务启动即注册到 Nacos，Feign 通过服务名（`lb://服务名`）寻址，无需硬编码 IP。
+> - **Spring Cloud LoadBalancer**：Feign 调用经客户端负载均衡在多实例间选址。
+> - **Sentinel**：为 Feign 调用与网关入口提供流量控制与熔断降级。
+> - **请求上下文透传**：Feign 拦截器自动透传当前用户令牌与上下文，保证下游服务的鉴权与数据权限一致。
 
 ---
 

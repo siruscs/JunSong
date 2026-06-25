@@ -171,7 +171,12 @@ public class MemSeckillRecordServiceImpl implements IMemSeckillRecordService {
         memSeckillClaimRecordMapper.insertMemSeckillClaimRecord(claimRecord);
 
         int newRemainingShares = remainingShares - claimShares;
-        return memSeckillRecordMapper.updateClaimStatus(recordId, newRemainingShares == 0 ? "1" : "3", username);
+        int version = record.getVersion() == null ? 0 : record.getVersion();
+        int rows = memSeckillRecordMapper.updateClaimStatusWithVersion(recordId, newRemainingShares == 0 ? "1" : "3", username, version);
+        if (rows == 0) {
+            throw new ServiceException("并发冲突，请稍后重试");
+        }
+        return rows;
     }
 
     /**

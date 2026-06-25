@@ -98,6 +98,9 @@ public class MemSeckillRecord extends BaseEntity
     /** 秒杀单价（非数据库字段，用于列表展示） */
     private BigDecimal seckillPrice;
 
+    /** 乐观锁版本号 */
+    private Integer version;
+
     public Long getRecordId()
     {
         return recordId;
@@ -288,6 +291,16 @@ public class MemSeckillRecord extends BaseEntity
         this.seckillPrice = seckillPrice;
     }
 
+    public Integer getVersion()
+    {
+        return version;
+    }
+
+    public void setVersion(Integer version)
+    {
+        this.version = version;
+    }
+
     @Override
     public String toString() {
         return "MemSeckillRecord{" +
@@ -304,6 +317,7 @@ public class MemSeckillRecord extends BaseEntity
             ", status='" + status + '\'' +
             ", claimTime=" + claimTime +
             ", claimBy='" + claimBy + '\'' +
+            ", version=" + version +
             '}';
     }
 }

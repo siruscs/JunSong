@@ -30,47 +30,56 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectMemMemberVo">
-        select member_id, dept_id, member_no, member_name, phone, age, address, id_card,
-               card_type, card_id, join_date, expire_date, total_points,
-               (select COALESCE(balance, 0) from mem_points_record r where r.member_id = mem_member.member_id and r.del_flag = '0' order by r.create_time desc limit 1) as available_points,
-               (select count(1) from mem_seckill_record sr where sr.member_id = mem_member.member_id and sr.del_flag = '0') as seckill_count,
-               status, remark, del_flag, create_by, create_time, update_by, update_time
-        from mem_member
+        select m.member_id, m.dept_id, m.member_no, m.member_name, m.phone, m.age, m.address, m.id_card,
+               m.card_type, m.card_id, m.join_date, m.expire_date, m.total_points,
+               COALESCE(pr.balance, 0) as available_points,
+               COALESCE(sr.cnt, 0) as seckill_count,
+               m.status, m.remark, m.del_flag, m.create_by, m.create_time, m.update_by, m.update_time
+        from mem_member m
+        left join (
+            select r1.member_id, r1.balance from mem_points_record r1
+            where r1.del_flag = '0' and r1.create_time = (
+                select max(create_time) from mem_points_record r2 where r2.member_id = r1.member_id and r2.del_flag = '0'
+            )
+        ) pr on m.member_id = pr.member_id
+        left join (
+            select member_id, count(1) as cnt from mem_seckill_record where del_flag = '0' group by member_id
+        ) sr on m.member_id = sr.member_id
     </sql>
 
     <select id="selectMemMemberList" parameterType="com.junsong.member.domain.MemMember" resultMap="MemMemberResult">
         <include refid="selectMemMemberVo"/>
         <where>
             <if test="memberNo != null and memberNo != ''">
-                AND member_no like concat('%', #{memberNo}, '%')
+                AND m.member_no like concat('%', #{memberNo}, '%')
             </if>
             <if test="memberName != null and memberName != ''">
-                AND member_name like concat('%', #{memberName}, '%')
+                AND m.member_name like concat('%', #{memberName}, '%')
             </if>
             <if test="phone != null and phone != ''">
-                AND phone like concat('%', #{phone}, '%')
+                AND m.phone like concat('%', #{phone}, '%')
             </if>
             <if test="cardType != null and cardType != ''">
-                AND card_type = #{cardType}
+                AND m.card_type = #{cardType}
             </if>
             <if test="status != null and status != ''">
-                AND status = #{status}
+                AND m.status = #{status}
             </if>
             <if test="params.beginTime != null and params.beginTime != ''">
-                AND date_format(create_time,'%Y%m%d') &gt;= date_format(#{params.beginTime},'%Y%m%d')
+                AND m.create_time &gt;= #{params.beginTime}
             </if>
             <if test="params.endTime != null and params.endTime != ''">
-                AND date_format(create_time,'%Y%m%d') &lt;= date_format(#{params.endTime},'%Y%m%d')
+                AND m.create_time &lt; DATE_ADD(#{params.endTime}, INTERVAL 1 DAY)
             </if>
-            AND del_flag = '0'
+            AND m.del_flag = '0'
             ${params.dataScope}
         </where>
-        order by create_time desc
+        order by m.create_time desc
     </select>
 
     <select id="selectMemMemberByMemberId" parameterType="Long" resultMap="MemMemberResult">
         <include refid="selectMemMemberVo"/>
-        where member_id = #{memberId} and del_flag = '0'
+        where m.member_id = #{memberId} and m.del_flag = '0'
     </select>
 
     <select id="checkMemberNoUnique" parameterType="com.junsong.member.domain.MemMember" resultType="int">
@@ -92,24 +101,24 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="selectMemMemberByMemberNo" parameterType="String" resultMap="MemMemberResult">
         <include refid="selectMemMemberVo"/>
-        where member_no like concat('%', #{memberNo}, '%') and del_flag = '0'
+        where m.member_no like concat('%', #{memberNo}, '%') and m.del_flag = '0'
     </select>
 
     <select id="selectMemMemberByNoAndDept" resultMap="MemMemberResult">
         <include refid="selectMemMemberVo"/>
-        where member_no like concat('%', #{memberNo}, '%') and dept_id = #{deptId} and del_flag = '0'
+        where m.member_no like concat('%', #{memberNo}, '%') and m.dept_id = #{deptId} and m.del_flag = '0'
         limit 1
     </select>
 
     <select id="selectActiveMembersForSeckill" resultMap="MemMemberResult">
         <include refid="selectMemMemberVo"/>
-        where dept_id = #{deptId}
-          and del_flag = '0'
-          and status = '0'
+        where m.dept_id = #{deptId}
+          and m.del_flag = '0'
+          and m.status = '0'
         <if test="seckillDate != null">
-            and (expire_date is null or expire_date &gt;= #{seckillDate})
+            and (m.expire_date is null or m.expire_date &gt;= #{seckillDate})
         </if>
-        order by member_no
+        order by m.member_no
     </select>
 
     <insert id="insertMemMember" parameterType="com.junsong.member.domain.MemMember" useGeneratedKeys="true" keyProperty="memberId">

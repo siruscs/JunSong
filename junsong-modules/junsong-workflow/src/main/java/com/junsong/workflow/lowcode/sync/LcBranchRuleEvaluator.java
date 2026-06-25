@@ -1,21 +1,20 @@
 package com.junsong.workflow.lowcode.sync;
 
 import com.junsong.workflow.lowcode.domain.LcBizBranchRule;
-import com.junsong.workflow.lowcode.service.LcExpressionService;
+import com.junsong.workflow.lowcode.engine.LcBranchRuleEngine;
 import java.util.List;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
  * 分支规则求值器：求值分支条件，返回命中的 targetVarName。
  * 支持 AND/OR 组合条件。
+ *
+ * 单条规则求值统一使用 {@link LcBranchRuleEngine}，与提交前预计算逻辑保持一致。
  */
 @Component
 public class LcBranchRuleEvaluator
 {
-    @Autowired
-    private LcExpressionService expressionService;
 
     /**
      * 求值分支规则列表，返回第一个命中的 targetVarName。
@@ -48,8 +47,7 @@ public class LcBranchRuleEvaluator
             // 更新 groupOp（最后一条有效）
             if (rule.getGroupOp() != null) groupOp = rule.getGroupOp();
 
-            String conditionJson = buildConditionJson(rule);
-            boolean match = expressionService.evaluateCondition(conditionJson, processVariables);
+            boolean match = LcBranchRuleEngine.evaluate(rule, processVariables);
 
             if ("AND".equalsIgnoreCase(groupOp))
             {
@@ -68,31 +66,5 @@ public class LcBranchRuleEvaluator
         return fallbackTarget;
     }
 
-    private String buildConditionJson(LcBizBranchRule rule)
-    {
-        if (rule.getFieldKey() == null) return null;
-        return String.format(
-            "{\"when\":{\"field\":\"%s\",\"op\":\"%s\",\"value\":\"%s\"}}",
-            rule.getFieldKey(),
-            mapOperator(rule.getOperator()),
-            rule.getCompareValue() != null ? rule.getCompareValue() : ""
-        );
-    }
 
-    private String mapOperator(String op)
-    {
-        if (op == null) return "eq";
-        return switch (op)
-        {
-            case "eq", "=", "==" -> "eq";
-            case "ne", "!=", "<>" -> "ne";
-            case "gt", ">", "greater" -> "gt";
-            case "ge", ">=", "greaterEqual" -> "ge";
-            case "lt", "<", "less" -> "lt";
-            case "le", "<=", "lessEqual" -> "le";
-            case "contains" -> "contains";
-            case "in" -> "in";
-            default -> "eq";
-        };
-    }
 }

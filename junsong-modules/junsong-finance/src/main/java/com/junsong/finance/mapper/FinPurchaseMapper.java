@@ -20,6 +20,14 @@ public interface FinPurchaseMapper
     public FinPurchase selectFinPurchaseByPurchaseId(Long purchaseId);
 
     /**
+     * 批量查询进货单
+     *
+     * @param purchaseIds 进货单主键集合
+     * @return 进货单集合
+     */
+    public List<FinPurchase> selectFinPurchaseByPurchaseIds(Long[] purchaseIds);
+
+    /**
      * 查询进货单列表
      * 
      * @param finPurchase 进货单

@@ -338,25 +338,16 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
      */
     private void updateSalePaidAmountAndStatus(Long saleId)
     {
+        BigDecimal totalPaid = finSalePaymentMapper.sumPaymentAmountBySaleId(saleId);
         FinSaleRecord sale = finSaleRecordMapper.selectFinSaleRecordBySaleId(saleId);
         if (sale == null)
         {
             return;
         }
-        
-        List<FinSalePayment> payments = finSalePaymentMapper.selectFinSalePaymentBySaleId(saleId);
-        BigDecimal totalPaid = BigDecimal.ZERO;
-        for (FinSalePayment payment : payments)
-        {
-            if (payment.getPaymentAmount() != null)
-            {
-                totalPaid = totalPaid.add(payment.getPaymentAmount());
-            }
-        }
-        
+
         sale.setPaidAmount(totalPaid);
-        
-        // 计算状态
+
+        // 状态判断逻辑保持不变
         BigDecimal saleAmount = sale.getSaleAmount();
         if (saleAmount == null || saleAmount.compareTo(BigDecimal.ZERO) == 0)
         {
@@ -374,7 +365,7 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
         {
             sale.setStatus(PaymentStatus.PARTIAL); // 部分缴款
         }
-        
+
         finSaleRecordMapper.updateFinSaleRecord(sale);
     }
 }

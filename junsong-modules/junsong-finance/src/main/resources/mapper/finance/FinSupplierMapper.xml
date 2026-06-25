@@ -35,10 +35,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="supplierName != null  and supplierName != ''"> and s.supplier_name like concat('%', #{supplierName}, '%')</if>
             <if test="status != null  and status != ''"> and s.status = #{status}</if>
             <if test="params.beginTime != null and params.beginTime != ''"><!-- 开始时间检索 -->
-                and date_format(s.create_time,'%Y%m%d') &gt;= date_format(#{params.beginTime},'%Y%m%d')
+                and s.create_time &gt;= #{params.beginTime}
             </if>
             <if test="params.endTime != null and params.endTime != ''"><!-- 结束时间检索 -->
-                and date_format(s.create_time,'%Y%m%d') &lt;= date_format(#{params.endTime},'%Y%m%d')
+                and s.create_time &lt; DATE_ADD(#{params.endTime}, INTERVAL 1 DAY)
             </if>
         </where>
         order by s.create_time desc

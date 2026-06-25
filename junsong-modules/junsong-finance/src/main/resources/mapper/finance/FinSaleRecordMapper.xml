@@ -42,10 +42,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="productName != null and productName != ''"> and r.product_name like concat('%', #{productName}, '%')</if>
             <if test="status != null and status != ''"> and r.status = #{status}</if>
             <if test="params.beginTime != null and params.beginTime != ''">
-                and date_format(r.sale_date,'%Y%m%d') &gt;= date_format(#{params.beginTime},'%Y%m%d')
+                and r.sale_date &gt;= #{params.beginTime}
             </if>
             <if test="params.endTime != null and params.endTime != ''">
-                and date_format(r.sale_date,'%Y%m%d') &lt;= date_format(#{params.endTime},'%Y%m%d')
+                and r.sale_date &lt; DATE_ADD(#{params.endTime}, INTERVAL 1 DAY)
             </if>
         </where>
         order by r.create_time desc

@@ -3,6 +3,7 @@ package com.junsong.common.security.handler;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -31,6 +32,16 @@ public class GlobalExceptionHandler
 {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    private AjaxResult wrapTraceId(AjaxResult result)
+    {
+        String traceId = MDC.get("traceId");
+        if (StringUtils.isNotEmpty(traceId))
+        {
+            result.put(AjaxResult.TRACE_ID_TAG, traceId);
+        }
+        return result;
+    }
+
     /**
      * 权限码异常
      */
@@ -39,7 +50,7 @@ public class GlobalExceptionHandler
     {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',权限码校验失败'{}'", requestURI, e.getMessage());
-        return AjaxResult.error(HttpStatus.FORBIDDEN, "没有访问权限，请联系管理员授权");
+        return wrapTraceId(AjaxResult.error(HttpStatus.FORBIDDEN, "没有访问权限，请联系管理员授权"));
     }
 
     /**
@@ -50,7 +61,7 @@ public class GlobalExceptionHandler
     {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',角色权限校验失败'{}'", requestURI, e.getMessage());
-        return AjaxResult.error(HttpStatus.FORBIDDEN, "没有访问权限，请联系管理员授权");
+        return wrapTraceId(AjaxResult.error(HttpStatus.FORBIDDEN, "没有访问权限，请联系管理员授权"));
     }
 
     /**
@@ -61,7 +72,7 @@ public class GlobalExceptionHandler
     {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',不支持'{}'请求", requestURI, e.getMethod());
-        return AjaxResult.error(e.getMessage());
+        return wrapTraceId(AjaxResult.error(e.getMessage()));
     }
 
     /**
@@ -72,7 +83,8 @@ public class GlobalExceptionHandler
     {
         log.error(e.getMessage(), e);
         Integer code = e.getCode();
-        return StringUtils.isNotNull(code) ? AjaxResult.error(code, e.getMessage()) : AjaxResult.error(e.getMessage());
+        AjaxResult result = StringUtils.isNotNull(code) ? AjaxResult.error(code, e.getMessage()) : AjaxResult.error(e.getMessage());
+        return wrapTraceId(result);
     }
 
     /**
@@ -83,7 +95,7 @@ public class GlobalExceptionHandler
     {
         String requestURI = request.getRequestURI();
         log.error("请求路径中缺少必需的路径变量'{}',发生系统异常.", requestURI, e);
-        return AjaxResult.error(String.format("请求路径中缺少必需的路径变量[%s]", e.getVariableName()));
+        return wrapTraceId(AjaxResult.error(String.format("请求路径中缺少必需的路径变量[%s]", e.getVariableName())));
     }
 
     /**
@@ -99,7 +111,7 @@ public class GlobalExceptionHandler
             value = EscapeUtil.clean(value);
         }
         log.error("请求参数类型不匹配'{}',发生系统异常.", requestURI, e);
-        return AjaxResult.error(String.format("请求参数类型不匹配，参数[%s]要求类型为：'%s'，但输入值为：'%s'", e.getName(), e.getRequiredType().getName(), value));
+        return wrapTraceId(AjaxResult.error(String.format("请求参数类型不匹配，参数[%s]要求类型为：'%s'，但输入值为：'%s'", e.getName(), e.getRequiredType().getName(), value)));
     }
 
     /**
@@ -110,7 +122,7 @@ public class GlobalExceptionHandler
     {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',发生未知异常.", requestURI, e);
-        return AjaxResult.error(e.getMessage());
+        return wrapTraceId(AjaxResult.error(e.getMessage()));
     }
 
     /**
@@ -121,7 +133,7 @@ public class GlobalExceptionHandler
     {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',发生系统异常.", requestURI, e);
-        return AjaxResult.error(e.getMessage());
+        return wrapTraceId(AjaxResult.error(e.getMessage()));
     }
 
     /**
@@ -132,7 +144,7 @@ public class GlobalExceptionHandler
     {
         log.error(e.getMessage(), e);
         String message = e.getAllErrors().get(0).getDefaultMessage();
-        return AjaxResult.error(message);
+        return wrapTraceId(AjaxResult.error(message));
     }
 
     /**
@@ -143,7 +155,7 @@ public class GlobalExceptionHandler
     {
         log.error(e.getMessage(), e);
         String message = e.getBindingResult().getFieldError().getDefaultMessage();
-        return AjaxResult.error(message);
+        return wrapTraceId(AjaxResult.error(message));
     }
 
     /**
@@ -152,7 +164,7 @@ public class GlobalExceptionHandler
     @ExceptionHandler(InnerAuthException.class)
     public AjaxResult handleInnerAuthException(InnerAuthException e)
     {
-        return AjaxResult.error(e.getMessage());
+        return wrapTraceId(AjaxResult.error(e.getMessage()));
     }
 
     /**
@@ -161,6 +173,6 @@ public class GlobalExceptionHandler
     @ExceptionHandler(DemoModeException.class)
     public AjaxResult handleDemoModeException(DemoModeException e)
     {
-        return AjaxResult.error("演示模式，不允许操作");
+        return wrapTraceId(AjaxResult.error("演示模式，不允许操作"));
     }
 }

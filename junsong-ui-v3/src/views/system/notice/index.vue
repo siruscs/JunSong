@@ -106,7 +106,7 @@
           <DictTag :options="dict.type.sys_notice_status" :value="detail.status" />
         </el-descriptions-item>
         <el-descriptions-item label="公告内容">
-          <div class="notice-content" v-html="detail.noticeContent"></div>
+          <div class="notice-content" v-html="sanitizeHtml(detail.noticeContent)"></div>
         </el-descriptions-item>
       </el-descriptions>
       <template #footer>
@@ -131,6 +131,7 @@ import Editor from '@/components/Editor/index.vue'
 import ReadUsersDialog from './ReadUsers.vue'
 import { useDict } from '@/composables/useDict'
 import { useAuth } from '@/composables/useAuth'
+import { sanitizeHtml } from '@/utils/xss'
 import { listNotice, getNotice, addNotice, updateNotice, delNotice } from '@/api/system/notice'
 
 const { hasPermi } = useAuth()

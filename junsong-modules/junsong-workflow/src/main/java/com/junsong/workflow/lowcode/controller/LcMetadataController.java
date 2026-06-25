@@ -1,10 +1,13 @@
 package com.junsong.workflow.lowcode.controller;
 
+import com.junsong.common.core.constant.SecurityConstants;
 import com.junsong.common.core.domain.R;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.utils.SecurityUtils;
+import com.junsong.system.api.RemoteMenuService;
+import com.junsong.system.api.domain.LcMenuGenerateRequest;
 import com.junsong.workflow.lowcode.domain.LcBizAction;
 import com.junsong.workflow.lowcode.domain.LcBizBranchRule;
 import com.junsong.workflow.lowcode.domain.LcBizConfigSnapshot;
@@ -14,15 +17,15 @@ import com.junsong.workflow.lowcode.domain.LcBizObject;
 import com.junsong.workflow.lowcode.domain.LcBizPageSchema;
 import com.junsong.workflow.lowcode.domain.LcBizTemplate;
 import com.junsong.workflow.lowcode.domain.dto.LcBizConfigDTO;
-import com.junsong.common.core.constant.SecurityConstants;
-import com.junsong.system.api.RemoteMenuService;
-import com.junsong.system.api.domain.LcMenuGenerateRequest;
 import com.junsong.workflow.lowcode.service.LcConfigVersionService;
 import com.junsong.workflow.lowcode.service.LcMetadataService;
 import com.junsong.workflow.lowcode.service.LcTemplateService;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Positive;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,6 +36,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@Validated
 @RestController
 @RequestMapping("/lowcode/meta")
 public class LcMetadataController extends BaseController
@@ -59,14 +63,14 @@ public class LcMetadataController extends BaseController
 
     @PreAuthorize("@ss.hasPermi('lowcode:meta:list')")
     @GetMapping("/object/{id}")
-    public R<LcBizObject> objectInfo(@PathVariable("id") Long id)
+    public R<LcBizObject> objectInfo(@PathVariable("id") @Positive(message = "ID必须为正整数") Long id)
     {
         return R.ok(lcMetadataService.selectBizObjectById(id));
     }
 
     @PreAuthorize("@ss.hasPermi('lowcode:meta:list')")
     @GetMapping("/object/code/{bizCode}")
-    public R<LcBizObject> objectByCode(@PathVariable("bizCode") String bizCode)
+    public R<LcBizObject> objectByCode(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode)
     {
         return R.ok(lcMetadataService.selectBizObjectByBizCode(bizCode));
     }
@@ -102,14 +106,14 @@ public class LcMetadataController extends BaseController
 
     @PreAuthorize("@ss.hasPermi('lowcode:meta:list')")
     @GetMapping("/field/code/{bizCode}")
-    public R<List<LcBizField>> fieldByCode(@PathVariable("bizCode") String bizCode)
+    public R<List<LcBizField>> fieldByCode(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode)
     {
         return R.ok(lcMetadataService.selectFieldsByBizCode(bizCode));
     }
 
     @PreAuthorize("@ss.hasPermi('lowcode:meta:list')")
     @GetMapping("/field/{id}")
-    public R<LcBizField> fieldInfo(@PathVariable("id") Long id)
+    public R<LcBizField> fieldInfo(@PathVariable("id") @Positive(message = "ID必须为正整数") Long id)
     {
         return R.ok(lcMetadataService.selectFieldById(id));
     }
@@ -145,14 +149,14 @@ public class LcMetadataController extends BaseController
 
     @PreAuthorize("@ss.hasPermi('lowcode:meta:list')")
     @GetMapping("/schema/code/{bizCode}")
-    public R<List<LcBizPageSchema>> schemaByCode(@PathVariable("bizCode") String bizCode)
+    public R<List<LcBizPageSchema>> schemaByCode(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode)
     {
         return R.ok(lcMetadataService.selectPageSchemasByBizCode(bizCode));
     }
 
     @PreAuthorize("@ss.hasPermi('lowcode:meta:list')")
     @GetMapping("/schema/{id}")
-    public R<LcBizPageSchema> schemaInfo(@PathVariable("id") Long id)
+    public R<LcBizPageSchema> schemaInfo(@PathVariable("id") @Positive(message = "ID必须为正整数") Long id)
     {
         return R.ok(lcMetadataService.selectPageSchemaById(id));
     }
@@ -188,14 +192,14 @@ public class LcMetadataController extends BaseController
 
     @PreAuthorize("@ss.hasPermi('lowcode:meta:list')")
     @GetMapping("/assignee/code/{bizCode}")
-    public R<List<LcBizNodeAssignee>> assigneeByCode(@PathVariable("bizCode") String bizCode)
+    public R<List<LcBizNodeAssignee>> assigneeByCode(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode)
     {
         return R.ok(lcMetadataService.selectNodeAssigneesByBizCode(bizCode));
     }
 
     @PreAuthorize("@ss.hasPermi('lowcode:meta:list')")
     @GetMapping("/assignee/{id}")
-    public R<LcBizNodeAssignee> assigneeInfo(@PathVariable("id") Long id)
+    public R<LcBizNodeAssignee> assigneeInfo(@PathVariable("id") @Positive(message = "ID必须为正整数") Long id)
     {
         return R.ok(lcMetadataService.selectNodeAssigneeById(id));
     }
@@ -231,14 +235,14 @@ public class LcMetadataController extends BaseController
 
     @PreAuthorize("@ss.hasPermi('lowcode:meta:list')")
     @GetMapping("/branch/code/{bizCode}")
-    public R<List<LcBizBranchRule>> branchByCode(@PathVariable("bizCode") String bizCode)
+    public R<List<LcBizBranchRule>> branchByCode(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode)
     {
         return R.ok(lcMetadataService.selectBranchRulesByBizCode(bizCode));
     }
 
     @PreAuthorize("@ss.hasPermi('lowcode:meta:list')")
     @GetMapping("/branch/{id}")
-    public R<LcBizBranchRule> branchInfo(@PathVariable("id") Long id)
+    public R<LcBizBranchRule> branchInfo(@PathVariable("id") @Positive(message = "ID必须为正整数") Long id)
     {
         return R.ok(lcMetadataService.selectBranchRuleById(id));
     }
@@ -267,7 +271,7 @@ public class LcMetadataController extends BaseController
     // ===== 聚合配置（可视化后台用）=====
     @PreAuthorize("@ss.hasPermi('lowcode:meta:list')")
     @GetMapping("/config/{bizCode}")
-    public R<LcBizConfigDTO> configByCode(@PathVariable("bizCode") String bizCode)
+    public R<LcBizConfigDTO> configByCode(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode)
     {
         return R.ok(lcMetadataService.selectBizConfig(bizCode));
     }
@@ -294,7 +298,7 @@ public class LcMetadataController extends BaseController
     /** 查询业务对象的动作配置（前端动态渲染按钮用） */
     @PreAuthorize("@ss.hasPermi('lowcode:meta:list')")
     @GetMapping("/action/{bizCode}")
-    public R<List<LcBizAction>> actionsByCode(@PathVariable("bizCode") String bizCode)
+    public R<List<LcBizAction>> actionsByCode(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode)
     {
         return R.ok(lcMetadataService.selectBizActions(bizCode));
     }
@@ -304,7 +308,7 @@ public class LcMetadataController extends BaseController
     @PreAuthorize("@ss.hasPermi('lowcode:meta:publish')")
     @Log(title = "低代码配置发布", businessType = BusinessType.INSERT)
     @PostMapping("/config/publish/{bizCode}")
-    public R<LcBizConfigSnapshot> publish(@PathVariable("bizCode") String bizCode,
+    public R<LcBizConfigSnapshot> publish(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode,
                                             @RequestBody(required = false) PublishReq req)
     {
         String remark = req == null ? null : req.remark;
@@ -316,8 +320,8 @@ public class LcMetadataController extends BaseController
     @PreAuthorize("@ss.hasPermi('lowcode:meta:publish')")
     @Log(title = "低代码配置回滚", businessType = BusinessType.UPDATE)
     @PostMapping("/config/rollback/{bizCode}")
-    public R<Void> rollback(@PathVariable("bizCode") String bizCode,
-                             @RequestParam("versionNo") Integer versionNo)
+    public R<Void> rollback(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode,
+                             @RequestParam("versionNo") @Positive(message = "版本号必须为正整数") Integer versionNo)
     {
         String operator = SecurityUtils.getUsername();
         configVersionService.rollback(bizCode, versionNo, operator);
@@ -327,7 +331,7 @@ public class LcMetadataController extends BaseController
     /** 查询历史发布版本列表 */
     @PreAuthorize("@ss.hasPermi('lowcode:meta:list')")
     @GetMapping("/config/history/{bizCode}")
-    public R<List<LcBizConfigSnapshot>> history(@PathVariable("bizCode") String bizCode)
+    public R<List<LcBizConfigSnapshot>> history(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode)
     {
         return R.ok(configVersionService.listHistory(bizCode));
     }
@@ -335,8 +339,8 @@ public class LcMetadataController extends BaseController
     /** 读取指定版本快照 */
     @PreAuthorize("@ss.hasPermi('lowcode:meta:list')")
     @GetMapping("/config/snapshot/{bizCode}/{versionNo}")
-    public R<LcBizConfigSnapshot> snapshot(@PathVariable("bizCode") String bizCode,
-                                             @PathVariable("versionNo") Integer versionNo)
+    public R<LcBizConfigSnapshot> snapshot(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode,
+                                             @PathVariable("versionNo") @Positive(message = "版本号必须为正整数") Integer versionNo)
     {
         return R.ok(configVersionService.getSnapshot(bizCode, versionNo));
     }
@@ -357,7 +361,7 @@ public class LcMetadataController extends BaseController
 
     @PreAuthorize("@ss.hasPermi('lowcode:meta:list')")
     @GetMapping("/template/{id}")
-    public R<LcBizTemplate> templateInfo(@PathVariable("id") Long id)
+    public R<LcBizTemplate> templateInfo(@PathVariable("id") @Positive(message = "ID必须为正整数") Long id)
     {
         return R.ok(templateService.getTemplate(id));
     }

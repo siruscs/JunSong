@@ -147,17 +147,17 @@ public class LcWorkflowAssembleService
             }
             case "ROLE":
             {
-                // assignee_value = 角色编码，解析为该角色下的第一个用户
+                // assignee_value = 角色编码，解析为该角色下的全部用户（Candidate Users）
                 if (value == null) return null;
                 List<String> users = deptUserResolveService.getUsersByRoleCode(value);
-                return users == null || users.isEmpty() ? null : users.get(0);
+                return users == null || users.isEmpty() ? null : users;
             }
             case "DEPT":
             {
-                // assignee_value = 部门ID，解析为该部门下的第一个用户
+                // assignee_value = 部门ID，解析为该部门下的全部用户（Candidate Users）
                 if (value == null) return null;
                 List<String> users = deptUserResolveService.getUsersByDeptId(value);
-                return users == null || users.isEmpty() ? null : users.get(0);
+                return users == null || users.isEmpty() ? null : users;
             }
             case "EXPRESSION":
             {

@@ -64,8 +64,8 @@ public class LcBranchRuleEvaluator
             fallbackTarget = rule.getTargetVarName();
         }
 
-        // OR 模式兜底返回最后一个 target
-        return "AND".equalsIgnoreCase(groupOp) ? null : fallbackTarget;
+        // 循环正常结束：AND 模式下全部规则都满足，返回当前 gateway 的 target；OR 模式返回兜底 target
+        return fallbackTarget;
     }
 
     private String buildConditionJson(LcBizBranchRule rule)

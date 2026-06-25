@@ -1,12 +1,16 @@
 package com.junsong.workflow.lowcode.domain;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.junsong.common.core.workflow.AbstractWorkflowBusinessEntity;
+import java.util.Map;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 
 public class LcBizInstance extends AbstractWorkflowBusinessEntity
 {
     private static final long serialVersionUID = 1L;
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private Long id;
     private String bizCode;
@@ -47,6 +51,19 @@ public class LcBizInstance extends AbstractWorkflowBusinessEntity
     public String getFormData()
     {
         return formData;
+    }
+
+    public Map<String, Object> getFormDataMap()
+    {
+        if (formData == null || formData.isEmpty()) return null;
+        try
+        {
+            return MAPPER.readValue(formData, new TypeReference<Map<String, Object>>() {});
+        }
+        catch (Exception e)
+        {
+            return null;
+        }
     }
 
     public void setFormData(String formData)

@@ -61,6 +61,14 @@
           <el-empty description="暂无单据数据" />
         </template>
       </el-table>
+
+      <Pagination
+        v-show="total > 0"
+        :total="total"
+        v-model:page="queryParams.pageNum"
+        v-model:limit="queryParams.pageSize"
+        @pagination="getList"
+      />
     </el-card>
 
     <SchemaForm
@@ -85,6 +93,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
 import RightToolbar from '@/components/RightToolbar/index.vue'
+import Pagination from '@/components/Pagination/index.vue'
 import FieldRenderer from './fields/FieldRenderer.vue'
 import SchemaForm from './SchemaForm.vue'
 import SchemaDetail from './SchemaDetail.vue'
@@ -120,7 +129,8 @@ const showSearch = ref(true)
 const rows = ref<LcBizInstance[]>([])
 const bizObject = ref<LcBizObject | null>(null)
 const allFields = ref<LcBizField[]>([])
-const queryParams = reactive<Record<string, any>>({})
+const queryParams = reactive<Record<string, any>>({ pageNum: 1, pageSize: 10 })
+const total = ref(0)
 
 const formDialog = reactive<{ visible: boolean; recordId: number | null }>({ visible: false, recordId: null })
 const detailDrawer = reactive<{ visible: boolean; recordId: number | null }>({ visible: false, recordId: null })
@@ -230,13 +240,17 @@ async function getList() {
   try {
     const res: any = await listBizInstances(bizCode.value, queryParams)
     rows.value = res.rows || res.data || []
+    total.value = res.total || 0
   } finally {
     loading.value = false
   }
 }
 
 function resetQuery() {
-  Object.keys(queryParams).forEach((key) => delete queryParams[key])
+  Object.keys(queryParams).forEach((key) => {
+    if (key !== 'pageNum' && key !== 'pageSize') delete queryParams[key]
+  })
+  queryParams.pageNum = 1
   getList()
 }
 

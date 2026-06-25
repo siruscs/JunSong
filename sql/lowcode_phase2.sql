@@ -139,5 +139,6 @@ CREATE TABLE IF NOT EXISTS `lc_biz_instance` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_lc_instance_biz_order` (`biz_code`, `order_no`),
   KEY `idx_lc_instance_status` (`workflow_status`),
-  KEY `idx_lc_instance_process` (`process_instance_id`)
+  KEY `idx_lc_instance_process` (`process_instance_id`),
+  FULLTEXT KEY `ft_form_data` (`form_data`) COMMENT 'JSON 内容全文索引，支持关键词检索'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='低代码-运行态通用单据';

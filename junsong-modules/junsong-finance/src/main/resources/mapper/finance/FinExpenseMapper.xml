@@ -45,10 +45,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="expenseContent != null and expenseContent != ''"> and e.expense_content like concat('%', #{expenseContent}, '%')</if>
             <if test="status != null and status != ''"> and e.status = #{status}</if>
             <if test="params.beginTime != null and params.beginTime != ''">
-                and date_format(e.expense_date,'%Y%m%d') &gt;= date_format(#{params.beginTime},'%Y%m%d')
+                and e.expense_date &gt;= #{params.beginTime}
             </if>
             <if test="params.endTime != null and params.endTime != ''">
-                and date_format(e.expense_date,'%Y%m%d') &lt;= date_format(#{params.endTime},'%Y%m%d')
+                and e.expense_date &lt; DATE_ADD(#{params.endTime}, INTERVAL 1 DAY)
             </if>
         </where>
         order by e.create_time desc

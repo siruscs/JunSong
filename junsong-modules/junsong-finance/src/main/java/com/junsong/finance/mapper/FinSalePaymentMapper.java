@@ -99,9 +99,17 @@ public interface FinSalePaymentMapper
     public FinSalePayment checkPaymentNoUnique(String paymentNo);
 
     /**
-     * 统计今日缴款单数量
+     * 统计今天的缴款记录数量
      * 
-     * @return 结果
+     * @return 数量
      */
     public int countTodayPayments();
+
+    /**
+     * 根据销售ID统计缴款金额
+     *
+     * @param saleId 销售记录主键
+     * @return 缴款金额合计
+     */
+    public BigDecimal sumPaymentAmountBySaleId(Long saleId);
 }

@@ -56,6 +56,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="countTodayPayments" resultType="int">
         select count(*) from fin_sale_payment where date(create_time) = curdate()
     </select>
+
+    <select id="sumPaymentAmountBySaleId" resultType="java.math.BigDecimal">
+        select ifnull(sum(payment_amount), 0) from fin_sale_payment where sale_id = #{saleId} and del_flag = '0'
+    </select>
         
     <insert id="insertFinSalePayment" parameterType="FinSalePayment" useGeneratedKeys="true" keyProperty="paymentId">
         insert into fin_sale_payment

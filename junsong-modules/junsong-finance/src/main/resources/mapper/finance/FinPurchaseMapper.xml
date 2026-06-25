@@ -45,10 +45,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="supplierId != null"> and p.supplier_id = #{supplierId}</if>
             <if test="status != null  and status != ''"> and p.status = #{status}</if>
             <if test="params.beginTime != null and params.beginTime != ''"><!-- 开始时间检索 -->
-                and date_format(p.create_time,'%Y%m%d') &gt;= date_format(#{params.beginTime},'%Y%m%d')
+                and p.create_time &gt;= #{params.beginTime}
             </if>
             <if test="params.endTime != null and params.endTime != ''"><!-- 结束时间检索 -->
-                and date_format(p.create_time,'%Y%m%d') &lt;= date_format(#{params.endTime},'%Y%m%d')
+                and p.create_time &lt; DATE_ADD(#{params.endTime}, INTERVAL 1 DAY)
             </if>
         </where>
         order by p.create_time desc
@@ -57,6 +57,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectFinPurchaseByPurchaseId" parameterType="Long" resultMap="FinPurchaseResult">
         <include refid="selectFinPurchaseVo"/>
         where p.purchase_id = #{purchaseId}
+    </select>
+
+    <select id="selectFinPurchaseByPurchaseIds" resultMap="FinPurchaseResult">
+        <include refid="selectFinPurchaseVo"/>
+        where p.purchase_id in
+        <foreach collection="array" item="purchaseId" open="(" separator="," close=")">
+            #{purchaseId}
+        </foreach>
     </select>
 
     <select id="checkPurchaseNoUnique" parameterType="String" resultMap="FinPurchaseResult">

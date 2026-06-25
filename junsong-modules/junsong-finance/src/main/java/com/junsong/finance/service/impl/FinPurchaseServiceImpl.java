@@ -181,9 +181,10 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
     @Override
     public int deleteFinPurchaseByPurchaseIds(Long[] purchaseIds)
     {
-        if (purchaseIds != null) {
-            for (Long purchaseId : purchaseIds) {
-                assertPurchaseEditable(purchaseId);
+        if (purchaseIds != null && purchaseIds.length > 0) {
+            List<FinPurchase> list = finPurchaseMapper.selectFinPurchaseByPurchaseIds(purchaseIds);
+            for (FinPurchase p : list) {
+                assertPurchaseEditable(p);
             }
         }
         finPurchaseMapper.deleteFinPurchaseDetailByPurchaseIds(purchaseIds);
@@ -235,8 +236,13 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
             return;
         }
         FinPurchase oldPurchase = finPurchaseMapper.selectFinPurchaseByPurchaseId(purchaseId);
-        if (oldPurchase != null) {
-            finAccountingPeriodService.assertPeriodEditable(oldPurchase.getPeriodId());
+        assertPurchaseEditable(oldPurchase);
+    }
+
+    private void assertPurchaseEditable(FinPurchase purchase)
+    {
+        if (purchase != null) {
+            finAccountingPeriodService.assertPeriodEditable(purchase.getPeriodId());
         }
     }
     

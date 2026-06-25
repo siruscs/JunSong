@@ -21,6 +21,8 @@ import com.junsong.workflow.lowcode.mapper.LcBizPostActionMapper;
 import com.junsong.workflow.lowcode.service.LcMetadataService;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -69,6 +71,7 @@ public class LcMetadataServiceImpl implements LcMetadataService
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(value = "lc-metadata", allEntries = true)
     public void saveBizConfig(LcBizConfigDTO config)
     {
         LcBizObject obj = config == null ? null : config.getBizObject();
@@ -251,6 +254,7 @@ public class LcMetadataServiceImpl implements LcMetadataService
     }
 
     @Override
+    @Cacheable(value = "lc-metadata", key = "#bizCode + ':fields'")
     public List<LcBizField> selectFieldsByBizCode(String bizCode)
     {
         return lcBizFieldMapper.selectByBizCode(bizCode);
@@ -325,6 +329,7 @@ public class LcMetadataServiceImpl implements LcMetadataService
     }
 
     @Override
+    @Cacheable(value = "lc-metadata", key = "#bizCode + ':assignees'")
     public List<LcBizNodeAssignee> selectNodeAssigneesByBizCode(String bizCode)
     {
         return lcBizNodeAssigneeMapper.selectByBizCode(bizCode);
@@ -362,6 +367,7 @@ public class LcMetadataServiceImpl implements LcMetadataService
     }
 
     @Override
+    @Cacheable(value = "lc-metadata", key = "#bizCode + ':rules'")
     public List<LcBizBranchRule> selectBranchRulesByBizCode(String bizCode)
     {
         return lcBizBranchRuleMapper.selectByBizCode(bizCode);

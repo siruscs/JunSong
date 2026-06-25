@@ -1,6 +1,6 @@
 <template>
   <!-- 条件不可见时完全移除 -->
-  <div v-if="isVisible">
+  <div v-show="isVisible">
 
   <!-- 只读展示模式（详情页） -->
   <template v-if="readonly">
@@ -98,7 +98,7 @@
   <el-tree-select
     v-else-if="field.fieldType === 'sys-ref' && ext.source === 'dept'"
     v-model="proxyValue"
-    :data="deptTree"
+    :data="deptTreeLocal"
     :multiple="!!ext.multiple"
     check-strictly
     :render-after-expand="false"
@@ -177,7 +177,7 @@
   <el-cascader
     v-else-if="field.fieldType === 'region'"
     :model-value="regionCodeValue"
-    :options="regionOptions"
+    :options="refDataStore.regionTree"
     :props="{ checkStrictly: false }"
     clearable
     filterable
@@ -189,7 +189,7 @@
   <div v-else-if="field.fieldType === 'address'" class="lc-address">
     <el-cascader
       :model-value="addressRegionValue"
-      :options="regionOptions"
+      :options="refDataStore.regionTree"
       clearable
       filterable
       style="width: 100%"
@@ -255,11 +255,8 @@ import FileUpload from '@/components/FileUpload/index.vue'
 import ImageUpload from '@/components/ImageUpload/index.vue'
 import Editor from '@/components/Editor/index.vue'
 import { useDict } from '@/composables/useDict'
-import { getRegionTree } from '@/api/system/region'
 import { listUser } from '@/api/system/user'
-import { treeselect as deptTreeSelect } from '@/api/system/dept'
-import { listRole } from '@/api/system/role'
-import { postOptionSelect } from '@/api/system/post'
+import { useLowcodeRefDataStore } from '@/stores/lowcodeRefData'
 import type { LcBizField } from '@/api/lowcode'
 import { parseFieldExt } from '../schema'
 
@@ -278,6 +275,7 @@ const proxyValue = computed({
 })
 
 const ext = computed(() => parseFieldExt(props.field))
+const refDataStore = useLowcodeRefDataStore()
 const placeholder = computed(() => `请输入${props.field.fieldLabel}`)
 
 // ===== 条件可见性 =====
@@ -359,18 +357,7 @@ const dictOptions = computed<{ label: string; value: any }[]>(() => {
 
 const refOptions = ref<{ label: string; value: any }[]>([])
 const refLoading = ref(false)
-const deptTree = ref<any[]>([])
-const regionOptions = ref<any[]>([])
-
-async function loadRegionOptions() {
-  if (regionOptions.value.length > 0) return
-  try {
-    const res: any = await getRegionTree()
-    regionOptions.value = res.data || []
-  } catch (e) {
-    console.error('加载地址数据失败', e)
-  }
-}
+const deptTreeLocal = ref<any[]>([])
 
 async function searchUsers(keyword?: string) {
   if (props.field.fieldType !== 'sys-ref' || ext.value.source !== 'user') return
@@ -387,25 +374,23 @@ async function searchUsers(keyword?: string) {
 }
 
 async function loadRoleOptions() {
-  const res: any = await listRole({ pageNum: 1, pageSize: 100 })
-  const rows = res.rows || res.data || []
-  refOptions.value = rows.map((r: any) => ({ label: r.roleName, value: ext.value.valueField === 'roleId' ? r.roleId : r.roleKey }))
+  await refDataStore.loadRoleList()
+  refOptions.value = refDataStore.roleList.map((r: any) => ({ label: r.roleName, value: ext.value.valueField === 'roleId' ? r.roleId : r.roleKey }))
 }
 
 async function loadPostOptions() {
-  const res: any = await postOptionSelect()
-  const rows = res.data || []
-  refOptions.value = rows.map((r: any) => ({ label: r.postName, value: ext.value.valueField === 'postId' ? r.postId : r.postCode }))
+  await refDataStore.loadPostList()
+  refOptions.value = refDataStore.postList.map((r: any) => ({ label: r.postName, value: ext.value.valueField === 'postId' ? r.postId : r.postCode }))
 }
 
 async function loadDeptTree() {
-  const res: any = await deptTreeSelect()
-  deptTree.value = res.data || []
+  await refDataStore.loadDeptTree()
+  deptTreeLocal.value = refDataStore.deptTree
 }
 
 onMounted(() => {
   if (props.field.fieldType === 'region' || props.field.fieldType === 'address') {
-    loadRegionOptions()
+    refDataStore.loadRegionTree()
   }
   if (props.readonly || props.field.fieldType !== 'sys-ref') return
   const source = ext.value.source
@@ -418,14 +403,14 @@ onMounted(() => {
 // ===== 复合字段：region / address / geo =====
 const regionCodeValue = computed<string[]>(() => props.modelValue?.code || [])
 function onRegionChange(code: any) {
-  const text = labelPathFromCascader(regionOptions.value, code)
+  const text = labelPathFromCascader(refDataStore.regionTree, code)
   emit('update:modelValue', { code: code || [], text })
 }
 
 const addressRegionValue = computed<string[]>(() => props.modelValue?.regionCode || [])
 const addressDetailValue = computed<string>(() => props.modelValue?.detail || '')
 function onAddressRegionChange(code: any) {
-  const text = labelPathFromCascader(regionOptions.value, code)
+  const text = labelPathFromCascader(refDataStore.regionTree, code)
   const parts = (text || '').split('/')
   emit('update:modelValue', {
     ...(props.modelValue || {}),

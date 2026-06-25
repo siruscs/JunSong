@@ -8,6 +8,7 @@ import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.workflow.lowcode.domain.LcBizInstance;
 import com.junsong.workflow.lowcode.domain.LcBizObject;
 import com.junsong.workflow.lowcode.domain.dto.LcBizConfigDTO;
+import com.junsong.workflow.lowcode.mapper.LcBizInstanceMapper;
 import com.junsong.workflow.lowcode.service.LcBizService;
 import com.junsong.workflow.lowcode.service.LcConfigVersionService;
 import com.junsong.workflow.lowcode.service.LcInstanceService;
@@ -23,6 +24,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import org.flowable.common.engine.impl.identity.Authentication;
 import org.flowable.engine.RepositoryService;
@@ -38,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class LcBizServiceImpl implements LcBizService
 {
     private final LcInstanceService instanceService;
+    private final LcBizInstanceMapper instanceMapper;
     private final LcMetadataService metadataService;
     private final LcWorkflowAssembleService assembleService;
     private final RuntimeService runtimeService;
@@ -51,6 +54,7 @@ public class LcBizServiceImpl implements LcBizService
 
     public LcBizServiceImpl(
             LcInstanceService instanceService,
+            LcBizInstanceMapper instanceMapper,
             LcMetadataService metadataService,
             LcWorkflowAssembleService assembleService,
             RuntimeService runtimeService,
@@ -62,6 +66,7 @@ public class LcBizServiceImpl implements LcBizService
             List<LcSubmitValidator> validators)
     {
         this.instanceService = instanceService;
+        this.instanceMapper = instanceMapper;
         this.metadataService = metadataService;
         this.assembleService = assembleService;
         this.runtimeService = runtimeService;
@@ -125,7 +130,7 @@ public class LcBizServiceImpl implements LcBizService
         {
             return R.fail("业务对象不存在: " + bizCode);
         }
-        String orderNo = generateOrderNo(bizObject.getOrderNoPrefix());
+        String orderNo = generateOrderNo(bizCode, bizObject.getOrderNoPrefix());
         LcBizInstance instance = new LcBizInstance();
         instance.setBizCode(bizCode);
         instance.setOrderNo(orderNo);
@@ -375,11 +380,19 @@ public class LcBizServiceImpl implements LcBizService
     }
 
     /** 生成单号：{prefix}-yyyyMMdd-{5位随机} */
-    private String generateOrderNo(String prefix)
+    private String generateOrderNo(String bizCode, String prefix)
     {
         String date = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
-        int rand = ThreadLocalRandom.current().nextInt(10000, 99999);
         String p = (prefix == null || prefix.isBlank()) ? "LC" : prefix;
-        return p + "-" + date + "-" + rand;
+        // 碰撞检测：最多重试 10 次，全部冲突则用 UUID 兜底
+        for (int i = 0; i < 10; i++) {
+            int rand = ThreadLocalRandom.current().nextInt(10000, 99999);
+            String candidate = p + "-" + date + "-" + rand;
+            if (instanceMapper.selectByBizCodeAndOrderNo(bizCode, candidate) == null) {
+                return candidate;
+            }
+        }
+        // 兜底：UUID 后缀
+        return p + "-" + date + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 }

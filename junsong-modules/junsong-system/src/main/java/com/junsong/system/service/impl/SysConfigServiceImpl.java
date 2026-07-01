@@ -5,8 +5,10 @@ import java.util.List;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import com.junsong.common.core.constant.CacheConstants;
 import com.junsong.common.core.constant.UserConstants;
+import com.junsong.common.core.context.TenantContext;
 import com.junsong.common.core.exception.ServiceException;
 import com.junsong.common.core.text.Convert;
 import com.junsong.common.core.utils.StringUtils;
@@ -69,12 +71,32 @@ public class SysConfigServiceImpl implements ISysConfigService
         SysConfig config = new SysConfig();
         config.setConfigKey(configKey);
         SysConfig retConfig = configMapper.selectConfig(config);
+        if (StringUtils.isNull(retConfig))
+        {
+            retConfig = selectPublicConfig(configKey);
+        }
         if (StringUtils.isNotNull(retConfig))
         {
             redisService.setCacheObject(getCacheKey(configKey), retConfig.getConfigValue());
             return retConfig.getConfigValue();
         }
         return StringUtils.EMPTY;
+    }
+
+    /**
+     * 查询公共配置（tenant_id=0）
+     */
+    private SysConfig selectPublicConfig(String configKey)
+    {
+        TenantContext.setIgnore(true);
+        try
+        {
+            return configMapper.selectPublicConfig(configKey);
+        }
+        finally
+        {
+            TenantContext.setIgnore(false);
+        }
     }
 
     /**
@@ -135,6 +157,7 @@ public class SysConfigServiceImpl implements ISysConfigService
      * @param configIds 需要删除的参数ID
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteConfigByIds(Long[] configIds)
     {
         for (Long configId : configIds)
@@ -168,7 +191,7 @@ public class SysConfigServiceImpl implements ISysConfigService
     @Override
     public void clearConfigCache()
     {
-        Collection<String> keys = redisService.keys(CacheConstants.SYS_CONFIG_KEY + "*");
+        Collection<String> keys = redisService.scan(CacheConstants.SYS_CONFIG_KEY + "*");
         redisService.deleteObject(keys);
     }
 
@@ -201,13 +224,61 @@ public class SysConfigServiceImpl implements ISysConfigService
     }
 
     /**
-     * 设置cache key
-     * 
+     * 设置cache key（多租户隔离）
+     * 默认租户(tenant_id=1)使用旧格式，兼容网关等无租户上下文的服务
+     *
      * @param configKey 参数键
      * @return 缓存键key
      */
     private String getCacheKey(String configKey)
     {
-        return CacheConstants.SYS_CONFIG_KEY + configKey;
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null || tenantId.equals(TenantContext.DEFAULT_TENANT_ID))
+        {
+            return CacheConstants.SYS_CONFIG_KEY + configKey;
+        }
+        return CacheConstants.SYS_CONFIG_KEY + tenantId + ":" + configKey;
+    }
+
+    /** 脱敏占位符 */
+    private static final String MASKED_VALUE = "******";
+
+    /** 敏感关键词（全小写子串匹配） */
+    private static final String[] SENSITIVE_KEYWORDS = { "password", "secret", "token", "credential" };
+
+    /**
+     * 判断配置键是否包含敏感含义。
+     * 子串匹配 password/secret/token/credential，段匹配 "key"（避免 keyboard 等误报）。
+     */
+    public static boolean isSensitiveKey(String configKey)
+    {
+        if (configKey == null)
+        {
+            return false;
+        }
+        String lower = configKey.toLowerCase();
+        for (String keyword : SENSITIVE_KEYWORDS)
+        {
+            if (lower.contains(keyword))
+            {
+                return true;
+            }
+        }
+        // "key" 按段匹配：开头 key.、中间 .key.、结尾 .key、或整个字符串就是 key
+        if (lower.equals("key") || lower.startsWith("key.") || lower.endsWith(".key")
+                || lower.contains(".key.") || lower.startsWith("key_") || lower.endsWith("_key")
+                || lower.contains("_key_"))
+        {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 返回脱敏后的配置值。敏感键返回 "******"，否则返回原值。
+     */
+    public static String maskConfigValue(String configKey, String configValue)
+    {
+        return isSensitiveKey(configKey) ? MASKED_VALUE : configValue;
     }
 }

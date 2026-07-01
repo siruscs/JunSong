@@ -15,7 +15,6 @@
         <result property="remark" column="remark"/>
     </resultMap>
     <sql id="selectVo">select i.investor_id, i.dept_id, i.investor_name, i.phone, i.status, i.del_flag, i.create_by, i.create_time, i.update_by, i.update_time, i.remark from fin_investor i</sql>
-    <select id="selectFinInvestorByInvestorId" resultMap="FinInvestorResult"><include refid="selectVo"/> where investor_id=#{investorId}</select>
     <select id="selectFinInvestorList" resultMap="FinInvestorResult">
         <include refid="selectVo"/>
         <where>

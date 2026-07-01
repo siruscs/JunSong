@@ -1,7 +1,10 @@
 package com.junsong.finance.mapper;
 
+import java.math.BigDecimal;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import org.apache.ibatis.annotations.Param;
 import com.junsong.finance.domain.FinProfitShareRecord;
 
 public interface FinProfitShareRecordMapper
@@ -43,4 +46,9 @@ public interface FinProfitShareRecordMapper
      * 分润趋势统计
      */
     public List<Map<String, Object>> selectProfitShareTrend(Map<String, Object> params);
+
+    int countUnsettledRecords(@Param("deptIds") List<Long> deptIds);
+    int countUnsettledRecordsByPeriodId(@Param("deptIds") List<Long> deptIds, @Param("periodId") Long periodId);
+    List<Map<String, Object>> selectSettlementByDept(@Param("deptIds") List<Long> deptIds, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
+    BigDecimal selectPaidAmount(@Param("deptIds") List<Long> deptIds, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
 }

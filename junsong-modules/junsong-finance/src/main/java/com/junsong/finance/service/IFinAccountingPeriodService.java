@@ -14,6 +14,8 @@ public interface IFinAccountingPeriodService
     public FinAccountingPeriod carryForward(Long deptId);
     /** 结转回退：删除当前进行中的空周期，将最新已结转周期回退为进行中 */
     public FinAccountingPeriod rollbackCarryForward(Long deptId);
+    /** 结转回退（含原因）：反结账必须填写原因并记录审计 */
+    public FinAccountingPeriod rollbackCarryForward(Long deptId, String reason);
     public void assertPeriodEditable(Long periodId);
     public List<FinAccountingPeriod> selectFinAccountingPeriodList(FinAccountingPeriod finAccountingPeriod);
     public int insertFinAccountingPeriod(FinAccountingPeriod finAccountingPeriod);

@@ -63,47 +63,60 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		select d.dept_id
 		from sys_dept d
             left join sys_role_dept rd on d.dept_id = rd.dept_id
-        where rd.role_id = #{roleId}
+        <where>rd.role_id = #{roleId}
             <if test="deptCheckStrictly">
               and d.dept_id not in (select d.parent_id from sys_dept d inner join sys_role_dept rd on d.dept_id = rd.dept_id and rd.role_id = #{roleId})
             </if>
+        </where>
 		order by d.parent_id, d.order_num
 	</select>
     
     <select id="selectDeptById" parameterType="Long" resultMap="SysDeptResult">
 		<include refid="selectDeptVo"/>
-		where dept_id = #{deptId} and del_flag = '0'
+		<where>dept_id = #{deptId} and del_flag = '0'
+		</where>
 	</select>
 
 	<select id="selectDeptByIds" resultMap="SysDeptResult">
 		<include refid="selectDeptVo"/>
-		where del_flag = '0'
+		<where>del_flag = '0'
 		  and dept_id in
 		  <foreach collection="deptIds" item="item" open="(" separator="," close=")">
 			  #{item}
 		  </foreach>
+		</where>
 	</select>
 
     <select id="checkDeptExistUser" parameterType="Long" resultType="int">
-		select count(1) from sys_user where dept_id = #{deptId} and del_flag = '0'
+		select count(1) from sys_user
+		<where>dept_id = #{deptId} and del_flag = '0'
+		</where>
 	</select>
 	
 	<select id="hasChildByDeptId" parameterType="Long" resultType="int">
 		select count(1) from sys_dept
-		where del_flag = '0' and parent_id = #{deptId} limit 1
+		<where>del_flag = '0' and parent_id = #{deptId}
+		</where>
+		limit 1
 	</select>
 	
 	<select id="selectChildrenDeptById" parameterType="Long" resultMap="SysDeptResult">
-		select * from sys_dept where find_in_set(#{deptId}, ancestors)
+		select * from sys_dept
+		<where>find_in_set(#{deptId}, ancestors)
+		</where>
 	</select>
 	
 	<select id="selectNormalChildrenDeptById" parameterType="Long" resultType="int">
-		select count(*) from sys_dept where status = 0 and del_flag = '0' and find_in_set(#{deptId}, ancestors)
+		select count(*) from sys_dept
+		<where>status = 0 and del_flag = '0' and find_in_set(#{deptId}, ancestors)
+		</where>
 	</select>
 	
 	<select id="checkDeptNameUnique" resultMap="SysDeptResult">
 	    <include refid="selectDeptVo"/>
-		where dept_name=#{deptName} and parent_id = #{parentId} and del_flag = '0' limit 1
+		<where>dept_name=#{deptName} and parent_id = #{parentId} and del_flag = '0'
+		</where>
+		limit 1
 	</select>
     
     <insert id="insertDept" parameterType="SysDept">
@@ -218,30 +231,33 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	<select id="selectStoreGeoInBbox" resultMap="SysDeptResult">
 		select dept_id, dept_name, longitude, latitude
 		from sys_dept
-		where del_flag = '0' and dept_type = '1'
+		<where>del_flag = '0' and dept_type = '1'
 		  and longitude is not null and latitude is not null
 		  and longitude between #{minLng} and #{maxLng}
 		  and latitude between #{minLat} and #{maxLat}
+		</where>
 	</select>
 
 	<select id="selectStoreGeoAll" resultMap="SysDeptResult">
 		select dept_id, dept_name, parent_id, longitude, latitude, province_code, city_code, district_code, street_code, province_name, city_name, district_name, street_name, detail_address
 		from sys_dept
-		where del_flag = '0' and dept_type = '1'
+		<where>del_flag = '0' and dept_type = '1'
 		  and longitude is not null and latitude is not null
+		</where>
 	</select>
 
 	<select id="selectTopDeptGeoAll" resultMap="SysDeptResult">
 		select dept_id, dept_name, parent_id, longitude, latitude, province_code, city_code, district_code, street_code
 		from sys_dept
-		where del_flag = '0' and parent_id = 0
+		<where>del_flag = '0' and parent_id = 0
 		  and longitude is not null and latitude is not null
+		</where>
 	</select>
 
 	<select id="selectStoreGeoByRegion" parameterType="SysDept" resultMap="SysDeptResult">
 		select dept_id, dept_name, parent_id, longitude, latitude, province_code, city_code, district_code, street_code, province_name, city_name, district_name, street_name, detail_address
 		from sys_dept
-		where del_flag = '0' and dept_type = '1'
+		<where>del_flag = '0' and dept_type = '1'
 		  and longitude is not null and latitude is not null
 		<if test="provinceCode != null and provinceCode != ''">
 		  and province_code = #{provinceCode}
@@ -255,6 +271,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		<if test="streetCode != null and streetCode != ''">
 		  and street_code = #{streetCode}
 		</if>
+		</where>
 	</select>
 
 </mapper>

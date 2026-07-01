@@ -44,6 +44,14 @@ public interface SysUserMapper
     public SysUser selectUserByUserName(String userName);
 
     /**
+     * 批量按用户名查询用户信息
+     *
+     * @param userNames 用户名列表
+     * @return 用户对象列表
+     */
+    public List<SysUser> selectUsersByUserNames(String[] userNames);
+
+    /**
      * 通过手机号查询用户
      *
      * @param phonenumber 手机号

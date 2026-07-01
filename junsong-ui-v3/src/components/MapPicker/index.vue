@@ -70,6 +70,7 @@ const emit = defineEmits<{
     lng: number
     lat: number
     address: string
+    detail: string
     region?: {
       provinceName: string
       cityName: string
@@ -300,10 +301,32 @@ function onConfirm() {
       lng: pickedLng.value,
       lat: pickedLat.value,
       address: pickedAddress.value,
+      detail: buildDetailAddress(),
       region: pickedRegion.value,
     })
   }
   visible.value = false
+}
+
+function buildDetailAddress(): string {
+  const region = pickedRegion.value
+  let addr = pickedAddress.value || ''
+  if (!region) return addr
+  const parts = [
+    region.provinceName,
+    region.cityName && region.cityName !== region.provinceName ? region.cityName : '',
+    region.districtName,
+    region.townName,
+  ].filter(Boolean)
+  let result = addr
+  for (const p of parts) {
+    if (p && result.startsWith(p)) {
+      result = result.slice(p.length)
+    } else if (p) {
+      result = result.split(p).join('')
+    }
+  }
+  return result.trim()
 }
 
 function onClosed() {

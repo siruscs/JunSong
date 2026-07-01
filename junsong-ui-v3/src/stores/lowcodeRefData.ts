@@ -48,7 +48,7 @@ export const useLowcodeRefDataStore = defineStore('lowcodeRefData', () => {
     if (roleList.value.length > 0 || roleListLoading.value) return
     roleListLoading.value = true
     try {
-      const res: any = await listRole()
+      const res: any = await listRole({})
       roleList.value = res.rows || res.data || []
     } finally {
       roleListLoading.value = false

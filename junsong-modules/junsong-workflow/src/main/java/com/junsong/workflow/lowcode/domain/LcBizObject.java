@@ -19,6 +19,7 @@ public class LcBizObject extends BaseEntity
     private String statusField;
     private String workflowEnabled;
     private String processKey;
+    private String subProcessKey;   // 子流程(callActivity)流程定义Key，为空表示不调用子流程
     private String fulfillmentEnabled;
     private String menuParentPath;
     private String submitValidators;  // 提交前校验器配置(JSON数组)
@@ -135,6 +136,16 @@ public class LcBizObject extends BaseEntity
     public void setProcessKey(String processKey)
     {
         this.processKey = processKey;
+    }
+
+    public String getSubProcessKey()
+    {
+        return subProcessKey;
+    }
+
+    public void setSubProcessKey(String subProcessKey)
+    {
+        this.subProcessKey = subProcessKey;
     }
 
     public String getFulfillmentEnabled()

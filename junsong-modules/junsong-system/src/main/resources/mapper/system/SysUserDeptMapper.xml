@@ -36,13 +36,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     
     <select id="selectUserDeptByUserId" parameterType="Long" resultMap="SysUserDeptResult">
         <include refid="selectSysUserDeptVo"/>
-        where user_id = #{userId}
+        <where>
+            user_id = #{userId}
+        </where>
         order by create_time desc
     </select>
     
     <select id="selectUserDeptByUserIdAndDeptId" resultMap="SysUserDeptResult">
         <include refid="selectSysUserDeptVo"/>
-        where user_id = #{userId} and dept_id = #{deptId}
+        <where>
+            user_id = #{userId} and dept_id = #{deptId}
+        </where>
     </select>
         
     <insert id="insertSysUserDept" parameterType="SysUserDept" useGeneratedKeys="true" keyProperty="userDeptId">
@@ -100,7 +104,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </delete>
     
     <select id="countUserDeptById" resultType="Integer">
-        select count(1) from sys_user_dept where dept_id=#{deptId}  
+        select count(1) from sys_user_dept
+        <where>
+            dept_id=#{deptId}
+        </where>
     </select>
     
     <insert id="batchUserDept">
@@ -115,7 +122,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                u.nick_name
         from sys_user_dept ud
         left join sys_user u on ud.user_id = u.user_id
-        where ud.dept_id = #{deptId} and ud.status = '0'
+        <where>
+            ud.dept_id = #{deptId} and ud.status = '0'
+        </where>
         order by u.nick_name
     </select>
     

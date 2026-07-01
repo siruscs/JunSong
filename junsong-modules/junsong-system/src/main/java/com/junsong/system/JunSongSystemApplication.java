@@ -2,6 +2,7 @@ package com.junsong.system;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import com.junsong.common.security.annotation.EnableCustomConfig;
 import com.junsong.common.security.annotation.EnableRyFeignClients;
 
@@ -12,6 +13,7 @@ import com.junsong.common.security.annotation.EnableRyFeignClients;
  */
 @EnableCustomConfig
 @EnableRyFeignClients
+@EnableScheduling
 @SpringBootApplication
 public class JunSongSystemApplication
 {

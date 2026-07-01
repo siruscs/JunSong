@@ -15,6 +15,31 @@
         <el-form-item>
           <el-button type="primary" @click="getList">搜索</el-button>
           <el-button @click="resetQuery">重置</el-button>
+          <el-button :icon="Star" @click="openSaveQueryDialog">保存查询</el-button>
+          <el-select
+            v-model="selectedQueryName"
+            placeholder="常用查询"
+            clearable
+            style="width: 180px"
+            @change="applySavedQuery"
+          >
+            <el-option
+              v-for="q in savedQueries"
+              :key="q.name"
+              :label="q.name"
+              :value="q.name"
+            >
+              <span style="float: left">{{ q.name }}</span>
+              <el-button
+                style="float: right; margin-left: 12px"
+                link
+                type="danger"
+                size="small"
+                :icon="Delete"
+                @click.stop="deleteSavedQuery(q.name)"
+              />
+            </el-option>
+          </el-select>
         </el-form-item>
       </el-form>
 
@@ -91,7 +116,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Refresh } from '@element-plus/icons-vue'
+import { Plus, Refresh, Star, Delete } from '@element-plus/icons-vue'
 import RightToolbar from '@/components/RightToolbar/index.vue'
 import Pagination from '@/components/Pagination/index.vue'
 import FieldRenderer from './fields/FieldRenderer.vue'
@@ -131,6 +156,83 @@ const bizObject = ref<LcBizObject | null>(null)
 const allFields = ref<LcBizField[]>([])
 const queryParams = reactive<Record<string, any>>({ pageNum: 1, pageSize: 10 })
 const total = ref(0)
+
+// ===== 常用查询保存 =====
+interface SavedQuery {
+  name: string
+  params: Record<string, any>
+  savedAt: number
+}
+const savedQueries = ref<SavedQuery[]>([])
+const selectedQueryName = ref<string>('')
+
+function savedQueriesKey() {
+  return bizCode.value + '_savedQueries'
+}
+
+function loadSavedQueries() {
+  if (!bizCode.value) {
+    savedQueries.value = []
+    selectedQueryName.value = ''
+    return
+  }
+  try {
+    const raw = localStorage.getItem(savedQueriesKey())
+    savedQueries.value = raw ? JSON.parse(raw) : []
+  } catch {
+    savedQueries.value = []
+  }
+  selectedQueryName.value = ''
+}
+
+function persistSavedQueries() {
+  localStorage.setItem(savedQueriesKey(), JSON.stringify(savedQueries.value))
+}
+
+async function openSaveQueryDialog() {
+  const result = await ElMessageBox.prompt('请输入查询名称', '保存常用查询', {
+    confirmButtonText: '保存',
+    cancelButtonText: '取消',
+    inputPattern: /\S+/,
+    inputErrorMessage: '名称不能为空',
+  })
+  const name = result.value.trim()
+  const snapshot: Record<string, any> = {}
+  Object.keys(queryParams).forEach((k) => {
+    if (k !== 'pageNum' && k !== 'pageSize' && queryParams[k] !== '' && queryParams[k] != null) {
+      snapshot[k] = queryParams[k]
+    }
+  })
+  const item: SavedQuery = { name, params: snapshot, savedAt: Date.now() }
+  const idx = savedQueries.value.findIndex((q) => q.name === name)
+  if (idx >= 0) {
+    savedQueries.value[idx] = item
+  } else {
+    savedQueries.value.push(item)
+  }
+  persistSavedQueries()
+  selectedQueryName.value = name
+  ElMessage.success('查询已保存')
+}
+
+function applySavedQuery(name: string) {
+  if (!name) return
+  const q = savedQueries.value.find((s) => s.name === name)
+  if (!q) return
+  Object.keys(queryParams).forEach((k) => {
+    if (k !== 'pageNum' && k !== 'pageSize') delete queryParams[k]
+  })
+  Object.assign(queryParams, q.params)
+  queryParams.pageNum = 1
+  getList()
+}
+
+function deleteSavedQuery(name: string) {
+  savedQueries.value = savedQueries.value.filter((q) => q.name !== name)
+  persistSavedQueries()
+  if (selectedQueryName.value === name) selectedQueryName.value = ''
+  ElMessage.success('已删除查询')
+}
 
 const formDialog = reactive<{ visible: boolean; recordId: number | null }>({ visible: false, recordId: null })
 const detailDrawer = reactive<{ visible: boolean; recordId: number | null }>({ visible: false, recordId: null })
@@ -300,6 +402,7 @@ function goToWorkflow(processInstanceId?: string) {
 
 async function bootstrap() {
   if (!bizCode.value) return
+  loadSavedQueries()
   await loadMeta()
   await loadBizActions()
   await getList()

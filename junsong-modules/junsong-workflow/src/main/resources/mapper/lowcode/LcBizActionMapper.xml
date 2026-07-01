@@ -32,7 +32,9 @@
 
     <select id="selectByBizCode" parameterType="String" resultMap="LcBizActionResult">
         <include refid="selectLcBizActionVo"/>
-        where biz_code = #{bizCode} and del_flag = '0' and status = '0'
+        <where>
+            biz_code = #{bizCode} and del_flag = '0' and status = '0'
+        </where>
         order by sort_order asc, id asc
     </select>
 

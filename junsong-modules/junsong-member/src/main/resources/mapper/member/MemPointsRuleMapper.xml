@@ -47,19 +47,26 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="selectMemPointsRuleById" parameterType="Long" resultMap="MemPointsRuleResult">
         <include refid="selectMemPointsRuleVo"/>
-        where rule_id = #{ruleId} and del_flag = '0'
+        <where>
+            AND rule_id = #{ruleId} and del_flag = '0'
+        </where>
     </select>
 
     <select id="checkMemRuleCodeUnique" parameterType="com.junsong.member.domain.MemPointsRule" resultType="int">
-        select count(1) from mem_points_rule where rule_code = #{ruleCode} and del_flag = '0'
-        <if test="ruleId != null and ruleId != 0">
-            AND rule_id != #{ruleId}
-        </if>
+        select count(1) from mem_points_rule
+        <where>
+            AND rule_code = #{ruleCode} and del_flag = '0'
+            <if test="ruleId != null and ruleId != 0">
+                AND rule_id != #{ruleId}
+            </if>
+        </where>
     </select>
 
     <select id="selectEffectiveRule" resultMap="MemPointsRuleResult">
         <include refid="selectMemPointsRuleVo"/>
-        where status = '0' and del_flag = '0'
+        <where>
+            AND status = '0' and del_flag = '0'
+        </where>
         order by rule_id asc
         limit 1
     </select>

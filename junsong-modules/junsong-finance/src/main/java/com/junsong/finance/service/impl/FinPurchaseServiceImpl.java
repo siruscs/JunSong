@@ -3,8 +3,10 @@ package com.junsong.finance.service.impl;
 import java.math.BigDecimal;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.junsong.common.core.exception.ServiceException;
 import com.junsong.common.core.utils.StringUtils;
 import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.finance.domain.FinAccountingPeriod;
@@ -75,19 +77,41 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
     @Override
     public int insertFinPurchase(FinPurchase finPurchase)
     {
-        // 自动生成进货单号
+        // 自动生成进货单号（带重试机制防止并发重复）
         if (StringUtils.isEmpty(finPurchase.getPurchaseNo()))
         {
-            int todayCount = finPurchaseMapper.countTodayPurchases();
-            finPurchase.setPurchaseNo(CodeGenerator.generatePurchaseNo(todayCount));
+            int retryCount = 0;
+            int maxRetries = 3;
+            while (retryCount < maxRetries)
+            {
+                try
+                {
+                    int todayCount = finPurchaseMapper.countTodayPurchases();
+                    finPurchase.setPurchaseNo(CodeGenerator.generatePurchaseNo(todayCount + retryCount));
+                    return doInsertFinPurchase(finPurchase);
+                }
+                catch (DuplicateKeyException e)
+                {
+                    retryCount++;
+                    if (retryCount >= maxRetries)
+                    {
+                        throw new ServiceException("进货单号生成失败，请稍后重试");
+                    }
+                }
+            }
         }
+        return doInsertFinPurchase(finPurchase);
+    }
+
+    private int doInsertFinPurchase(FinPurchase finPurchase)
+    {
         finPurchase.setDeptId(SecurityUtils.getDeptId());
         fillCurrentPeriod(finPurchase);
         finAccountingPeriodService.assertPeriodEditable(finPurchase.getPeriodId());
-        
+
         // 计算总金额和总数量（处理赠品）
         calculatePurchaseAmountAndQuantity(finPurchase);
-        
+
         int rows = finPurchaseMapper.insertFinPurchase(finPurchase);
         insertFinPurchaseDetail(finPurchase);
         refreshPeriodStatsIfNeeded(finPurchase);

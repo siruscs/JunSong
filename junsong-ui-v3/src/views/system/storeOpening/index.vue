@@ -116,6 +116,7 @@
           </template>
         </el-table-column>
       </el-table>
+      <Pagination v-show="total > 0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
     </el-card>
 
     <el-dialog v-model="formDialog.visible" :title="formDialog.title" width="960px" destroy-on-close>
@@ -282,6 +283,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
 import RightToolbar from '@/components/RightToolbar/index.vue'
+import Pagination from '@/components/Pagination/index.vue'
 import { resetForm as resetFormUtil, parseTime } from '@/utils/junsong'
 import {
   addStoreOpening,
@@ -304,6 +306,7 @@ const showSearch = ref(true)
 const queryFormRef = ref()
 const formRef = ref()
 const rows = ref<StoreOpeningFormData[]>([])
+const total = ref(0)
 
 const statusOptions = [
   { label: '草稿', value: 'DRAFT', type: 'info' },
@@ -315,6 +318,8 @@ const statusOptions = [
 ]
 
 const queryParams = reactive({
+  pageNum: 1,
+  pageSize: 10,
   orderNo: '',
   storeName: '',
   regionName: '',
@@ -456,18 +461,22 @@ async function getList() {
   loading.value = true
   try {
     const res: any = await listStoreOpening({
+      pageNum: queryParams.pageNum,
+      pageSize: queryParams.pageSize,
       orderNo: queryParams.orderNo || undefined,
       storeName: queryParams.storeName || undefined,
       regionName: queryParams.regionName || undefined,
       workflowStatus: queryParams.workflowStatus || undefined,
     })
     rows.value = res.rows || []
+    total.value = res.total || 0
   } finally {
     loading.value = false
   }
 }
 
 function resetQuery() {
+  queryParams.pageNum = 1
   queryParams.orderNo = ''
   queryParams.storeName = ''
   queryParams.regionName = ''

@@ -89,6 +89,7 @@ public class GenController extends BaseController
     /**
      * 查询数据表字段列表
      */
+    @RequiresPermissions("gen:table:list")
     @GetMapping(value = "/column/{tableId}")
     public TableDataInfo columnList(Long tableId)
     {

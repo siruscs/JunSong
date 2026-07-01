@@ -1,0 +1,423 @@
+openapi: 3.1.0
+info:
+  description: 开放平台应用管理与API Key服务接口
+  title: 开放平台接口文档
+  version: 1.0.0
+servers:
+- url: http://localhost:8080/junsong-open
+security:
+- apikey: []
+paths:
+  /app:
+    post:
+      operationId: add
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpenApp"
+        required: true
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AjaxResult"
+          description: OK
+      tags:
+      - open-app-controller
+    put:
+      operationId: edit
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpenApp"
+        required: true
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AjaxResult"
+          description: OK
+      tags:
+      - open-app-controller
+  /app/reject/{appId}:
+    put:
+      operationId: reject
+      parameters:
+      - explode: false
+        in: path
+        name: appId
+        required: true
+        schema:
+          format: int64
+          type: integer
+        style: simple
+      - explode: true
+        in: query
+        name: rejectReason
+        required: true
+        schema:
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AjaxResult"
+          description: OK
+      tags:
+      - open-app-controller
+  /app/keys/changeStatus:
+    put:
+      operationId: changeKeyStatus
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpenAppSecret"
+        required: true
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AjaxResult"
+          description: OK
+      tags:
+      - open-app-controller
+  /app/approve/{appId}:
+    put:
+      operationId: approve
+      parameters:
+      - explode: false
+        in: path
+        name: appId
+        required: true
+        schema:
+          format: int64
+          type: integer
+        style: simple
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AjaxResult"
+          description: OK
+      tags:
+      - open-app-controller
+  /app/export:
+    post:
+      operationId: export
+      parameters:
+      - explode: true
+        in: query
+        name: openApp
+        required: true
+        schema:
+          $ref: "#/components/schemas/OpenApp"
+        style: form
+      responses:
+        "200":
+          description: OK
+      tags:
+      - open-app-controller
+  /internal/secret/byKey/{appKey}:
+    get:
+      operationId: getByAppKey
+      parameters:
+      - explode: false
+        in: path
+        name: appKey
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AjaxResult"
+          description: OK
+      tags:
+      - open-internal-controller
+  /app/{id}:
+    get:
+      operationId: getInfo
+      parameters:
+      - explode: false
+        in: path
+        name: id
+        required: true
+        schema:
+          format: int64
+          type: integer
+        style: simple
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AjaxResult"
+          description: OK
+      tags:
+      - open-app-controller
+  /app/list:
+    get:
+      operationId: list
+      parameters:
+      - explode: true
+        in: query
+        name: openApp
+        required: true
+        schema:
+          $ref: "#/components/schemas/OpenApp"
+        style: form
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TableDataInfo"
+          description: OK
+      tags:
+      - open-app-controller
+  /app/keys/{appId}:
+    get:
+      operationId: listKeys
+      parameters:
+      - explode: false
+        in: path
+        name: appId
+        required: true
+        schema:
+          format: int64
+          type: integer
+        style: simple
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AjaxResult"
+          description: OK
+      tags:
+      - open-app-controller
+  /app/keys/list:
+    get:
+      operationId: listAllKeys
+      parameters:
+      - explode: true
+        in: query
+        name: openAppSecret
+        required: true
+        schema:
+          $ref: "#/components/schemas/OpenAppSecret"
+        style: form
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TableDataInfo"
+          description: OK
+      tags:
+      - open-app-controller
+  /app/{ids}:
+    delete:
+      operationId: remove
+      parameters:
+      - explode: false
+        in: path
+        name: ids
+        required: true
+        schema:
+          items:
+            format: int64
+            type: integer
+          type: array
+          default: null
+        style: simple
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AjaxResult"
+          description: OK
+      tags:
+      - open-app-controller
+components:
+  schemas:
+    OpenApp:
+      example:
+        createBy: createBy
+        createTime: 2000-01-23T04:56:07.000+00:00
+        updateBy: updateBy
+        updateTime: 2000-01-23T04:56:07.000+00:00
+        remark: remark
+        tenantId: 0
+        params:
+          key: ""
+        id: 6
+        appName: appName
+        appType: appType
+        description: description
+        websiteUrl: websiteUrl
+        callbackUrl: callbackUrl
+        contactName: contactName
+        contactPhone: contactPhone
+        contactEmail: contactEmail
+        status: status
+        rejectReason: rejectReason
+        delFlag: delFlag
+      properties:
+        createBy:
+          type: string
+        createTime:
+          format: date-time
+          type: string
+        updateBy:
+          type: string
+        updateTime:
+          format: date-time
+          type: string
+        remark:
+          type: string
+        tenantId:
+          format: int64
+          type: integer
+        params:
+          additionalProperties: {}
+        id:
+          format: int64
+          type: integer
+        appName:
+          type: string
+        appType:
+          type: string
+        description:
+          type: string
+        websiteUrl:
+          type: string
+        callbackUrl:
+          type: string
+        contactName:
+          type: string
+        contactPhone:
+          type: string
+        contactEmail:
+          type: string
+        status:
+          type: string
+        rejectReason:
+          type: string
+        delFlag:
+          type: string
+    AjaxResult:
+      additionalProperties: {}
+      example:
+        error: true
+        success: true
+        warn: true
+        empty: true
+      properties:
+        error:
+          type: boolean
+        success:
+          type: boolean
+        warn:
+          type: boolean
+        empty:
+          type: boolean
+    OpenAppSecret:
+      example:
+        createBy: createBy
+        createTime: 2000-01-23T04:56:07.000+00:00
+        updateBy: updateBy
+        updateTime: 2000-01-23T04:56:07.000+00:00
+        remark: remark
+        tenantId: 0
+        params:
+          key: ""
+        id: 6
+        appId: 1
+        appKey: appKey
+        appSecret: appSecret
+        keyType: keyType
+        status: status
+        dailyQuota: 5
+        expireTime: 2000-01-23T04:56:07.000+00:00
+        delFlag: delFlag
+      properties:
+        createBy:
+          type: string
+        createTime:
+          format: date-time
+          type: string
+        updateBy:
+          type: string
+        updateTime:
+          format: date-time
+          type: string
+        remark:
+          type: string
+        tenantId:
+          format: int64
+          type: integer
+        params:
+          additionalProperties: {}
+        id:
+          format: int64
+          type: integer
+        appId:
+          format: int64
+          type: integer
+        appKey:
+          type: string
+        appSecret:
+          type: string
+        keyType:
+          type: string
+        status:
+          type: string
+        dailyQuota:
+          format: int32
+          type: integer
+        expireTime:
+          format: date-time
+          type: string
+        delFlag:
+          type: string
+    TableDataInfo:
+      example:
+        total: 0
+        rows:
+        - ""
+        - ""
+        code: 6
+        msg: msg
+      properties:
+        total:
+          format: int64
+          type: integer
+        rows:
+          items: {}
+          type: array
+          default: null
+        code:
+          format: int32
+          type: integer
+        msg:
+          type: string
+  securitySchemes:
+    apikey:
+      in: header
+      name: Authorization
+      scheme: Bearer
+      type: apiKey

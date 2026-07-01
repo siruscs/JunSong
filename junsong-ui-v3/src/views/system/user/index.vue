@@ -279,8 +279,8 @@ import {
   changeUserStatus,
   switchDept,
   getUserDeptByUserId,
+  updateAuthRole,
 } from '@/api/system/user'
-import { authUser } from '@/api/system/role'
 import { listRole } from '@/api/system/role'
 import { listPost, postOptionSelect } from '@/api/system/post'
 
@@ -614,7 +614,7 @@ function submitResetPwd() {
   ;(resetPwdFormRef.value as any).validate((valid: boolean) => {
     if (valid) {
       resetUserPwd(resetPwdForm.userId, resetPwdForm.newPassword).then(() => {
-        ElMessage.success('修改成功，新密码是：' + resetPwdForm.newPassword)
+        ElMessage.success('密码重置成功')
         resetPwdDialog.visible = false
       })
     }
@@ -643,7 +643,7 @@ function handleAuthRole(row: any) {
 }
 
 function submitAuthRole() {
-  authUser(form.userId, roleIds.value.join(',')).then(() => {
+  updateAuthRole({ userId: form.userId, roleIds: roleIds.value.join(',') }).then(() => {
     ElMessage.success('分配成功')
     authRoleDialog.visible = false
     getList()

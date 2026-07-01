@@ -4,10 +4,6 @@ export function listUserDept(query: any) {
   return request({ url: '/system/userDept/list', method: 'get', params: query })
 }
 
-export function getDeptsByUserId(userId: number) {
-  return request({ url: '/system/userDept/user/' + userId, method: 'get' })
-}
-
 export function getUserDept(userDeptId: number) {
   return request({ url: '/system/userDept/' + userDeptId, method: 'get' })
 }

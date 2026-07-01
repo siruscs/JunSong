@@ -1,0 +1,161 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: junsong-mysql
+  namespace: junsong
+spec:
+  serviceName: junsong-mysql
+  replicas: 1
+  selector:
+    matchLabels:
+      app: junsong-mysql
+  template:
+    metadata:
+      labels:
+        app: junsong-mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:9.2
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: junsong-secrets
+                  key: MYSQL_ROOT_PASSWORD
+          volumeMounts:
+            - name: mysql-data
+              mountPath: /var/lib/mysql
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+  volumeClaimTemplates:
+    - metadata:
+        name: mysql-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: junsong-mysql
+  namespace: junsong
+spec:
+  selector:
+    app: junsong-mysql
+  ports:
+    - port: 3306
+      targetPort: 3306
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: junsong-redis
+  namespace: junsong
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: junsong-redis
+  template:
+    metadata:
+      labels:
+        app: junsong-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: junsong-redis
+  namespace: junsong
+spec:
+  selector:
+    app: junsong-redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: junsong-nacos
+  namespace: junsong
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: junsong-nacos
+  template:
+    metadata:
+      labels:
+        app: junsong-nacos
+    spec:
+      containers:
+        - name: nacos
+          image: nacos/nacos-server:v3.0.2
+          ports:
+            - containerPort: 8848
+          env:
+            - name: MODE
+              value: "standalone"
+            - name: SPRING_DATASOURCE_PLATFORM
+              value: "mysql"
+            - name: MYSQL_SERVICE_HOST
+              value: "junsong-mysql"
+            - name: MYSQL_SERVICE_PORT
+              value: "3306"
+            - name: MYSQL_SERVICE_DB_NAME
+              value: "junsong-config"
+            - name: MYSQL_SERVICE_USER
+              value: "root"
+            - name: MYSQL_SERVICE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: junsong-secrets
+                  key: MYSQL_PASSWORD
+            - name: NACOS_AUTH_ENABLE
+              value: "false"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: junsong-nacos
+  namespace: junsong
+spec:
+  selector:
+    app: junsong-nacos
+  ports:
+    - name: http
+      port: 8848
+      targetPort: 8848
+    - name: grpc
+      port: 9848
+      targetPort: 9848

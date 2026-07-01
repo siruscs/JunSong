@@ -1,6 +1,6 @@
 <template>
   <!-- 条件不可见时完全移除 -->
-  <div v-show="isVisible">
+  <div v-show="isVisible" class="lc-field-root">
 
   <!-- 只读展示模式（详情页） -->
   <template v-if="readonly">
@@ -185,22 +185,45 @@
     @update:model-value="onRegionChange"
   />
 
-  <!-- 完整地址：省市区 + 详细地址 -->
+  <!-- 完整地址：省市区 + 详细地址 + 地图选点 + 经纬度（可配置） -->
   <div v-else-if="field.fieldType === 'address'" class="lc-address">
     <el-cascader
       :model-value="addressRegionValue"
       :options="refDataStore.regionTree"
+      :props="{ checkStrictly: true }"
       clearable
       filterable
       style="width: 100%"
       @update:model-value="onAddressRegionChange"
     />
-    <el-input
-      :model-value="addressDetailValue"
-      placeholder="请输入详细地址"
-      style="margin-top: 8px"
-      @update:model-value="onAddressDetailChange"
-    />
+    <div class="lc-address-detail-row">
+      <el-input
+        :model-value="addressDetailValue"
+        placeholder="请输入详细地址"
+        class="lc-address-detail"
+        @update:model-value="onAddressDetailChange"
+      >
+        <template #append>
+          <el-button :icon="Location" @click="mapPickerVisible = true" title="地图选点" />
+        </template>
+      </el-input>
+    </div>
+    <div v-if="ext.showLngLat" class="lc-address-geo">
+      <el-input
+        :model-value="geoLngValue"
+        placeholder="经度"
+        @update:model-value="(v: string) => onGeoChange('longitude', v)"
+      >
+        <template #prepend>经度</template>
+      </el-input>
+      <el-input
+        :model-value="geoLatValue"
+        placeholder="纬度"
+        @update:model-value="(v: string) => onGeoChange('latitude', v)"
+      >
+        <template #prepend>纬度</template>
+      </el-input>
+    </div>
   </div>
 
   <!-- 经纬度坐标（阶段 2 简化为手动输入，地图选点属阶段 3 接入） -->
@@ -243,17 +266,37 @@
     :placeholder="placeholder"
   />
 
+  <!-- 子表单/明细表 -->
+  <SubformRenderer
+    v-else-if="field.fieldType === 'subform'"
+    v-model="proxyValue"
+    :sub-fields="ext.subFields || []"
+    :readonly="readonly"
+  />
+
   <!-- 兜底 -->
   <el-input v-else v-model="proxyValue" :placeholder="placeholder" clearable />
+
+  <!-- 地图选点弹窗（地址类型专用） -->
+  <MapPicker
+    v-if="field.fieldType === 'address'"
+    v-model="mapPickerVisible"
+    :initial-lng="props.modelValue?.longitude"
+    :initial-lat="props.modelValue?.latitude"
+    @confirm="onMapConfirm"
+  />
 
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { Location } from '@element-plus/icons-vue'
 import FileUpload from '@/components/FileUpload/index.vue'
 import ImageUpload from '@/components/ImageUpload/index.vue'
 import Editor from '@/components/Editor/index.vue'
+import SubformRenderer from './SubformRenderer.vue'
+import MapPicker from '@/components/MapPicker/index.vue'
 import { useDict } from '@/composables/useDict'
 import { listUser } from '@/api/system/user'
 import { useLowcodeRefDataStore } from '@/stores/lowcodeRefData'
@@ -424,6 +467,78 @@ function onAddressDetailChange(detail: string) {
   emit('update:modelValue', { ...(props.modelValue || {}), detail })
 }
 
+// ===== 地址地图选点 =====
+const mapPickerVisible = ref(false)
+
+function onMapConfirm(payload: { lng: number; lat: number; address: string; detail?: string; region?: any }) {
+  const region = payload.region
+  let regionCode: string[] = []
+  let province = ''
+  let city = ''
+  let district = ''
+  let township = ''
+  if (region && /^\d{6}$/.test(region.adcode)) {
+    province = region.provinceName || ''
+    city = region.cityName || province
+    district = region.districtName || ''
+    township = region.townName || ''
+    const provinceCode = region.adcode.substring(0, 2) + '0000'
+    const cityCode = region.adcode.substring(0, 4) + '00'
+    const districtCode = region.adcode
+    const pNode = findRegionNodeByCode(refDataStore.regionTree, provinceCode)
+    const cNode = pNode ? findRegionNodeByCode(pNode.children || [], cityCode) : null
+    const dNode = cNode ? findRegionNodeByCode(cNode.children || [], districtCode) : null
+    if (pNode) regionCode.push(pNode.value)
+    if (cNode) regionCode.push(cNode.value)
+    if (dNode) regionCode.push(dNode.value)
+    if (dNode && region.townName) {
+      const children = dNode.children || []
+      let sNode = null
+      if (/^\d{9,}$/.test(region.towncode || '')) {
+        const streetCode = (region.towncode || '').substring(0, 9)
+        sNode = findRegionNodeByCode(children, streetCode)
+      }
+      if (!sNode) {
+        const tn = region.townName.replace(/街道|镇|乡|社区|村$/g, '')
+        sNode = children.find((o: any) => {
+          const lbl = (o.label || '').replace(/街道|镇|乡|社区|村$/g, '')
+          return lbl === tn || (o.label || '').includes(region.townName) || region.townName.includes(o.label || '')
+        }) || null
+      }
+      if (sNode) regionCode.push(sNode.value)
+    }
+  } else if (region) {
+    province = region.provinceName || ''
+    city = region.cityName || province
+    district = region.districtName || ''
+    township = region.townName || ''
+  }
+  const detail = payload.detail != null && payload.detail !== '' ? payload.detail : payload.address
+  emit('update:modelValue', {
+    ...(props.modelValue || {}),
+    regionCode,
+    province,
+    city,
+    district,
+    township,
+    detail,
+    longitude: payload.lng,
+    latitude: payload.lat,
+  })
+}
+
+function findRegionNodeByCode(list: any[], code: string): any | null {
+  if (!list || !list.length || !code) return null
+  for (const node of list) {
+    if (node.value === code) return node
+    if (node.children && node.children.length) {
+      const found = findRegionNodeByCode(node.children, code)
+      if (found) return found
+    }
+  }
+  return null
+}
+
 const geoLngValue = computed(() => (props.modelValue?.longitude ?? '').toString())
 const geoLatValue = computed(() => (props.modelValue?.latitude ?? '').toString())
 function onGeoChange(key: 'longitude' | 'latitude', val: string) {
@@ -483,6 +598,9 @@ function formatDisplay(field: LcBizField, value: any, dicts: any[], refs: any[])
 </script>
 
 <style scoped>
+.lc-field-root {
+  width: 100%;
+}
 .lc-field-readonly {
   color: var(--el-text-color-primary);
   word-break: break-word;
@@ -493,6 +611,23 @@ function formatDisplay(field: LcBizField, value: any, dicts: any[], refs: any[])
   flex-direction: column;
   gap: 8px;
   width: 100%;
+}
+.lc-address-detail-row {
+  width: 100%;
+}
+.lc-address-detail {
+  width: 100%;
+}
+.lc-address-detail :deep(.el-input__wrapper) {
+  width: 100%;
+}
+.lc-address-geo {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+.lc-address-geo > .el-input {
+  flex: 1;
 }
 .lc-geo {
   flex-direction: row;

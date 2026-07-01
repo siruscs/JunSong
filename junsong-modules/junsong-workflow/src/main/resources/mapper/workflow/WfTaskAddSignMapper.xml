@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.workflow.mapper.WfTaskAddSignMapper">
+
+    <insert id="insert" parameterType="com.junsong.workflow.domain.WfTaskAddSign" useGeneratedKeys="true" keyProperty="id">
+        insert into wf_task_addsign (original_task_id, addsign_task_id, addsign_user, type, process_instance_id)
+        values (#{originalTaskId}, #{addsignTaskId}, #{addsignUser}, #{type}, #{processInstanceId})
+    </insert>
+
+    <select id="selectByAddSignTaskId" resultType="com.junsong.workflow.domain.WfTaskAddSign">
+        select id, original_task_id as originalTaskId, addsign_task_id as addsignTaskId, addsign_user as addsignUser, type, process_instance_id as processInstanceId, create_time as createTime, complete_time as completeTime
+        from wf_task_addsign
+        <where>
+            addsign_task_id = #{addSignTaskId}
+        </where>
+    </select>
+
+    <update id="updateCompleteTime">
+        update wf_task_addsign set complete_time = NOW() where id = #{id}
+    </update>
+
+</mapper>

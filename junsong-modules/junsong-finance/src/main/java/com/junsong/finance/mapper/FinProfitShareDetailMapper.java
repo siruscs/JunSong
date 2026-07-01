@@ -8,4 +8,6 @@ public interface FinProfitShareDetailMapper
     public List<FinProfitShareDetail> selectFinProfitShareDetailByShareId(Long shareId);
     public int insertFinProfitShareDetail(FinProfitShareDetail finProfitShareDetail);
     public int updateFinProfitShareDetail(FinProfitShareDetail finProfitShareDetail);
+
+    java.math.BigDecimal selectDetailSumByShareId(Long shareId);
 }

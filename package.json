@@ -4,7 +4,13 @@
   "description": "JunSong-Cloud 峻松云：面向连锁门店运营的分布式微服务管理平台，基于 Spring Cloud Alibaba 与 Vue3。",
   "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "admin:health": "node scripts/admin-health.mjs",
+    "admin:health:dev": "node scripts/admin-health.mjs --dev",
+    "admin:health:json": "node scripts/admin-health.mjs --json",
+    "admin:health:dev:json": "node scripts/admin-health.mjs --dev --json",
+    "admin:health:p0": "node scripts/backend-permission-health.mjs --targeted",
+    "three-modules:regression": "node scripts/three-module-regression.mjs"
   },
   "repository": {
     "type": "git",
@@ -21,6 +27,11 @@
   "license": "MIT",
   "type": "commonjs",
   "dependencies": {
+    "@stomp/stompjs": "^7.3.0",
+    "sockjs-client": "^1.6.1",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/sockjs-client": "^1.5.4"
   }
 }

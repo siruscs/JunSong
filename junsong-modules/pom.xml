@@ -16,6 +16,7 @@
         <module>junsong-finance</module>
         <module>junsong-member</module>
         <module>junsong-workflow</module>
+        <module>junsong-open</module>
     </modules>
 
     <artifactId>junsong-modules</artifactId>

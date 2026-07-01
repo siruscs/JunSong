@@ -47,63 +47,61 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="checkAccountingNoUnique" parameterType="String" resultMap="FinCostAccountingResult">
         <include refid="selectFinCostAccountingVo"/>
-        where c.accounting_no = #{accountingNo} and c.del_flag = '0' limit 1
+        where c.accounting_no = #{accountingNo} and c.del_flag = '0'
+        limit 1
     </select>
 
     <select id="countTodayAccountings" resultType="int">
-        select count(*) from fin_cost_accounting where date(create_time) = curdate()
+        select count(*) from fin_cost_accounting
+        <where> date(create_time) = curdate()
+        and del_flag = '0'
+        </where>
     </select>
 
     <select id="sumTotalExpenseAmount" resultType="java.math.BigDecimal">
-        select ifnull(sum(expense_amount), 0) from fin_expense where del_flag = '0'
+        select ifnull(sum(total_expense), 0) from fin_cost_accounting where del_flag = '0'
     </select>
 
     <select id="sumTotalPurchaseAmount" resultType="java.math.BigDecimal">
-        select ifnull(sum(total_amount), 0) from fin_purchase where del_flag = '0'
+        select ifnull(sum(total_purchase), 0) from fin_cost_accounting where del_flag = '0'
     </select>
 
     <select id="sumTotalSaleAmount" resultType="java.math.BigDecimal">
-        select ifnull(sum(sale_amount), 0) from fin_sale_record where del_flag = '0'
+        select ifnull(sum(total_sale), 0) from fin_cost_accounting where del_flag = '0'
     </select>
 
     <select id="sumTotalPaymentAmount" resultType="java.math.BigDecimal">
-        select ifnull(sum(payment_amount), 0) from fin_sale_payment where del_flag = '0'
+        select ifnull(sum(total_payment), 0) from fin_cost_accounting where del_flag = '0'
     </select>
 
     <select id="sumTotalInvestAmount" resultType="java.math.BigDecimal">
         select ifnull(sum(invest_amount), 0)
         from fin_invest_record
-        where del_flag = '0'
     </select>
 
     <select id="sumCurrentAdvance" resultType="java.math.BigDecimal">
-        select ifnull(sum(advance_amount), 0) from fin_advance where status = '0' and del_flag = '0'
+        select ifnull(sum(current_advance), 0) from fin_cost_accounting where del_flag = '0'
     </select>
 
     <select id="sumExpenseAmountByDateRange" resultType="java.math.BigDecimal">
         select ifnull(sum(expense_amount), 0) from fin_expense
-        where del_flag = '0' and expense_date between #{startDate} and concat(#{endDate}, ' 23:59:59')
     </select>
 
     <select id="sumPurchaseAmountByDateRange" resultType="java.math.BigDecimal">
         select ifnull(sum(total_amount), 0) from fin_purchase
-        where del_flag = '0' and purchase_date between #{startDate} and concat(#{endDate}, ' 23:59:59')
     </select>
 
     <select id="sumSaleAmountByDateRange" resultType="java.math.BigDecimal">
         select ifnull(sum(sale_amount), 0) from fin_sale_record
-        where del_flag = '0' and sale_date between #{startDate} and concat(#{endDate}, ' 23:59:59')
     </select>
 
     <select id="sumPaymentAmountByDateRange" resultType="java.math.BigDecimal">
         select ifnull(sum(payment_amount), 0) from fin_sale_payment
-        where del_flag = '0' and payment_date between #{startDate} and concat(#{endDate}, ' 23:59:59')
     </select>
 
     <select id="sumInvestAmountByDateRange" resultType="java.math.BigDecimal">
         select ifnull(sum(invest_amount), 0)
         from fin_invest_record
-        where del_flag = '0' and invest_time between #{startDate} and concat(#{endDate}, ' 23:59:59')
     </select>
 
     <insert id="insertFinCostAccounting" parameterType="FinCostAccounting" useGeneratedKeys="true" keyProperty="accountingId">
@@ -176,8 +174,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="countUnverifiedExpense" resultType="int">
         select count(*) from fin_expense
-        where status = '0' and del_flag = '0'
+        <where> status = '0' and del_flag = '0'
         <if test="deptId != null"> and dept_id = #{deptId}</if>
+        </where>
     </select>
 
     <delete id="deleteFinCostAccountingByAccountingId" parameterType="Long">

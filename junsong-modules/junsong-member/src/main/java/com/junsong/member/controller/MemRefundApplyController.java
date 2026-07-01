@@ -42,6 +42,7 @@ public class MemRefundApplyController extends BaseController
         return success(refundApplyService.selectMemRefundApplyById(id));
     }
 
+    @RequiresPermissions("member:refund:query")
     @GetMapping("/no/{refundNo}")
     public AjaxResult getByRefundNo(@PathVariable("refundNo") String refundNo)
     {

@@ -33,6 +33,16 @@ public interface IMemPointsExchangeService {
     public int insertMemPointsExchange(MemPointsExchange memPointsExchange);
 
     /**
+     * 积分兑换：在同一事务内完成兑换单插入和积分扣减记录创建。
+     * 任何一步失败则整体回滚。
+     *
+     * @param exchange 兑换参数（memberId、pointsDeducted等必须已设置）
+     * @param operator 操作人用户名
+     * @throws IllegalArgumentException 余额不足、编号重复等
+     */
+    public void exchangePoints(MemPointsExchange exchange, String operator);
+
+    /**
      * 修改积分兑换
      *
      * @param memPointsExchange 积分兑换

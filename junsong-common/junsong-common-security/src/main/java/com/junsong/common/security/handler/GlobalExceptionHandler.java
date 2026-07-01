@@ -50,7 +50,7 @@ public class GlobalExceptionHandler
     {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',权限码校验失败'{}'", requestURI, e.getMessage());
-        return wrapTraceId(AjaxResult.error(HttpStatus.FORBIDDEN, "没有访问权限，请联系管理员授权"));
+        return wrapTraceId(AjaxResult.error(HttpStatus.FORBIDDEN, "当前操作没有权限，缺少权限码[" + e.getMessage() + "]，请联系管理员授权"));
     }
 
     /**

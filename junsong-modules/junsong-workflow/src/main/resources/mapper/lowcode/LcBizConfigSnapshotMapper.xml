@@ -23,7 +23,9 @@
         SELECT id, biz_code, version_no, config_json, status, publish_remark,
                del_flag, create_by, create_time, update_by, update_time, remark
         FROM lc_biz_config_snapshot
-        WHERE biz_code = #{bizCode} AND del_flag = '0'
+        <where>
+            biz_code = #{bizCode} AND del_flag = '0'
+        </where>
         ORDER BY version_no DESC
     </select>
 
@@ -31,12 +33,16 @@
         SELECT id, biz_code, version_no, config_json, status, publish_remark,
                del_flag, create_by, create_time, update_by, update_time, remark
         FROM lc_biz_config_snapshot
-        WHERE biz_code = #{bizCode} AND version_no = #{versionNo} AND del_flag = '0'
+        <where>
+            biz_code = #{bizCode} AND version_no = #{versionNo} AND del_flag = '0'
+        </where>
     </select>
 
     <select id="selectMaxVersionByBizCode" resultType="java.lang.Integer">
         SELECT COALESCE(MAX(version_no), 0) FROM lc_biz_config_snapshot
-        WHERE biz_code = #{bizCode} AND del_flag = '0'
+        <where>
+            biz_code = #{bizCode} AND del_flag = '0'
+        </where>
     </select>
 
     <insert id="insertSnapshot" parameterType="com.junsong.workflow.lowcode.domain.LcBizConfigSnapshot" useGeneratedKeys="true" keyProperty="id">

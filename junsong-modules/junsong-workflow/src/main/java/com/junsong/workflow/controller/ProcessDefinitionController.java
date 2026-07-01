@@ -1,8 +1,10 @@
 package com.junsong.workflow.controller;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.junsong.common.core.domain.R;
+import com.junsong.common.core.exception.ServiceException;
 import com.junsong.workflow.controller.dto.definition.DefinitionSummaryResp;
 import com.junsong.workflow.controller.dto.definition.DefinitionXmlResp;
 import com.junsong.workflow.controller.dto.definition.DeployDefinitionReq;
@@ -10,6 +12,10 @@ import com.junsong.workflow.controller.dto.definition.DeployDefinitionResp;
 import com.junsong.workflow.controller.dto.definition.ValidateDefinitionReq;
 import com.junsong.workflow.controller.dto.definition.ValidateDefinitionResp;
 import com.junsong.workflow.service.definition.WorkflowDefinitionService;
+import org.flowable.engine.ProcessEngine;
+import org.flowable.engine.runtime.ProcessInstance;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,10 +31,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProcessDefinitionController
 {
     private final WorkflowDefinitionService workflowDefinitionService;
+    private final ProcessEngine processEngine;
 
-    public ProcessDefinitionController(WorkflowDefinitionService workflowDefinitionService)
+    public ProcessDefinitionController(WorkflowDefinitionService workflowDefinitionService,
+                                       ProcessEngine processEngine)
     {
         this.workflowDefinitionService = workflowDefinitionService;
+        this.processEngine = processEngine;
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:definition:list')")
@@ -54,6 +63,35 @@ public class ProcessDefinitionController
     public R<DefinitionSummaryResp> detail(@PathVariable("id") String id)
     {
         return R.ok(workflowDefinitionService.detail(id));
+    }
+
+    @PreAuthorize("@ss.hasPermi('workflow:definition:list')")
+    @GetMapping("/{id}/diagram")
+    public ResponseEntity<byte[]> diagram(@PathVariable("id") String id)
+    {
+        try
+        {
+            // 高亮当前活动节点：查询该定义下所有运行中实例的当前活动节点
+            List<String> highLightedActivities = new ArrayList<>();
+            List<ProcessInstance> instances = processEngine.getRuntimeService()
+                    .createProcessInstanceQuery()
+                    .processDefinitionId(id)
+                    .list();
+            for (ProcessInstance instance : instances)
+            {
+                highLightedActivities.addAll(
+                        processEngine.getRuntimeService().getActiveActivityIds(instance.getId()));
+            }
+            byte[] bytes = workflowDefinitionService.generateDiagram(id, highLightedActivities, List.of());
+            return ResponseEntity.ok()
+                    .contentType(MediaType.IMAGE_PNG)
+                    .body(bytes);
+        }
+        catch (ServiceException exception)
+        {
+            // 流程图无法生成（无图形信息）时返回 404
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:definition:export')")

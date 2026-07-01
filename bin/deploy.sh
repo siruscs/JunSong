@@ -42,11 +42,12 @@ cp junsong-modules/junsong-job/target/junsong-modules-job.jar docker/junsong/mod
 cp junsong-modules/junsong-file/target/junsong-modules-file.jar docker/junsong/modules/file/jar/junsong-modules-file.jar
 cp junsong-modules/junsong-member/target/junsong-modules-member.jar docker/junsong/modules/member/jar/junsong-modules-member.jar
 cp junsong-modules/junsong-finance/target/junsong-modules-finance.jar docker/junsong/modules/finance/jar/junsong-modules-finance.jar
+cp junsong-modules/junsong-workflow/target/junsong-modules-workflow.jar docker/junsong/modules/workflow/jar/junsong-modules-workflow.jar
 echo "✓ JAR包复制成功"
 
 echo ""
 echo "[3/5] 编译前端代码..."
-cd junsong-ui
+cd junsong-ui-v3
 
 if [ ! -d "node_modules" ]; then
     echo "安装前端依赖..."
@@ -65,7 +66,7 @@ fi
 echo ""
 echo "[4/5] 复制前端文件到Docker目录..."
 cd ..
-cp -r junsong-ui/dist/* docker/nginx/html/dist/
+cp -r junsong-ui-v3/dist/* docker/nginx/html/dist/
 echo "✓ 前端文件复制成功（volume挂载目录，无需重启nginx）"
 
 echo ""
@@ -87,6 +88,8 @@ SERVICES=(
     ["junsong-modules-file"]="/home/junsong/junsong-modules-file.jar docker/junsong/modules/file/jar/junsong-modules-file.jar"
     ["junsong-modules-member"]="/home/junsong/junsong-modules-member.jar docker/junsong/modules/member/jar/junsong-modules-member.jar"
     ["junsong-modules-finance"]="/home/junsong/junsong-modules-finance.jar docker/junsong/modules/finance/jar/junsong-modules-finance.jar"
+    ["junsong-modules-workflow"]="/home/junsong/junsong-modules-workflow.jar docker/junsong/modules/workflow/jar/junsong-modules-workflow.jar"
+    ["junsong-modules-open"]="/home/junsong/junsong-modules-open.jar docker/junsong/modules/open/jar/junsong-modules-open.jar"
 )
 
 NEED_COMPOSE_UP=false
@@ -143,8 +146,10 @@ echo "  junsong-modules-system - 系统模块 [9201]"
 echo "  junsong-modules-gen    - 代码生成 [9202]"
 echo "  junsong-modules-job    - 定时任务 [9203]"
 echo "  junsong-modules-file   - 文件服务 [9300]"
-echo "  junsong-modules-member - 会员模块 [9204]"
+echo "  junsong-modules-member - 会员模块 [9206]"
 echo "  junsong-modules-finance - 财务模块 [9205]"
+echo "  junsong-modules-workflow - 工作流模块 [9207]"
+echo "  junsong-modules-open   - 开放平台模块 [9208]"
 echo ""
 echo "查看完整日志："
 echo "  docker compose logs -f"

@@ -1,5 +1,6 @@
 package com.junsong.system.controller;
 
+import java.util.ArrayList;
 import java.util.List;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,7 @@ import com.junsong.common.security.annotation.RequiresPermissions;
 import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.system.domain.SysConfig;
 import com.junsong.system.service.ISysConfigService;
+import com.junsong.system.service.impl.SysConfigServiceImpl;
 
 /**
  * 参数配置 信息操作处理
@@ -44,7 +46,23 @@ public class SysConfigController extends BaseController
     {
         startPage();
         List<SysConfig> list = configService.selectConfigList(config);
-        return getDataTable(list);
+        List<SysConfig> masked = new ArrayList<>(list.size());
+        for (SysConfig c : list)
+        {
+            SysConfig copy = new SysConfig();
+            copy.setConfigId(c.getConfigId());
+            copy.setConfigName(c.getConfigName());
+            copy.setConfigKey(c.getConfigKey());
+            copy.setConfigType(c.getConfigType());
+            copy.setConfigValue(SysConfigServiceImpl.maskConfigValue(c.getConfigKey(), c.getConfigValue()));
+            copy.setCreateBy(c.getCreateBy());
+            copy.setCreateTime(c.getCreateTime());
+            copy.setUpdateBy(c.getUpdateBy());
+            copy.setUpdateTime(c.getUpdateTime());
+            copy.setRemark(c.getRemark());
+            masked.add(copy);
+        }
+        return getDataTable(masked);
     }
 
     @Log(title = "参数管理", businessType = BusinessType.EXPORT)
@@ -53,6 +71,10 @@ public class SysConfigController extends BaseController
     public void export(HttpServletResponse response, SysConfig config)
     {
         List<SysConfig> list = configService.selectConfigList(config);
+        for (SysConfig c : list)
+        {
+            c.setConfigValue(SysConfigServiceImpl.maskConfigValue(c.getConfigKey(), c.getConfigValue()));
+        }
         ExcelUtil<SysConfig> util = new ExcelUtil<SysConfig>(SysConfig.class);
         util.exportExcel(response, list, "参数数据");
     }
@@ -60,19 +82,27 @@ public class SysConfigController extends BaseController
     /**
      * 根据参数编号获取详细信息
      */
+    @RequiresPermissions("system:config:query")
     @GetMapping(value = "/{configId}")
     public AjaxResult getInfo(@PathVariable Long configId)
     {
-        return success(configService.selectConfigById(configId));
+        SysConfig config = configService.selectConfigById(configId);
+        if (config != null)
+        {
+            config.setConfigValue(SysConfigServiceImpl.maskConfigValue(config.getConfigKey(), config.getConfigValue()));
+        }
+        return success(config);
     }
 
     /**
      * 根据参数键名查询参数值
      */
+    @RequiresPermissions("system:config:query")
     @GetMapping(value = "/configKey/{configKey}")
     public AjaxResult getConfigKey(@PathVariable String configKey)
     {
-        return success(configService.selectConfigByKey(configKey));
+        String value = configService.selectConfigByKey(configKey);
+        return success(SysConfigServiceImpl.maskConfigValue(configKey, value));
     }
 
     /**

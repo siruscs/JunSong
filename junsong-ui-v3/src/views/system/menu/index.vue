@@ -213,14 +213,16 @@
 
     <!-- 图标选择弹窗 -->
     <el-dialog v-model="iconDialog.visible" title="图标选择" width="800px" append-to-body>
+      <el-input v-model="iconFilter" placeholder="搜索图标名称" clearable size="small" style="margin-bottom: 12px;" />
       <el-row>
-        <el-col :span="4" v-for="item in iconList" :key="item" style="text-align: center; margin-bottom: 20px">
+        <el-col :span="4" v-for="item in filteredIconList" :key="item" style="text-align: center; margin-bottom: 20px">
           <div class="icon-item" @click="selectedIcon(item)">
             <svg-icon :icon-class="item" />
             <span>{{ item }}</span>
           </div>
         </el-col>
       </el-row>
+      <el-empty v-if="filteredIconList.length === 0" description="未找到匹配图标" :image-size="60" />
     </el-dialog>
   </div>
 </template>
@@ -238,32 +240,13 @@ import { listMenu, getMenu, addMenu, updateMenu, delMenu, treeselect } from '@/a
 
 const dict = useDict('sys_normal_disable')
 
-const iconList = [
-  'lock',
-  'messages',
-  'setting',
-  'user',
-  'chart',
-  'tree-table',
-  'clipboard-list',
-  'shopping-card',
-  'icon',
-  'tree',
-  'star',
-  'edit',
-  'refresh',
-  'information',
-  'guide',
-  'eye-open',
-  'dashboard',
-  'exit-fullscreen',
-  'documentation',
-  'bug',
-  'date-range',
-  'theme',
-  '403',
-  '404',
-]
+const svgModules = import.meta.glob('@/assets/icons/svg/*.svg')
+const iconList = Object.keys(svgModules).map((path) => path.replace(/.*\/([^/]+)\.svg$/, '$1'))
+const iconFilter = ref('')
+const filteredIconList = computed(() => {
+  if (!iconFilter.value) return iconList
+  return iconList.filter((name) => name.includes(iconFilter.value))
+})
 
 const treeLoading = ref(false)
 const childrenLoading = ref(false)

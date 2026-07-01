@@ -38,6 +38,9 @@ public class BaseEntity implements Serializable
     /** 备注 */
     private String remark;
 
+    /** 租户ID（多租户模式启用后自动填充，默认1=单租户） */
+    private Long tenantId;
+
     /** 请求参数 */
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private Map<String, Object> params;
@@ -100,6 +103,16 @@ public class BaseEntity implements Serializable
     public void setRemark(String remark)
     {
         this.remark = remark;
+    }
+
+    public Long getTenantId()
+    {
+        return tenantId;
+    }
+
+    public void setTenantId(Long tenantId)
+    {
+        this.tenantId = tenantId;
     }
 
     public Map<String, Object> getParams()

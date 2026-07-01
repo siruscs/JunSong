@@ -23,7 +23,7 @@
     <div class="report-metrics">
       <div class="metric-card primary">
         <div class="metric-label">费用总额</div>
-        <div class="metric-value">¥{{ reportData.totalExpense || 0 }}</div>
+        <div class="metric-value">&yen;{{ reportData.totalExpense || 0 }}</div>
       </div>
     </div>
 
@@ -41,6 +41,60 @@
         <div ref="deptChart" class="chart-canvas"></div>
       </el-card>
     </div>
+
+    <!-- Expense Anomaly Analysis Section -->
+    <el-card class="section-card" style="margin-top: 16px;">
+      <template #header><span>费用异常分析</span></template>
+
+      <!-- Category Spikes -->
+      <div style="margin-bottom: 20px;">
+        <div style="font-weight: 600; color: #303133; margin-bottom: 10px;">分类异常波动</div>
+        <el-table :data="anomalyData.categorySpikes || []" stripe border style="width: 100%" empty-text="暂无异常数据">
+          <el-table-column prop="category" label="费用分类" min-width="120" />
+          <el-table-column prop="currentAmount" label="本期金额" min-width="120" />
+          <el-table-column prop="previousAmount" label="上期金额" min-width="120" />
+          <el-table-column prop="changeRate" label="变动率" width="120">
+            <template #default="scope">
+              <span :style="{ color: Number(scope.row.changeRate) > 0 ? '#F56C6C' : '#67C23A' }">
+                {{ scope.row.changeRate || 0 }}%
+              </span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <!-- Store Spikes -->
+      <div style="margin-bottom: 20px;">
+        <div style="font-weight: 600; color: #303133; margin-bottom: 10px;">门店异常波动</div>
+        <el-table :data="anomalyData.storeSpikes || []" stripe border style="width: 100%" empty-text="暂无异常数据">
+          <el-table-column prop="deptName" label="门店" min-width="120" />
+          <el-table-column prop="currentAmount" label="本期金额" min-width="120" />
+          <el-table-column prop="previousAmount" label="上期金额" min-width="120" />
+          <el-table-column prop="changeRate" label="变动率" width="120">
+            <template #default="scope">
+              <span :style="{ color: Number(scope.row.changeRate) > 0 ? '#F56C6C' : '#67C23A' }">
+                {{ scope.row.changeRate || 0 }}%
+              </span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <!-- Unverified List -->
+      <div>
+        <div style="font-weight: 600; color: #303133; margin-bottom: 10px;">未核销费用清单</div>
+        <el-table :data="anomalyData.unverifiedList || []" stripe border style="width: 100%" empty-text="暂无未核销费用">
+          <el-table-column prop="expenseNo" label="费用单号" min-width="140" />
+          <el-table-column prop="amount" label="金额" min-width="100" />
+          <el-table-column prop="deptName" label="门店" min-width="120" />
+          <el-table-column prop="status" label="状态" width="100">
+            <template #default="scope">
+              <el-tag type="warning" size="small">{{ scope.row.status || '待核销' }}</el-tag>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </el-card>
   </div>
 </template>
 
@@ -68,6 +122,11 @@ export default {
         categoryStats: [],
         trendStats: [],
         deptStats: []
+      },
+      anomalyData: {
+        categorySpikes: [],
+        storeSpikes: [],
+        unverifiedList: []
       },
       categoryChart: null,
       deptChart: null,
@@ -114,6 +173,16 @@ export default {
           this.initTrendChart();
         });
       });
+      // Fetch anomaly data
+      request({
+        url: "/finance/report/expense/anomalies",
+        method: "post",
+        data: this.queryParams
+      }).then(response => {
+        this.anomalyData = response.data || this.anomalyData;
+      }).catch(() => {
+        // keep defaults
+      });
     },
     resetQuery() {
       this.queryParams = {
@@ -133,6 +202,11 @@ export default {
         this.deptChart && this.deptChart.resize();
         this.trendChart && this.trendChart.resize();
       }, 200);
+    },
+    reRenderCharts() {
+      this.initCategoryChart();
+      this.initDeptChart();
+      this.initTrendChart();
     },
     getCssVar(name, fallback) {
       const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -173,70 +247,66 @@ export default {
         splitLine: { lineStyle: { color: "#edf0f5", type: "dashed" } }
       };
     },
-    getBarOptions(labels, values, horizontal = false) {
-      const data = values || [];
-      const categoryAxis = {
-        ...this.getAxisBase(),
+    getBarOptions(labels, values, horizontal) {
+      var h = horizontal || false;
+      var data = values || [];
+      var categoryAxis = Object.assign({}, this.getAxisBase(), {
         type: "category",
         data: labels,
-        axisLabel: { color: "#606266", interval: 0, rotate: horizontal ? 0 : 20 }
-      };
-      const valueAxis = {
-        ...this.getAxisBase(),
+        axisLabel: { color: "#606266", interval: 0, rotate: h ? 0 : 20 }
+      });
+      var valueAxis = Object.assign({}, this.getAxisBase(), {
         type: "value",
         splitLine: { lineStyle: { color: "#edf0f5", type: "dashed" } }
-      };
+      });
       return {
         color: this.getPalette(),
         tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-        grid: { left: 34, right: 22, top: 28, bottom: horizontal ? 24 : 58, containLabel: true },
+        grid: { left: 34, right: 22, top: 28, bottom: h ? 24 : 58, containLabel: true },
         graphic: this.getEmptyGraphic(data),
-        xAxis: horizontal ? valueAxis : categoryAxis,
-        yAxis: horizontal ? categoryAxis : valueAxis,
+        xAxis: h ? valueAxis : categoryAxis,
+        yAxis: h ? categoryAxis : valueAxis,
         series: [{
           type: "bar",
           barMaxWidth: 34,
-          data,
-          itemStyle: { color: this.getThemeColor(), borderRadius: horizontal ? [0, 6, 6, 0] : [6, 6, 0, 0] }
+          data: data,
+          itemStyle: { color: this.getThemeColor(), borderRadius: h ? [0, 6, 6, 0] : [6, 6, 0, 0] }
         }]
       };
     },
     getTrendLineOptions(data) {
-      const rows = data || [];
-      const labels = Array.from(new Set(rows.map(item => item.dateStr))).sort();
-      const deptMap = new Map();
-      rows.forEach(item => {
-        const deptKey = item.deptId || "unknown";
+      var rows = data || [];
+      var labels = Array.from(new Set(rows.map(function(item) { return item.dateStr; }))).sort();
+      var deptMap = new Map();
+      rows.forEach(function(item) {
+        var deptKey = item.deptId || "unknown";
         if (!deptMap.has(deptKey)) {
-          deptMap.set(deptKey, {
-            deptName: item.deptName || "未知门店",
-            items: new Map()
-          });
+          deptMap.set(deptKey, { deptName: item.deptName || "未知门店", items: new Map() });
         }
         deptMap.get(deptKey).items.set(item.dateStr, item);
       });
-      const palette = this.getPalette();
-      const series = [];
-      Array.from(deptMap.values()).forEach((dept, index) => {
-        const expenseColor = palette[index % palette.length];
-        const incomeColor = palette[(index + 2) % palette.length];
+      var palette = this.getPalette();
+      var series = [];
+      Array.from(deptMap.values()).forEach(function(dept, index) {
+        var expenseColor = palette[index % palette.length];
+        var incomeColor = palette[(index + 2) % palette.length];
         series.push({
-          name: `${dept.deptName}-开支`,
+          name: dept.deptName + "-开支",
           type: "line",
           smooth: true,
           symbol: "circle",
           symbolSize: 7,
-          data: labels.map(date => Number(dept.items.get(date)?.expenseAmount || 0)),
+          data: labels.map(function(date) { return Number((dept.items.get(date) || {}).expenseAmount || 0); }),
           lineStyle: { width: 3, color: expenseColor },
           itemStyle: { color: expenseColor, borderWidth: 2, borderColor: "#fff" }
         });
         series.push({
-          name: `${dept.deptName}-收入`,
+          name: dept.deptName + "-收入",
           type: "line",
           smooth: true,
           symbol: "circle",
           symbolSize: 7,
-          data: labels.map(date => Number(dept.items.get(date)?.incomeAmount || 0)),
+          data: labels.map(function(date) { return Number((dept.items.get(date) || {}).incomeAmount || 0); }),
           lineStyle: { width: 3, type: "dashed", color: incomeColor },
           itemStyle: { color: incomeColor, borderWidth: 2, borderColor: "#fff" }
         });
@@ -247,19 +317,17 @@ export default {
         legend: { top: 0, left: 16, right: 16, type: "scroll", icon: "circle", textStyle: { color: "#606266" } },
         grid: { left: 34, right: 22, top: 70, bottom: 36, containLabel: true },
         graphic: this.getEmptyGraphic(rows),
-        xAxis: {
-          ...this.getAxisBase(),
+        xAxis: Object.assign({}, this.getAxisBase(), {
           type: "category",
           boundaryGap: false,
           data: labels,
           axisLabel: { color: "#606266" }
-        },
-        yAxis: {
-          ...this.getAxisBase(),
+        }),
+        yAxis: Object.assign({}, this.getAxisBase(), {
           type: "value",
           splitLine: { lineStyle: { color: "#edf0f5", type: "dashed" } }
-        },
-        series
+        }),
+        series: series
       };
     },
     getPieOptions(data) {
@@ -276,29 +344,29 @@ export default {
           label: { color: "#606266", formatter: "{b}\n{d}%" },
           labelLine: { smooth: true, lineStyle: { color: "#c0c4cc" } },
           itemStyle: { borderColor: "#fff", borderWidth: 2 },
-          data
+          data: data
         }]
       };
     },
     initCategoryChart() {
       if (!this.$refs.categoryChart) return;
-      const echarts = require("echarts");
+      var echarts = require("echarts");
       if (this.categoryChart) this.categoryChart.dispose();
       this.categoryChart = echarts.init(this.$refs.categoryChart);
-      const data = this.reportData.categoryStats || [];
-      this.categoryChart.setOption(this.getPieOptions(data.map(item => ({ name: item.categoryName, value: item.totalAmount }))));
+      var data = this.reportData.categoryStats || [];
+      this.categoryChart.setOption(this.getPieOptions(data.map(function(item) { return { name: item.categoryName, value: item.totalAmount }; })));
     },
     initDeptChart() {
       if (!this.$refs.deptChart) return;
-      const echarts = require("echarts");
+      var echarts = require("echarts");
       if (this.deptChart) this.deptChart.dispose();
       this.deptChart = echarts.init(this.$refs.deptChart);
-      const data = this.reportData.deptStats || [];
-      this.deptChart.setOption(this.getBarOptions(data.map(item => item.deptName), data.map(item => item.totalAmount)));
+      var data = this.reportData.deptStats || [];
+      this.deptChart.setOption(this.getBarOptions(data.map(function(item) { return item.deptName; }), data.map(function(item) { return item.totalAmount; })));
     },
     initTrendChart() {
       if (!this.$refs.trendChart) return;
-      const echarts = require("echarts");
+      var echarts = require("echarts");
       if (this.trendChart) this.trendChart.dispose();
       this.trendChart = echarts.init(this.$refs.trendChart);
       this.trendChart.setOption(this.getTrendLineOptions(this.reportData.trendStats || []));
@@ -422,6 +490,23 @@ export default {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.section-card {
+  border-radius: 8px;
+  border: 1px solid #ebeef5;
+  box-shadow: 0 8px 24px rgba(24, 39, 75, 0.04);
+}
+
+.section-card :deep(.el-card__header) {
+  padding: 14px 18px;
+  border-bottom: 1px solid #edf0f5;
+  color: #303133;
+  font-weight: 700;
+}
+
+.section-card :deep(.el-card__body) {
+  padding: 14px 16px 18px;
 }
 
 .chart-grid {

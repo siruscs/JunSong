@@ -125,6 +125,8 @@ public class SysStoreOpeningServiceImpl implements ISysStoreOpeningService
 
     private String generateOrderNo()
     {
-        return "SOA-" + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE) + "-" + System.currentTimeMillis() % 100000;
+        String datePart = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
+        String randomPart = String.format("%06d", new java.security.SecureRandom().nextInt(1000000));
+        return "SOA-" + datePart + "-" + randomPart;
     }
 }

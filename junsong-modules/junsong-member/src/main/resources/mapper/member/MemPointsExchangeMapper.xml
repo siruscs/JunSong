@@ -68,11 +68,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="selectMemPointsExchangeById" parameterType="Long" resultMap="MemPointsExchangeResult">
         <include refid="selectMemPointsExchangeVo"/>
-        where exchange_id = #{exchangeId} and del_flag = '0'
+        <where>
+            AND exchange_id = #{exchangeId} and del_flag = '0'
+        </where>
     </select>
 
     <select id="checkMemExchangeNoUnique" parameterType="String" resultType="int">
-        select count(1) from mem_points_exchange where exchange_no = #{exchangeNo} and del_flag = '0'
+        select count(1) from mem_points_exchange
+        <where>
+            AND exchange_no = #{exchangeNo} and del_flag = '0'
+        </where>
     </select>
 
     <insert id="insertMemPointsExchange" parameterType="com.junsong.member.domain.MemPointsExchange" useGeneratedKeys="true" keyProperty="exchangeId">

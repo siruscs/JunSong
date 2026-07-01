@@ -1,6 +1,9 @@
 package com.junsong.finance.mapper;
 
+import java.math.BigDecimal;
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import org.apache.ibatis.annotations.Param;
 import com.junsong.finance.domain.FinExpense;
 
@@ -116,4 +119,15 @@ public interface FinExpenseMapper
      * 费用总金额统计
      */
     public java.math.BigDecimal selectExpenseTotal(java.util.Map<String, Object> params);
+
+    BigDecimal selectTodayTotalExpense(@Param("deptIds") List<Long> deptIds);
+    BigDecimal selectMonthTotalExpense(@Param("deptIds") List<Long> deptIds);
+    BigDecimal selectMonthTotalExpenseForPrev(@Param("deptIds") List<Long> deptIds);
+    int countUnverifiedExpenses(@Param("deptIds") List<Long> deptIds);
+    BigDecimal sumUnverifiedExpenseAmount(@Param("deptIds") List<Long> deptIds);
+    int countUnverifiedExpensesByPeriodId(@Param("deptIds") List<Long> deptIds, @Param("periodId") Long periodId);
+    BigDecimal sumUnverifiedExpenseAmountByPeriodId(@Param("deptIds") List<Long> deptIds, @Param("periodId") Long periodId);
+    List<Map<String, Object>> selectExpenseCategoryStatsWithPrev(@Param("deptIds") List<Long> deptIds, @Param("startTime") Date startTime, @Param("endTime") Date endTime, @Param("prevStartTime") Date prevStartTime, @Param("prevEndTime") Date prevEndTime);
+    List<Map<String, Object>> selectUnverifiedExpenseList(@Param("deptIds") List<Long> deptIds);
+    List<Map<String, Object>> selectOcrAnomalies(@Param("deptIds") List<Long> deptIds);
 }

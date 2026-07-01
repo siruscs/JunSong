@@ -17,7 +17,6 @@
         <result property="remark" column="remark"/>
     </resultMap>
     <sql id="selectVo">select r.invest_id, r.dept_id, r.period_id, r.investor_id, r.investor_name, r.invest_amount, r.invest_time, r.del_flag, r.create_by, r.create_time, r.update_by, r.update_time, r.remark from fin_invest_record r</sql>
-    <select id="selectFinInvestRecordByInvestId" resultMap="FinInvestRecordResult"><include refid="selectVo"/> where invest_id=#{investId}</select>
     <select id="selectFinInvestRecordList" resultMap="FinInvestRecordResult">
         <include refid="selectVo"/>
         <where>
@@ -32,10 +31,10 @@
     <select id="sumInvestAmount" resultType="java.math.BigDecimal">
         select ifnull(sum(invest_amount),0)
         from fin_invest_record
-        where del_flag='0'
+        <where> del_flag='0'
         <if test="deptId != null"> and dept_id=#{deptId}</if>
+        </where>
     </select>
-    <select id="sumInvestAmountByDeptId" resultType="java.math.BigDecimal">select ifnull(sum(invest_amount),0) from fin_invest_record where dept_id=#{deptId} and del_flag='0'</select>
     <insert id="insertFinInvestRecord" parameterType="FinInvestRecord" useGeneratedKeys="true" keyProperty="investId">
         insert into fin_invest_record(dept_id, period_id, investor_id, investor_name, invest_amount, invest_time, del_flag, create_by, create_time, remark)
         values(#{deptId}, #{periodId}, #{investorId}, #{investorName}, #{investAmount}, #{investTime}, '0', #{createBy}, sysdate(), #{remark})
@@ -56,4 +55,17 @@
     </update>
     <delete id="deleteFinInvestRecordByInvestId">update fin_invest_record set del_flag='2' where invest_id=#{investId}</delete>
     <delete id="deleteFinInvestRecordByInvestIds">update fin_invest_record set del_flag='2' where invest_id in <foreach item="investId" collection="array" open="(" separator="," close=")">#{investId}</foreach></delete>
+
+    <select id="selectFinInvestRecordByInvestId" parameterType="Long" resultMap="FinInvestRecordResult">
+        <include refid="selectVo"/>
+        where r.invest_id = #{investId}
+    </select>
+
+    <select id="sumInvestAmountByDeptId" resultType="java.math.BigDecimal">
+        select ifnull(sum(invest_amount),0)
+        from fin_invest_record
+        <where> del_flag='0'
+        <if test="deptId != null"> and dept_id=#{deptId}</if>
+        </where>
+    </select>
 </mapper>

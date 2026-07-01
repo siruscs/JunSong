@@ -3,6 +3,7 @@ package com.junsong.workflow.lowcode.sync;
 import com.junsong.workflow.lowcode.domain.LcBizInstance;
 import com.junsong.workflow.lowcode.domain.LcBizNodeAssignee;
 import com.junsong.workflow.lowcode.domain.LcBizObject;
+import com.junsong.workflow.lowcode.event.LcConfigPublishedEvent;
 import com.junsong.workflow.lowcode.service.LcBizService;
 import com.junsong.workflow.lowcode.service.LcInstanceService;
 import com.junsong.workflow.lowcode.service.LcMetadataService;
@@ -15,6 +16,7 @@ import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 /**
@@ -31,8 +33,18 @@ public class GenericLowcodeWorkflowSyncHandler implements WorkflowBusinessSyncHa
     private final RuntimeService runtimeService;
     private final TaskService taskService;
 
-    /** 缓存 GENERIC workflow processKey 集合（简单内存缓存，配置变更后需重启） */
+    /** 缓存 GENERIC workflow processKey 集合（监听配置发布事件自动刷新） */
     private volatile Set<String> genericProcessKeys = null;
+
+    /**
+     * 监听低代码配置发布事件，清空缓存以便下次重新加载。
+     * 解决"新增 GENERIC 业务对象后审批状态回写失效直到重启"的问题。
+     */
+    @EventListener
+    public void onConfigPublished(LcConfigPublishedEvent event)
+    {
+        genericProcessKeys = null;
+    }
 
     public GenericLowcodeWorkflowSyncHandler(
             LcMetadataService metadataService,

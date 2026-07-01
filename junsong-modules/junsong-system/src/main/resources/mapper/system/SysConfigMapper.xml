@@ -28,9 +28,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 				and config_id = #{configId}
 			</if>
 			<if test="configKey !=null and configKey != ''">
-				and config_key = #{configKey}
-			</if>
-		</where>
+			and config_key = #{configKey}
+		</if>
+	</where>
 	</sql>
     
     <select id="selectConfig" parameterType="SysConfig" resultMap="SysConfigResult">
@@ -61,12 +61,22 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     
     <select id="selectConfigById" parameterType="Long" resultMap="SysConfigResult">
         <include refid="selectConfigVo"/>
-        where config_id = #{configId}
+        <where>config_id = #{configId}
+        </where>
     </select>
     
     <select id="checkConfigKeyUnique" parameterType="String" resultMap="SysConfigResult">
         <include refid="selectConfigVo"/>
-        where config_key = #{configKey} limit 1
+        <where>config_key = #{configKey}
+        </where>
+        limit 1
+    </select>
+
+    <select id="selectPublicConfig" parameterType="String" resultMap="SysConfigResult">
+        <include refid="selectConfigVo"/>
+        <where>config_key = #{configKey} AND tenant_id = 0
+        </where>
+        limit 1
     </select>
     
     <insert id="insertConfig" parameterType="SysConfig">

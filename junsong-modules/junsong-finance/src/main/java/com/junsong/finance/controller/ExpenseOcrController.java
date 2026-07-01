@@ -1,6 +1,7 @@
 package com.junsong.finance.controller;
 
 import com.junsong.common.core.domain.R;
+import com.junsong.common.security.annotation.RequiresPermissions;
 import com.junsong.finance.service.ExpenseOcrService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,6 +17,7 @@ public class ExpenseOcrController
     @Autowired
     private ExpenseOcrService ocrService;
 
+    @RequiresPermissions("finance:expense:ocr")
     @PostMapping("/ocr")
     public R<ExpenseOcrService.OcrResult> recognizeExpense(@RequestParam("file") MultipartFile file)
     {

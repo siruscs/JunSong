@@ -20,21 +20,23 @@
       </el-form>
     </div>
 
+    <!-- Original Metrics -->
     <div class="report-metrics">
       <div class="metric-card primary">
         <div class="metric-label">总分润</div>
-        <div class="metric-value">¥{{ reportData.totalProfitShare || 0 }}</div>
+        <div class="metric-value">&yen;{{ reportData.totalProfitShare || 0 }}</div>
       </div>
       <div class="metric-card success">
         <div class="metric-label">店长分润</div>
-        <div class="metric-value">¥{{ reportData.totalManagerProfit || 0 }}</div>
+        <div class="metric-value">&yen;{{ reportData.totalManagerProfit || 0 }}</div>
       </div>
       <div class="metric-card info">
         <div class="metric-label">投资人分润</div>
-        <div class="metric-value">¥{{ reportData.totalInvestorProfit || 0 }}</div>
+        <div class="metric-value">&yen;{{ reportData.totalInvestorProfit || 0 }}</div>
       </div>
     </div>
 
+    <!-- Original Charts -->
     <div class="chart-grid">
       <el-card class="chart-card wide">
         <template #header><span>分润趋势</span></template>
@@ -49,6 +51,62 @@
         <div ref="investorChart" class="chart-canvas"></div>
       </el-card>
     </div>
+
+    <!-- Settlement Dashboard Section -->
+    <el-card class="section-card" style="margin-top: 16px;">
+      <template #header><span>结转看板</span></template>
+
+      <!-- Settlement Metrics -->
+      <div class="report-metrics">
+        <div class="metric-card primary">
+          <div class="metric-label">应付金额</div>
+          <div class="metric-value">&yen;{{ settlementData.payableAmount || 0 }}</div>
+        </div>
+        <div class="metric-card success">
+          <div class="metric-label">已付金额</div>
+          <div class="metric-value">&yen;{{ settlementData.paidAmount || 0 }}</div>
+        </div>
+        <div class="metric-card warning">
+          <div class="metric-label">待付金额</div>
+          <div class="metric-value">&yen;{{ settlementData.pendingAmount || 0 }}</div>
+        </div>
+      </div>
+    </el-card>
+
+    <!-- Manager vs Investor Pie & Dept Settlement Table -->
+    <div class="chart-grid" style="margin-top: 16px;">
+      <el-card class="chart-card">
+        <template #header><span>店长 vs 投资人分润占比</span></template>
+        <div ref="sharePieChart" class="chart-canvas"></div>
+      </el-card>
+      <el-card class="chart-card">
+        <template #header><span>门店结转明细</span></template>
+        <el-table :data="settlementData.deptSettlements || []" stripe border style="width: 100%" empty-text="暂无数据" max-height="360">
+          <el-table-column prop="deptName" label="门店" min-width="120" />
+          <el-table-column prop="netProfit" label="净利润" min-width="110" />
+          <el-table-column prop="managerShare" label="店长分润" min-width="110" />
+          <el-table-column prop="investorShare" label="投资人分润" min-width="110" />
+          <el-table-column prop="status" label="状态" width="100">
+            <template #default="scope">
+              <el-tag :type="scope.row.status === 'settled' ? 'success' : scope.row.status === 'pending' ? 'warning' : 'info'" size="small">
+                {{ scope.row.status === 'settled' ? '已结转' : scope.row.status === 'pending' ? '待结转' : (scope.row.status || '未知') }}
+              </el-tag>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-card>
+    </div>
+
+    <!-- Exception List -->
+    <el-card class="section-card" style="margin-top: 16px;" v-if="settlementData.exceptions && settlementData.exceptions.length">
+      <template #header><span>异常清单</span></template>
+      <el-table :data="settlementData.exceptions || []" stripe border style="width: 100%" empty-text="暂无异常">
+        <el-table-column prop="deptName" label="门店" min-width="120" />
+        <el-table-column prop="type" label="类型" width="120" />
+        <el-table-column prop="message" label="说明" min-width="200" />
+        <el-table-column prop="amount" label="涉及金额" width="120" />
+      </el-table>
+    </el-card>
   </div>
 </template>
 
@@ -79,9 +137,17 @@ export default {
         investorStats: [],
         trendStats: []
       },
+      settlementData: {
+        payableAmount: 0,
+        paidAmount: 0,
+        pendingAmount: 0,
+        deptSettlements: [],
+        exceptions: []
+      },
       trendChart: null,
       managerChart: null,
       investorChart: null,
+      sharePieChart: null,
       resizeTimer: null,
       themeUnsubscribe: null
     };
@@ -103,6 +169,7 @@ export default {
     this.trendChart && this.trendChart.dispose();
     this.managerChart && this.managerChart.dispose();
     this.investorChart && this.investorChart.dispose();
+    this.sharePieChart && this.sharePieChart.dispose();
   },
   methods: {
     getDepts() {
@@ -124,6 +191,19 @@ export default {
           this.initInvestorChart();
         });
       });
+      // Fetch settlement data
+      request({
+        url: "/finance/report/profitShare/settlement",
+        method: "post",
+        data: this.queryParams
+      }).then(response => {
+        this.settlementData = response.data || this.settlementData;
+        this.$nextTick(() => {
+          this.initSharePieChart();
+        });
+      }).catch(() => {
+        // keep defaults
+      });
     },
     resetQuery() {
       this.queryParams = {
@@ -142,7 +222,14 @@ export default {
         this.trendChart && this.trendChart.resize();
         this.managerChart && this.managerChart.resize();
         this.investorChart && this.investorChart.resize();
+        this.sharePieChart && this.sharePieChart.resize();
       }, 200);
+    },
+    reRenderCharts() {
+      this.initTrendChart();
+      this.initManagerChart();
+      this.initInvestorChart();
+      this.initSharePieChart();
     },
     getCssVar(name, fallback) {
       const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -183,61 +270,58 @@ export default {
         splitLine: { lineStyle: { color: "#edf0f5", type: "dashed" } }
       };
     },
-    getBarOptions(labels, values, horizontal = false) {
-      const data = values || [];
-      const categoryAxis = {
-        ...this.getAxisBase(),
+    getBarOptions(labels, values, horizontal) {
+      var h = horizontal || false;
+      var data = values || [];
+      var categoryAxis = Object.assign({}, this.getAxisBase(), {
         type: "category",
         data: labels,
-        axisLabel: { color: "#606266", interval: 0, rotate: horizontal ? 0 : 20 }
-      };
-      const valueAxis = {
-        ...this.getAxisBase(),
+        axisLabel: { color: "#606266", interval: 0, rotate: h ? 0 : 20 }
+      });
+      var valueAxis = Object.assign({}, this.getAxisBase(), {
         type: "value",
         splitLine: { lineStyle: { color: "#edf0f5", type: "dashed" } }
-      };
+      });
       return {
         color: this.getPalette(),
         tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-        grid: { left: 34, right: 22, top: 28, bottom: horizontal ? 24 : 58, containLabel: true },
+        grid: { left: 34, right: 22, top: 28, bottom: h ? 24 : 58, containLabel: true },
         graphic: this.getEmptyGraphic(data),
-        xAxis: horizontal ? valueAxis : categoryAxis,
-        yAxis: horizontal ? categoryAxis : valueAxis,
+        xAxis: h ? valueAxis : categoryAxis,
+        yAxis: h ? categoryAxis : valueAxis,
         series: [{
           type: "bar",
           barMaxWidth: 34,
-          data,
-          itemStyle: { color: this.getThemeColor(), borderRadius: horizontal ? [0, 6, 6, 0] : [6, 6, 0, 0] }
+          data: data,
+          itemStyle: { color: this.getThemeColor(), borderRadius: h ? [0, 6, 6, 0] : [6, 6, 0, 0] }
         }]
       };
     },
     getTrendLineOptions(data, valueKey, labelSuffix) {
-      const rows = data || [];
-      const labels = Array.from(new Set(rows.map(item => item.dateStr))).sort();
-      const deptMap = new Map();
-      rows.forEach(item => {
-        const deptKey = item.deptId || "unknown";
+      var rows = data || [];
+      var labels = Array.from(new Set(rows.map(function(item) { return item.dateStr; }))).sort();
+      var deptMap = new Map();
+      rows.forEach(function(item) {
+        var deptKey = item.deptId || "unknown";
         if (!deptMap.has(deptKey)) {
-          deptMap.set(deptKey, {
-            deptName: item.deptName || "未知门店",
-            items: new Map()
-          });
+          deptMap.set(deptKey, { deptName: item.deptName || "未知门店", items: new Map() });
         }
         deptMap.get(deptKey).items.set(item.dateStr, item);
       });
-      const palette = this.getPalette();
-      const series = Array.from(deptMap.values()).map((dept, index) => {
-        const color = palette[index % palette.length];
+      var palette = this.getPalette();
+      var self = this;
+      var series = Array.from(deptMap.values()).map(function(dept, index) {
+        var color = palette[index % palette.length];
         return {
-          name: `${dept.deptName}-${labelSuffix}`,
+          name: dept.deptName + "-" + labelSuffix,
           type: "line",
           smooth: true,
           symbol: "circle",
           symbolSize: 7,
-          data: labels.map(date => Number(dept.items.get(date)?.[valueKey] || 0)),
-          lineStyle: { width: 3, color },
-          itemStyle: { color, borderWidth: 2, borderColor: "#fff" },
-          areaStyle: { color: index === 0 ? this.getThemeRgba(0.1) : undefined }
+          data: labels.map(function(date) { return Number((dept.items.get(date) || {})[valueKey] || 0); }),
+          lineStyle: { width: 3, color: color },
+          itemStyle: { color: color, borderWidth: 2, borderColor: "#fff" },
+          areaStyle: { color: index === 0 ? self.getThemeRgba(0.1) : undefined }
         };
       });
       return {
@@ -246,19 +330,17 @@ export default {
         legend: { top: 0, left: 16, right: 16, type: "scroll", icon: "circle", textStyle: { color: "#606266" } },
         grid: { left: 34, right: 22, top: 70, bottom: 36, containLabel: true },
         graphic: this.getEmptyGraphic(rows),
-        xAxis: {
-          ...this.getAxisBase(),
+        xAxis: Object.assign({}, this.getAxisBase(), {
           type: "category",
           boundaryGap: false,
           data: labels,
           axisLabel: { color: "#606266" }
-        },
-        yAxis: {
-          ...this.getAxisBase(),
+        }),
+        yAxis: Object.assign({}, this.getAxisBase(), {
           type: "value",
           splitLine: { lineStyle: { color: "#edf0f5", type: "dashed" } }
-        },
-        series
+        }),
+        series: series
       };
     },
     getPieOptions(data) {
@@ -275,32 +357,47 @@ export default {
           label: { color: "#606266", formatter: "{b}\n{d}%" },
           labelLine: { smooth: true, lineStyle: { color: "#c0c4cc" } },
           itemStyle: { borderColor: "#fff", borderWidth: 2 },
-          data
+          data: data
         }]
       };
     },
     initTrendChart() {
       if (!this.$refs.trendChart) return;
-      const echarts = require("echarts");
+      var echarts = require("echarts");
       if (this.trendChart) this.trendChart.dispose();
       this.trendChart = echarts.init(this.$refs.trendChart);
       this.trendChart.setOption(this.getTrendLineOptions(this.reportData.trendStats || [], "totalAmount", "分润"));
     },
     initManagerChart() {
       if (!this.$refs.managerChart) return;
-      const echarts = require("echarts");
+      var echarts = require("echarts");
       if (this.managerChart) this.managerChart.dispose();
       this.managerChart = echarts.init(this.$refs.managerChart);
-      const data = this.reportData.managerStats || [];
-      this.managerChart.setOption(this.getBarOptions(data.map(item => item.deptName || item.dateStr), data.map(item => item.amount)));
+      var data = this.reportData.managerStats || [];
+      this.managerChart.setOption(this.getBarOptions(data.map(function(item) { return item.deptName || item.dateStr; }), data.map(function(item) { return item.amount; })));
     },
     initInvestorChart() {
       if (!this.$refs.investorChart) return;
-      const echarts = require("echarts");
+      var echarts = require("echarts");
       if (this.investorChart) this.investorChart.dispose();
       this.investorChart = echarts.init(this.$refs.investorChart);
-      const data = this.reportData.investorStats || [];
-      this.investorChart.setOption(this.getBarOptions(data.map(item => item.deptName || item.dateStr), data.map(item => item.amount)));
+      var data = this.reportData.investorStats || [];
+      this.investorChart.setOption(this.getBarOptions(data.map(function(item) { return item.deptName || item.dateStr; }), data.map(function(item) { return item.amount; })));
+    },
+    initSharePieChart() {
+      if (!this.$refs.sharePieChart) return;
+      var echarts = require("echarts");
+      if (this.sharePieChart) this.sharePieChart.dispose();
+      this.sharePieChart = echarts.init(this.$refs.sharePieChart);
+      var d = this.settlementData;
+      var pieData = [];
+      if (d.paidAmount || d.pendingAmount) {
+        pieData = [
+          { name: "店长分润", value: Number(d.paidAmount || 0) },
+          { name: "投资人分润", value: Number(d.pendingAmount || 0) }
+        ];
+      }
+      this.sharePieChart.setOption(this.getPieOptions(pieData));
     }
   }
 };
@@ -390,6 +487,18 @@ export default {
   background: var(--theme-primary);
 }
 
+.metric-card.success::before {
+  background: #67C23A;
+}
+
+.metric-card.warning::before {
+  background: #E6A23C;
+}
+
+.metric-card.info::before {
+  background: #909399;
+}
+
 .metric-card::after {
   content: "";
   position: absolute;
@@ -421,6 +530,23 @@ export default {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.section-card {
+  border-radius: 8px;
+  border: 1px solid #ebeef5;
+  box-shadow: 0 8px 24px rgba(24, 39, 75, 0.04);
+}
+
+.section-card :deep(.el-card__header) {
+  padding: 14px 18px;
+  border-bottom: 1px solid #edf0f5;
+  color: #303133;
+  font-weight: 700;
+}
+
+.section-card :deep(.el-card__body) {
+  padding: 14px 16px 18px;
 }
 
 .chart-grid {

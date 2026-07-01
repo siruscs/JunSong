@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.workflow.mapper.WfNodeTimeoutMapper">
+
+    <resultMap type="com.junsong.workflow.domain.WfNodeTimeout" id="WfNodeTimeoutResult">
+        <id property="id" column="id"/>
+        <result property="processDefinitionId" column="process_definition_id"/>
+        <result property="processDefinitionKey" column="process_definition_key"/>
+        <result property="activityId" column="activity_id"/>
+        <result property="activityName" column="activity_name"/>
+        <result property="timeoutMinutes" column="timeout_minutes"/>
+        <result property="escalationType" column="escalation_type"/>
+        <result property="escalationTarget" column="escalation_target"/>
+        <result property="isWorkday" column="is_workday"/>
+        <result property="lastTriggerTime" column="last_trigger_time"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="selectWfNodeTimeoutVo">
+        select id, process_definition_id, process_definition_key, activity_id, activity_name,
+               timeout_minutes, escalation_type, escalation_target, is_workday, last_trigger_time, create_time, update_time
+        from wf_node_timeout
+    </sql>
+
+    <select id="selectById" parameterType="Long" resultMap="WfNodeTimeoutResult">
+        <include refid="selectWfNodeTimeoutVo"/>
+        <where>
+            id = #{id}
+        </where>
+    </select>
+
+    <select id="selectList" parameterType="com.junsong.workflow.domain.WfNodeTimeout" resultMap="WfNodeTimeoutResult">
+        <include refid="selectWfNodeTimeoutVo"/>
+        <where>
+            <if test="processDefinitionKey != null and processDefinitionKey != ''">and process_definition_key = #{processDefinitionKey}</if>
+            <if test="activityId != null and activityId != ''">and activity_id = #{activityId}</if>
+        </where>
+    </select>
+
+    <select id="selectAll" resultMap="WfNodeTimeoutResult">
+        <include refid="selectWfNodeTimeoutVo"/>
+        <where>
+        </where>
+    </select>
+
+    <select id="selectByNode" resultMap="WfNodeTimeoutResult">
+        <include refid="selectWfNodeTimeoutVo"/>
+        <where>
+            process_definition_key = #{processDefinitionKey} and activity_id = #{activityId}
+        </where>
+    </select>
+
+    <insert id="insert" parameterType="com.junsong.workflow.domain.WfNodeTimeout" useGeneratedKeys="true" keyProperty="id">
+        insert into wf_node_timeout
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="processDefinitionId != null">process_definition_id,</if>
+            <if test="processDefinitionKey != null">process_definition_key,</if>
+            <if test="activityId != null">activity_id,</if>
+            <if test="activityName != null">activity_name,</if>
+            <if test="timeoutMinutes != null">timeout_minutes,</if>
+            <if test="escalationType != null">escalation_type,</if>
+            <if test="escalationTarget != null">escalation_target,</if>
+            <if test="isWorkday != null">is_workday,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="processDefinitionId != null">#{processDefinitionId},</if>
+            <if test="processDefinitionKey != null">#{processDefinitionKey},</if>
+            <if test="activityId != null">#{activityId},</if>
+            <if test="activityName != null">#{activityName},</if>
+            <if test="timeoutMinutes != null">#{timeoutMinutes},</if>
+            <if test="escalationType != null">#{escalationType},</if>
+            <if test="escalationTarget != null">#{escalationTarget},</if>
+            <if test="isWorkday != null">#{isWorkday},</if>
+        </trim>
+    </insert>
+
+    <update id="update" parameterType="com.junsong.workflow.domain.WfNodeTimeout">
+        update wf_node_timeout
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="processDefinitionId != null">process_definition_id = #{processDefinitionId},</if>
+            <if test="processDefinitionKey != null">process_definition_key = #{processDefinitionKey},</if>
+            <if test="activityId != null">activity_id = #{activityId},</if>
+            <if test="activityName != null">activity_name = #{activityName},</if>
+            <if test="timeoutMinutes != null">timeout_minutes = #{timeoutMinutes},</if>
+            <if test="escalationType != null">escalation_type = #{escalationType},</if>
+            <if test="escalationTarget != null">escalation_target = #{escalationTarget},</if>
+            <if test="isWorkday != null">is_workday = #{isWorkday},</if>
+            <if test="lastTriggerTime != null">last_trigger_time = #{lastTriggerTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="Long">
+        delete from wf_node_timeout where id = #{id}
+    </delete>
+
+</mapper>

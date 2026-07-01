@@ -7,4 +7,5 @@ import com.junsong.member.domain.vo.SeckillReportVO;
 public interface IMemberReportService {
     MemberReportVO getMemberReport(MemberReportQueryParams params);
     SeckillReportVO getSeckillReport(MemberReportQueryParams params);
+    com.junsong.member.domain.vo.MemberContributionReportVO getContributionReport(com.junsong.member.domain.vo.MemberReportQueryParams params);
 }

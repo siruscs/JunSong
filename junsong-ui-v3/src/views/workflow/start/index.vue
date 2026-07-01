@@ -84,7 +84,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Document } from '@element-plus/icons-vue'
 import { listWorkflowDefinitions, type WorkflowDefinitionSummary } from '@/api/workflow/definition'
 import { startWorkflowInstance } from '@/api/workflow/instance'
@@ -133,23 +133,23 @@ const groupedProcesses = computed(() => {
 })
 
 function getCategorySort(catKey: string): number {
-  const items = dict.wf_category || []
+  const items = dict.type?.wf_category || []
   const item = items.find((d: any) => d.value === catKey)
-  return item ? parseInt(item.sort || '999') : 999
+  return item ? parseInt(item.raw?.dictSort || '999') : 999
 }
 
 function getCategoryLabel(catKey: string): string {
   if (catKey === 'uncategorized') return '未分类'
-  const items = dict.wf_category || []
+  const items = dict.type?.wf_category || []
   const item = items.find((d: any) => d.value === catKey)
   return item ? item.label : catKey
 }
 
 function getCategoryTagType(catKey: string): any {
-  const items = dict.wf_category || []
+  const items = dict.type?.wf_category || []
   const item = items.find((d: any) => d.value === catKey)
-  if (item && item.listClass) {
-    return item.listClass
+  if (item && item.elTagType) {
+    return item.elTagType
   }
   return 'info'
 }
@@ -180,18 +180,48 @@ function openStartDialog(proc: WorkflowDefinitionSummary) {
   startDialogVisible.value = true
 }
 
+const requiredStartFields = [
+  { key: 'processKey', label: '流程标识' },
+  { key: 'processName', label: '流程名称' },
+]
+
+function precheckStart(): { passed: boolean; missingFields: string[] } {
+  const missing: string[] = []
+  requiredStartFields.forEach((f) => {
+    const value = startForm.value[f.key as 'processKey' | 'processName']
+    if (!String(value ?? '').trim()) {
+      missing.push(f.label)
+    }
+  })
+  const rawJson = startForm.value.variablesJson.trim()
+  if (rawJson) {
+    try {
+      const parsed = JSON.parse(rawJson)
+      if (parsed === null || Array.isArray(parsed) || typeof parsed !== 'object') {
+        missing.push('流程变量（需为 JSON 对象）')
+      }
+    } catch {
+      missing.push('流程变量（JSON 格式错误）')
+    }
+  }
+  return { passed: missing.length === 0, missingFields: missing }
+}
+
 async function submitStart() {
+  const { passed, missingFields } = precheckStart()
+  if (!passed) {
+    await ElMessageBox.alert(
+      `以下必填项未填写完整：\n${missingFields.map((f) => `• ${f}`).join('\n')}`,
+      '发起预检未通过',
+      { type: 'warning', confirmButtonText: '我知道了' },
+    )
+    return
+  }
   submitting.value = true
   try {
     let variables: Record<string, any> | undefined
     if (startForm.value.variablesJson.trim()) {
-      try {
-        variables = JSON.parse(startForm.value.variablesJson)
-      } catch {
-        ElMessage.error('流程变量JSON格式错误')
-        submitting.value = false
-        return
-      }
+      variables = JSON.parse(startForm.value.variablesJson)
     }
 
     const res: any = await startWorkflowInstance({

@@ -75,6 +75,17 @@ public class RedisService
     }
 
     /**
+     * 递增
+     *
+     * @param key Redis键
+     * @return 递增后的值
+     */
+    public Long increment(final String key)
+    {
+        return redisTemplate.opsForValue().increment(key);
+    }
+
+    /**
      * 获取有效时间
      *
      * @param key Redis键
@@ -106,6 +117,18 @@ public class RedisService
     {
         ValueOperations<String, T> operation = redisTemplate.opsForValue();
         return operation.get(key);
+    }
+
+    /**
+     * 批量获得缓存的基本对象列表
+     *
+     * @param keys 缓存键值集合
+     * @return 缓存键值对应的数据列表
+     */
+    public <T> List<T> multiGetCacheObject(final Collection<String> keys)
+    {
+        ValueOperations<String, T> operation = redisTemplate.opsForValue();
+        return operation.multiGet(keys);
     }
 
     /**
@@ -264,5 +287,44 @@ public class RedisService
     public Collection<String> keys(final String pattern)
     {
         return redisTemplate.keys(pattern);
+    }
+
+    /**
+     * 使用 SCAN 非阻塞方式获取匹配的 key 列表
+     * 生产环境推荐使用此方法替代 keys()
+     *
+     * @param pattern 匹配模式
+     * @return key 列表
+     */
+    public Collection<String> scan(final String pattern)
+    {
+        return scan(pattern, 100L);
+    }
+
+    /**
+     * 使用 SCAN 非阻塞方式获取匹配的 key 列表
+     *
+     * @param pattern 匹配模式
+     * @param count 每次扫描的批量大小提示
+     * @return key 列表
+     */
+    public Collection<String> scan(final String pattern, final Long count)
+    {
+        java.util.Set<String> keys = new java.util.HashSet<>();
+        org.springframework.data.redis.core.ScanOptions options = org.springframework.data.redis.core.ScanOptions
+                .scanOptions()
+                .match(pattern)
+                .count(count)
+                .build();
+        redisTemplate.execute((org.springframework.data.redis.core.RedisCallback<Void>) connection -> {
+            org.springframework.data.redis.core.Cursor<byte[]> cursor = connection.scan(options);
+            while (cursor.hasNext())
+            {
+                keys.add(new String(cursor.next(), java.nio.charset.StandardCharsets.UTF_8));
+            }
+            cursor.close();
+            return null;
+        });
+        return keys;
     }
 }

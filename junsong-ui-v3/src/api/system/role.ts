@@ -57,7 +57,3 @@ export function authUserCancelAll(data: any) {
 export function authUserSelectAll(data: any) {
   return request({ url: '/system/role/authUser/selectAll', method: 'put', params: data })
 }
-
-export function authUser(userId: number, roleIds: string) {
-  return request({ url: '/system/user/authRole', method: 'put', params: { userId, roleIds } })
-}

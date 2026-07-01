@@ -52,34 +52,42 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="selectStoreOpeningById" parameterType="Long" resultMap="SysStoreOpeningResult">
         <include refid="selectStoreOpeningVo"/>
-        where id = #{id} and del_flag = '0'
+        <where>
+            id = #{id} and del_flag = '0'
+        </where>
     </select>
 
     <select id="selectStoreOpeningByOrderNo" parameterType="String" resultMap="SysStoreOpeningResult">
         <include refid="selectStoreOpeningVo"/>
-        where order_no = #{orderNo} and del_flag = '0'
+        <where>
+            order_no = #{orderNo} and del_flag = '0'
+        </where>
     </select>
 
     <select id="selectStoreOpeningByProcessInstanceId" parameterType="String" resultMap="SysStoreOpeningResult">
         <include refid="selectStoreOpeningVo"/>
-        where process_instance_id = #{processInstanceId} and del_flag = '0'
+        <where>
+            process_instance_id = #{processInstanceId} and del_flag = '0'
+        </where>
     </select>
 
     <select id="selectStoreOpeningList" parameterType="com.junsong.system.domain.SysStoreOpening" resultMap="SysStoreOpeningResult">
         <include refid="selectStoreOpeningVo"/>
-        where del_flag = '0'
-        <if test="orderNo != null and orderNo != ''">
-            and order_no like concat('%', #{orderNo}, '%')
-        </if>
-        <if test="storeName != null and storeName != ''">
-            and store_name like concat('%', #{storeName}, '%')
-        </if>
-        <if test="regionName != null and regionName != ''">
-            and region_name like concat('%', #{regionName}, '%')
-        </if>
-        <if test="workflowStatus != null and workflowStatus != ''">
-            and workflow_status = #{workflowStatus}
-        </if>
+        <where>
+            del_flag = '0'
+            <if test="orderNo != null and orderNo != ''">
+                and order_no like concat('%', #{orderNo}, '%')
+            </if>
+            <if test="storeName != null and storeName != ''">
+                and store_name like concat('%', #{storeName}, '%')
+            </if>
+            <if test="regionName != null and regionName != ''">
+                and region_name like concat('%', #{regionName}, '%')
+            </if>
+            <if test="workflowStatus != null and workflowStatus != ''">
+                and workflow_status = #{workflowStatus}
+            </if>
+        </where>
         order by id desc
     </select>
 

@@ -2,7 +2,9 @@ package com.junsong.finance.service.impl;
 
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import com.junsong.common.core.exception.ServiceException;
 import com.junsong.common.core.utils.StringUtils;
 import com.junsong.finance.domain.FinSupplier;
 import com.junsong.finance.mapper.FinSupplierMapper;
@@ -53,10 +55,22 @@ public class FinSupplierServiceImpl implements IFinSupplierService
     @Override
     public int insertFinSupplier(FinSupplier finSupplier)
     {
-        // 自动生成6位数字供应商编码
+        // 自动生成6位数字供应商编码（带重试机制防止并发重复）
         if (StringUtils.isEmpty(finSupplier.getSupplierCode()))
         {
-            finSupplier.setSupplierCode(CodeGenerator.generateSupplierCode());
+            int retryCount = 0;
+            int maxRetries = 3;
+            while (retryCount < maxRetries) {
+                try {
+                    finSupplier.setSupplierCode(CodeGenerator.generateSupplierCode());
+                    return finSupplierMapper.insertFinSupplier(finSupplier);
+                } catch (DuplicateKeyException e) {
+                    retryCount++;
+                    if (retryCount >= maxRetries) {
+                        throw new ServiceException("供应商编码生成失败，请稍后重试");
+                    }
+                }
+            }
         }
         return finSupplierMapper.insertFinSupplier(finSupplier);
     }

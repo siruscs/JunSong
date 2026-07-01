@@ -25,6 +25,19 @@ public class TaskController
         this.workflowTaskService = workflowTaskService;
     }
 
+    @PreAuthorize("@ss.hasPermi('workflow:task:approve')")
+    @PostMapping("/batch-approve")
+    public R<Map<String, Object>> batchApprove(@RequestBody BatchApproveReq request)
+    {
+        return workflowTaskService.batchApprove(request.taskIds, request.comment);
+    }
+
+    public static class BatchApproveReq
+    {
+        public List<String> taskIds;
+        public String comment;
+    }
+
     @PreAuthorize("@ss.hasPermi('workflow:task:list')")
     @GetMapping("/todo")
     public R<List<Map<String, Object>>> todo()
@@ -78,6 +91,13 @@ public class TaskController
         return workflowTaskService.reject(taskId, request);
     }
 
+    @PreAuthorize("@ss.hasPermi('workflow:task:list')")
+    @GetMapping("/{taskId}/reject-targets")
+    public R<List<Map<String, Object>>> rejectTargets(@PathVariable("taskId") String taskId)
+    {
+        return workflowTaskService.rejectTargets(taskId);
+    }
+
     @PreAuthorize("@ss.hasPermi('workflow:task:claim')")
     @PostMapping("/{taskId}/transfer")
     public R<Void> transfer(
@@ -87,14 +107,82 @@ public class TaskController
         return workflowTaskService.transfer(taskId, toUser);
     }
 
+    @PreAuthorize("@ss.hasPermi('workflow:task:claim')")
+    @PostMapping("/{taskId}/delegate")
+    public R<Void> delegate(
+            @PathVariable("taskId") String taskId,
+            @RequestBody DelegateReq request)
+    {
+        return workflowTaskService.delegate(taskId, request.toUser);
+    }
+
+    @PreAuthorize("@ss.hasPermi('workflow:task:claim')")
+    @PostMapping("/{taskId}/resolve")
+    public R<Void> resolve(@PathVariable("taskId") String taskId)
+    {
+        return workflowTaskService.resolveTask(taskId);
+    }
+
+    @PreAuthorize("@ss.hasPermi('workflow:task:urge')")
+    @PostMapping("/{taskId}/urge")
+    public R<Void> urge(
+            @PathVariable("taskId") String taskId,
+            @RequestBody(required = false) UrgeReq request)
+    {
+        return workflowTaskService.urge(taskId, request);
+    }
+
+    @PreAuthorize("@ss.hasPermi('workflow:task:cc')")
+    @PostMapping("/{taskId}/cc")
+    public R<Void> cc(
+            @PathVariable("taskId") String taskId,
+            @RequestBody CcReq request)
+    {
+        return workflowTaskService.cc(taskId, request);
+    }
+
+    @PreAuthorize("@ss.hasPermi('workflow:task:addsign')")
+    @PostMapping("/{taskId}/addsign")
+    public R<Void> addsign(
+            @PathVariable("taskId") String taskId,
+            @RequestBody AddSignReq request)
+    {
+        return workflowTaskService.addsign(taskId, request);
+    }
+
     public static class ApproveReq
     {
         public String comment;
         public Map<String, Object> variables;
+        public List<Map<String, String>> attachments;
     }
 
     public static class RejectReq
     {
         public String comment;
+        public String targetActivityId;
+        public String targetType;
+        public List<Map<String, String>> attachments;
+    }
+
+    public static class UrgeReq
+    {
+        public String comment;
+    }
+
+    public static class CcReq
+    {
+        public List<String> toUsers;
+    }
+
+    public static class AddSignReq
+    {
+        public String addSignUser;
+        public String type;
+    }
+
+    public static class DelegateReq
+    {
+        public String toUser;
     }
 }

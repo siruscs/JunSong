@@ -13,7 +13,7 @@ import { useSettingsStore } from '@/stores/settings'
 
 NProgress.configure({ showSpinner: false })
 
-const whiteList = ['/login', '/register']
+const whiteList = ['/login', '/register', '/open-platform', '/open-platform/docs', '/open-platform/apply', '/open-platform/debug', '/open-platform/samples']
 
 const isWhiteList = (path: string) => {
   return whiteList.some((pattern) => isPathMatch(pattern, path))

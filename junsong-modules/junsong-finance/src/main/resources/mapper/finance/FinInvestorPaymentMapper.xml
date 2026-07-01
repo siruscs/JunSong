@@ -58,11 +58,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="checkPaymentNoUnique" parameterType="String" resultMap="FinInvestorPaymentResult">
         <include refid="selectFinInvestorPaymentVo"/>
-        where p.payment_no = #{paymentNo} and p.del_flag = '0' limit 1
+        where p.payment_no = #{paymentNo} and p.del_flag = '0'
+        limit 1
     </select>
 
     <select id="countTodayInvestorPayments" resultType="int">
-        select count(*) from fin_investor_payment where date(create_time) = curdate()
+        select count(*) from fin_investor_payment
+        <where> date(create_time) = curdate()
+        and del_flag = '0'
+        </where>
     </select>
     
     <select id="sumReserveFund" resultType="java.math.BigDecimal">
@@ -72,29 +76,37 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </select>
     
     <select id="sumVerifiedExpenses" resultType="java.math.BigDecimal">
-        select ifnull(sum(expense_amount), 0) from fin_expense where status = '1' and del_flag = '0'
+        select ifnull(sum(expense_amount), 0)
+        from fin_expense
+        where status = '1' and del_flag = '0'
     </select>
 
     <select id="sumVerifiedExpensesByDeptId" resultType="java.math.BigDecimal">
         select ifnull(sum(expense_amount), 0)
         from fin_expense
-        where status = '1' and del_flag = '0'
+        <where> status = '1' and del_flag = '0'
         <if test="deptId != null"> and dept_id = #{deptId}</if>
+        </where>
     </select>
-    
+
     <select id="sumTotalInvestAmount" resultType="java.math.BigDecimal">
-        select ifnull(sum(invest_amount), 0) from fin_invest_record where del_flag = '0'
+        select ifnull(sum(invest_amount), 0)
+        from fin_invest_record
+        where del_flag = '0'
     </select>
-    
+
     <select id="sumTotalReturnAmount" resultType="java.math.BigDecimal">
-        select ifnull(sum(amount), 0) from fin_investor_payment where payment_type = 'return' and del_flag = '0'
+        select ifnull(sum(amount), 0)
+        from fin_investor_payment
+        where payment_type = 'return' and del_flag = '0'
     </select>
 
     <select id="sumTotalReturnAmountByDeptId" resultType="java.math.BigDecimal">
         select ifnull(sum(amount), 0)
         from fin_investor_payment
-        where payment_type = 'return' and del_flag = '0'
+        <where> payment_type = 'return' and del_flag = '0'
         <if test="deptId != null"> and dept_id = #{deptId}</if>
+        </where>
     </select>
         
     <insert id="insertFinInvestorPayment" parameterType="FinInvestorPayment" useGeneratedKeys="true" keyProperty="paymentId">

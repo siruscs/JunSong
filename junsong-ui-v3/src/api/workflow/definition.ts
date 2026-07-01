@@ -50,6 +50,7 @@ export interface WorkflowDefinitionPayload {
 
 export interface WorkflowDefinitionDeployPayload extends WorkflowDefinitionPayload {
   deploymentName?: string
+  category?: string
 }
 
 export function listWorkflowDefinitions(params?: WorkflowDefinitionQuery) {

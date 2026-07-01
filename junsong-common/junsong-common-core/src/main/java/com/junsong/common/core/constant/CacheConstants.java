@@ -66,4 +66,19 @@ public class CacheConstants
      * 登录IP黑名单 cache key
      */
     public static final String SYS_LOGIN_BLACKIPLIST = SYS_CONFIG_KEY + "sys.login.blackIPList";
+
+    /**
+     * 行政区域 cache key
+     */
+    public static final String SYS_REGION_KEY = "sys_region:";
+
+    /**
+     * 岗位列表 cache key
+     */
+    public static final String SYS_POST_KEY = "sys_post:";
+
+    /**
+     * 菜单 cache key
+     */
+    public static final String SYS_MENU_KEY = "sys_menu:";
 }

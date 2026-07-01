@@ -1,11 +1,15 @@
 package com.junsong.system.service.impl;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import com.junsong.common.core.constant.CacheConstants;
 import com.junsong.common.core.constant.UserConstants;
 import com.junsong.common.core.exception.ServiceException;
 import com.junsong.common.core.utils.StringUtils;
+import com.junsong.common.redis.service.RedisService;
 import com.junsong.system.domain.SysPost;
 import com.junsong.system.mapper.SysPostMapper;
 import com.junsong.system.mapper.SysUserPostMapper;
@@ -25,6 +29,12 @@ public class SysPostServiceImpl implements ISysPostService
     @Autowired
     private SysUserPostMapper userPostMapper;
 
+    @Autowired
+    private RedisService redisService;
+
+    private static final String POST_ALL_CACHE_KEY = CacheConstants.SYS_POST_KEY + "all";
+    private static final long POST_CACHE_TTL_MINUTES = 60;
+
     /**
      * 查询岗位信息集合
      * 
@@ -43,9 +53,17 @@ public class SysPostServiceImpl implements ISysPostService
      * @return 岗位列表
      */
     @Override
+    @SuppressWarnings("unchecked")
     public List<SysPost> selectPostAll()
     {
-        return postMapper.selectPostAll();
+        List<SysPost> cached = redisService.getCacheObject(POST_ALL_CACHE_KEY);
+        if (cached != null)
+        {
+            return cached;
+        }
+        List<SysPost> posts = postMapper.selectPostAll();
+        redisService.setCacheObject(POST_ALL_CACHE_KEY, posts, POST_CACHE_TTL_MINUTES, TimeUnit.MINUTES);
+        return posts;
     }
 
     /**
@@ -139,6 +157,7 @@ public class SysPostServiceImpl implements ISysPostService
      * @return 结果
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int deletePostByIds(Long[] postIds)
     {
         for (Long postId : postIds)
@@ -149,7 +168,9 @@ public class SysPostServiceImpl implements ISysPostService
                 throw new ServiceException(String.format("%1$s已分配,不能删除", post.getPostName()));
             }
         }
-        return postMapper.deletePostByIds(postIds);
+        int result = postMapper.deletePostByIds(postIds);
+        redisService.deleteObject(POST_ALL_CACHE_KEY);
+        return result;
     }
 
     /**
@@ -161,7 +182,9 @@ public class SysPostServiceImpl implements ISysPostService
     @Override
     public int insertPost(SysPost post)
     {
-        return postMapper.insertPost(post);
+        int result = postMapper.insertPost(post);
+        redisService.deleteObject(POST_ALL_CACHE_KEY);
+        return result;
     }
 
     /**
@@ -173,6 +196,8 @@ public class SysPostServiceImpl implements ISysPostService
     @Override
     public int updatePost(SysPost post)
     {
-        return postMapper.updatePost(post);
+        int result = postMapper.updatePost(post);
+        redisService.deleteObject(POST_ALL_CACHE_KEY);
+        return result;
     }
 }

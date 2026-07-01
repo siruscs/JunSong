@@ -6,6 +6,8 @@ import java.util.Map;
 
 import com.junsong.common.core.domain.R;
 import com.junsong.workflow.controller.ProcessInstanceController.StartInstanceReq;
+import com.junsong.workflow.mapper.WfNotificationMapper;
+import com.junsong.workflow.mapper.WfSysUserMapper;
 import com.junsong.workflow.security.CurrentWorkflowUser;
 import com.junsong.workflow.security.CurrentWorkflowUserFacade;
 import com.junsong.workflow.security.ProcessAuthorizationService;
@@ -36,6 +38,8 @@ public class WorkflowInstanceService
     private final TaskService taskService;
     private final CurrentWorkflowUserFacade currentWorkflowUserFacade;
     private final ProcessAuthorizationService processAuthorizationService;
+    private final WfNotificationMapper notificationMapper;
+    private final WfSysUserMapper sysUserMapper;
 
     public WorkflowInstanceService(
             RuntimeService runtimeService,
@@ -43,7 +47,9 @@ public class WorkflowInstanceService
             HistoryService historyService,
             TaskService taskService,
             CurrentWorkflowUserFacade currentWorkflowUserFacade,
-            ProcessAuthorizationService processAuthorizationService)
+            ProcessAuthorizationService processAuthorizationService,
+            WfNotificationMapper notificationMapper,
+            WfSysUserMapper sysUserMapper)
     {
         this.runtimeService = runtimeService;
         this.repositoryService = repositoryService;
@@ -51,6 +57,8 @@ public class WorkflowInstanceService
         this.taskService = taskService;
         this.currentWorkflowUserFacade = currentWorkflowUserFacade;
         this.processAuthorizationService = processAuthorizationService;
+        this.notificationMapper = notificationMapper;
+        this.sysUserMapper = sysUserMapper;
     }
 
     /**
@@ -58,22 +66,42 @@ public class WorkflowInstanceService
      */
     public R<Map<String, Object>> start(StartInstanceReq req)
     {
-        if (req == null || req.processKey == null || req.processKey.isBlank())
+        if (req == null)
         {
-            return R.fail("processKey 不能为空");
+            return R.fail("请求体不能为空");
         }
         CurrentWorkflowUser actor = currentWorkflowUserFacade.current();
-        ProcessDefinition def = repositoryService.createProcessDefinitionQuery()
-                .processDefinitionKey(req.processKey)
-                .latestVersion()
-                .singleResult();
-        if (def == null)
+        ProcessDefinition def;
+        if (req.processDefinitionId != null && !req.processDefinitionId.isBlank())
         {
-            return R.fail("找不到流程定义: " + req.processKey);
+            // 指定流程定义ID，发起特定版本
+            def = repositoryService.createProcessDefinitionQuery()
+                    .processDefinitionId(req.processDefinitionId)
+                    .singleResult();
+            if (def == null)
+            {
+                return R.fail("找不到流程定义: " + req.processDefinitionId);
+            }
+        }
+        else
+        {
+            // 默认使用最新版本
+            if (req.processKey == null || req.processKey.isBlank())
+            {
+                return R.fail("processKey 不能为空");
+            }
+            def = repositoryService.createProcessDefinitionQuery()
+                    .processDefinitionKey(req.processKey)
+                    .latestVersion()
+                    .singleResult();
+            if (def == null)
+            {
+                return R.fail("找不到流程定义: " + req.processKey);
+            }
         }
         if (def.isSuspended())
         {
-            return R.fail("流程定义已挂起: " + req.processKey);
+            return R.fail("流程定义已挂起: " + def.getKey());
         }
         Map<String, Object> vars = req.variables == null ? new LinkedHashMap<>() : new LinkedHashMap<>(req.variables);
         vars.put("initiator", actor.username());
@@ -96,6 +124,29 @@ public class WorkflowInstanceService
             result.put("processDefinitionName", def.getName());
             result.put("businessKey", pi.getBusinessKey());
             result.put("startTime", pi.getStartTime());
+
+            // 流程启动后，检查是否有待办任务，通知任务负责人
+            List<Task> tasks = taskService.createTaskQuery()
+                    .processInstanceId(pi.getId())
+                    .list();
+            for (Task task : tasks)
+            {
+                if (task.getAssignee() != null && !task.getAssignee().isBlank())
+                {
+                    Long assigneeUserId = sysUserMapper.selectUserIdByUserName(task.getAssignee());
+                    if (assigneeUserId != null)
+                    {
+                        notificationMapper.insertNotification(
+                                assigneeUserId,
+                                "新的流程待办任务",
+                                "您有一个新的【" + (def.getName() != null ? def.getName() : def.getKey()) + "】流程待办任务需要处理",
+                                "wf_todo",
+                                "/workflow/task",
+                                task.getId());
+                    }
+                }
+            }
+
             return R.ok(result);
         }
         finally
@@ -193,6 +244,52 @@ public class WorkflowInstanceService
             return m;
         }).toList();
         return R.ok(rows);
+    }
+
+    /**
+     * 发起人撤回流程（下一节点未处理前）
+     */
+    public R<Void> withdraw(String processInstanceId)
+    {
+        CurrentWorkflowUser actor = currentWorkflowUserFacade.current();
+        HistoricProcessInstance hpi = historyService.createHistoricProcessInstanceQuery()
+                .processInstanceId(processInstanceId).singleResult();
+        if (hpi == null)
+        {
+            return R.fail("流程实例不存在");
+        }
+        // 只有发起人可以撤回
+        if (!actor.username().equals(hpi.getStartUserId()))
+        {
+            return R.fail("只有发起人可以撤回流程");
+        }
+        // 检查是否有任务已被处理
+        long doneCount = historyService.createHistoricTaskInstanceQuery()
+                .processInstanceId(processInstanceId).finished().count();
+        if (doneCount > 0)
+        {
+            return R.fail("流程已有审批记录，无法撤回");
+        }
+        // 撤回：删除流程实例
+        runtimeService.deleteProcessInstance(processInstanceId, "发起人撤回");
+        // 通知相关审批人
+        List<Task> tasks = taskService.createTaskQuery()
+                .processInstanceId(processInstanceId).list();
+        for (Task t : tasks)
+        {
+            if (t.getAssignee() != null)
+            {
+                Long userId = sysUserMapper.selectUserIdByUserName(t.getAssignee());
+                if (userId != null)
+                {
+                    notificationMapper.insertNotification(
+                            userId, "流程已撤回",
+                            actor.username() + " 撤回了流程",
+                            "wf_withdraw", "/workflow/instance", processInstanceId);
+                }
+            }
+        }
+        return R.ok();
     }
 
     private Map<String, Object> toRow(ProcessInstance pi)

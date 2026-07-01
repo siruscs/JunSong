@@ -2,15 +2,21 @@ package com.junsong.system.service.impl;
 
 import com.junsong.system.domain.SysServiceHealth;
 import org.springframework.stereotype.Component;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Component
 public class ActuatorServiceHealthProbe implements ServiceHealthProbe
 {
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
+    private final ExecutorService executor = Executors.newFixedThreadPool(9);
+
     private final List<ServiceEndpoint> endpoints = List.of(
         new ServiceEndpoint("网关服务", "junsong-gateway", "http://junsong-gateway:8080/actuator/health"),
         new ServiceEndpoint("认证服务", "junsong-auth", "http://junsong-auth:9200/actuator/health"),
@@ -23,13 +29,26 @@ public class ActuatorServiceHealthProbe implements ServiceHealthProbe
         new ServiceEndpoint("监控服务", "junsong-monitor", "http://junsong-visual-monitor:9100/actuator/health")
     );
 
+    public ActuatorServiceHealthProbe()
+    {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(3000);
+        factory.setReadTimeout(5000);
+        this.restTemplate = new RestTemplate(factory);
+    }
+
     @Override
     public List<SysServiceHealth> probeServices()
     {
-        List<SysServiceHealth> services = new ArrayList<>();
+        List<CompletableFuture<SysServiceHealth>> futures = new ArrayList<>();
         for (ServiceEndpoint endpoint : endpoints)
         {
-            services.add(probe(endpoint));
+            futures.add(CompletableFuture.supplyAsync(() -> probe(endpoint), executor));
+        }
+        List<SysServiceHealth> services = new ArrayList<>();
+        for (CompletableFuture<SysServiceHealth> future : futures)
+        {
+            services.add(future.join());
         }
         return services;
     }

@@ -22,4 +22,7 @@ public interface FinAccountingPeriodMapper
     public BigDecimal selectTotalSalePayment(@Param("periodId") Long periodId, @Param("deptId") Long deptId, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
     public BigDecimal selectTotalSaleAmount(@Param("periodId") Long periodId, @Param("deptId") Long deptId, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
     public BigDecimal selectTotalUnverifiedAdvance(@Param("periodId") Long periodId, @Param("deptId") Long deptId, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
+
+    String selectCurrentPeriodStatusByDeptIds(@Param("deptIds") List<Long> deptIds);
+    FinAccountingPeriod selectPeriodById(@Param("periodId") Long periodId);
 }

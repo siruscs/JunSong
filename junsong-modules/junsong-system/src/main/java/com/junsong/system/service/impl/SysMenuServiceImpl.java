@@ -2,22 +2,26 @@ package com.junsong.system.service.impl;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.junsong.common.core.constant.CacheConstants;
 import com.junsong.common.core.constant.Constants;
 import com.junsong.common.core.constant.UserConstants;
 import com.junsong.common.core.exception.ServiceException;
 import com.junsong.common.core.text.Convert;
 import com.junsong.common.core.utils.StringUtils;
+import com.junsong.common.redis.service.RedisService;
 import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.system.api.domain.SysRole;
 import com.junsong.system.domain.SysMenu;
@@ -51,6 +55,25 @@ public class SysMenuServiceImpl implements ISysMenuService
 
     @Autowired
     private SysRoleMenuMapper roleMenuMapper;
+
+    @Autowired
+    private RedisService redisService;
+
+    private static final long MENU_CACHE_TTL_MINUTES = 30;
+
+    private String getMenuTreeCacheKey(Long userId)
+    {
+        return CacheConstants.SYS_MENU_KEY + "tree:" + userId;
+    }
+
+    private void clearMenuCache()
+    {
+        Collection<String> keys = redisService.keys(CacheConstants.SYS_MENU_KEY + "*");
+        if (keys != null && !keys.isEmpty())
+        {
+            redisService.deleteObject(keys);
+        }
+    }
 
     /**
      * 根据用户查询系统菜单列表
@@ -136,8 +159,15 @@ public class SysMenuServiceImpl implements ISysMenuService
      * @return 菜单列表
      */
     @Override
+    @SuppressWarnings("unchecked")
     public List<SysMenu> selectMenuTreeByUserId(Long userId)
     {
+        String cacheKey = getMenuTreeCacheKey(userId);
+        List<SysMenu> cached = redisService.getCacheObject(cacheKey);
+        if (cached != null)
+        {
+            return cached;
+        }
         List<SysMenu> menus = null;
         if (SecurityUtils.isAdmin(userId))
         {
@@ -147,7 +177,9 @@ public class SysMenuServiceImpl implements ISysMenuService
         {
             menus = menuMapper.selectMenuTreeByUserId(userId);
         }
-        return getChildPerms(menus, MENU_ROOT_ID);
+        List<SysMenu> result = getChildPerms(menus, MENU_ROOT_ID);
+        redisService.setCacheObject(cacheKey, result, MENU_CACHE_TTL_MINUTES, TimeUnit.MINUTES);
+        return result;
     }
 
     /**
@@ -309,7 +341,9 @@ public class SysMenuServiceImpl implements ISysMenuService
     @Override
     public int insertMenu(SysMenu menu)
     {
-        return menuMapper.insertMenu(menu);
+        int result = menuMapper.insertMenu(menu);
+        clearMenuCache();
+        return result;
     }
 
     /**
@@ -321,7 +355,9 @@ public class SysMenuServiceImpl implements ISysMenuService
     @Override
     public int updateMenu(SysMenu menu)
     {
-        return menuMapper.updateMenu(menu);
+        int result = menuMapper.updateMenu(menu);
+        clearMenuCache();
+        return result;
     }
 
     /**
@@ -359,7 +395,9 @@ public class SysMenuServiceImpl implements ISysMenuService
     @Override
     public int deleteMenuById(Long menuId)
     {
-        return menuMapper.deleteMenuById(menuId);
+        int result = menuMapper.deleteMenuById(menuId);
+        clearMenuCache();
+        return result;
     }
 
     /**

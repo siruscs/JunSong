@@ -1,0 +1,54 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'junsong-gateway'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['junsong-gateway:8080']
+
+  - job_name: 'junsong-auth'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['junsong-auth:9200']
+
+  - job_name: 'junsong-system'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['junsong-modules-system:9201']
+
+  - job_name: 'junsong-gen'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['junsong-modules-gen:9202']
+
+  - job_name: 'junsong-job'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['junsong-modules-job:9203']
+
+  - job_name: 'junsong-finance'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['junsong-modules-finance:9205']
+
+  - job_name: 'junsong-member'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['junsong-modules-member:9206']
+
+  - job_name: 'junsong-workflow'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['junsong-modules-workflow:9207']
+
+  - job_name: 'junsong-open'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['junsong-modules-open:9208']
+
+  - job_name: 'junsong-visual-monitor'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['junsong-visual-monitor:9100']

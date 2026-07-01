@@ -73,3 +73,12 @@ export function updateAccountingPeriod(data: any) {
     data: data
   })
 }
+
+// 锁账前检查
+export function checkBeforeLock(deptId: any) {
+  return request({
+    url: '/finance/accountingPeriod/check-before-lock',
+    method: 'get',
+    params: { deptId }
+  })
+}

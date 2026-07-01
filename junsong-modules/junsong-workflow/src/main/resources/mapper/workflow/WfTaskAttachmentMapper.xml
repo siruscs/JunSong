@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.workflow.mapper.WfTaskAttachmentMapper">
+
+    <resultMap type="com.junsong.workflow.domain.WfTaskAttachment" id="WfTaskAttachmentResult">
+        <id property="id" column="id"/>
+        <result property="taskId" column="task_id"/>
+        <result property="processInstanceId" column="process_instance_id"/>
+        <result property="fileName" column="file_name"/>
+        <result property="fileUrl" column="file_url"/>
+        <result property="fileSize" column="file_size"/>
+        <result property="uploadUser" column="upload_user"/>
+        <result property="uploadTime" column="upload_time"/>
+        <result property="actionType" column="action_type"/>
+    </resultMap>
+
+    <select id="selectByTaskId" resultMap="WfTaskAttachmentResult">
+        select id, task_id, process_instance_id, file_name, file_url, file_size, upload_user, upload_time, action_type
+        from wf_task_attachment
+        <where>
+            task_id = #{taskId}
+        </where>
+        order by upload_time desc
+    </select>
+
+    <select id="selectByProcessInstanceId" resultMap="WfTaskAttachmentResult">
+        select id, task_id, process_instance_id, file_name, file_url, file_size, upload_user, upload_time, action_type
+        from wf_task_attachment
+        <where>
+            process_instance_id = #{processInstanceId}
+        </where>
+        order by upload_time desc
+    </select>
+
+    <insert id="insert" parameterType="com.junsong.workflow.domain.WfTaskAttachment" useGeneratedKeys="true" keyProperty="id">
+        insert into wf_task_attachment (task_id, process_instance_id, file_name, file_url, file_size, upload_user, action_type)
+        values (#{taskId}, #{processInstanceId}, #{fileName}, #{fileUrl}, #{fileSize}, #{uploadUser}, #{actionType})
+    </insert>
+
+    <delete id="deleteById" parameterType="Long">
+        delete from wf_task_attachment where id = #{id}
+    </delete>
+
+</mapper>

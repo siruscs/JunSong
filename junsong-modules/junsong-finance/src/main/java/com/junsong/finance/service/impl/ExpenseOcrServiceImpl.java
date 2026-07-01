@@ -1,13 +1,13 @@
 package com.junsong.finance.service.impl;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.junsong.common.core.exception.ServiceException;
 import com.junsong.finance.service.ExpenseOcrService;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.imageio.ImageIO;
-import java.awt.*;
-import java.awt.image.BufferedImage;
 import java.io.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -26,24 +26,57 @@ public class ExpenseOcrServiceImpl implements ExpenseOcrService
     private static final Pattern DATE_PATTERN = Pattern.compile("(\\d{4})[年/\\-.](\\d{1,2})[月/\\-.](\\d{1,2})[日号]?");
     private static final Pattern SHORT_DATE_PATTERN = Pattern.compile("(?:支付时间|交易时间|下单时间|创建时间|订单时间)\\s*(\\d{1,2})[月/\\-.](\\d{1,2})[日号]?");
     private static final Pattern ANY_NUMBER_PATTERN = Pattern.compile("(?<!\\d)([1-9]\\d{0,5}(?:\\.\\d{1,2})?)(?!\\d)");
-    private static final String[] PSM_MODES = { "6", "11", "12", "4" };
+
+    private static final ObjectMapper JSON = new ObjectMapper();
+
+    private static final String OCR_SCRIPT;
+
+    static
+    {
+        // 优先使用容器内固定路径（Dockerfile/部署脚本会放置），不存在则从classpath提取
+        File containerScript = new File("/home/junsong/scripts/paddle_ocr.py");
+        if (containerScript.exists())
+        {
+            OCR_SCRIPT = containerScript.getAbsolutePath();
+        }
+        else
+        {
+            File script = new File(System.getProperty("java.io.tmpdir"), "paddle_ocr.py");
+            try
+            {
+                try (InputStream is = new ClassPathResource("scripts/paddle_ocr.py").getInputStream())
+                {
+                    try (OutputStream os = new FileOutputStream(script))
+                    {
+                        is.transferTo(os);
+                    }
+                }
+                if (!script.setExecutable(true))
+                {
+                    // 忽略权限设置失败
+                }
+            }
+            catch (Exception e)
+            {
+                // 提取失败时尝试直接用classpath路径
+            }
+            OCR_SCRIPT = script.getAbsolutePath();
+        }
+    }
 
     @Override
     public OcrResult recognize(MultipartFile file) throws Exception
     {
         File tempImage = File.createTempFile("ocr_", ".png");
-        File processedImage = File.createTempFile("ocr_processed_", ".png");
         try
         {
             file.transferTo(tempImage);
-            File imageForOcr = preprocessImage(tempImage, processedImage) ? processedImage : tempImage;
-            String bestText = recognizeBestText(imageForOcr);
-            return parseText(bestText);
+            String text = runPaddleOcr(tempImage);
+            return parseText(text);
         }
         finally
         {
             tempImage.delete();
-            processedImage.delete();
         }
     }
 
@@ -59,119 +92,36 @@ public class ExpenseOcrServiceImpl implements ExpenseOcrService
         return result;
     }
 
-    private boolean preprocessImage(File source, File target)
+    /**
+     * 调用 PaddleOCR Python 脚本进行识别
+     * PaddleOCR 自带图片预处理（角度分类、文本检测），无需手动灰度化/增强对比度
+     */
+    private String runPaddleOcr(File image) throws Exception
     {
-        try
-        {
-            BufferedImage input = ImageIO.read(source);
-            if (input == null)
-            {
-                return false;
-            }
-            int scale = input.getWidth() < 1400 ? 2 : 1;
-            int width = input.getWidth() * scale;
-            int height = input.getHeight() * scale;
-            BufferedImage output = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY);
-            Graphics2D graphics = output.createGraphics();
-            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-            graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-            graphics.drawImage(input, 0, 0, width, height, null);
-            graphics.dispose();
-            enhanceContrast(output);
-            return ImageIO.write(output, "png", target);
-        }
-        catch (Exception e)
-        {
-            return false;
-        }
-    }
-
-    private void enhanceContrast(BufferedImage image)
-    {
-        int width = image.getWidth();
-        int height = image.getHeight();
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                int rgb = image.getRGB(x, y);
-                int gray = rgb & 0xff;
-                int enhanced = Math.max(0, Math.min(255, (int) ((gray - 128) * 1.25 + 128)));
-                int value = enhanced < 168 ? 0 : 255;
-                int out = (value << 16) | (value << 8) | value;
-                image.setRGB(x, y, out);
-            }
-        }
-    }
-
-    private String recognizeBestText(File image) throws Exception
-    {
-        String bestText = "";
-        int bestScore = -1;
-        String error = "";
-        for (String psm : PSM_MODES)
-        {
-            File tempOutput = File.createTempFile("ocr_out_", "");
-            try
-            {
-                String text = runTesseract(image, tempOutput, psm);
-                int score = scoreText(text);
-                if (score > bestScore)
-                {
-                    bestScore = score;
-                    bestText = text;
-                }
-            }
-            catch (Exception e)
-            {
-                error = e.getMessage();
-            }
-            finally
-            {
-                new File(tempOutput.getAbsolutePath() + ".txt").delete();
-                tempOutput.delete();
-            }
-        }
-        if (bestText.isBlank() && !error.isBlank())
-        {
-            throw new ServiceException(error);
-        }
-        return bestText;
-    }
-
-    private String runTesseract(File image, File output, String psm) throws Exception
-    {
-        ProcessBuilder pb = new ProcessBuilder(
-            "tesseract", image.getAbsolutePath(), output.getAbsolutePath(), "-l", "chi_sim+eng", "--psm", psm
-        );
+        ProcessBuilder pb = new ProcessBuilder("python3", OCR_SCRIPT, image.getAbsolutePath());
         pb.redirectErrorStream(true);
         Process process = pb.start();
         String processOutput = readStream(process.getInputStream());
         int exitCode = process.waitFor();
         if (exitCode != 0)
         {
-            throw new ServiceException("tesseract exit code " + exitCode + ": " + processOutput);
+            throw new ServiceException("PaddleOCR 识别失败: " + processOutput);
         }
-        return readFile(new File(output.getAbsolutePath() + ".txt"));
-    }
-
-    private int scoreText(String text)
-    {
-        OcrResult result = parseText(text);
-        int score = normalizeText(text).length();
-        if (!result.getAmount().isBlank())
+        // 解析 JSON 输出 {"text": "..."}
+        try
         {
-            score += 120;
+            JsonNode node = JSON.readTree(processOutput);
+            if (node.has("error"))
+            {
+                throw new ServiceException("PaddleOCR 错误: " + node.get("error").asText());
+            }
+            return node.has("text") ? node.get("text").asText() : "";
         }
-        if (!result.getDate().isBlank())
+        catch (com.fasterxml.jackson.core.JsonParseException e)
         {
-            score += 80;
+            // 如果不是JSON，直接返回原始输出
+            return processOutput;
         }
-        if (!result.getPlatform().isBlank())
-        {
-            score += 40;
-        }
-        return score;
     }
 
     private String readStream(InputStream is) throws IOException
@@ -182,20 +132,6 @@ public class ExpenseOcrServiceImpl implements ExpenseOcrService
         while ((line = reader.readLine()) != null)
         {
             sb.append(line).append("\n");
-        }
-        return sb.toString();
-    }
-
-    private String readFile(File file) throws IOException
-    {
-        StringBuilder sb = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8")))
-        {
-            String line;
-            while ((line = reader.readLine()) != null)
-            {
-                sb.append(line).append("\n");
-            }
         }
         return sb.toString();
     }

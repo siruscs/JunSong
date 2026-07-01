@@ -37,6 +37,17 @@
             @keyup.enter="getList"
           />
         </el-form-item>
+        <el-form-item label="分类">
+          <el-select v-model="queryParams.category" placeholder="请选择分类" clearable style="width: 160px">
+            <el-option v-for="c in categoryOptions" :key="c.dictValue" :label="c.dictLabel" :value="c.dictValue" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button link type="primary" @click="categoryManageDialog.visible = true">
+            <el-icon><Setting /></el-icon>
+            管理分类
+          </el-button>
+        </el-form-item>
         <el-form-item label="最新版本">
           <el-switch v-model="queryParams.latestOnly" />
         </el-form-item>
@@ -77,6 +88,14 @@
           </template>
         </el-table-column>
         <el-table-column label="流程标识" prop="processKey" min-width="160" />
+        <el-table-column label="分类" width="140" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.category" size="small" :type="getCategoryTagType(row.category)">
+              {{ getCategoryLabel(row.category) }}
+            </el-tag>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="版本" width="110" align="center">
           <template #default="{ row }">
             <el-tag type="info">v{{ row.version }}</el-tag>
@@ -171,6 +190,12 @@
         <el-descriptions-item label="流程标识">
           {{ detailDialog.data.processKey }}
         </el-descriptions-item>
+        <el-descriptions-item label="分类">
+          <el-tag v-if="detailDialog.data.category" size="small" :type="getCategoryTagType(detailDialog.data.category)">
+            {{ getCategoryLabel(detailDialog.data.category) }}
+          </el-tag>
+          <span v-else>-</span>
+        </el-descriptions-item>
         <el-descriptions-item label="定义 ID">
           {{ detailDialog.data.definitionId }}
         </el-descriptions-item>
@@ -208,6 +233,39 @@
       <el-empty v-else description="当前会话暂无校验记录" />
     </el-dialog>
 
+    <el-dialog v-model="publishDialog.visible" title="发布流程" width="520px">
+      <el-form label-width="88px">
+        <el-form-item label="流程名称">
+          <span>{{ publishDialog.row?.processName || publishDialog.row?.processKey || '-' }}</span>
+        </el-form-item>
+        <el-form-item label="流程标识">
+          <span>{{ publishDialog.row?.processKey || '-' }}</span>
+        </el-form-item>
+        <el-form-item label="分类">
+          <el-select
+            v-model="publishDialog.category"
+            placeholder="选择或输入新分类"
+            clearable
+            filterable
+            allow-create
+            default-first-option
+            style="width: 100%"
+          >
+            <el-option
+              v-for="c in categoryOptions"
+              :key="c.dictValue"
+              :label="c.dictLabel"
+              :value="c.dictValue"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="publishDialog.visible = false">取消</el-button>
+        <el-button type="primary" @click="confirmPublish">确认发布</el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="startDialog.visible" title="发起流程" width="620px">
       <el-form
         ref="startFormRef"
@@ -220,6 +278,12 @@
         </el-form-item>
         <el-form-item label="流程标识">
           <div>{{ startDialog.row?.processKey || '-' }}</div>
+        </el-form-item>
+        <el-form-item label="分类">
+          <el-tag v-if="startDialog.row?.category" size="small" :type="getCategoryTagType(startDialog.row.category)">
+            {{ getCategoryLabel(startDialog.row.category) }}
+          </el-tag>
+          <span v-else>-</span>
         </el-form-item>
         <el-form-item label="业务键" prop="businessKey">
           <el-input
@@ -244,6 +308,42 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="categoryManageDialog.visible" title="流程分类管理" width="600px" @open="resetCategoryForm">
+      <el-table :data="categoryOptions" size="small" border>
+        <el-table-column label="排序" prop="dictSort" width="70" align="center" />
+        <el-table-column label="分类名称" prop="dictLabel" min-width="120" />
+        <el-table-column label="编码" prop="dictValue" min-width="100" />
+        <el-table-column label="样式" width="90" align="center">
+          <template #default="{ row }">
+            <el-tag size="small" :type="row.listClass || 'info'">{{ row.dictLabel }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="120" align="center">
+          <template #default="{ row }">
+            <el-button link type="primary" size="small" @click="handleEditCategory(row)">编辑</el-button>
+            <el-button link type="danger" size="small" @click="handleDeleteCategory(row)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <el-divider content-position="left">{{ categoryManageDialog.isEdit ? '编辑分类' : '新增分类' }}</el-divider>
+      <el-form :model="categoryManageDialog.form" inline>
+        <el-form-item label="名称" required>
+          <el-input v-model="categoryManageDialog.form.dictLabel" placeholder="如：财务流程" clearable />
+        </el-form-item>
+        <el-form-item label="编码" required>
+          <el-input v-model="categoryManageDialog.form.dictValue" placeholder="如：finance" clearable />
+        </el-form-item>
+        <el-form-item label="排序">
+          <el-input-number v-model="categoryManageDialog.form.dictSort" :min="0" :max="999" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleSaveCategory">{{ categoryManageDialog.isEdit ? '更新' : '添加' }}</el-button>
+          <el-button v-if="categoryManageDialog.isEdit" @click="resetCategoryForm">取消</el-button>
+        </el-form-item>
+      </el-form>
+    </el-dialog>
   </div>
 </template>
 
@@ -251,7 +351,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Refresh } from '@element-plus/icons-vue'
+import { Plus, Refresh, Setting } from '@element-plus/icons-vue'
 import { parseTime, resetForm as resetFormUtil } from '@/utils/junsong'
 import {
   activateWorkflowDefinition,
@@ -266,6 +366,7 @@ import {
   type WorkflowDefinitionValidationResult,
   validateWorkflowDefinition,
 } from '@/api/workflow/definition'
+import { getDictDataByType, addData, updateData, delData } from '@/api/system/dict/data'
 import { startWorkflowInstance } from '@/api/workflow/instance'
 import { parseWorkflowVariablesText } from '../shared/runtime'
 
@@ -306,10 +407,27 @@ const startDialog = reactive<StartDialogState>({
     variablesText: '',
   },
 })
+const publishDialog = reactive({
+  visible: false,
+  row: null as WorkflowDefinitionSummary | null,
+  xmlDetail: null as { xml: string; processKey: string; processName: string } | null,
+  category: '',
+})
+
+interface DictItem {
+  dictCode: number
+  dictLabel: string
+  dictValue: string
+  dictSort: number
+  listClass?: string
+}
+
+const categoryOptions = ref<DictItem[]>([])
 
 const queryParams = reactive({
   key: '',
   keyword: '',
+  category: '',
   latestOnly: true,
 })
 const startRules = {
@@ -374,6 +492,7 @@ async function getList() {
 function resetQuery() {
   queryParams.key = ''
   queryParams.keyword = ''
+  queryParams.category = ''
   queryParams.latestOnly = true
   resetFormUtil(queryFormRef.value)
   getList()
@@ -423,12 +542,28 @@ async function handleValidate(row: WorkflowDefinitionSummary) {
   ElMessage.success(res.data.valid ? '流程校验通过' : '流程校验完成，请查看提示')
 }
 
+function openPublishDialog(row: WorkflowDefinitionSummary) {
+  publishDialog.row = row
+  publishDialog.category = row.category || ''
+  publishDialog.visible = true
+}
+
+async function confirmPublish() {
+  if (!publishDialog.xmlDetail || !publishDialog.row) return
+  const res = await deployWorkflowDefinition({
+    xml: publishDialog.xmlDetail.xml,
+    processKey: publishDialog.xmlDetail.processKey,
+    processName: publishDialog.xmlDetail.processName,
+    deploymentName: publishDialog.xmlDetail.processName || publishDialog.xmlDetail.processKey,
+    category: publishDialog.category || undefined,
+  })
+  lastDeployResult.value = res.data
+  publishDialog.visible = false
+  ElMessage.success(`发布成功，当前版本 v${res.data.version}`)
+  await getList()
+}
+
 async function handlePublish(row: WorkflowDefinitionSummary) {
-  await ElMessageBox.confirm(
-    `将基于当前定义重新发布流程“${row.processName || row.processKey}”，继续吗？`,
-    '发布确认',
-    { type: 'warning' },
-  )
   const xmlDetail = await loadDefinitionXml(row)
   const validation = await validateWorkflowDefinition({
     xml: xmlDetail.xml,
@@ -442,19 +577,16 @@ async function handlePublish(row: WorkflowDefinitionSummary) {
     ElMessage.warning('校验未通过，已阻止发布')
     return
   }
-  const res = await deployWorkflowDefinition({
+  publishDialog.xmlDetail = {
     xml: xmlDetail.xml,
     processKey: xmlDetail.processKey,
     processName: xmlDetail.processName,
-    deploymentName: xmlDetail.processName || xmlDetail.processKey,
-  })
-  lastDeployResult.value = res.data
-  ElMessage.success(`发布成功，当前版本 v${res.data.version}`)
-  await getList()
+  }
+  openPublishDialog(row)
 }
 
 async function handleSuspend(row: WorkflowDefinitionSummary) {
-  await ElMessageBox.confirm(`确认挂起流程“${row.processName || row.processKey}”吗？`, '提示', {
+  await ElMessageBox.confirm(`确认挂起流程"${row.processName || row.processKey}"吗？`, '提示', {
     type: 'warning',
   })
   await suspendWorkflowDefinition(row.definitionId)
@@ -463,7 +595,7 @@ async function handleSuspend(row: WorkflowDefinitionSummary) {
 }
 
 async function handleActivate(row: WorkflowDefinitionSummary) {
-  await ElMessageBox.confirm(`确认激活流程“${row.processName || row.processKey}”吗？`, '提示', {
+  await ElMessageBox.confirm(`确认激活流程"${row.processName || row.processKey}"吗？`, '提示', {
     type: 'warning',
   })
   await activateWorkflowDefinition(row.definitionId)
@@ -473,7 +605,7 @@ async function handleActivate(row: WorkflowDefinitionSummary) {
 
 async function handleDelete(row: WorkflowDefinitionSummary) {
   await ElMessageBox.confirm(
-    `确认删除部署“${row.processName || row.processKey}”吗？删除后对应流程定义将不可恢复。`,
+    `确认删除部署"${row.processName || row.processKey}"吗？删除后对应流程定义将不可恢复。`,
     '删除确认',
     { type: 'warning' },
   )
@@ -518,7 +650,75 @@ async function submitStart() {
   }
 }
 
+async function loadCategories() {
+  try {
+    const res = await getDictDataByType('wf_category')
+    categoryOptions.value = (res.data || []).sort((a: DictItem, b: DictItem) => a.dictSort - b.dictSort)
+  } catch (e) {
+    categoryOptions.value = []
+  }
+}
+
+function getCategoryLabel(value: string) {
+  const item = categoryOptions.value.find(c => c.dictValue === value)
+  return item?.dictLabel || value
+}
+
+function getCategoryTagType(value: string) {
+  const item = categoryOptions.value.find(c => c.dictValue === value)
+  return item?.listClass || 'info'
+}
+
+const categoryManageDialog = reactive({
+  visible: false,
+  loading: false,
+  form: { dictLabel: '', dictValue: '', dictSort: 0 } as Partial<DictItem>,
+  isEdit: false,
+})
+
+function resetCategoryForm() {
+  categoryManageDialog.form = { dictLabel: '', dictValue: '', dictSort: categoryOptions.value.length + 1 }
+  categoryManageDialog.isEdit = false
+}
+
+function handleEditCategory(row: DictItem) {
+  categoryManageDialog.form = { ...row }
+  categoryManageDialog.isEdit = true
+}
+
+async function handleSaveCategory() {
+  if (!categoryManageDialog.form.dictLabel || !categoryManageDialog.form.dictValue) {
+    ElMessage.warning('请填写分类名称和编码')
+    return
+  }
+  const payload = {
+    dictType: 'wf_category',
+    dictLabel: categoryManageDialog.form.dictLabel,
+    dictValue: categoryManageDialog.form.dictValue,
+    dictSort: categoryManageDialog.form.dictSort || 0,
+    status: '0',
+    isDefault: 'N',
+  }
+  if (categoryManageDialog.isEdit && categoryManageDialog.form.dictCode) {
+    await updateData({ ...payload, dictCode: categoryManageDialog.form.dictCode })
+    ElMessage.success('分类已更新')
+  } else {
+    await addData(payload)
+    ElMessage.success('分类已添加')
+  }
+  resetCategoryForm()
+  await loadCategories()
+}
+
+async function handleDeleteCategory(row: DictItem) {
+  await ElMessageBox.confirm(`确认删除分类"${row.dictLabel}"吗？`, '提示', { type: 'warning' })
+  await delData(row.dictCode)
+  ElMessage.success('分类已删除')
+  await loadCategories()
+}
+
 onMounted(() => {
+  loadCategories()
   getList()
 })
 </script>

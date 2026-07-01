@@ -11,6 +11,7 @@ import com.junsong.common.core.domain.R;
 import com.junsong.common.core.utils.StringUtils;
 import com.junsong.common.core.utils.file.FileUtils;
 import com.junsong.file.service.ISysFileService;
+import com.junsong.common.security.annotation.RequiresPermissions;
 import com.junsong.system.api.domain.SysFile;
 
 /**
@@ -29,6 +30,7 @@ public class SysFileController
     /**
      * 文件上传请求
      */
+    @RequiresPermissions("system:file:upload")
     @PostMapping("upload")
     public R<SysFile> upload(MultipartFile file)
     {
@@ -51,6 +53,7 @@ public class SysFileController
     /**
      * 文件删除请求
      */
+    @RequiresPermissions("system:file:remove")
     @DeleteMapping("delete")
     public R<Boolean> delete(String fileUrl)
     {

@@ -6,6 +6,7 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.AsyncHandlerInterceptor;
 import com.junsong.common.core.constant.SecurityConstants;
 import com.junsong.common.core.context.SecurityContextHolder;
+import com.junsong.common.core.context.TenantContext;
 import com.junsong.common.core.utils.ServletUtils;
 import com.junsong.common.core.utils.StringUtils;
 import com.junsong.common.security.auth.AuthUtil;
@@ -40,9 +41,22 @@ public class HeaderInterceptor implements AsyncHandlerInterceptor
             {
                 AuthUtil.verifyLoginUserExpire(loginUser);
                 SecurityContextHolder.set(SecurityConstants.LOGIN_USER, loginUser);
+                setTenantContextFromLoginUser(loginUser);
             }
         }
         return true;
+    }
+
+    private void setTenantContextFromLoginUser(LoginUser loginUser)
+    {
+        if (loginUser.getSysUser() != null && loginUser.getSysUser().getTenantId() != null)
+        {
+            TenantContext.setTenantId(loginUser.getSysUser().getTenantId());
+        }
+        else
+        {
+            TenantContext.setTenantId(TenantContext.DEFAULT_TENANT_ID);
+        }
     }
 
     @Override
@@ -50,5 +64,6 @@ public class HeaderInterceptor implements AsyncHandlerInterceptor
             throws Exception
     {
         SecurityContextHolder.remove();
+        TenantContext.clear();
     }
 }

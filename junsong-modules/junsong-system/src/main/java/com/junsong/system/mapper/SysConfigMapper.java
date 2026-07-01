@@ -43,6 +43,14 @@ public interface SysConfigMapper
     public SysConfig checkConfigKeyUnique(String configKey);
 
     /**
+     * 查询公共配置（tenant_id=0）
+     *
+     * @param configKey 参数键名
+     * @return 参数配置信息
+     */
+    public SysConfig selectPublicConfig(String configKey);
+
+    /**
      * 新增参数配置
      * 
      * @param config 参数配置信息

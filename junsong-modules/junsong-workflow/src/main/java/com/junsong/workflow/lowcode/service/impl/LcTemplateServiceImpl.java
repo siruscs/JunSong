@@ -112,6 +112,16 @@ public class LcTemplateServiceImpl implements LcTemplateService
         clearIds(config.getBranchRules());
         clearIds(config.getActions());
         clearIds(config.getPostActions());
+        clearIds(config.getNodeTimers());
+
+        // 同步所有子列表的 bizCode 为新值
+        rebindBizCode(config.getFields(), newBizCode);
+        rebindBizCode(config.getPageSchemas(), newBizCode);
+        rebindBizCode(config.getNodeAssignees(), newBizCode);
+        rebindBizCode(config.getBranchRules(), newBizCode);
+        rebindBizCode(config.getActions(), newBizCode);
+        rebindBizCode(config.getPostActions(), newBizCode);
+        rebindBizCode(config.getNodeTimers(), newBizCode);
 
         // 补全 delFlag（内联，避免泛型类型转换问题）
         if (config.getFields() != null) for (LcBizField f : config.getFields()) if (f.getDelFlag() == null) f.setDelFlag("0");
@@ -162,6 +172,20 @@ public class LcTemplateServiceImpl implements LcTemplateService
             try
             {
                 item.getClass().getMethod("setId", Long.class).invoke(item, (Long) null);
+            }
+            catch (Exception ignored) {}
+        }
+    }
+
+    @SuppressWarnings("rawtypes")
+    private void rebindBizCode(List list, String newBizCode)
+    {
+        if (list == null) return;
+        for (Object item : list)
+        {
+            try
+            {
+                item.getClass().getMethod("setBizCode", String.class).invoke(item, newBizCode);
             }
             catch (Exception ignored) {}
         }

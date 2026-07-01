@@ -84,7 +84,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="selectMemSeckillRecordById" parameterType="Long" resultMap="MemSeckillRecordResult">
         <include refid="selectMemSeckillRecordVo"/>
-        where r.record_id = #{recordId} and r.del_flag = '0'
+        <where>
+            AND r.record_id = #{recordId} and r.del_flag = '0'
+        </where>
     </select>
 
     <insert id="insertMemSeckillRecord" parameterType="com.junsong.member.domain.MemSeckillRecord" useGeneratedKeys="true" keyProperty="recordId">
@@ -169,7 +171,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             where del_flag = '0'
             group by record_id
         ) cs on r.record_id = cs.record_id
-        where r.del_flag = '0'
+        <where>
+            AND r.del_flag = '0'
             <if test="seckillId != null">and r.seckill_id = #{seckillId}</if>
             <if test="memberNo != null and memberNo != ''">and r.member_no like concat('%', #{memberNo}, '%')</if>
             <if test="params.beginTime != null and params.beginTime != ''">
@@ -178,6 +181,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="params.endTime != null and params.endTime != ''">
                 AND r.seckill_date &lt; DATE_ADD(#{params.endTime}, INTERVAL 1 DAY)
             </if>
+        </where>
     </select>
 
     <!-- 按付款方式统计 -->
@@ -191,7 +195,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         left join sys_dict_data d on d.dict_type = 'finance_payment_method'
             and d.status = '0'
             and d.dict_value = r.payment_method
-        where r.del_flag = '0'
+        <where>
+            AND r.del_flag = '0'
             <if test="seckillId != null">and r.seckill_id = #{seckillId}</if>
             <if test="memberNo != null and memberNo != ''">and r.member_no like concat('%', #{memberNo}, '%')</if>
             <if test="params.beginTime != null and params.beginTime != ''">
@@ -200,6 +205,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="params.endTime != null and params.endTime != ''">
                 AND r.seckill_date &lt; DATE_ADD(#{params.endTime}, INTERVAL 1 DAY)
             </if>
+        </where>
         group by coalesce(d.dict_label, r.payment_method, '其他')
         order by recordCount desc
     </select>
@@ -217,12 +223,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectMemberIdsBySeckillAndDate" resultType="java.lang.Long">
         select member_id
         from mem_seckill_record
-        where del_flag = '0'
-          and dept_id = #{deptId}
-          and seckill_id = #{seckillId}
-          <if test="seckillDate != null">
-              and seckill_date &gt;= #{seckillDate} and seckill_date &lt; DATE_ADD(#{seckillDate}, INTERVAL 1 DAY)
-          </if>
+        <where>
+            AND del_flag = '0'
+              and dept_id = #{deptId}
+              and seckill_id = #{seckillId}
+            <if test="seckillDate != null">
+                and seckill_date &gt;= #{seckillDate} and seckill_date &lt; DATE_ADD(#{seckillDate}, INTERVAL 1 DAY)
+            </if>
+        </where>
     </select>
 
 </mapper>

@@ -42,26 +42,36 @@ public class SysUserOnlineController extends BaseController
     @GetMapping("/list")
     public TableDataInfo list(String ipaddr, String userName)
     {
-        Collection<String> keys = redisService.keys(CacheConstants.LOGIN_TOKEN_KEY + "*");
+        Collection<String> keys = redisService.scan(CacheConstants.LOGIN_TOKEN_KEY + "*");
         List<SysUserOnline> userOnlineList = new ArrayList<SysUserOnline>();
-        for (String key : keys)
+        if (!keys.isEmpty())
         {
-            LoginUser user = redisService.getCacheObject(key);
-            if (StringUtils.isNotEmpty(ipaddr) && StringUtils.isNotEmpty(userName))
+            List<LoginUser> loginUsers = redisService.multiGetCacheObject(keys);
+            if (loginUsers != null)
             {
-                userOnlineList.add(userOnlineService.selectOnlineByInfo(ipaddr, userName, user));
-            }
-            else if (StringUtils.isNotEmpty(ipaddr))
-            {
-                userOnlineList.add(userOnlineService.selectOnlineByIpaddr(ipaddr, user));
-            }
-            else if (StringUtils.isNotEmpty(userName))
-            {
-                userOnlineList.add(userOnlineService.selectOnlineByUserName(userName, user));
-            }
-            else
-            {
-                userOnlineList.add(userOnlineService.loginUserToUserOnline(user));
+                for (LoginUser user : loginUsers)
+                {
+                    if (user == null)
+                    {
+                        continue;
+                    }
+                    if (StringUtils.isNotEmpty(ipaddr) && StringUtils.isNotEmpty(userName))
+                    {
+                        userOnlineList.add(userOnlineService.selectOnlineByInfo(ipaddr, userName, user));
+                    }
+                    else if (StringUtils.isNotEmpty(ipaddr))
+                    {
+                        userOnlineList.add(userOnlineService.selectOnlineByIpaddr(ipaddr, user));
+                    }
+                    else if (StringUtils.isNotEmpty(userName))
+                    {
+                        userOnlineList.add(userOnlineService.selectOnlineByUserName(userName, user));
+                    }
+                    else
+                    {
+                        userOnlineList.add(userOnlineService.loginUserToUserOnline(user));
+                    }
+                }
             }
         }
         Collections.reverse(userOnlineList);

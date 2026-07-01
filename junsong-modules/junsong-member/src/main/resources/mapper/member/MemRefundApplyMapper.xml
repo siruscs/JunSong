@@ -52,12 +52,16 @@
 
     <select id="selectMemRefundApplyById" parameterType="Long" resultMap="MemRefundApplyResult">
         <include refid="selectMemRefundApplyVo"/>
-        where id = #{id} and del_flag = '0'
+        <where>
+            AND id = #{id} and del_flag = '0'
+        </where>
     </select>
 
     <select id="selectMemRefundApplyByRefundNo" parameterType="String" resultMap="MemRefundApplyResult">
         <include refid="selectMemRefundApplyVo"/>
-        where refund_no = #{refundNo} and del_flag = '0'
+        <where>
+            AND refund_no = #{refundNo} and del_flag = '0'
+        </where>
     </select>
 
     <insert id="insertMemRefundApply" parameterType="com.junsong.member.domain.MemRefundApply" useGeneratedKeys="true" keyProperty="id">

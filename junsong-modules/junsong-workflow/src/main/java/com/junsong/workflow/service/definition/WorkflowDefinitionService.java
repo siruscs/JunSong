@@ -1,5 +1,6 @@
 package com.junsong.workflow.service.definition;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
@@ -16,12 +17,14 @@ import com.junsong.workflow.controller.dto.definition.DeployDefinitionReq;
 import com.junsong.workflow.controller.dto.definition.DeployDefinitionResp;
 import com.junsong.workflow.controller.dto.definition.ValidateDefinitionReq;
 import com.junsong.workflow.controller.dto.definition.ValidateDefinitionResp;
+import com.junsong.workflow.lowcode.service.BpmnMultiInstanceAssembleService;
 import com.junsong.workflow.lowcode.service.BpmnTimerAssembleService;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
 import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.StartEvent;
+import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.ProcessDefinition;
@@ -33,13 +36,19 @@ import org.springframework.stereotype.Service;
 public class WorkflowDefinitionService
 {
     private final RepositoryService repositoryService;
+    private final ProcessEngine processEngine;
     private final BpmnTimerAssembleService timerAssembleService;
+    private final BpmnMultiInstanceAssembleService multiInstanceAssembleService;
 
     public WorkflowDefinitionService(RepositoryService repositoryService,
-                                     BpmnTimerAssembleService timerAssembleService)
+                                     ProcessEngine processEngine,
+                                     BpmnTimerAssembleService timerAssembleService,
+                                     BpmnMultiInstanceAssembleService multiInstanceAssembleService)
     {
         this.repositoryService = repositoryService;
+        this.processEngine = processEngine;
         this.timerAssembleService = timerAssembleService;
+        this.multiInstanceAssembleService = multiInstanceAssembleService;
     }
 
     public List<DefinitionSummaryResp> list(String key, String keyword, Boolean latestOnly, String category)
@@ -89,6 +98,39 @@ public class WorkflowDefinitionService
     public DefinitionSummaryResp detail(String definitionId)
     {
         return toSummary(requireDefinition(definitionId));
+    }
+
+    /**
+     * 生成流程定义的 PNG 流程图，并高亮指定活动节点（运行中实例的当前节点）。
+     * 若流程定义无图形信息（缺少 BPMN DI），抛出 ServiceException 由调用方转为 404。
+     */
+    public byte[] generateDiagram(String processDefinitionId,
+                                  List<String> highLightedActivities,
+                                  List<String> highLightedFlows)
+    {
+        BpmnModel bpmnModel = repositoryService.getBpmnModel(processDefinitionId);
+        if (bpmnModel == null
+                || bpmnModel.getLocationMap() == null
+                || bpmnModel.getLocationMap().isEmpty())
+        {
+            throw new ServiceException("流程定义无图形信息，无法生成流程图: " + processDefinitionId);
+        }
+        List<String> activities = highLightedActivities == null ? List.of() : highLightedActivities;
+        List<String> flows = highLightedFlows == null ? List.of() : highLightedFlows;
+        InputStream diagram = processEngine.getProcessEngineConfiguration().getProcessDiagramGenerator().generateDiagram(
+                bpmnModel, "png", activities, flows, "宋体", "宋体", "宋体", null, 1.0, false);
+        if (diagram == null)
+        {
+            throw new ServiceException("流程定义无图形信息，无法生成流程图: " + processDefinitionId);
+        }
+        try
+        {
+            return diagram.readAllBytes();
+        }
+        catch (IOException exception)
+        {
+            throw new ServiceException("生成流程图失败: " + exception.getMessage());
+        }
     }
 
     public DefinitionXmlResp loadXml(String definitionId)
@@ -157,7 +199,9 @@ public class WorkflowDefinitionService
         org.flowable.bpmn.model.Process process = validateProcess(request.xml());
         String resourceName = process.getId() + ".bpmn20.xml";
         // 装配节点定时器（边界定时器），无配置则返回原 XML
-        String deployXml = timerAssembleService.assembleTimers(request.xml(), process.getId());
+        String timerXml = timerAssembleService.assembleTimers(request.xml(), process.getId());
+        // 装配会签/或签的多实例特性，无配置则返回原 XML
+        String deployXml = multiInstanceAssembleService.assembleMultiInstance(timerXml, process.getId());
         Deployment deployment = repositoryService.createDeployment()
                 .key(process.getId())
                 .name(resolveDeploymentName(request, process))
@@ -232,7 +276,7 @@ public class WorkflowDefinitionService
                 definition.getDeploymentId(),
                 definition.getResourceName(),
                 deployment == null ? null : deployment.getDeploymentTime(),
-                definition.getCategory());
+                deployment == null ? definition.getCategory() : deployment.getCategory());
     }
 
     private org.flowable.bpmn.model.Process validateProcess(String xml)

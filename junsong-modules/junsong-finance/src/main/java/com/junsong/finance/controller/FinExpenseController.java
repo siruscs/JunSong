@@ -153,6 +153,7 @@ public class FinExpenseController extends BaseController
     /**
      * 下载费用记录导入模板
      */
+    @RequiresPermissions("finance:expense:import")
     @PostMapping("/importTemplate")
     public void importTemplate(HttpServletResponse response) throws IOException
     {

@@ -44,4 +44,32 @@ public class ReportQueryParams {
     public void setTimeType(String timeType) {
         this.timeType = timeType;
     }
+
+    private Long periodId;
+    private Long drilldownDeptId;
+    private String compareType;
+
+    public Long getPeriodId() {
+        return periodId;
+    }
+
+    public void setPeriodId(Long periodId) {
+        this.periodId = periodId;
+    }
+
+    public Long getDrilldownDeptId() {
+        return drilldownDeptId;
+    }
+
+    public void setDrilldownDeptId(Long drilldownDeptId) {
+        this.drilldownDeptId = drilldownDeptId;
+    }
+
+    public String getCompareType() {
+        return compareType;
+    }
+
+    public void setCompareType(String compareType) {
+        this.compareType = compareType;
+    }
 }

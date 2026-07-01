@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.member.mapper.MemberReportMapper">
+
+    <!-- 统计当前部门未删除会员总数 -->
+    <select id="countTotalMembers" resultType="int">
+        SELECT COUNT(1) FROM mem_member
+        WHERE del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+    </select>
+
+    <!-- 统计当前部门今日新增会员数 -->
+    <select id="countTodayNewMembers" resultType="int">
+        SELECT COUNT(1) FROM mem_member
+        WHERE del_flag = '0'
+          AND create_time >= CURDATE()
+          AND create_time &lt; DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+    </select>
+
+    <!-- 统计当前部门有积分/兑换/秒杀活动的活跃会员数 -->
+    <select id="countActiveMembers" resultType="int">
+        SELECT COUNT(DISTINCT m.member_id) FROM mem_member m
+        WHERE m.del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND m.dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+        AND (
+            EXISTS (SELECT 1 FROM mem_points_record pr WHERE pr.member_id = m.member_id AND pr.del_flag = '0')
+            OR EXISTS (SELECT 1 FROM mem_points_exchange pe WHERE pe.member_id = m.member_id AND pe.del_flag = '0')
+            OR EXISTS (SELECT 1 FROM mem_seckill_record sr WHERE sr.member_id = m.member_id AND sr.del_flag = '0')
+        )
+    </select>
+
+    <!-- 按日期统计新增会员趋势 -->
+    <select id="selectMemberGrowthTrend" resultType="java.util.HashMap">
+        SELECT
+            DATE_FORMAT(create_time, '%Y-%m-%d') AS dateStr,
+            COUNT(1) AS newCount
+        FROM mem_member
+        WHERE del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+        <if test="startTime != null and startTime != ''">
+            AND create_time >= #{startTime}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND create_time &lt; DATE_ADD(#{endTime}, INTERVAL 1 DAY)
+        </if>
+        GROUP BY DATE_FORMAT(create_time, '%Y-%m-%d')
+        ORDER BY dateStr
+    </select>
+
+    <!-- 按状态统计会员分布 -->
+    <select id="selectMemberStatusStats" resultType="java.util.HashMap">
+        SELECT
+            CASE status
+                WHEN '0' THEN '正常'
+                WHEN '1' THEN '无效'
+                WHEN '2' THEN '已退卡'
+                ELSE '其他'
+            END AS statusName,
+            COUNT(1) AS memberCount
+        FROM mem_member
+        WHERE del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+        GROUP BY status
+        ORDER BY memberCount DESC
+    </select>
+
+    <!-- 秒杀总场次 -->
+    <select id="countTotalSeckills" resultType="int">
+        SELECT COUNT(1) FROM mem_seckill
+        WHERE del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+    </select>
+
+    <!-- 秒杀参与人数（去重） -->
+    <select id="countSeckillParticipants" resultType="int">
+        SELECT COUNT(DISTINCT member_id) FROM mem_seckill_record
+        WHERE del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+    </select>
+
+    <!-- 秒杀总收入 -->
+    <select id="sumSeckillRevenue" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(total_amount), 0) FROM mem_seckill_record
+        WHERE del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+    </select>
+
+    <!-- 按秒杀活动统计 -->
+    <select id="selectSeckillStats" resultType="java.util.HashMap">
+        SELECT
+            s.seckill_name AS seckillName,
+            COUNT(DISTINCT r.member_id) AS participantCount,
+            COALESCE(SUM(r.total_amount), 0) AS revenue
+        FROM mem_seckill s
+        LEFT JOIN mem_seckill_record r ON r.seckill_id = s.seckill_id AND r.del_flag = '0'
+        WHERE s.del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND s.dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+        GROUP BY s.seckill_id, s.seckill_name
+        ORDER BY revenue DESC
+    </select>
+
+    <!-- 按部门统计秒杀 -->
+    <select id="selectSeckillDeptStats" resultType="java.util.HashMap">
+        SELECT
+            r.dept_id AS deptId,
+            d.dept_name AS deptName,
+            COUNT(DISTINCT r.member_id) AS participantCount,
+            COALESCE(SUM(r.total_amount), 0) AS revenue
+        FROM mem_seckill_record r
+        LEFT JOIN sys_dept d ON d.dept_id = r.dept_id
+        WHERE r.del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND r.dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+        GROUP BY r.dept_id, d.dept_name
+        ORDER BY revenue DESC
+    </select>
+
+    <!-- 会员销售总额（通过 fin_sale_record 关联会员） -->
+    <select id="sumMemberSales" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(r.sale_amount), 0)
+        FROM fin_sale_record r
+        WHERE r.del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND r.dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+        <if test="startTime != null and startTime != ''">
+            AND r.sale_date >= #{startTime}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND r.sale_date &lt; DATE_ADD(#{endTime}, INTERVAL 1 DAY)
+        </if>
+        AND r.remark LIKE '%member%'
+    </select>
+
+    <!-- 非会员销售总额 = 总销售 - 会员销售 -->
+    <select id="sumNonMemberSales" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(r.sale_amount), 0)
+        FROM fin_sale_record r
+        WHERE r.del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND r.dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+        <if test="startTime != null and startTime != ''">
+            AND r.sale_date >= #{startTime}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND r.sale_date &lt; DATE_ADD(#{endTime}, INTERVAL 1 DAY)
+        </if>
+        AND (r.remark IS NULL OR r.remark NOT LIKE '%member%')
+    </select>
+
+    <!-- 贡献趋势 -->
+    <select id="selectContributionTrend" resultType="com.junsong.member.domain.vo.MemberContributionTrendVO">
+        SELECT
+            DATE_FORMAT(m.create_time, '%Y-%m-%d') AS dateStr,
+            COUNT(DISTINCT m.member_id) AS newMemberCount,
+            0 AS activeMemberCount,
+            COALESCE(SUM(CASE WHEN r.sale_amount IS NOT NULL THEN r.sale_amount ELSE 0 END), 0) AS memberSales,
+            0 AS nonMemberSales
+        FROM mem_member m
+        LEFT JOIN fin_sale_record r ON r.dept_id = m.dept_id AND r.del_flag = '0' AND r.remark LIKE '%member%' AND DATE(r.sale_date) = DATE(m.create_time)
+        WHERE m.del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND m.dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+        <if test="startTime != null and startTime != ''">
+            AND m.create_time >= #{startTime}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND m.create_time &lt; DATE_ADD(#{endTime}, INTERVAL 1 DAY)
+        </if>
+        GROUP BY DATE_FORMAT(m.create_time, '%Y-%m-%d')
+        ORDER BY dateStr
+    </select>
+
+    <!-- 秒杀活动贡献 -->
+    <select id="selectActivityContributions" resultType="com.junsong.member.domain.vo.MemberActivityContributionVO">
+        SELECT
+            s.seckill_id AS activityId,
+            s.seckill_name AS activityName,
+            COALESCE(SUM(r.total_amount), 0) AS sales,
+            0 AS cost,
+            COALESCE(SUM(r.total_amount), 0) AS profit,
+            COUNT(DISTINCT r.member_id) AS participantCount
+        FROM mem_seckill s
+        LEFT JOIN mem_seckill_record r ON r.seckill_id = s.seckill_id AND r.del_flag = '0'
+        WHERE s.del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND s.dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+        GROUP BY s.seckill_id, s.seckill_name
+        ORDER BY sales DESC
+    </select>
+
+    <!-- 积分兑换成本 -->
+    <select id="sumPointsRedemptionCost" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(COALESCE(pg.goods_value, 0) * COALESCE(pe.quantity, 1)), 0)
+        FROM mem_points_exchange pe
+        LEFT JOIN mem_points_goods pg ON pg.goods_id = pe.goods_id AND pg.del_flag = '0'
+        WHERE pe.del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND pe.dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+    </select>
+
+    <!-- 会员复购数 -->
+    <select id="countRepurchaseMembers" resultType="int">
+        SELECT COUNT(*)
+        FROM (
+            SELECT r.member_id
+            FROM mem_seckill_record r
+            WHERE r.del_flag = '0'
+            <if test="deptIds != null and deptIds.size() > 0">
+                AND r.dept_id IN
+                <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+            </if>
+            GROUP BY r.member_id
+            HAVING COUNT(r.record_id) > 1
+        ) repurchase_members
+    </select>
+
+    <!-- R2: 会员销售笔数 -->
+    <select id="countMemberSaleRecords" resultType="int">
+        SELECT COUNT(1)
+        FROM fin_sale_record r
+        WHERE r.del_flag = '0'
+        AND r.remark LIKE '%member%'
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND r.dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+        <if test="startTime != null and startTime != ''">
+            AND r.sale_date >= #{startTime}
+        </if>
+        <if test="endTime != null and endTime != ''">
+            AND r.sale_date &lt; DATE_ADD(#{endTime}, INTERVAL 1 DAY)
+        </if>
+    </select>
+
+    <!-- R2: 有 2 笔及以上会员关联销售的 sale_no 数（代理复购指标） -->
+    <select id="countMembersWithMultipleSales" resultType="int">
+        SELECT COUNT(*)
+        FROM (
+            SELECT r.sale_no
+            FROM fin_sale_record r
+            WHERE r.del_flag = '0'
+            AND r.remark LIKE '%member%'
+            <if test="deptIds != null and deptIds.size() > 0">
+                AND r.dept_id IN
+                <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+            </if>
+            <if test="startTime != null and startTime != ''">
+                AND r.sale_date >= #{startTime}
+            </if>
+            <if test="endTime != null and endTime != ''">
+                AND r.sale_date &lt; DATE_ADD(#{endTime}, INTERVAL 1 DAY)
+            </if>
+            GROUP BY r.sale_no
+            HAVING COUNT(r.sale_id) > 1
+        ) repeat_buyers
+    </select>
+
+</mapper>

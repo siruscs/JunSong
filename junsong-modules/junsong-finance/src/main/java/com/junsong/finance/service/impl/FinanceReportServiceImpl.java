@@ -8,16 +8,26 @@ import com.junsong.finance.domain.vo.*;
 import com.junsong.system.api.RemoteUserService;
 import com.junsong.system.api.domain.SysDept;
 import com.junsong.finance.domain.vo.ReportQueryParams;
+import com.junsong.finance.mapper.FinAccountingPeriodMapper;
 import com.junsong.finance.mapper.FinExpenseMapper;
 import com.junsong.finance.mapper.FinProfitShareDetailMapper;
 import com.junsong.finance.mapper.FinProfitShareRecordMapper;
 import com.junsong.finance.mapper.FinSaleRecordMapper;
 import com.junsong.finance.service.IFinanceReportService;
+import com.junsong.finance.service.diagnosis.FinanceDiagnosisContext;
+import com.junsong.finance.service.diagnosis.FinanceDiagnosisResult;
+import com.junsong.finance.service.diagnosis.FinanceDiagnosisRule;
+import com.junsong.finance.service.diagnosis.FinanceDiagnosisRuleEngine;
+import com.junsong.finance.service.diagnosis.rules.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -43,6 +53,27 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
 
     @Autowired
     private RemoteUserService remoteUserService;
+
+    @Autowired
+    private FinAccountingPeriodMapper finAccountingPeriodMapper;
+
+    /**
+     * Diagnosis rule engine — NIGHT-P1-C refactoring.
+     * Alerts and review tasks now share the same diagnosis source.
+     */
+    private final FinanceDiagnosisRuleEngine diagnosisEngine = createDefaultEngine();
+
+    private static FinanceDiagnosisRuleEngine createDefaultEngine() {
+        List<FinanceDiagnosisRule> rules = Arrays.asList(
+                new SalesDropRule(),
+                new ExpenseSpikeRule(),
+                new ProfitRateLowRule(),
+                new PendingVerifyHighRule(),
+                new ProfitShareExceptionRule(),
+                new MemberContributionDropRule()
+        );
+        return new FinanceDiagnosisRuleEngine(rules);
+    }
 
     @Override
     public ExpenseReportVO getExpenseReport(ReportQueryParams params) {
@@ -93,9 +124,13 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
         applyDataScope(params);
         List<Map<String, Object>> trendStats = finSaleRecordMapper.selectSaleTrendStats(params.getDeptIds(), params.getStartTime(), params.getEndTime());
         BigDecimal totalSales = sumField(trendStats, "totalSales");
+        int totalCount = finSaleRecordMapper.countSaleRecords(params.getDeptIds(), params.getStartTime(), params.getEndTime());
+        int totalQuantity = finSaleRecordMapper.sumSaleQuantity(params.getDeptIds(), params.getStartTime(), params.getEndTime());
         vo.setTotalSales(totalSales);
-        vo.setTotalCount(0);
-        vo.setAvgPrice(BigDecimal.ZERO);
+        vo.setTotalCount(totalCount);
+        vo.setAvgPrice(totalCount > 0
+                ? totalSales.divide(new BigDecimal(totalCount), 2, java.math.RoundingMode.HALF_UP)
+                : BigDecimal.ZERO);
         vo.setDeptStats(buildDeptTotalStats(trendStats, "totalSales"));
         vo.setRankStats(buildDeptTotalStats(trendStats, "totalSales"));
         vo.setTrendStats(trendStats);
@@ -113,9 +148,18 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
         List<Map<String, Object>> costTrend = buildCostTrendStats(finExpenseMapper.selectExpenseTrendStats(queryParams));
         List<Map<String, Object>> profitTrend = buildProfitTrendStats(salesTrend, costTrend);
         BigDecimal totalProfit = sumField(profitTrend, "profit");
+        BigDecimal totalSales = sumField(salesTrend, "totalSales");
+        BigDecimal totalCost = sumField(costTrend, "totalAmount");
+
         vo.setTotalProfit(totalProfit);
-        vo.setProfitRate(BigDecimal.ZERO);
-        vo.setRecoveryRate(BigDecimal.ZERO);
+        // 利润率 = 利润 / 销售额 * 100
+        vo.setProfitRate(totalSales.compareTo(BigDecimal.ZERO) > 0
+                ? totalProfit.multiply(new BigDecimal("100")).divide(totalSales, 2, java.math.RoundingMode.HALF_UP)
+                : BigDecimal.ZERO);
+        // 回本进度 = 利润 / 成本 * 100
+        vo.setRecoveryRate(totalCost.compareTo(BigDecimal.ZERO) > 0
+                ? totalProfit.multiply(new BigDecimal("100")).divide(totalCost, 2, java.math.RoundingMode.HALF_UP)
+                : BigDecimal.ZERO);
         vo.setDeptStats(buildDeptTotalStats(profitTrend, "profit"));
         vo.setRecoveryStats(buildDeptTotalStats(profitTrend, "profit"));
         vo.setTrendStats(profitTrend);
@@ -125,16 +169,416 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
 
     @Override
     public StockReportVO getStockReport(ReportQueryParams params) {
-        StockReportVO vo = new StockReportVO();
+        throw new com.junsong.common.core.exception.ServiceException("库存报表数据口径尚未稳定，暂不开放");
+    }
 
+    @Override
+    public FinanceOperationDashboardVO getOperationDashboard(ReportQueryParams params) {
+        FinanceOperationDashboardVO vo = new FinanceOperationDashboardVO();
         applyDataScope(params);
-        vo.setTotalStock(0);
-        vo.setTotalValue(BigDecimal.ZERO);
-        vo.setLowStockCount(0);
-        vo.setDeptStats(new ArrayList<>());
-        vo.setCategoryStats(new ArrayList<>());
+        List<Long> deptIds = params.getDeptIds();
 
+        vo.setTodaySales(nullSafe(finSaleRecordMapper.selectTodayTotalSales(deptIds)));
+        vo.setMonthSales(nullSafe(finSaleRecordMapper.selectMonthTotalSales(deptIds)));
+        vo.setTodayExpense(nullSafe(finExpenseMapper.selectTodayTotalExpense(deptIds)));
+        vo.setMonthExpense(nullSafe(finExpenseMapper.selectMonthTotalExpense(deptIds)));
+
+        BigDecimal monthSales = vo.getMonthSales();
+        BigDecimal monthExpense = vo.getMonthExpense();
+        vo.setNetProfit(monthSales.subtract(monthExpense));
+        vo.setGrossProfit(monthSales.subtract(monthExpense));
+        vo.setProfitRate(monthSales.compareTo(BigDecimal.ZERO) > 0
+                ? vo.getNetProfit().multiply(new BigDecimal("100")).divide(monthSales, 2, java.math.RoundingMode.HALF_UP)
+                : BigDecimal.ZERO);
+
+        List<Map<String, Object>> salesByDept = finSaleRecordMapper.selectSalesByDept(deptIds, params.getStartTime(), params.getEndTime());
+        vo.setSalesTopStores(buildStoreRankRows(salesByDept, "totalSales", 5));
+        vo.setProfitTopStores(buildStoreRankRows(salesByDept, "totalSales", 5));
+
+        vo.setUnverifiedExpenseCount(finExpenseMapper.countUnverifiedExpenses(deptIds));
+        vo.setUnverifiedExpenseAmount(nullSafe(finExpenseMapper.sumUnverifiedExpenseAmount(deptIds)));
+        vo.setUnsettledProfitShareCount(finProfitShareRecordMapper.countUnsettledRecords(deptIds));
+
+        String periodStatus = finAccountingPeriodMapper.selectCurrentPeriodStatusByDeptIds(deptIds);
+        vo.setCurrentPeriodStatus(periodStatus != null ? periodStatus : "ACTIVE");
+
+        List<FinanceWarningVO> warnings = new ArrayList<>();
+        BigDecimal prevMonthSales = nullSafe(finSaleRecordMapper.selectMonthTotalSalesForPrev(deptIds));
+        if (prevMonthSales.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal salesChange = monthSales.subtract(prevMonthSales).multiply(new BigDecimal("100")).divide(prevMonthSales, 2, java.math.RoundingMode.HALF_UP);
+            if (salesChange.compareTo(new BigDecimal("-20")) < 0) {
+                FinanceWarningVO w = new FinanceWarningVO();
+                w.setWarningType("SALES_DROP");
+                w.setSeverity("HIGH");
+                w.setTitle("销售下滑预警");
+                w.setMessage("本月销售额较上月下降 " + salesChange.abs() + "%");
+                warnings.add(w);
+            }
+        }
+        if (vo.getProfitRate().compareTo(new BigDecimal("5")) < 0 && monthSales.compareTo(BigDecimal.ZERO) > 0) {
+            FinanceWarningVO w = new FinanceWarningVO();
+            w.setWarningType("PROFIT_RATE_DROP");
+            w.setSeverity("MEDIUM");
+            w.setTitle("利润率偏低预警");
+            w.setMessage("当前利润率 " + vo.getProfitRate() + "% 低于 5%");
+            warnings.add(w);
+        }
+        vo.setWarnings(warnings);
         return vo;
+    }
+
+    @Override
+    public OperatingProfitReportVO getOperatingProfitReport(ReportQueryParams params) {
+        OperatingProfitReportVO vo = new OperatingProfitReportVO();
+        applyDataScope(params);
+        List<Long> deptIds = params.getDeptIds();
+        Map<String, Object> queryParams = buildQueryParams(params);
+
+        List<Map<String, Object>> salesTrend = finSaleRecordMapper.selectSaleTrendStats(deptIds, params.getStartTime(), params.getEndTime());
+        BigDecimal salesSum = sumField(salesTrend, "totalSales");
+        BigDecimal expenseSum = nullSafe(finExpenseMapper.selectExpenseTotal(queryParams));
+
+        vo.setTotalIncome(salesSum);
+        vo.setOperatingExpense(expenseSum.abs());
+        vo.setProductCost(BigDecimal.ZERO);
+        vo.setCostReliable(false);
+        vo.setCostNote("成本口径待核算确认");
+        vo.setGrossProfit(salesSum);
+        vo.setNetProfit(salesSum.subtract(expenseSum.abs()));
+        vo.setProfitRate(salesSum.compareTo(BigDecimal.ZERO) > 0
+                ? vo.getNetProfit().multiply(new BigDecimal("100")).divide(salesSum, 2, java.math.RoundingMode.HALF_UP)
+                : BigDecimal.ZERO);
+        vo.setRecoveryRate(BigDecimal.ZERO);
+
+        List<Map<String, Object>> salesByDept = finSaleRecordMapper.selectSalesByDept(deptIds, params.getStartTime(), params.getEndTime());
+        vo.setStoreProfitRank(salesByDept);
+        vo.setStoreProfitRateRank(salesByDept);
+        vo.setTrendStats(buildProfitTrendStats(salesTrend, buildCostTrendStats(finExpenseMapper.selectExpenseTrendStats(queryParams))));
+        return vo;
+    }
+
+    @Override
+    public ExpenseAnomalyReportVO getExpenseAnomalyReport(ReportQueryParams params) {
+        ExpenseAnomalyReportVO vo = new ExpenseAnomalyReportVO();
+        applyDataScope(params);
+        List<Long> deptIds = params.getDeptIds();
+        Map<String, Object> queryParams = buildQueryParams(params);
+
+        vo.setTotalExpense(nullSafe(finExpenseMapper.selectExpenseTotal(queryParams)));
+        vo.setCategoryBreakdown(finExpenseMapper.selectExpenseCategoryStats(queryParams));
+        vo.setStoreExpenseRank(finExpenseMapper.selectExpenseDeptStats(queryParams));
+
+        List<Map<String, Object>> unverified = finExpenseMapper.selectUnverifiedExpenseList(deptIds);
+        List<ExpenseAnomalyRowVO> unverifiedRows = new ArrayList<>();
+        if (unverified != null) {
+            for (Map<String, Object> row : unverified) {
+                ExpenseAnomalyRowVO ar = new ExpenseAnomalyRowVO();
+                ar.setAnomalyType("UNVERIFIED");
+                ar.setLabel(String.valueOf(row.getOrDefault("label", "")));
+                ar.setExpenseId(toLong(row.get("expenseId")));
+                ar.setExpenseNo(String.valueOf(row.getOrDefault("expenseNo", "")));
+                ar.setDeptId(toLong(row.get("deptId")));
+                ar.setDeptName(String.valueOf(row.getOrDefault("deptName", "")));
+                ar.setCurrentAmount(toBigDecimal(row.get("currentAmount")));
+                unverifiedRows.add(ar);
+            }
+        }
+        vo.setUnverifiedList(unverifiedRows);
+
+        List<Map<String, Object>> ocrRows = finExpenseMapper.selectOcrAnomalies(deptIds);
+        List<ExpenseAnomalyRowVO> ocrAnomalies = new ArrayList<>();
+        if (ocrRows != null) {
+            for (Map<String, Object> row : ocrRows) {
+                ExpenseAnomalyRowVO ar = new ExpenseAnomalyRowVO();
+                ar.setAnomalyType(String.valueOf(row.getOrDefault("anomalyType", "OTHER")));
+                ar.setLabel(String.valueOf(row.getOrDefault("label", "")));
+                ar.setExpenseId(toLong(row.get("expenseId")));
+                ar.setExpenseNo(String.valueOf(row.getOrDefault("expenseNo", "")));
+                ar.setDeptId(toLong(row.get("deptId")));
+                ar.setDeptName(String.valueOf(row.getOrDefault("deptName", "")));
+                ar.setCurrentAmount(toBigDecimal(row.get("currentAmount")));
+                ocrAnomalies.add(ar);
+            }
+        }
+        vo.setOcrAnomalies(ocrAnomalies);
+        vo.setCategorySpikes(Collections.emptyList());
+        vo.setStoreSpikes(Collections.emptyList());
+        return vo;
+    }
+
+    @Override
+    public SalesOperationReportVO getSalesOperationReport(ReportQueryParams params) {
+        SalesOperationReportVO vo = new SalesOperationReportVO();
+        applyDataScope(params);
+        List<Long> deptIds = params.getDeptIds();
+
+        List<Map<String, Object>> trendStats = finSaleRecordMapper.selectSaleTrendStats(deptIds, params.getStartTime(), params.getEndTime());
+        BigDecimal totalSales = sumField(trendStats, "totalSales");
+        int orderCount = finSaleRecordMapper.countSaleRecords(deptIds, params.getStartTime(), params.getEndTime());
+        int totalQuantity = finSaleRecordMapper.sumSaleQuantity(deptIds, params.getStartTime(), params.getEndTime());
+
+        vo.setTotalSales(totalSales);
+        vo.setOrderCount(orderCount);
+        vo.setTotalQuantity(totalQuantity);
+        vo.setAvgOrderAmount(orderCount > 0
+                ? totalSales.divide(new BigDecimal(orderCount), 2, java.math.RoundingMode.HALF_UP) : BigDecimal.ZERO);
+        vo.setAvgItemAmount(totalQuantity > 0
+                ? totalSales.divide(new BigDecimal(totalQuantity), 2, java.math.RoundingMode.HALF_UP) : BigDecimal.ZERO);
+
+        BigDecimal memberSales = nullSafe(finSaleRecordMapper.selectMemberSales(deptIds, params.getStartTime(), params.getEndTime()));
+        vo.setMemberSales(memberSales);
+        vo.setNonMemberSales(totalSales.subtract(memberSales));
+
+        BigDecimal seckillSales = nullSafe(finSaleRecordMapper.selectSeckillSales(deptIds, params.getStartTime(), params.getEndTime()));
+        vo.setSeckillSales(seckillSales);
+        vo.setNormalSales(totalSales.subtract(seckillSales));
+
+        List<Map<String, Object>> salesByDept = finSaleRecordMapper.selectSalesByDept(deptIds, params.getStartTime(), params.getEndTime());
+        List<SalesRankRowVO> storeRank = new ArrayList<>();
+        if (salesByDept != null) {
+            for (Map<String, Object> row : salesByDept) {
+                SalesRankRowVO sr = new SalesRankRowVO();
+                sr.setDeptId(toLong(row.get("deptId")));
+                sr.setDeptName(String.valueOf(row.getOrDefault("deptName", "")));
+                sr.setAmount(toBigDecimal(row.get("totalSales")));
+                sr.setQuantity(toInt(row.get("orderCount")));
+                storeRank.add(sr);
+            }
+        }
+        vo.setStoreRank(storeRank);
+
+        List<Map<String, Object>> productRankData = finSaleRecordMapper.selectProductSalesRank(deptIds, params.getStartTime(), params.getEndTime());
+        List<SalesRankRowVO> productRank = new ArrayList<>();
+        if (productRankData != null) {
+            for (Map<String, Object> row : productRankData) {
+                SalesRankRowVO sr = new SalesRankRowVO();
+                sr.setId(toLong(row.get("productId")));
+                sr.setName(String.valueOf(row.getOrDefault("productName", "")));
+                sr.setAmount(toBigDecimal(row.get("totalSales")));
+                sr.setQuantity(toInt(row.get("totalQuantity")));
+                sr.setDeptId(toLong(row.get("deptId")));
+                sr.setDeptName(String.valueOf(row.getOrDefault("deptName", "")));
+                productRank.add(sr);
+            }
+        }
+        vo.setProductRank(productRank);
+        vo.setTrendStats(trendStats);
+
+        List<FinanceWarningVO> warnings = new ArrayList<>();
+        BigDecimal prevSales = nullSafe(finSaleRecordMapper.selectMonthTotalSalesForPrev(deptIds));
+        if (prevSales.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal changeRate = totalSales.subtract(prevSales).multiply(new BigDecimal("100")).divide(prevSales, 2, java.math.RoundingMode.HALF_UP);
+            if (changeRate.compareTo(new BigDecimal("-20")) < 0) {
+                FinanceWarningVO w = new FinanceWarningVO();
+                w.setWarningType("SALES_DROP");
+                w.setSeverity("HIGH");
+                w.setTitle("销售下滑预警");
+                w.setMessage("销售额较上期下降 " + changeRate.abs() + "%");
+                warnings.add(w);
+            }
+        }
+        vo.setWarnings(warnings);
+        return vo;
+    }
+
+    @Override
+    public ProfitShareSettlementDashboardVO getProfitShareSettlement(ReportQueryParams params) {
+        ProfitShareSettlementDashboardVO vo = new ProfitShareSettlementDashboardVO();
+        applyDataScope(params);
+        List<Long> deptIds = params.getDeptIds();
+
+        List<Map<String, Object>> settlementRows = finProfitShareRecordMapper.selectSettlementByDept(deptIds, params.getStartTime(), params.getEndTime());
+        BigDecimal payable = BigDecimal.ZERO;
+        BigDecimal paid = BigDecimal.ZERO;
+        BigDecimal managerTotal = BigDecimal.ZERO;
+        BigDecimal investorTotal = BigDecimal.ZERO;
+        if (settlementRows != null) {
+            for (Map<String, Object> row : settlementRows) {
+                payable = payable.add(toBigDecimal(row.get("payableAmount")));
+                paid = paid.add(toBigDecimal(row.get("paidAmount")));
+                managerTotal = managerTotal.add(toBigDecimal(row.get("managerShare")));
+                investorTotal = investorTotal.add(toBigDecimal(row.get("investorShare")));
+            }
+        }
+        vo.setPayableAmount(payable);
+        vo.setPaidAmount(paid);
+        vo.setPendingAmount(payable.subtract(paid));
+        vo.setManagerShare(managerTotal);
+        vo.setInvestorShare(investorTotal);
+
+        Map<String, Object> queryParams = buildQueryParams(params);
+        List<Map<String, Object>> salesTrend = finSaleRecordMapper.selectSaleTrendStats(deptIds, params.getStartTime(), params.getEndTime());
+        BigDecimal salesSum = sumField(salesTrend, "totalSales");
+        BigDecimal expenseSum = nullSafe(finExpenseMapper.selectExpenseTotal(queryParams));
+        vo.setTotalSales(salesSum);
+        vo.setTotalExpense(expenseSum.abs());
+        vo.setNetProfit(salesSum.subtract(expenseSum.abs()));
+
+        vo.setDeptSettlementRows(settlementRows != null ? settlementRows : Collections.emptyList());
+
+        List<ProfitShareExceptionVO> exceptions = new ArrayList<>();
+        if (vo.getNetProfit().compareTo(BigDecimal.ZERO) < 0) {
+            ProfitShareExceptionVO ex = new ProfitShareExceptionVO();
+            ex.setExceptionType("NEGATIVE_PROFIT");
+            ex.setMessage("当前期间净利润为负");
+            ex.setActualAmount(vo.getNetProfit());
+            exceptions.add(ex);
+        }
+        vo.setExceptions(exceptions);
+        return vo;
+    }
+
+    @Override
+    public List<FinanceAlertVO> getAlerts(ReportQueryParams params) {
+        applyDataScope(params);
+        List<Long> deptIds = params.getDeptIds();
+
+        // Build diagnosis context from mapper data
+        FinanceDiagnosisContext ctx = buildDiagnosisContext(deptIds, params);
+
+        // Run the rule engine
+        List<FinanceDiagnosisResult> results = diagnosisEngine.runAll(ctx);
+
+        // Convert results to FinanceAlertVO (preserving frontend contract)
+        List<FinanceAlertVO> alerts = new ArrayList<>();
+        int seq = 1;
+        for (FinanceDiagnosisResult r : results) {
+            FinanceAlertVO a = new FinanceAlertVO();
+            a.setAlertId("ALERT-" + (seq++));
+            a.setAlertLevel(r.getAlertLevel());
+            a.setAlertType(r.getRuleId());
+            a.setDeptId(r.getDeptId());
+            a.setDeptName(r.getDeptName());
+            a.setTitle(r.getTitle());
+            a.setReason(r.getReason());
+            a.setMetricValue(r.getMetricValue());
+            a.setCompareValue(r.getCompareValue());
+            a.setImpactAmount(r.getImpactAmount());
+            a.setSuggestedAction(r.getSuggestedAction());
+            a.setTargetRoute(r.getTargetRoute());
+            a.setTargetParams(r.getTargetParams());
+            a.setOccurTime(r.getOccurTime() != null ? r.getOccurTime() : new java.util.Date());
+            alerts.add(a);
+        }
+        return alerts;
+    }
+
+    /**
+     * Build a {@link FinanceDiagnosisContext} by querying all required mapper data.
+     */
+    private FinanceDiagnosisContext buildDiagnosisContext(List<Long> deptIds, ReportQueryParams params) {
+        FinanceDiagnosisContext ctx = new FinanceDiagnosisContext();
+
+        // Sales metrics
+        ctx.setMonthSales(nullSafe(finSaleRecordMapper.selectMonthTotalSales(deptIds)));
+        ctx.setPrevMonthSales(nullSafe(finSaleRecordMapper.selectMonthTotalSalesForPrev(deptIds)));
+
+        // Expense metrics
+        ctx.setMonthExpense(nullSafe(finExpenseMapper.selectMonthTotalExpense(deptIds)));
+        ctx.setPrevMonthExpense(nullSafe(finExpenseMapper.selectMonthTotalExpenseForPrev(deptIds)));
+
+        // Derived profit metrics
+        BigDecimal netProfit = ctx.getMonthSales().subtract(ctx.getMonthExpense());
+        ctx.setNetProfit(netProfit);
+        ctx.setProfitRate(ctx.getMonthSales().compareTo(BigDecimal.ZERO) > 0
+                ? netProfit.multiply(new BigDecimal("100")).divide(ctx.getMonthSales(), 2, java.math.RoundingMode.HALF_UP)
+                : BigDecimal.ZERO);
+
+        // Verification metrics
+        ctx.setUnverifiedExpenseCount(finExpenseMapper.countUnverifiedExpenses(deptIds));
+        ctx.setUnverifiedExpenseAmount(nullSafe(finExpenseMapper.sumUnverifiedExpenseAmount(deptIds)));
+
+        // Profit share metrics
+        ctx.setUnsettledProfitShareCount(finProfitShareRecordMapper.countUnsettledRecords(deptIds));
+
+        // Member metrics
+        BigDecimal memberSales = nullSafe(finSaleRecordMapper.selectMemberSales(deptIds, params.getStartTime(), params.getEndTime()));
+        ctx.setMemberSales(memberSales);
+        if (ctx.getMonthSales().compareTo(BigDecimal.ZERO) > 0) {
+            ctx.setMemberSalesRatio(memberSales.multiply(new BigDecimal("100"))
+                    .divide(ctx.getMonthSales(), 2, java.math.RoundingMode.HALF_UP));
+        }
+
+        return ctx;
+    }
+
+    @Override
+    public List<FinanceReviewTaskVO> getReviewTasks(ReportQueryParams params) {
+        List<FinanceAlertVO> alerts = this.getAlerts(params);
+        List<FinanceReviewTaskVO> tasks = new ArrayList<>();
+
+        for (FinanceAlertVO alert : alerts) {
+            FinanceReviewTaskVO task = new FinanceReviewTaskVO();
+            task.setTaskId(alert.getAlertId());
+            task.setTaskType(alert.getAlertType());
+            task.setTaskTitle(alert.getTitle());
+            task.setPriority(alert.getAlertLevel());
+            task.setDeptId(alert.getDeptId());
+            task.setDeptName(alert.getDeptName());
+            task.setReason(alert.getReason());
+            task.setMetricValue(alert.getMetricValue());
+            task.setCompareValue(alert.getCompareValue());
+            task.setImpactAmount(alert.getImpactAmount());
+            task.setSuggestedAction(alert.getSuggestedAction());
+            task.setTargetRoute(alert.getTargetRoute());
+            task.setTargetParams(alert.getTargetParams());
+            tasks.add(task);
+        }
+
+        if (tasks.isEmpty()) {
+            FinanceReviewTaskVO healthy = new FinanceReviewTaskVO();
+            healthy.setTaskId("HEALTHY");
+            healthy.setTaskTitle("经营健康");
+            healthy.setReason("当前无经营异常，继续保持");
+            healthy.setPriority("INFO");
+            healthy.setSuggestedAction("可查看各门店经营详情");
+            tasks.add(healthy);
+        }
+
+        // 按优先级排序：HIGH > MEDIUM > LOW > INFO，同级别按影响金额降序
+        tasks.sort(Comparator.<FinanceReviewTaskVO, Integer>comparing(
+                t -> {
+                    switch (t.getPriority()) {
+                        case "HIGH": return 0;
+                        case "MEDIUM": return 1;
+                        case "LOW": return 2;
+                        default: return 3;
+                    }
+                })
+                .thenComparing(Comparator.comparing(
+                        (FinanceReviewTaskVO t) -> t.getImpactAmount() != null ? t.getImpactAmount() : BigDecimal.ZERO)
+                        .reversed()));
+        return tasks;
+    }
+
+    private BigDecimal nullSafe(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
+    }
+
+    private Long toLong(Object value) {
+        if (value == null) return null;
+        if (value instanceof Long) return (Long) value;
+        try { return Long.valueOf(String.valueOf(value)); } catch (Exception e) { return null; }
+    }
+
+    private int toInt(Object value) {
+        if (value == null) return 0;
+        if (value instanceof Number) return ((Number) value).intValue();
+        try { return Integer.parseInt(String.valueOf(value)); } catch (Exception e) { return 0; }
+    }
+
+    private List<FinanceStoreRankRowVO> buildStoreRankRows(List<Map<String, Object>> rows, String field, int limit) {
+        List<FinanceStoreRankRowVO> result = new ArrayList<>();
+        if (rows == null) return result;
+        for (int i = 0; i < Math.min(rows.size(), limit); i++) {
+            Map<String, Object> row = rows.get(i);
+            FinanceStoreRankRowVO r = new FinanceStoreRankRowVO();
+            r.setDeptId(toLong(row.get("deptId")));
+            r.setDeptName(String.valueOf(row.getOrDefault("deptName", "")));
+            r.setAmount(toBigDecimal(row.get(field)));
+            result.add(r);
+        }
+        return result;
     }
 
     private List<Map<String, Object>> buildCostTrendStats(List<Map<String, Object>> expenseTrendStats) {
@@ -214,12 +658,17 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
         return new BigDecimal(String.valueOf(value));
     }
 
+    /**
+     * 哨兵部门 ID：非 admin 且无任何授权部门时使用，
+     * 保证 Mapper 的 IN (-1) 永远匹配不到真实数据，避免全量泄露。
+     */
+    private static final List<Long> SENTINEL_DEPT_IDS = Collections.singletonList(-1L);
+
     private Map<String, Object> buildQueryParams(ReportQueryParams params) {
         applyDataScope(params);
         Map<String, Object> map = new HashMap<>();
-        if (params.getDeptIds() != null && !params.getDeptIds().isEmpty()) {
-            map.put("deptIds", params.getDeptIds());
-        }
+        // 始终传递 deptIds，确保 Mapper 能生成部门过滤条件（即使为空也会走 IN (-1) 逻辑）
+        map.put("deptIds", params.getDeptIds());
         if (params.getStartTime() != null) {
             map.put("startTime", params.getStartTime());
         }
@@ -236,7 +685,7 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
         List<Long> allowed = loadAllowedDeptIds();
         if (allowed.isEmpty()) {
             Long currentDeptId = SecurityUtils.getDeptId();
-            allowed = currentDeptId != null ? Collections.singletonList(currentDeptId) : Collections.emptyList();
+            allowed = currentDeptId != null ? Collections.singletonList(currentDeptId) : SENTINEL_DEPT_IDS;
         }
         List<Long> requested = params.getDeptIds();
         if (requested == null || requested.isEmpty()) {

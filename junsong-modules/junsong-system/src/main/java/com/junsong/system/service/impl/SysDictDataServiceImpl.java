@@ -64,6 +64,7 @@ public class SysDictDataServiceImpl implements ISysDictDataService
      * @param dictCodes 需要删除的字典数据ID
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteDictDataByIds(Long[] dictCodes)
     {
         for (Long dictCode : dictCodes)

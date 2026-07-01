@@ -56,11 +56,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="selectMemPointsRecordByRecordId" parameterType="Long" resultMap="MemPointsRecordResult">
         <include refid="selectMemPointsRecordVo"/>
-        where record_id = #{recordId} and del_flag = '0'
+        <where>
+            AND record_id = #{recordId} and del_flag = '0'
+        </where>
     </select>
 
     <select id="checkRecordNoUnique" parameterType="String" resultType="int">
-        select count(1) from mem_points_record where 1=0
+        select count(1) from mem_points_record
+        <where>
+            AND 1=0
+        </where>
     </select>
 
     <insert id="insertMemPointsRecord" parameterType="com.junsong.member.domain.MemPointsRecord" useGeneratedKeys="true" keyProperty="recordId">
@@ -127,12 +132,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="selectMemPointsRecordByRemark" parameterType="String" resultMap="MemPointsRecordResult">
         <include refid="selectMemPointsRecordVo"/>
-        where remark like concat('%', #{remark}, '%') and del_flag = '0'
+        <where>
+            AND remark like concat('%', #{remark}, '%') and del_flag = '0'
+        </where>
     </select>
 
     <select id="selectLatestBalanceByMemberId" parameterType="Long" resultMap="MemPointsRecordResult">
         <include refid="selectMemPointsRecordVo"/>
-        where member_id = #{memberId} and del_flag = '0' order by create_time desc limit 1
+        <where>
+            AND member_id = #{memberId} and del_flag = '0'
+        </where>
+        order by create_time desc limit 1
     </select>
 
 </mapper>

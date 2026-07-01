@@ -13,9 +13,12 @@ import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.finance.constant.PeriodStatus;
 import com.junsong.finance.domain.FinAccountingPeriod;
 import com.junsong.finance.domain.FinProfitShareRecord;
+import com.junsong.finance.domain.vo.AccountingPeriodCheckItemVO;
+import com.junsong.finance.domain.vo.AccountingPeriodCheckResultVO;
 import com.junsong.finance.mapper.FinAccountingPeriodMapper;
 import com.junsong.finance.service.IFinAccountingPeriodService;
 import com.junsong.finance.service.IFinProfitShareRecordService;
+import com.junsong.finance.service.IAccountingPeriodCheckService;
 
 @Service
 public class FinAccountingPeriodServiceImpl implements IFinAccountingPeriodService
@@ -25,6 +28,12 @@ public class FinAccountingPeriodServiceImpl implements IFinAccountingPeriodServi
 
     @Autowired
     private IFinProfitShareRecordService finProfitShareRecordService;
+
+    @Autowired
+    private FinAuditTrailRecorder auditTrailRecorder;
+
+    @Autowired
+    private IAccountingPeriodCheckService accountingPeriodCheckService;
 
     public FinAccountingPeriod selectFinAccountingPeriodByPeriodId(Long periodId) { return finAccountingPeriodMapper.selectFinAccountingPeriodByPeriodId(periodId); }
 
@@ -81,16 +90,37 @@ public class FinAccountingPeriodServiceImpl implements IFinAccountingPeriodServi
             throw new ServiceException("只有进行中的周期才能结转");
         }
 
+        // 锁账前检查：存在 BLOCK 项时不允许结转
+        AccountingPeriodCheckResultVO checkResult = accountingPeriodCheckService.checkBeforeLock(deptId);
+        if (!checkResult.isCanLock()) {
+            StringBuilder sb = new StringBuilder("存在阻断项，无法结转：");
+            for (AccountingPeriodCheckItemVO item : checkResult.getItems()) {
+                if ("BLOCK".equals(item.getLevel()) && item.getCount() > 0) {
+                    sb.append(item.getTitle()).append("(").append(item.getDescription()).append(")；");
+                }
+            }
+            throw new ServiceException(sb.toString());
+        }
+
         // 刷新最终统计数据
         period = refreshPeriodStats(period);
+
+        String beforeSnapshot = "{\"periodId\":" + period.getPeriodId() + ",\"status\":\"" + period.getStatus()
+                + "\",\"totalSaleAmount\":" + period.getTotalSaleAmount() + ",\"totalVerifiedExpense\":" + period.getTotalVerifiedExpense()
+                + ",\"netProfit\":" + period.getNetProfit() + "}";
 
         Date now = new Date();
         period.setEndTime(now);
         period.setCarryForwardTime(now);
+        period.setCarryForwardBy(SecurityUtils.getUsername());
         period.setStatus(PeriodStatus.CARRIED);
         period.setUpdateBy(SecurityUtils.getUsername());
         period.setRemark(appendRemark(period.getRemark(), "结转操作"));
         finAccountingPeriodMapper.updateFinAccountingPeriod(period);
+
+        auditTrailRecorder.record("period_carry_forward", "accounting_period", String.valueOf(period.getPeriodId()),
+                beforeSnapshot,
+                "{\"periodId\":" + period.getPeriodId() + ",\"status\":\"" + period.getStatus() + "\",\"endTime\":\"" + now + "\"}");
 
         // 执行分润计算（如果净利大于0）
         BigDecimal netProfit = nvl(period.getNetProfit());
@@ -115,8 +145,20 @@ public class FinAccountingPeriodServiceImpl implements IFinAccountingPeriodServi
      */
     @Transactional(rollbackFor = Exception.class)
     public FinAccountingPeriod rollbackCarryForward(Long deptId) {
+        return rollbackCarryForward(deptId, null);
+    }
+
+    /**
+     * 结转回退（含原因）：反结账必须填写原因并记录审计
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public FinAccountingPeriod rollbackCarryForward(Long deptId, String reason) {
         if (deptId == null) {
             throw new ServiceException("机构不能为空");
+        }
+        String rollbackReason = reason == null ? "" : reason.trim();
+        if (rollbackReason.isEmpty()) {
+            throw new ServiceException("反结账原因不能为空");
         }
 
         // 1. 找到当前进行中的周期
@@ -155,12 +197,21 @@ public class FinAccountingPeriodServiceImpl implements IFinAccountingPeriodServi
         }
 
         // 6. 回退周期状态为进行中
+        String beforeSnapshot = "{\"periodId\":" + carriedPeriod.getPeriodId() + ",\"status\":\"" + carriedPeriod.getStatus()
+                + "\",\"carryForwardTime\":\"" + carriedPeriod.getCarryForwardTime() + "\"}";
         carriedPeriod.setStatus(PeriodStatus.ACTIVE);
         carriedPeriod.setCarryForwardTime(null);
+        carriedPeriod.setCarryForwardBy(null);
         carriedPeriod.setEndTime(null);
         carriedPeriod.setUpdateBy(SecurityUtils.getUsername());
-        carriedPeriod.setRemark(appendRemark(carriedPeriod.getRemark(), "结转回退操作"));
+        String remarkMsg = "结转回退操作，原因：" + rollbackReason;
+        carriedPeriod.setRemark(appendRemark(carriedPeriod.getRemark(), remarkMsg));
         finAccountingPeriodMapper.updateFinAccountingPeriod(carriedPeriod);
+
+        String afterSnapshot = "{\"periodId\":" + carriedPeriod.getPeriodId() + ",\"status\":\"" + carriedPeriod.getStatus()
+                + "\",\"reason\":\"" + escapeJson(rollbackReason) + "\"}";
+        auditTrailRecorder.record("period_rollback", "accounting_period", String.valueOf(carriedPeriod.getPeriodId()),
+                beforeSnapshot, afterSnapshot);
 
         // 刷新统计数据
         return refreshPeriodStats(carriedPeriod);
@@ -172,7 +223,12 @@ public class FinAccountingPeriodServiceImpl implements IFinAccountingPeriodServi
         }
         FinAccountingPeriod period = finAccountingPeriodMapper.selectFinAccountingPeriodByPeriodId(periodId);
         if (period != null && !PeriodStatus.ACTIVE.equals(period.getStatus())) {
-            throw new ServiceException("核算周期已结转，不能修改历史流水");
+            String statusLabel = PeriodStatus.CARRIED.equals(period.getStatus()) ? "已结转" : "已回本待结转";
+            String msg = "会计期间「" + period.getPeriodNo() + "」" + statusLabel + "，不能修改历史流水";
+            if (period.getCarryForwardBy() != null) {
+                msg += "（锁账人：" + period.getCarryForwardBy() + "）";
+            }
+            throw new ServiceException(msg);
         }
     }
 
@@ -251,6 +307,10 @@ public class FinAccountingPeriodServiceImpl implements IFinAccountingPeriodServi
             return newRemark;
         }
         return oldRemark + "；" + newRemark;
+    }
+
+    private String escapeJson(String value) {
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     private BigDecimal nvl(BigDecimal value) {

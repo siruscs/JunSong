@@ -18,7 +18,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectByCode" parameterType="String" resultMap="SysInviteCodeResult">
         select id, code, inviter_user_id, inviter_name, status, invitee_user_id, create_time, use_time
         from sys_invite_code
-        where code = #{code} and status = '0'
+        <where>
+            code = #{code} and status = '0'
+        </where>
         limit 1
     </select>
 

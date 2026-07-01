@@ -67,4 +67,14 @@ public interface MemPointsGoodsMapper {
      * @return 物品数量
      */
     int checkMemGoodsCodeUnique(@Param("goodsNo") String goodsNo);
+
+    /**
+     * 带条件的库存扣减：仅在 stock >= quantity 时扣减库存并增加已兑换数量。
+     * 返回影响行数，0 表示库存不足。
+     *
+     * @param goodsId  物品ID
+     * @param quantity 扣减数量
+     * @return 影响行数（0 = 库存不足）
+     */
+    int deductStock(@Param("goodsId") Long goodsId, @Param("quantity") int quantity);
 }

@@ -19,6 +19,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="status" column="status" />
         <result property="verifyBy" column="verify_by" />
         <result property="verifyTime" column="verify_time" />
+        <result property="attachments" column="attachments" />
         <result property="delFlag" column="del_flag" />
         <result property="createBy" column="create_by" />
         <result property="createTime" column="create_time" />
@@ -28,7 +29,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
     
     <sql id="selectFinExpenseVo">
-        select e.expense_id, e.dept_id, e.period_id, e.expense_no, e.expense_date, e.expense_type, e.expense_content, e.payment_method, e.expense_amount, e.advance_id, e.status, e.verify_by, e.verify_time, e.del_flag, e.create_by, e.create_time, e.update_by, e.update_time, e.remark,
+        select e.expense_id, e.dept_id, e.period_id, e.expense_no, e.expense_date, e.expense_type, e.expense_content, e.payment_method, e.expense_amount, e.advance_id, e.status, e.verify_by, e.verify_time, e.attachments, e.del_flag, e.create_by, e.create_time, e.update_by, e.update_time, e.remark,
                a.advance_no
         from fin_expense e
         left join fin_advance a on e.advance_id = a.advance_id
@@ -51,9 +52,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 and e.expense_date &lt; DATE_ADD(#{params.endTime}, INTERVAL 1 DAY)
             </if>
         </where>
-        order by e.create_time desc
+        order by e.expense_date desc, e.create_time desc
     </select>
-    
+
     <select id="selectFinExpenseByExpenseId" parameterType="Long" resultMap="FinExpenseResult">
         <include refid="selectFinExpenseVo"/>
         where e.expense_id = #{expenseId}
@@ -61,19 +62,24 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="selectFinExpenseByExpenseIds" parameterType="Long" resultMap="FinExpenseResult">
         <include refid="selectFinExpenseVo"/>
-        where e.expense_id in
+        <where> e.expense_id in
         <foreach item="expenseId" collection="array" open="(" separator="," close=")">
             #{expenseId}
         </foreach>
+        </where>
     </select>
 
     <select id="checkExpenseNoUnique" parameterType="String" resultMap="FinExpenseResult">
         <include refid="selectFinExpenseVo"/>
-        where e.expense_no = #{expenseNo} and e.del_flag = '0' limit 1
+        where e.expense_no = #{expenseNo} and e.del_flag = '0'
+        limit 1
     </select>
 
     <select id="countTodayExpenses" resultType="int">
-        select count(*) from fin_expense where date(create_time) = curdate()
+        select count(*) from fin_expense
+        <where> date(create_time) = curdate()
+        and del_flag = '0'
+        </where>
     </select>
         
     <select id="sumUnverifiedExpenses" resultType="java.math.BigDecimal">
@@ -81,8 +87,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </select>
 
     <select id="sumUnverifiedExpensesByDeptId" resultType="java.math.BigDecimal">
-        select ifnull(sum(expense_amount), 0) from fin_expense where status = '0' and del_flag = '0'
+        select ifnull(sum(expense_amount), 0) from fin_expense <where> status = '0' and del_flag = '0'
         <if test="deptId != null"> and dept_id = #{deptId}</if>
+        </where>
     </select>
 
     <select id="sumAllExpenses" resultType="java.math.BigDecimal">
@@ -90,13 +97,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </select>
 
     <select id="sumAllExpensesByDeptId" resultType="java.math.BigDecimal">
-        select ifnull(sum(expense_amount), 0) from fin_expense where del_flag = '0'
+        select ifnull(sum(expense_amount), 0) from fin_expense <where> del_flag = '0'
         <if test="deptId != null"> and dept_id = #{deptId}</if>
+        </where>
     </select>
 
     <select id="sumAllExpensesByPeriodId" resultType="java.math.BigDecimal">
-        select ifnull(sum(expense_amount), 0) from fin_expense where del_flag = '0'
+        select ifnull(sum(expense_amount), 0) from fin_expense <where> del_flag = '0'
         <if test="periodId != null"> and period_id = #{periodId}</if>
+        </where>
     </select>
         
     <insert id="insertFinExpense" parameterType="FinExpense" useGeneratedKeys="true" keyProperty="expenseId">
@@ -114,6 +123,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="status != null">status,</if>
             <if test="verifyBy != null">verify_by,</if>
             <if test="verifyTime != null">verify_time,</if>
+            <if test="attachments != null">attachments,</if>
             <if test="delFlag != null">del_flag,</if>
             <if test="createBy != null">create_by,</if>
             create_time,
@@ -132,6 +142,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="status != null">#{status},</if>
             <if test="verifyBy != null">#{verifyBy},</if>
             <if test="verifyTime != null">#{verifyTime},</if>
+            <if test="attachments != null">#{attachments},</if>
             <if test="delFlag != null">#{delFlag},</if>
             <if test="createBy != null">#{createBy},</if>
             sysdate(),
@@ -154,6 +165,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="status != null">status = #{status},</if>
             <if test="verifyBy != null">verify_by = #{verifyBy},</if>
             <if test="verifyTime != null">verify_time = #{verifyTime},</if>
+            <if test="attachments != null">attachments = #{attachments},</if>
             <if test="delFlag != null">del_flag = #{delFlag},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>
             update_time = sysdate(),
@@ -177,7 +189,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select expense_type as categoryName,
                ifnull(sum(abs(expense_amount)), 0) as totalAmount
         from fin_expense
-        where del_flag = '0'
+        <where> del_flag = '0'
         <if test="deptIds != null and deptIds.size() > 0">
             and dept_id in
             <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
@@ -190,6 +202,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <if test="endTime != null">
             and expense_date &lt;= #{endTime}
         </if>
+        </where>
         group by expense_type
         order by totalAmount desc
     </select>
@@ -202,7 +215,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                ifnull(sum(case when e.expense_type = '收入' then abs(e.expense_amount) else 0 end), 0) as incomeAmount
         from fin_expense e
         left join sys_dept d on e.dept_id = d.dept_id
-        where e.del_flag = '0'
+        <where> e.del_flag = '0'
         <if test="deptIds != null and deptIds.size() > 0">
             and e.dept_id in
             <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
@@ -215,6 +228,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <if test="endTime != null">
             and e.expense_date &lt;= #{endTime}
         </if>
+        </where>
         group by date_format(e.expense_date, '%Y-%m-%d'), e.dept_id, d.dept_name
         order by dateStr, e.dept_id
     </select>
@@ -225,7 +239,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                ifnull(sum(e.expense_amount), 0) as totalAmount
         from fin_expense e
         left join sys_dept d on e.dept_id = d.dept_id
-        where e.del_flag = '0'
+        <where> e.del_flag = '0'
         <if test="deptIds != null and deptIds.size() > 0">
             and e.dept_id in
             <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
@@ -238,6 +252,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <if test="endTime != null">
             and e.expense_date &lt;= #{endTime}
         </if>
+        </where>
         group by e.dept_id, d.dept_name
         order by totalAmount desc
     </select>
@@ -245,7 +260,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectExpenseTotal" resultType="java.math.BigDecimal">
         select ifnull(sum(expense_amount), 0)
         from fin_expense
-        where del_flag = '0'
+        <where> del_flag = '0'
         <if test="deptIds != null and deptIds.size() > 0">
             and dept_id in
             <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
@@ -258,5 +273,122 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <if test="endTime != null">
             and expense_date &lt;= #{endTime}
         </if>
+        </where>
+    </select>
+
+    <select id="selectTodayTotalExpense" resultType="java.math.BigDecimal">
+        select ifnull(sum(abs(expense_amount)), 0) from fin_expense
+        where del_flag = '0' and expense_type = '开支' and date(expense_date) = curdate()
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+    </select>
+
+    <select id="selectMonthTotalExpense" resultType="java.math.BigDecimal">
+        select ifnull(sum(abs(expense_amount)), 0) from fin_expense
+        where del_flag = '0' and expense_type = '开支' and date_format(expense_date, '%Y-%m') = date_format(curdate(), '%Y-%m')
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+    </select>
+
+    <select id="selectMonthTotalExpenseForPrev" resultType="java.math.BigDecimal">
+        select ifnull(sum(abs(expense_amount)), 0) from fin_expense
+        where del_flag = '0' and expense_type = '开支' and date_format(expense_date, '%Y-%m') = date_format(date_sub(curdate(), interval 1 month), '%Y-%m')
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+    </select>
+
+    <select id="countUnverifiedExpenses" resultType="int">
+        select count(1) from fin_expense where del_flag = '0' and status = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+    </select>
+
+    <select id="sumUnverifiedExpenseAmount" resultType="java.math.BigDecimal">
+        select ifnull(sum(expense_amount), 0) from fin_expense where del_flag = '0' and status = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+    </select>
+
+    <select id="countUnverifiedExpensesByPeriodId" resultType="int">
+        select count(1) from fin_expense where del_flag = '0' and status = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+        and period_id = #{periodId}
+    </select>
+
+    <select id="sumUnverifiedExpenseAmountByPeriodId" resultType="java.math.BigDecimal">
+        select ifnull(sum(expense_amount), 0) from fin_expense where del_flag = '0' and status = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+        and period_id = #{periodId}
+    </select>
+
+    <select id="selectExpenseCategoryStatsWithPrev" resultType="java.util.HashMap">
+        select t.categoryName, t.currentAmount, p.prevAmount
+        from (
+            select expense_type as categoryName, ifnull(sum(abs(expense_amount)), 0) as currentAmount
+            from fin_expense
+            where del_flag = '0'
+            <if test="deptIds != null and deptIds.size() > 0">
+                and dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+            </if>
+            <if test="startTime != null"> and expense_date &gt;= #{startTime} </if>
+            <if test="endTime != null"> and expense_date &lt;= #{endTime} </if>
+            group by expense_type
+        ) t
+        left join (
+            select expense_type as categoryName, ifnull(sum(abs(expense_amount)), 0) as prevAmount
+            from fin_expense
+            where del_flag = '0'
+            <if test="deptIds != null and deptIds.size() > 0">
+                and dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+            </if>
+            <if test="prevStartTime != null"> and expense_date &gt;= #{prevStartTime} </if>
+            <if test="prevEndTime != null"> and expense_date &lt;= #{prevEndTime} </if>
+            group by expense_type
+        ) p on t.categoryName = p.categoryName
+        order by t.currentAmount desc
+    </select>
+
+    <select id="selectUnverifiedExpenseList" resultType="java.util.HashMap">
+        select e.expense_id as expenseId, e.expense_no as expenseNo, e.dept_id as deptId,
+               d.dept_name as deptName, e.expense_content as label,
+               abs(e.expense_amount) as currentAmount
+        from fin_expense e
+        left join sys_dept d on e.dept_id = d.dept_id
+        where e.del_flag = '0' and e.status = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and e.dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+        order by e.expense_date desc limit 50
+    </select>
+
+    <select id="selectOcrAnomalies" resultType="java.util.HashMap">
+        select e.expense_id as expenseId, e.expense_no as expenseNo, e.dept_id as deptId,
+               d.dept_name as deptName, e.expense_content as label,
+               abs(e.expense_amount) as currentAmount,
+               case
+                   when e.attachments is null or e.attachments = '' then 'MISSING_ATTACHMENT'
+                   when e.expense_type is null or e.expense_type = '' then 'MISSING_CATEGORY'
+                   when e.dept_id is null then 'MISSING_DEPT'
+                   else 'OTHER'
+               end as anomalyType
+        from fin_expense e
+        left join sys_dept d on e.dept_id = d.dept_id
+        where e.del_flag = '0' and e.remark like '%OCR%'
+        and (e.attachments is null or e.attachments = ''
+             or e.expense_type is null or e.expense_type = ''
+             or e.dept_id is null)
+        <if test="deptIds != null and deptIds.size() > 0">
+            and (e.dept_id is null or e.dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>)
+        </if>
+        order by e.expense_date desc limit 30
     </select>
 </mapper>

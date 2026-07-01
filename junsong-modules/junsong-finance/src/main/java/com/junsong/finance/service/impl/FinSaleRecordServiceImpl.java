@@ -6,6 +6,7 @@ import java.util.Date;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.transaction.annotation.Transactional;
 import com.junsong.common.core.utils.StringUtils;
 import com.junsong.common.security.utils.SecurityUtils;
@@ -35,6 +36,9 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
 
     @Autowired
     private IFinAccountingPeriodService finAccountingPeriodService;
+
+    @Autowired
+    private FinAuditTrailRecorder auditTrailRecorder;
 
     /**
      * 查询销售记录
@@ -76,27 +80,38 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
     @Override
     public int insertFinSaleRecord(FinSaleRecord finSaleRecord)
     {
-        // 自动生成销售单号
-        if (StringUtils.isEmpty(finSaleRecord.getSaleNo()))
-        {
-            int todayCount = finSaleRecordMapper.countTodaySales();
-            finSaleRecord.setSaleNo(CodeGenerator.generateSaleNo(todayCount));
-        }
-        
         // 自动设置部门ID
         finSaleRecord.setDeptId(SecurityUtils.getDeptId());
         fillCurrentPeriod(finSaleRecord);
         finAccountingPeriodService.assertPeriodEditable(finSaleRecord.getPeriodId());
-        
+
         // 计算总数量和单价
         calculateSaleQuantityAndUnitPrice(finSaleRecord);
-        
+
         // 初始状态为待缴款
         finSaleRecord.setStatus(PaymentStatus.PENDING);
         finSaleRecord.setPaidAmount(BigDecimal.ZERO);
-        
-        int rows = finSaleRecordMapper.insertFinSaleRecord(finSaleRecord);
-        return rows;
+
+        // 自动生成销售单号（带重试机制防止并发重复）
+        if (StringUtils.isEmpty(finSaleRecord.getSaleNo()))
+        {
+            int retryCount = 0;
+            int maxRetries = 3;
+            while (retryCount < maxRetries) {
+                try {
+                    int todayCount = finSaleRecordMapper.countTodaySales();
+                    finSaleRecord.setSaleNo(CodeGenerator.generateSaleNo(todayCount + retryCount));
+                    return finSaleRecordMapper.insertFinSaleRecord(finSaleRecord);
+                } catch (DuplicateKeyException e) {
+                    retryCount++;
+                    if (retryCount >= maxRetries) {
+                        throw new ServiceException("销售单号生成失败，请稍后重试");
+                    }
+                }
+            }
+        }
+
+        return finSaleRecordMapper.insertFinSaleRecord(finSaleRecord);
     }
 
     private void fillCurrentPeriod(FinSaleRecord finSaleRecord)
@@ -163,6 +178,11 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
         if (saleIds != null) {
             for (Long saleId : saleIds) {
                 assertSaleEditable(saleId);
+                FinSaleRecord old = finSaleRecordMapper.selectFinSaleRecordBySaleId(saleId);
+                if (old != null) {
+                    auditTrailRecorder.record("delete_sale", "fin_sale_record", String.valueOf(saleId),
+                            "{\"saleNo\":\"" + old.getSaleNo() + "\",\"amount\":" + old.getSaleAmount() + "}", null);
+                }
             }
         }
         // 先删除对应的缴款记录
@@ -181,6 +201,11 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
     public int deleteFinSaleRecordBySaleId(Long saleId)
     {
         assertSaleEditable(saleId);
+        FinSaleRecord old = finSaleRecordMapper.selectFinSaleRecordBySaleId(saleId);
+        if (old != null) {
+            auditTrailRecorder.record("delete_sale", "fin_sale_record", String.valueOf(saleId),
+                    "{\"saleNo\":\"" + old.getSaleNo() + "\",\"amount\":" + old.getSaleAmount() + "}", null);
+        }
         // 先删除对应的缴款记录
         finSalePaymentMapper.deleteFinSalePaymentBySaleId(saleId);
         return finSaleRecordMapper.deleteFinSaleRecordBySaleId(saleId);
@@ -241,11 +266,14 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
         {
             throw new ServiceException("销售记录不存在");
         }
-        
+
+        // 期间锁：已结转期间不允许新增缴款
+        if (sale.getPeriodId() != null) {
+            finAccountingPeriodService.assertPeriodEditable(sale.getPeriodId());
+        }
+
         // 创建缴款记录
         FinSalePayment payment = new FinSalePayment();
-        int todayCount = finSalePaymentMapper.countTodayPayments();
-        payment.setPaymentNo(CodeGenerator.generatePaymentNo(todayCount));
         payment.setSaleId(saleId);
         payment.setDeptId(sale.getDeptId());
         payment.setPeriodId(getCurrentPeriodId(sale.getDeptId()));
@@ -253,15 +281,34 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
         payment.setPaymentMethod(paymentMethod);
         payment.setPaymentDate(paymentDate != null ? paymentDate : new Date());
         payment.setRemark(remark);
-        
-        // 插入缴款记录
-        int rows = finSalePaymentMapper.insertFinSalePayment(payment);
-        finAccountingPeriodService.selectCurrentPeriodByDeptId(sale.getDeptId());
-        
-        // 更新销售记录的已缴金额和状态
-        updateSalePaidAmountAndStatus(saleId);
-        
-        return rows;
+
+        // 生成缴款单号（带重试机制防止并发重复）
+        int retryCount = 0;
+        int maxRetries = 3;
+        while (retryCount < maxRetries)
+        {
+            try
+            {
+                int todayCount = finSalePaymentMapper.countTodayPayments();
+                payment.setPaymentNo(CodeGenerator.generatePaymentNo(todayCount + retryCount));
+                int rows = finSalePaymentMapper.insertFinSalePayment(payment);
+                finAccountingPeriodService.selectCurrentPeriodByDeptId(sale.getDeptId());
+
+                // 更新销售记录的已缴金额和状态
+                updateSalePaidAmountAndStatus(saleId);
+
+                return rows;
+            }
+            catch (DuplicateKeyException e)
+            {
+                retryCount++;
+                if (retryCount >= maxRetries)
+                {
+                    throw new ServiceException("缴款单号生成失败，请稍后重试");
+                }
+            }
+        }
+        return 0;
     }
 
     private Long getCurrentPeriodId(Long deptId)
@@ -290,7 +337,12 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
         {
             throw new ServiceException("缴款记录不存在");
         }
-        
+
+        // 期间锁：已结转期间不允许修改缴款
+        if (payment.getPeriodId() != null) {
+            finAccountingPeriodService.assertPeriodEditable(payment.getPeriodId());
+        }
+
         // 更新缴款记录
         payment.setPaymentAmount(paymentAmount);
         payment.setPaymentMethod(paymentMethod);
@@ -321,9 +373,14 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
         {
             throw new ServiceException("缴款记录不存在");
         }
-        
+
+        // 期间锁：已结转期间不允许删除缴款
+        if (payment.getPeriodId() != null) {
+            finAccountingPeriodService.assertPeriodEditable(payment.getPeriodId());
+        }
+
         Long saleId = payment.getSaleId();
-        
+
         // 删除缴款记录
         int rows = finSalePaymentMapper.deleteFinSalePaymentByPaymentId(paymentId);
         

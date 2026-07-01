@@ -14,8 +14,10 @@ import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.core.utils.poi.ExcelUtil;
 import com.junsong.member.domain.MemMember;
 import com.junsong.member.service.IMemMemberService;
+import com.junsong.member.service.impl.MemAuditTrailRecorder;
 import com.junsong.common.security.annotation.RequiresPermissions;
 import com.junsong.common.security.utils.SecurityUtils;
+import com.junsong.common.security.auth.AuthUtil;
 import org.springframework.util.StringUtils;
 
 /**
@@ -28,6 +30,58 @@ public class MemMemberController extends BaseController {
     @Autowired
     private IMemMemberService memMemberService;
 
+    @Autowired
+    private MemAuditTrailRecorder auditTrailRecorder;
+
+    // ==================== PII 脱敏 ====================
+
+    /**
+     * 判断当前用户是否有权查看明文PII
+     */
+    private boolean canViewPii() {
+        return AuthUtil.hasPermi("member:member:pii");
+    }
+
+    /**
+     * 对会员列表执行PII脱敏（无权限时）
+     */
+    private void maskPiiIfNeeded(List<MemMember> list) {
+        if (canViewPii()) return;
+        for (MemMember m : list) {
+            maskMemberPii(m);
+        }
+    }
+
+    static void maskMemberPii(MemMember m) {
+        if (m == null) return;
+        m.setPhone(maskPhone(m.getPhone()));
+        m.setAddress(maskAddress(m.getAddress()));
+        m.setIdCard(maskIdCard(m.getIdCard()));
+    }
+
+    /** 手机号：前三后四，如 138****1234；过短返回 *** */
+    static String maskPhone(String phone) {
+        if (phone == null) return null;
+        if (phone.length() <= 7) return "***";
+        return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
+    }
+
+    /** 身份证：前六后四，如 110101****1234；过短返回 *** */
+    static String maskIdCard(String idCard) {
+        if (idCard == null) return null;
+        if (idCard.length() <= 10) return "***";
+        return idCard.substring(0, 6) + "****" + idCard.substring(idCard.length() - 4);
+    }
+
+    /** 地址：保留前6个字符（大约到区县级别），后续用***代替；过短返回 *** */
+    static String maskAddress(String address) {
+        if (address == null) return null;
+        if (address.length() <= 6) return "***";
+        return address.substring(0, 6) + "***";
+    }
+
+    // ==================== CRUD ====================
+
     /**
      * 查询会员信息列表
      */
@@ -36,17 +90,27 @@ public class MemMemberController extends BaseController {
     public TableDataInfo list(MemMember memMember) {
         startPage();
         List<MemMember> list = memMemberService.selectMemMemberList(memMember);
+        maskPiiIfNeeded(list);
         return getDataTable(list);
     }
 
     /**
-     * 导出会员信息列表
+     * 导出会员信息列表（无PII权限时导出脱敏数据，明文导出需 member:member:piiExport 权限）
      */
     @RequiresPermissions("member:member:export")
     @Log(title = "会员信息", businessType = BusinessType.EXPORT)
     @PostMapping("/export")
     public void export(HttpServletResponse response, MemMember memMember) {
         List<MemMember> list = memMemberService.selectMemMemberList(memMember);
+        boolean plaintext = AuthUtil.hasPermi("member:member:piiExport");
+        if (!plaintext) {
+            maskPiiIfNeeded(list);
+        }
+        if (plaintext) {
+            auditTrailRecorder.record("pii_export", "member_export", String.valueOf(SecurityUtils.getDeptId()),
+                    null,
+                    "{\"recordCount\":" + list.size() + ",\"plaintext\":true,\"fields\":[\"phone\",\"address\",\"idCard\"]}");
+        }
         ExcelUtil<MemMember> util = new ExcelUtil<MemMember>(MemMember.class);
         util.exportExcel(response, list, "会员信息数据");
     }
@@ -57,7 +121,11 @@ public class MemMemberController extends BaseController {
     @RequiresPermissions("member:member:query")
     @GetMapping(value = "/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id) {
-        return success(memMemberService.selectMemMemberById(id));
+        MemMember member = memMemberService.selectMemMemberById(id);
+        if (!canViewPii()) {
+            maskMemberPii(member);
+        }
+        return success(member);
     }
 
     /**
@@ -83,12 +151,15 @@ public class MemMemberController extends BaseController {
         int rows = memMemberService.insertMemMember(memMember);
         if (rows > 0) {
             AjaxResult ajax = AjaxResult.success("新增成功");
+            if (!canViewPii()) {
+                maskMemberPii(memMember);
+            }
             ajax.put("data", memMember);
             return ajax;
         }
         return error("新增失败");
     }
-    
+
     /**
      * 获取下一个会员编号
      */
@@ -114,6 +185,9 @@ public class MemMemberController extends BaseController {
         MemMember member = memMemberService.selectMemMemberByNo(memberNo, deptId);
         if (member == null) {
             return error("未找到该部门下的会员编号：" + memberNo);
+        }
+        if (!canViewPii()) {
+            maskMemberPii(member);
         }
         return success(member);
     }
@@ -160,6 +234,7 @@ public class MemMemberController extends BaseController {
     /**
      * 下载会员信息导入模板
      */
+    @RequiresPermissions("member:member:import")
     @PostMapping("/importTemplate")
     public void importTemplate(HttpServletResponse response) throws IOException {
         ExcelUtil<MemMember> util = new ExcelUtil<MemMember>(MemMember.class);

@@ -20,10 +20,11 @@
       </el-form>
     </div>
 
+    <!-- Original Metrics -->
     <div class="report-metrics">
       <div class="metric-card primary">
         <div class="metric-label">总利润</div>
-        <div class="metric-value">¥{{ reportData.totalProfit || 0 }}</div>
+        <div class="metric-value">&yen;{{ reportData.totalProfit || 0 }}</div>
       </div>
       <div class="metric-card success">
         <div class="metric-label">利润率</div>
@@ -35,6 +36,7 @@
       </div>
     </div>
 
+    <!-- Original Charts -->
     <div class="chart-grid">
       <el-card class="chart-card">
         <template #header><span>门店利润对比</span></template>
@@ -49,6 +51,101 @@
         <div ref="trendChart" class="chart-canvas"></div>
       </el-card>
     </div>
+
+    <!-- Operating Profit Analysis Section -->
+    <el-card class="section-card" style="margin-top: 16px;">
+      <template #header><span>经营利润分析</span></template>
+      <div class="report-metrics">
+        <div class="metric-card primary">
+          <div class="metric-label">总收入</div>
+          <div class="metric-value">&yen;{{ opData.totalIncome || 0 }}</div>
+        </div>
+        <div class="metric-card warning">
+          <div class="metric-label">商品成本</div>
+          <div class="metric-value">&yen;{{ opData.productCost || 0 }}</div>
+        </div>
+        <div class="metric-card warning">
+          <div class="metric-label">经营费用</div>
+          <div class="metric-value">&yen;{{ opData.operatingExpense || 0 }}</div>
+        </div>
+        <div class="metric-card success">
+          <div class="metric-label">毛利润</div>
+          <div class="metric-value">&yen;{{ opData.grossProfit || 0 }}</div>
+        </div>
+        <div class="metric-card success">
+          <div class="metric-label">净利润</div>
+          <div class="metric-value">&yen;{{ opData.netProfit || 0 }}</div>
+        </div>
+        <div class="metric-card info">
+          <div class="metric-label">利润率</div>
+          <div class="metric-value">{{ opData.profitRate || 0 }}%</div>
+        </div>
+        <div class="metric-card info">
+          <div class="metric-label">回本率</div>
+          <div class="metric-value">{{ opData.recoveryRate || 0 }}%</div>
+        </div>
+      </div>
+    </el-card>
+
+    <!-- Store Profit Ranking -->
+    <div class="chart-grid" style="margin-top: 16px;">
+      <el-card class="chart-card">
+        <template #header><span>门店利润排名</span></template>
+        <el-table :data="opData.storeProfitRank || []" stripe border style="width: 100%" empty-text="暂无数据" max-height="360"
+                  @row-click="handleStoreDrilldown" highlight-current-row>
+          <el-table-column type="index" label="排名" width="60" />
+          <el-table-column prop="deptName" label="门店" min-width="140" />
+          <el-table-column prop="totalIncome" label="总收入" min-width="120" />
+          <el-table-column prop="productCost" label="商品成本" min-width="120" />
+          <el-table-column prop="operatingExpense" label="经营费用" min-width="120" />
+          <el-table-column prop="netProfit" label="净利润" min-width="120" />
+          <el-table-column prop="profitRate" label="利润率" width="100">
+            <template #default="scope">{{ scope.row.profitRate || 0 }}%</template>
+          </el-table-column>
+        </el-table>
+      </el-card>
+      <el-card class="chart-card">
+        <template #header><span>门店利润率排名</span></template>
+        <el-table :data="opData.storeProfitRateRank || []" stripe border style="width: 100%" empty-text="暂无数据" max-height="360">
+          <el-table-column type="index" label="排名" width="60" />
+          <el-table-column prop="deptName" label="门店" min-width="140" />
+          <el-table-column prop="profitRate" label="利润率" width="120">
+            <template #default="scope">{{ scope.row.profitRate || 0 }}%</template>
+          </el-table-column>
+          <el-table-column prop="netProfit" label="净利润" min-width="120" />
+          <el-table-column prop="recoveryRate" label="回本率" width="120">
+            <template #default="scope">{{ scope.row.recoveryRate || 0 }}%</template>
+          </el-table-column>
+        </el-table>
+      </el-card>
+    </div>
+
+    <!-- Trend Chart -->
+    <el-card class="section-card" style="margin-top: 16px;">
+      <template #header><span>经营利润趋势</span></template>
+      <div ref="opTrendChart" class="chart-canvas" style="height: 380px;"></div>
+    </el-card>
+
+    <!-- Drilldown Section -->
+    <el-card class="section-card" style="margin-top: 16px;" v-if="drilldownVisible">
+      <template #header>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span>门店经营明细 - {{ drilldownStoreName }}</span>
+          <el-button size="small" @click="drilldownVisible = false">关闭</el-button>
+        </div>
+      </template>
+      <el-table :data="drilldownData" stripe border style="width: 100%" empty-text="暂无数据" v-loading="drilldownLoading">
+        <el-table-column prop="dateStr" label="日期" width="120" />
+        <el-table-column prop="totalIncome" label="总收入" min-width="120" />
+        <el-table-column prop="productCost" label="商品成本" min-width="120" />
+        <el-table-column prop="operatingExpense" label="经营费用" min-width="120" />
+        <el-table-column prop="grossProfit" label="毛利润" min-width="120" />
+        <el-table-column prop="netProfit" label="净利润" min-width="120" />
+        <el-table-column prop="profitRate" label="利润率" width="100">
+          <template #default="scope">{{ scope.row.profitRate || 0 }}%</template>
+        </el-table-column>
+      </el-table>
+    </el-card>
   </div>
 </template>
 
@@ -79,9 +176,26 @@ export default {
         recoveryStats: [],
         trendStats: []
       },
+      opData: {
+        totalIncome: 0,
+        productCost: 0,
+        operatingExpense: 0,
+        grossProfit: 0,
+        netProfit: 0,
+        profitRate: 0,
+        recoveryRate: 0,
+        storeProfitRank: [],
+        storeProfitRateRank: [],
+        trendStats: []
+      },
+      drilldownVisible: false,
+      drilldownLoading: false,
+      drilldownData: [],
+      drilldownStoreName: "",
       deptChart: null,
       recoveryChart: null,
       trendChart: null,
+      opTrendChart: null,
       resizeTimer: null,
       themeUnsubscribe: null
     };
@@ -103,6 +217,7 @@ export default {
     this.deptChart && this.deptChart.dispose();
     this.recoveryChart && this.recoveryChart.dispose();
     this.trendChart && this.trendChart.dispose();
+    this.opTrendChart && this.opTrendChart.dispose();
   },
   methods: {
     getDepts() {
@@ -124,6 +239,19 @@ export default {
           this.initTrendChart();
         });
       });
+      // Fetch operating profit data
+      request({
+        url: "/finance/report/profit/operating",
+        method: "post",
+        data: this.queryParams
+      }).then(response => {
+        this.opData = response.data || this.opData;
+        this.$nextTick(() => {
+          this.initOpTrendChart();
+        });
+      }).catch(() => {
+        // keep defaults
+      });
     },
     resetQuery() {
       this.queryParams = {
@@ -132,7 +260,30 @@ export default {
         endTime: null,
         timeType: "day"
       };
+      this.drilldownVisible = false;
       this.handleQuery();
+    },
+    handleStoreDrilldown(row) {
+      if (!row || !row.deptId) return;
+      this.drilldownVisible = true;
+      this.drilldownLoading = true;
+      this.drilldownStoreName = row.deptName || "未知门店";
+      request({
+        url: "/finance/report/profit/operating",
+        method: "post",
+        data: {
+          deptIds: [row.deptId],
+          startTime: this.queryParams.startTime,
+          endTime: this.queryParams.endTime,
+          timeType: this.queryParams.timeType
+        }
+      }).then(response => {
+        this.drilldownData = (response.data && response.data.trendStats) || [];
+      }).catch(() => {
+        this.drilldownData = [];
+      }).finally(() => {
+        this.drilldownLoading = false;
+      });
     },
     handleResize() {
       if (this.resizeTimer) {
@@ -142,7 +293,14 @@ export default {
         this.deptChart && this.deptChart.resize();
         this.recoveryChart && this.recoveryChart.resize();
         this.trendChart && this.trendChart.resize();
+        this.opTrendChart && this.opTrendChart.resize();
       }, 200);
+    },
+    reRenderCharts() {
+      this.initDeptChart();
+      this.initRecoveryChart();
+      this.initTrendChart();
+      this.initOpTrendChart();
     },
     getCssVar(name, fallback) {
       const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -183,61 +341,58 @@ export default {
         splitLine: { lineStyle: { color: "#edf0f5", type: "dashed" } }
       };
     },
-    getBarOptions(labels, values, horizontal = false) {
-      const data = values || [];
-      const categoryAxis = {
-        ...this.getAxisBase(),
+    getBarOptions(labels, values, horizontal) {
+      var h = horizontal || false;
+      var data = values || [];
+      var categoryAxis = Object.assign({}, this.getAxisBase(), {
         type: "category",
         data: labels,
-        axisLabel: { color: "#606266", interval: 0, rotate: horizontal ? 0 : 20 }
-      };
-      const valueAxis = {
-        ...this.getAxisBase(),
+        axisLabel: { color: "#606266", interval: 0, rotate: h ? 0 : 20 }
+      });
+      var valueAxis = Object.assign({}, this.getAxisBase(), {
         type: "value",
         splitLine: { lineStyle: { color: "#edf0f5", type: "dashed" } }
-      };
+      });
       return {
         color: this.getPalette(),
         tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-        grid: { left: 34, right: 22, top: 28, bottom: horizontal ? 24 : 58, containLabel: true },
+        grid: { left: 34, right: 22, top: 28, bottom: h ? 24 : 58, containLabel: true },
         graphic: this.getEmptyGraphic(data),
-        xAxis: horizontal ? valueAxis : categoryAxis,
-        yAxis: horizontal ? categoryAxis : valueAxis,
+        xAxis: h ? valueAxis : categoryAxis,
+        yAxis: h ? categoryAxis : valueAxis,
         series: [{
           type: "bar",
           barMaxWidth: 34,
-          data,
-          itemStyle: { color: this.getThemeColor(), borderRadius: horizontal ? [0, 6, 6, 0] : [6, 6, 0, 0] }
+          data: data,
+          itemStyle: { color: this.getThemeColor(), borderRadius: h ? [0, 6, 6, 0] : [6, 6, 0, 0] }
         }]
       };
     },
     getTrendLineOptions(data, valueKey, labelSuffix) {
-      const rows = data || [];
-      const labels = Array.from(new Set(rows.map(item => item.dateStr))).sort();
-      const deptMap = new Map();
-      rows.forEach(item => {
-        const deptKey = item.deptId || "unknown";
+      var rows = data || [];
+      var labels = Array.from(new Set(rows.map(function(item) { return item.dateStr; }))).sort();
+      var deptMap = new Map();
+      rows.forEach(function(item) {
+        var deptKey = item.deptId || "unknown";
         if (!deptMap.has(deptKey)) {
-          deptMap.set(deptKey, {
-            deptName: item.deptName || "未知门店",
-            items: new Map()
-          });
+          deptMap.set(deptKey, { deptName: item.deptName || "未知门店", items: new Map() });
         }
         deptMap.get(deptKey).items.set(item.dateStr, item);
       });
-      const palette = this.getPalette();
-      const series = Array.from(deptMap.values()).map((dept, index) => {
-        const color = palette[index % palette.length];
+      var palette = this.getPalette();
+      var self = this;
+      var series = Array.from(deptMap.values()).map(function(dept, index) {
+        var color = palette[index % palette.length];
         return {
-          name: `${dept.deptName}-${labelSuffix}`,
+          name: dept.deptName + "-" + labelSuffix,
           type: "line",
           smooth: true,
           symbol: "circle",
           symbolSize: 7,
-          data: labels.map(date => Number(dept.items.get(date)?.[valueKey] || 0)),
-          lineStyle: { width: 3, color },
-          itemStyle: { color, borderWidth: 2, borderColor: "#fff" },
-          areaStyle: { color: index === 0 ? this.getThemeRgba(0.1) : undefined }
+          data: labels.map(function(date) { return Number((dept.items.get(date) || {})[valueKey] || 0); }),
+          lineStyle: { width: 3, color: color },
+          itemStyle: { color: color, borderWidth: 2, borderColor: "#fff" },
+          areaStyle: { color: index === 0 ? self.getThemeRgba(0.1) : undefined }
         };
       });
       return {
@@ -246,19 +401,17 @@ export default {
         legend: { top: 0, left: 16, right: 16, type: "scroll", icon: "circle", textStyle: { color: "#606266" } },
         grid: { left: 34, right: 22, top: 70, bottom: 36, containLabel: true },
         graphic: this.getEmptyGraphic(rows),
-        xAxis: {
-          ...this.getAxisBase(),
+        xAxis: Object.assign({}, this.getAxisBase(), {
           type: "category",
           boundaryGap: false,
           data: labels,
           axisLabel: { color: "#606266" }
-        },
-        yAxis: {
-          ...this.getAxisBase(),
+        }),
+        yAxis: Object.assign({}, this.getAxisBase(), {
           type: "value",
           splitLine: { lineStyle: { color: "#edf0f5", type: "dashed" } }
-        },
-        series
+        }),
+        series: series
       };
     },
     getPieOptions(data) {
@@ -275,33 +428,41 @@ export default {
           label: { color: "#606266", formatter: "{b}\n{d}%" },
           labelLine: { smooth: true, lineStyle: { color: "#c0c4cc" } },
           itemStyle: { borderColor: "#fff", borderWidth: 2 },
-          data
+          data: data
         }]
       };
     },
     initDeptChart() {
       if (!this.$refs.deptChart) return;
-      const echarts = require("echarts");
+      var echarts = require("echarts");
       if (this.deptChart) this.deptChart.dispose();
       this.deptChart = echarts.init(this.$refs.deptChart);
-      const data = this.reportData.deptStats || [];
-      this.deptChart.setOption(this.getBarOptions(data.map(item => item.deptName), data.map(item => item.profit)));
+      var data = this.reportData.deptStats || [];
+      this.deptChart.setOption(this.getBarOptions(data.map(function(item) { return item.deptName; }), data.map(function(item) { return item.profit; })));
     },
     initRecoveryChart() {
       if (!this.$refs.recoveryChart) return;
-      const echarts = require("echarts");
+      var echarts = require("echarts");
       if (this.recoveryChart) this.recoveryChart.dispose();
       this.recoveryChart = echarts.init(this.$refs.recoveryChart);
-      const data = this.reportData.recoveryStats || [];
-      this.recoveryChart.setOption(this.getPieOptions(data.map(item => ({ name: item.deptName, value: item.recoveryRate }))));
+      var data = this.reportData.recoveryStats || [];
+      this.recoveryChart.setOption(this.getPieOptions(data.map(function(item) { return { name: item.deptName, value: item.recoveryRate }; })));
     },
     initTrendChart() {
       if (!this.$refs.trendChart) return;
-      const echarts = require("echarts");
+      var echarts = require("echarts");
       if (this.trendChart) this.trendChart.dispose();
       this.trendChart = echarts.init(this.$refs.trendChart);
-      const data = this.reportData.trendStats || [];
+      var data = this.reportData.trendStats || [];
       this.trendChart.setOption(this.getTrendLineOptions(data, "profit", "利润"));
+    },
+    initOpTrendChart() {
+      if (!this.$refs.opTrendChart) return;
+      var echarts = require("echarts");
+      if (this.opTrendChart) this.opTrendChart.dispose();
+      this.opTrendChart = echarts.init(this.$refs.opTrendChart);
+      var data = this.opData.trendStats || [];
+      this.opTrendChart.setOption(this.getTrendLineOptions(data, "netProfit", "净利润"));
     }
   }
 };
@@ -364,7 +525,7 @@ export default {
 
 .report-metrics {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 14px;
   margin-bottom: 16px;
 }
@@ -389,6 +550,18 @@ export default {
   width: 4px;
   border-radius: 0 8px 8px 0;
   background: var(--theme-primary);
+}
+
+.metric-card.warning::before {
+  background: #E6A23C;
+}
+
+.metric-card.success::before {
+  background: #67C23A;
+}
+
+.metric-card.info::before {
+  background: #909399;
 }
 
 .metric-card::after {
@@ -422,6 +595,23 @@ export default {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.section-card {
+  border-radius: 8px;
+  border: 1px solid #ebeef5;
+  box-shadow: 0 8px 24px rgba(24, 39, 75, 0.04);
+}
+
+.section-card :deep(.el-card__header) {
+  padding: 14px 18px;
+  border-bottom: 1px solid #edf0f5;
+  color: #303133;
+  font-weight: 700;
+}
+
+.section-card :deep(.el-card__body) {
+  padding: 14px 16px 18px;
 }
 
 .chart-grid {

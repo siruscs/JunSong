@@ -97,6 +97,28 @@
           <span style="color: #909399;">/{{ allModules.length }}</span>
         </template>
       </el-table-column>
+      <el-table-column label="移动办公模块" align="left" min-width="160">
+        <template #default="scope">
+          <template v-for="m in officeModules">
+            <el-tag
+              :key="m.key + '-enabled'"
+              v-if="getModulesForRole(scope.row.roleId).includes(m.key)"
+              size="small"
+              effect="dark"
+              type="primary"
+              style="margin: 2px 4px 2px 0;"
+            >{{ m.name }}</el-tag>
+            <el-tag
+              :key="m.key + '-disabled'"
+              v-else
+              size="small"
+              effect="plain"
+              type="info"
+              style="margin: 2px 4px 2px 0; opacity: 0.45;"
+            >{{ m.name }}</el-tag>
+          </template>
+        </template>
+      </el-table-column>
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width" width="150">
         <template #default="scope">
           <el-button link type="primary" @click="handleConfigRole(scope.row)" v-hasPermi="['member:mpPerm:add']">配置</el-button>
@@ -127,6 +149,10 @@
           <el-divider content-position="left">系统管理</el-divider>
           <el-checkbox-group v-model="configForm.moduleKeys">
             <el-checkbox v-for="m in systemModules" :key="m.key" :label="m.key">{{ m.name }}</el-checkbox>
+          </el-checkbox-group>
+          <el-divider content-position="left">移动办公</el-divider>
+          <el-checkbox-group v-model="configForm.moduleKeys">
+            <el-checkbox v-for="m in officeModules" :key="m.key" :label="m.key">{{ m.name }}</el-checkbox>
           </el-checkbox-group>
         </el-form-item>
         <el-form-item>
@@ -166,6 +192,11 @@ const DEFAULT_MODULES = [
   { key: "accountingPeriod", name: "核算周期", group: "财务管理" },
   { key: "profitShare", name: "分润结转", group: "财务管理" },
   { key: "costAccounting", name: "成本核算", group: "财务管理" },
+  { key: "wfTodo", name: "待办任务", group: "移动办公" },
+  { key: "wfDone", name: "已办任务", group: "移动办公" },
+  { key: "wfNotify", name: "消息通知", group: "移动办公" },
+  { key: "wfStart", name: "发起流程", group: "移动办公" },
+  { key: "wfMonitor", name: "流程监控", group: "移动办公" },
   { key: "userManage", name: "用户管理", group: "系统管理" },
   { key: "deptManage", name: "部门管理", group: "系统管理" }
 ]
@@ -188,6 +219,7 @@ export default {
       memberModules: [],
       financeModules: [],
       systemModules: [],
+      officeModules: [],
       queryParams: {
         roleId: undefined
       },
@@ -227,6 +259,7 @@ export default {
       this.memberModules = this.allModules.filter(m => m.group === "会员服务")
       this.financeModules = this.allModules.filter(m => m.group === "财务管理")
       this.systemModules = this.allModules.filter(m => m.group === "系统管理")
+      this.officeModules = this.allModules.filter(m => m.group === "移动办公")
     },
     loadBaseData() {
       this.setModules(DEFAULT_MODULES)

@@ -42,7 +42,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <include refid="selectFinSalePaymentVo"/>
         where p.sale_id = #{saleId} and p.del_flag = '0'
     </select>
-    
+
     <select id="selectFinSalePaymentByPaymentId" parameterType="Long" resultMap="FinSalePaymentResult">
         <include refid="selectFinSalePaymentVo"/>
         where p.payment_id = #{paymentId}
@@ -50,15 +50,18 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="checkPaymentNoUnique" parameterType="String" resultMap="FinSalePaymentResult">
         <include refid="selectFinSalePaymentVo"/>
-        where p.payment_no = #{paymentNo} and p.del_flag = '0' limit 1
+        where p.payment_no = #{paymentNo} and p.del_flag = '0'
+        limit 1
     </select>
 
     <select id="countTodayPayments" resultType="int">
-        select count(*) from fin_sale_payment where date(create_time) = curdate()
+        select count(*) from fin_sale_payment
+        where del_flag = '0' and DATE(payment_date) = CURDATE()
     </select>
 
     <select id="sumPaymentAmountBySaleId" resultType="java.math.BigDecimal">
-        select ifnull(sum(payment_amount), 0) from fin_sale_payment where sale_id = #{saleId} and del_flag = '0'
+        select COALESCE(sum(payment_amount), 0) from fin_sale_payment
+        where sale_id = #{saleId} and del_flag = '0'
     </select>
         
     <insert id="insertFinSalePayment" parameterType="FinSalePayment" useGeneratedKeys="true" keyProperty="paymentId">

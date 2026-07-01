@@ -284,10 +284,10 @@ public class MemMember extends BaseEntity
             "memberId=" + memberId +
             ", memberNo='" + memberNo + '\'' +
             ", memberName='" + memberName + '\'' +
-            ", phone='" + phone + '\'' +
+            ", phone='***'" +
             ", age=" + age +
-            ", address='" + address + '\'' +
-            ", idCard='" + idCard + '\'' +
+            ", address='***'" +
+            ", idCard='***'" +
             ", cardType='" + cardType + '\'' +
             ", status='" + status + '\'' +
             ", totalPoints=" + totalPoints +

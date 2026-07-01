@@ -124,19 +124,44 @@ public class MemMpController extends BaseController {
             return AjaxResult.error("未选择部门");
         }
 
+        LocalDate today = LocalDate.now();
+        LocalDate startDate = today.minusDays(6);
+        LocalDate endDate = today.plusDays(1);
+
         List<String> dates = new ArrayList<>();
         List<Object> newMembers = new ArrayList<>();
         List<Object> dailyExpense = new ArrayList<>();
         List<Object> dailySale = new ArrayList<>();
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MM-dd");
 
+        // 一次查询返回 7 天趋势数据（替代原来的 21 次逐日查询）
+        List<Map<String, Object>> batchResult = dashboardMapper.queryTrendBatch(
+                deptId, startDate.toString(), endDate.toString());
+
+        // 按 stat_date 建立索引，方便逐日填充
+        Map<String, Map<String, Object>> byDate = new LinkedHashMap<>();
+        if (batchResult != null) {
+            for (Map<String, Object> row : batchResult) {
+                String key = String.valueOf(row.get("stat_date"));
+                byDate.put(key, row);
+            }
+        }
+
+        // 按固定日期顺序组装结果（无数据的天补零）
         for (int i = 6; i >= 0; i--) {
-            LocalDate day = LocalDate.now().minusDays(i);
+            LocalDate day = today.minusDays(i);
             dates.add(day.format(fmt));
-            String sqlDate = day.toString();
-            newMembers.add(dashboardMapper.queryDecimalWithDate(deptId, sqlDate, "newMembers"));
-            dailyExpense.add(dashboardMapper.queryDecimalWithDate(deptId, sqlDate, "dailyExpense"));
-            dailySale.add(dashboardMapper.queryDecimalWithDate(deptId, sqlDate, "dailySale"));
+
+            Map<String, Object> row = byDate.get(day.toString());
+            if (row != null) {
+                newMembers.add(row.getOrDefault("new_members", BigDecimal.ZERO));
+                dailyExpense.add(row.getOrDefault("daily_expense", BigDecimal.ZERO));
+                dailySale.add(row.getOrDefault("daily_sale", BigDecimal.ZERO));
+            } else {
+                newMembers.add(BigDecimal.ZERO);
+                dailyExpense.add(BigDecimal.ZERO);
+                dailySale.add(BigDecimal.ZERO);
+            }
         }
 
         Map<String, Object> trend = new HashMap<>();

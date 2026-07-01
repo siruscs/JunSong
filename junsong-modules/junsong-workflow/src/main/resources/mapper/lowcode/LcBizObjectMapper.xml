@@ -52,12 +52,16 @@
 
     <select id="selectLcBizObjectById" parameterType="Long" resultMap="LcBizObjectResult">
         <include refid="selectLcBizObjectVo"/>
-        where id = #{id} and del_flag = '0'
+        <where>
+            id = #{id} and del_flag = '0'
+        </where>
     </select>
 
     <select id="selectLcBizObjectByBizCode" parameterType="String" resultMap="LcBizObjectResult">
         <include refid="selectLcBizObjectVo"/>
-        where biz_code = #{bizCode} and del_flag = '0'
+        <where>
+            biz_code = #{bizCode} and del_flag = '0'
+        </where>
     </select>
 
     <insert id="insertLcBizObject" parameterType="com.junsong.workflow.lowcode.domain.LcBizObject" useGeneratedKeys="true" keyProperty="id">

@@ -59,8 +59,19 @@
           <el-button type="success" :disabled="!selectedFields.length" @click="batchSetList">批量列表</el-button>
           <el-button type="success" :disabled="!selectedFields.length" @click="batchSetQuery">批量查询</el-button>
           <el-button type="danger" :disabled="!selectedFields.length" @click="batchDeleteFields">批量删除</el-button>
+          <el-divider direction="vertical" />
+          <el-switch
+            v-model="useDesigner"
+            active-text="可视化设计"
+            inactive-text="表格配置"
+          />
         </div>
-        <el-table ref="fieldTableRef" :data="config.fields" border size="small" row-key="fieldKey" @selection-change="handleFieldSelectionChange">
+
+        <!-- 可视化表单设计器 -->
+        <FormDesigner v-if="useDesigner" v-model="designerFields" />
+
+        <!-- 表格配置 -->
+        <el-table v-else ref="fieldTableRef" :data="config.fields" border size="small" row-key="fieldKey" @selection-change="handleFieldSelectionChange">
           <el-table-column type="selection" width="40" align="center" />
           <el-table-column width="40" align="center">
             <template #default>
@@ -134,12 +145,12 @@
           <el-button type="primary" :icon="Plus" @click="addAssignee">新增处理人</el-button>
         </div>
         <el-table :data="config.nodeAssignees" border size="small">
-          <el-table-column label="节点Key" prop="taskKey" width="160">
+          <el-table-column label="节点Key" prop="taskKey" width="140">
             <template #default="{ row }">
               <el-input v-model="row.taskKey" size="small" placeholder="如 approve" />
             </template>
           </el-table-column>
-          <el-table-column label="处理人类型" prop="assigneeType" width="180">
+          <el-table-column label="处理人类型" prop="assigneeType" width="160">
             <template #default="{ row }">
               <el-select v-model="row.assigneeType" size="small" placeholder="选择类型">
                 <el-option label="固定用户(FIXED_USER)" value="FIXED_USER" />
@@ -152,9 +163,28 @@
               </el-select>
             </template>
           </el-table-column>
-          <el-table-column label="处理人值" prop="assigneeValue" min-width="200">
+          <el-table-column label="处理人值" prop="assigneeValue" min-width="160">
             <template #default="{ row }">
               <el-input v-model="row.assigneeValue" size="small" placeholder="用户ID/角色Key/字段Key" />
+            </template>
+          </el-table-column>
+          <el-table-column label="多人审批" prop="multiInstanceType" width="120">
+            <template #default="{ row }">
+              <el-select v-model="row.multiInstanceType" size="small" placeholder="单人">
+                <el-option label="单人" value="none" />
+                <el-option label="并行会签" value="parallel" />
+                <el-option label="串行会签" value="sequential" />
+              </el-select>
+            </template>
+          </el-table-column>
+          <el-table-column label="完成条件" prop="completionCondition" width="200">
+            <template #default="{ row }">
+              <el-input
+                v-model="row.completionCondition"
+                size="small"
+                placeholder="默认：全部通过"
+                :disabled="row.multiInstanceType === 'none' || !row.multiInstanceType"
+              />
             </template>
           </el-table-column>
           <el-table-column label="操作" width="80" align="center" fixed="right">
@@ -171,9 +201,9 @@
           <el-button type="primary" :icon="Plus" @click="addBranch">新增分支规则</el-button>
         </div>
         <el-table :data="config.branchRules" border size="small">
-          <el-table-column label="源节点" prop="sourceKey" width="140">
+          <el-table-column label="网关节点" prop="gatewayKey" width="140">
             <template #default="{ row }">
-              <el-input v-model="row.sourceKey" size="small" placeholder="如 submit" />
+              <el-input v-model="row.gatewayKey" size="small" placeholder="如 gateway_1" />
             </template>
           </el-table-column>
           <el-table-column label="字段Key" prop="fieldKey" width="140">
@@ -181,26 +211,39 @@
               <el-input v-model="row.fieldKey" size="small" placeholder="如 amount" />
             </template>
           </el-table-column>
-          <el-table-column label="操作符" prop="operator" width="100">
+          <el-table-column label="操作符" prop="operator" width="120">
             <template #default="{ row }">
               <el-select v-model="row.operator" size="small" placeholder="选择">
-                <el-option label=">=" value=">=" />
-                <el-option label=">" value=">" />
-                <el-option label="=" value="=" />
-                <el-option label="<" value="<" />
-                <el-option label="<=" value="<=" />
-                <el-option label="in" value="in" />
+                <el-option label="等于" value="EQ" />
+                <el-option label="不等于" value="NE" />
+                <el-option label="大于" value="GT" />
+                <el-option label="大于等于" value="GE" />
+                <el-option label="小于" value="LT" />
+                <el-option label="小于等于" value="LE" />
+                <el-option label="包含" value="CONTAINS" />
+                <el-option label="属于" value="IN" />
+                <el-option label="不属于" value="NOT_IN" />
+                <el-option label="为空" value="EMPTY" />
+                <el-option label="不为空" value="NOT_EMPTY" />
               </el-select>
             </template>
           </el-table-column>
           <el-table-column label="比较值" prop="compareValue" width="140">
             <template #default="{ row }">
-              <el-input v-model="row.compareValue" size="small" placeholder="如 1000" />
+              <el-input v-model="row.compareValue" size="small" placeholder="如 1000" :disabled="row.operator === 'EMPTY' || row.operator === 'NOT_EMPTY'" />
             </template>
           </el-table-column>
-          <el-table-column label="目标变量" prop="targetVar" min-width="160">
+          <el-table-column label="组合关系" prop="groupOp" width="100">
             <template #default="{ row }">
-              <el-input v-model="row.targetVar" size="small" placeholder="如 flow_goto_large" />
+              <el-select v-model="row.groupOp" size="small" placeholder="且">
+                <el-option label="且(AND)" value="AND" />
+                <el-option label="或(OR)" value="OR" />
+              </el-select>
+            </template>
+          </el-table-column>
+          <el-table-column label="目标变量" prop="targetVarName" min-width="160">
+            <template #default="{ row }">
+              <el-input v-model="row.targetVarName" size="small" placeholder="如 flow_goto_large" />
             </template>
           </el-table-column>
           <el-table-column label="操作" width="80" align="center" fixed="right">
@@ -348,6 +391,23 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Sort } from '@element-plus/icons-vue'
 import Sortable from 'sortablejs'
+import FormDesigner from '../designer/FormDesigner.vue'
+
+interface DesignerField {
+  __id: string
+  fieldKey: string
+  fieldLabel: string
+  fieldType: string
+  required: string
+  isList: string
+  isQuery: string
+  isDetail: string
+  isProcessVar: string
+  orderNum: number
+  dictType?: string
+  fieldExt?: string
+  bizCode: string
+}
 import {
   getBizConfig, saveBizConfig, generateMenu,
   publishConfig, listConfigHistory, rollbackConfig,
@@ -367,6 +427,8 @@ const generating = ref(false)
 const publishing = ref(false)
 const showHistory = ref(false)
 const historyList = ref<LcBizConfigSnapshot[]>([])
+const useDesigner = ref(false)
+const designerFields = ref<DesignerField[]>([])
 
 const config = reactive<any>({
   bizObject: {
@@ -404,6 +466,7 @@ const fieldTypes = [
   'date', 'datetime', 'date-range', 'time', 'time-range',
   'dict', 'select', 'multi-select', 'sys-ref',
   'computed', 'region', 'address', 'geo', 'file', 'image', 'richtext',
+  'subform',
 ]
 
 function loadConfig() {
@@ -420,6 +483,11 @@ function loadConfig() {
         config.branchRules = data.branchRules || []
         config.actions = data.actions || []
         config.postActions = data.postActions || []
+        // 同步到设计器
+        designerFields.value = (data.fields || []).map((f: any) => ({
+          __id: f.fieldKey || 'field_' + Math.random().toString(36).slice(2),
+          ...f,
+        }))
       }
       loading.value = false
       if (activeTab.value === 'fields') {
@@ -524,6 +592,13 @@ function handleSave() {
       activeTab.value = 'basic'
       return
     }
+    // 如果使用了设计器，同步字段回 config
+    if (useDesigner.value) {
+      config.fields = designerFields.value.map((f) => {
+        const { __id, ...rest } = f
+        return rest
+      })
+    }
     saving.value = true
     saveBizConfig(config)
       .then(() => {
@@ -544,6 +619,8 @@ function addAssignee() {
     taskKey: '',
     assigneeType: 'FIXED_USER',
     assigneeValue: '',
+    multiInstanceType: 'none',
+    completionCondition: '',
   })
 }
 
@@ -553,11 +630,12 @@ function removeAssignee(index: number) {
 
 function addBranch() {
   config.branchRules.push({
-    sourceKey: '',
+    gatewayKey: '',
     fieldKey: '',
-    operator: '>=',
+    operator: 'EQ',
     compareValue: '',
-    targetVar: '',
+    targetVarName: '',
+    groupOp: 'AND',
   })
 }
 
@@ -604,6 +682,13 @@ function handleSaveAndGenerateMenu() {
     if (!valid) {
       activeTab.value = 'basic'
       return
+    }
+    // 如果使用了设计器，同步字段回 config
+    if (useDesigner.value) {
+      config.fields = designerFields.value.map((f) => {
+        const { __id, ...rest } = f
+        return rest
+      })
     }
     generating.value = true
     saveBizConfig(config)

@@ -22,6 +22,8 @@
             <FieldRenderer
               v-model="formModel[field.fieldKey]"
               :field="field"
+              :form-values="formModel"
+              :readonly="permissionMap[field.fieldKey]?.permission === 'readonly'"
             />
           </el-form-item>
         </el-col>
@@ -32,6 +34,7 @@
 
     <template #footer>
       <el-button @click="visible = false">取消</el-button>
+      <el-button :loading="drafting" @click="handleSaveDraft">暂存草稿</el-button>
       <el-button type="primary" :loading="submitting" :disabled="!formFields.length" @click="handleSave">
         保存
       </el-button>
@@ -52,11 +55,18 @@ import {
 } from '@/api/lowcode'
 import { buildFieldRules, defaultValueFor, evalComputed, parseFieldExt } from './schema'
 
+export interface FieldPermission {
+  fieldKey: string
+  fieldLabel?: string
+  permission: 'hidden' | 'readonly' | 'editable' | 'required'
+}
+
 const props = defineProps<{
   bizCode: string
   modelValue: boolean
   recordId?: number | null
   stage?: string
+  fieldPermissions?: FieldPermission[]
 }>()
 
 const emit = defineEmits<{
@@ -77,9 +87,18 @@ const formModel = reactive<Record<string, any>>({})
 
 const stageFilter = computed(() => props.stage || 'APPLY')
 
+const permissionMap = computed(() => {
+  const map: Record<string, FieldPermission> = {}
+  props.fieldPermissions?.forEach((p) => {
+    map[p.fieldKey] = p
+  })
+  return map
+})
+
 const formFields = computed(() =>
   allFields.value
     .filter((f) => (f.stage || 'APPLY') === stageFilter.value)
+    .filter((f) => permissionMap.value[f.fieldKey]?.permission !== 'hidden')
     .slice()
     .sort((a, b) => (a.orderNum ?? 0) - (b.orderNum ?? 0)),
 )
@@ -89,7 +108,18 @@ const title = computed(() => (props.recordId ? '编辑单据' : '新增单据'))
 const rules = computed<FormRules>(() => {
   const result: FormRules = {}
   formFields.value.forEach((field) => {
-    const fieldRules = buildFieldRules(field)
+    const perm = permissionMap.value[field.fieldKey]?.permission
+    // 只读字段不参与校验
+    if (perm === 'readonly') return
+
+    const fieldRules = buildFieldRules(field, formModel)
+    // 如果字段权限是 required，强制增加必填校验
+    if (perm === 'required') {
+      const hasRequired = fieldRules.some((r: any) => r.required)
+      if (!hasRequired) {
+        fieldRules.unshift({ required: true, message: `${field.fieldLabel}不能为空`, trigger: 'blur' })
+      }
+    }
     if (fieldRules.length) result[field.fieldKey] = fieldRules
   })
   return result
@@ -167,6 +197,26 @@ async function handleSave() {
     emit('saved')
   } finally {
     submitting.value = false
+  }
+}
+
+const drafting = ref(false)
+
+async function handleSaveDraft() {
+  drafting.value = true
+  try {
+    const payload = JSON.parse(JSON.stringify(formModel))
+    if (props.recordId) {
+      await updateBizInstance(props.bizCode, props.recordId, payload)
+    } else {
+      await saveBizInstance(props.bizCode, payload)
+    }
+    ElMessage.success('草稿已暂存，可稍后继续填写')
+    emit('saved')
+  } catch {
+    ElMessage.error('暂存失败')
+  } finally {
+    drafting.value = false
   }
 }
 

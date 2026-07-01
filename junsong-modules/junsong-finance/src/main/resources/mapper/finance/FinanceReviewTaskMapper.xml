@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.FinanceReviewTaskMapper">
+
+    <resultMap type="com.junsong.finance.domain.FinanceReviewTask" id="FinanceReviewTaskResult">
+        <id property="taskId" column="task_id" />
+        <result property="taskType" column="task_type" />
+        <result property="deptId" column="dept_id" />
+        <result property="deptName" column="dept_name" />
+        <result property="periodId" column="period_id" />
+        <result property="taskDate" column="task_date" />
+        <result property="status" column="status" />
+        <result property="severity" column="severity" />
+        <result property="title" column="title" />
+        <result property="reason" column="reason" />
+        <result property="suggestion" column="suggestion" />
+        <result property="impactAmount" column="impact_amount" />
+        <result property="handlerId" column="handler_id" />
+        <result property="handlerName" column="handler_name" />
+        <result property="handlerNote" column="handler_note" />
+        <result property="ignoreReason" column="ignore_reason" />
+        <result property="alertId" column="alert_id" />
+        <result property="targetRoute" column="target_route" />
+        <result property="delFlag" column="del_flag" />
+        <result property="createBy" column="create_by" />
+        <result property="createTime" column="create_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="updateTime" column="update_time" />
+    </resultMap>
+
+    <sql id="selectReviewTaskVo">
+        select task_id, task_type, dept_id, dept_name, period_id, task_date,
+               status, severity, title, reason, suggestion, impact_amount,
+               handler_id, handler_name, handler_note, ignore_reason,
+               alert_id, target_route, del_flag,
+               create_by, create_time, update_by, update_time
+        from finance_review_task
+    </sql>
+
+    <select id="selectReviewTaskList" parameterType="java.util.Map" resultMap="FinanceReviewTaskResult">
+        <include refid="selectReviewTaskVo"/>
+        <where>
+            del_flag = '0'
+            <if test="status != null and status != ''">
+                and status = #{status}
+            </if>
+            <if test="title != null and title != ''">
+                and title like concat('%', #{title}, '%')
+            </if>
+            <if test="taskType != null and taskType != ''">
+                and task_type = #{taskType}
+            </if>
+            <if test="severity != null and severity != ''">
+                and severity = #{severity}
+            </if>
+            <if test="deptId != null">
+                and dept_id = #{deptId}
+            </if>
+            <if test="deptIds != null and deptIds.size() > 0">
+                and dept_id in
+                <foreach item="id" collection="deptIds" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+            </if>
+            <if test="periodId != null">
+                and period_id = #{periodId}
+            </if>
+            <if test="beginTime != null and beginTime != ''">
+                and task_date &gt;= #{beginTime}
+            </if>
+            <if test="endTime != null and endTime != ''">
+                and task_date &lt;= #{endTime}
+            </if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="selectByTaskId" parameterType="Long" resultMap="FinanceReviewTaskResult">
+        <include refid="selectReviewTaskVo"/>
+        where task_id = #{taskId} and del_flag = '0'
+    </select>
+
+    <select id="selectByAlertId" resultMap="FinanceReviewTaskResult">
+        <include refid="selectReviewTaskVo"/>
+        where alert_id = #{alertId}
+          and task_date = #{taskDate}
+          and del_flag = '0'
+        limit 1
+    </select>
+
+    <insert id="insertReviewTask" parameterType="com.junsong.finance.domain.FinanceReviewTask" useGeneratedKeys="true" keyProperty="taskId">
+        insert into finance_review_task
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="taskType != null and taskType != ''">task_type,</if>
+            <if test="deptId != null">dept_id,</if>
+            <if test="deptName != null and deptName != ''">dept_name,</if>
+            <if test="periodId != null">period_id,</if>
+            <if test="taskDate != null">task_date,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="severity != null and severity != ''">severity,</if>
+            <if test="title != null and title != ''">title,</if>
+            <if test="reason != null">reason,</if>
+            <if test="suggestion != null">suggestion,</if>
+            <if test="impactAmount != null">impact_amount,</if>
+            <if test="handlerId != null">handler_id,</if>
+            <if test="handlerName != null and handlerName != ''">handler_name,</if>
+            <if test="handlerNote != null">handler_note,</if>
+            <if test="ignoreReason != null">ignore_reason,</if>
+            <if test="alertId != null and alertId != ''">alert_id,</if>
+            <if test="targetRoute != null">target_route,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null and updateBy != ''">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="delFlag != null and delFlag != ''">del_flag,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="taskType != null and taskType != ''">#{taskType},</if>
+            <if test="deptId != null">#{deptId},</if>
+            <if test="deptName != null and deptName != ''">#{deptName},</if>
+            <if test="periodId != null">#{periodId},</if>
+            <if test="taskDate != null">#{taskDate},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="severity != null and severity != ''">#{severity},</if>
+            <if test="title != null and title != ''">#{title},</if>
+            <if test="reason != null">#{reason},</if>
+            <if test="suggestion != null">#{suggestion},</if>
+            <if test="impactAmount != null">#{impactAmount},</if>
+            <if test="handlerId != null">#{handlerId},</if>
+            <if test="handlerName != null and handlerName != ''">#{handlerName},</if>
+            <if test="handlerNote != null">#{handlerNote},</if>
+            <if test="ignoreReason != null">#{ignoreReason},</if>
+            <if test="alertId != null and alertId != ''">#{alertId},</if>
+            <if test="targetRoute != null">#{targetRoute},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null and updateBy != ''">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="delFlag != null and delFlag != ''">#{delFlag},</if>
+        </trim>
+    </insert>
+
+    <update id="updateReviewTask" parameterType="com.junsong.finance.domain.FinanceReviewTask">
+        update finance_review_task
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="taskType != null and taskType != ''">task_type = #{taskType},</if>
+            <if test="deptId != null">dept_id = #{deptId},</if>
+            <if test="deptName != null and deptName != ''">dept_name = #{deptName},</if>
+            <if test="periodId != null">period_id = #{periodId},</if>
+            <if test="taskDate != null">task_date = #{taskDate},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="severity != null and severity != ''">severity = #{severity},</if>
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="reason != null">reason = #{reason},</if>
+            <if test="suggestion != null">suggestion = #{suggestion},</if>
+            <if test="impactAmount != null">impact_amount = #{impactAmount},</if>
+            <if test="handlerId != null">handler_id = #{handlerId},</if>
+            <if test="handlerName != null and handlerName != ''">handler_name = #{handlerName},</if>
+            <if test="handlerNote != null">handler_note = #{handlerNote},</if>
+            <if test="ignoreReason != null">ignore_reason = #{ignoreReason},</if>
+            <if test="alertId != null and alertId != ''">alert_id = #{alertId},</if>
+            <if test="targetRoute != null">target_route = #{targetRoute},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="delFlag != null and delFlag != ''">del_flag = #{delFlag},</if>
+        </trim>
+        where task_id = #{taskId} and del_flag = '0'
+    </update>
+
+    <select id="countByStatus" resultType="int">
+        select count(*) from finance_review_task
+        <where>
+            del_flag = '0'
+            <if test="status != null and status != ''">
+                and status = #{status}
+            </if>
+            <if test="deptIds != null and deptIds.size() > 0">
+                and dept_id in
+                <foreach item="id" collection="deptIds" open="(" separator="," close=")">
+                    #{id}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+</mapper>

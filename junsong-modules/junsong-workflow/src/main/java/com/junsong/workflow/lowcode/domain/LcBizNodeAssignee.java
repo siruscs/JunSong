@@ -16,6 +16,9 @@ public class LcBizNodeAssignee extends BaseEntity
     private String assigneeValue;
     private String assigneeExpr;
     private String processVarName;
+    private String multiInstanceType;
+    private String completionCondition;
+    private String collectionSource;
     private String delFlag;
 
     public Long getId()
@@ -98,6 +101,36 @@ public class LcBizNodeAssignee extends BaseEntity
         this.processVarName = processVarName;
     }
 
+    public String getMultiInstanceType()
+    {
+        return multiInstanceType;
+    }
+
+    public void setMultiInstanceType(String multiInstanceType)
+    {
+        this.multiInstanceType = multiInstanceType;
+    }
+
+    public String getCompletionCondition()
+    {
+        return completionCondition;
+    }
+
+    public void setCompletionCondition(String completionCondition)
+    {
+        this.completionCondition = completionCondition;
+    }
+
+    public String getCollectionSource()
+    {
+        return collectionSource;
+    }
+
+    public void setCollectionSource(String collectionSource)
+    {
+        this.collectionSource = collectionSource;
+    }
+
     public String getDelFlag()
     {
         return delFlag;
@@ -118,6 +151,7 @@ public class LcBizNodeAssignee extends BaseEntity
                 .append("taskName", getTaskName())
                 .append("assigneeSource", getAssigneeSource())
                 .append("assigneeValue", getAssigneeValue())
+                .append("multiInstanceType", getMultiInstanceType())
                 .append("createBy", getCreateBy())
                 .append("createTime", getCreateTime())
                 .append("updateBy", getUpdateBy())

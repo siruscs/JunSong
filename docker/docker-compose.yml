@@ -83,6 +83,26 @@ services:
       - ./redis/conf/redis.conf:/home/junsong/redis/redis.conf
       - ./redis/data:/data
     command: redis-server /home/junsong/redis/redis.conf
+
+  junsong-rabbitmq:
+    container_name: junsong-rabbitmq
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=${MQ_PASSWORD:-admin123}
+    volumes:
+      - ./rabbitmq/data:/var/lib/rabbitmq
+
+  junsong-sentinel-dashboard:
+    container_name: junsong-sentinel-dashboard
+    build:
+      context: ./junsong/sentinel
+    ports:
+      - "8718:8718"
+
   junsong-nginx:
     container_name: junsong-nginx
     image: nginx

@@ -101,6 +101,18 @@
             <artifactId>junsong-common-redis</artifactId>
         </dependency>
 
+        <!-- Spring AMQP (RabbitMQ for Webhook delivery) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
+        <!-- Spring WebSocket (STOMP for real-time notification push) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

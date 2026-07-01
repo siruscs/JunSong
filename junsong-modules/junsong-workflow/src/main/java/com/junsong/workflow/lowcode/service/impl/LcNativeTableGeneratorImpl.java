@@ -8,7 +8,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import javax.sql.DataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +30,16 @@ import org.springframework.stereotype.Service;
 public class LcNativeTableGeneratorImpl implements LcNativeTableGenerator
 {
     private static final Logger log = LoggerFactory.getLogger(LcNativeTableGeneratorImpl.class);
+
+    /**
+     * 系统内置列名集合, 这些列由 createTable 创建, 严禁在 ALTER 时被 DROP.
+     */
+    private static final Set<String> SYSTEM_COLUMNS = Set.of(
+            "id", "biz_code", "order_no",
+            "process_instance_id", "workflow_status", "current_task_name",
+            "submitter", "submit_time",
+            "del_flag", "create_by", "create_time", "update_by", "update_time"
+    );
 
     @Autowired
     private DataSource dataSource;
@@ -141,22 +154,134 @@ public class LcNativeTableGeneratorImpl implements LcNativeTableGenerator
     private void alterTable(String tableName, List<LcBizField> fields)
     {
         if (fields == null) return;
+
+        // 1. 查询现有表的所有列名及类型 (column_name -> column_type)
+        Map<String, String> existingColumns = queryExistingColumns(tableName);
+        if (existingColumns == null)
+        {
+            log.warn("查询现有列失败, 跳过 ALTER: {}", tableName);
+            return;
+        }
+
+        // 2. 收集最新字段列表 (fieldKey -> field)
+        Map<String, LcBizField> latestFields = new HashMap<>();
+        for (LcBizField f : fields)
+        {
+            if (f.getFieldKey() != null) latestFields.put(f.getFieldKey(), f);
+        }
+
+        // 3. 处理 DROP COLUMN: 现有列不在最新字段列表中 -> 删除物理列
+        for (Map.Entry<String, String> entry : existingColumns.entrySet())
+        {
+            String colName = entry.getKey();
+            // 跳过系统内置列, 绝不删除
+            if (isSystemColumn(colName)) continue;
+
+            if (!latestFields.containsKey(colName))
+            {
+                // 检查该列是否被索引引用, 避免误删导致错误
+                if (isColumnIndexed(tableName, colName))
+                {
+                    log.warn("列 {}.{} 被索引引用, 跳过 DROP 以避免错误", tableName, colName);
+                    continue;
+                }
+                executeSql("ALTER TABLE `" + tableName + "` DROP COLUMN `" + colName + "`");
+                log.info("NATIVE 表删除列: {}.{}", tableName, colName);
+            }
+        }
+
+        // 4. 处理 ADD / MODIFY COLUMN
         for (LcBizField f : fields)
         {
             String colName = f.getFieldKey();
-            String sql = "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?";
-            Integer count = queryForInt(sql, tableName, colName);
-            if (count == null || count == 0)
+            String colDef = buildColumnDef(f);
+            if (colDef == null) continue;
+
+            if (!existingColumns.containsKey(colName))
             {
-                String colDef = buildColumnDef(f);
-                if (colDef != null)
+                // 新字段 -> ADD COLUMN (保留原有逻辑)
+                String alterSql = "ALTER TABLE `" + tableName + "` ADD COLUMN " + colDef;
+                executeSql(alterSql);
+                log.info("NATIVE 表新增列: {}.{}", tableName, colName);
+            }
+            else
+            {
+                // 已存在 -> 检查类型是否变更, 只改类型不改列名 (重命名太危险, 跳过)
+                String currentType = existingColumns.get(colName);
+                String expectedType = mapFieldType(f);
+                if (!typeEquals(currentType, expectedType))
                 {
-                    String alterSql = "ALTER TABLE `" + tableName + "` ADD COLUMN " + colDef;
+                    String alterSql = "ALTER TABLE `" + tableName + "` MODIFY COLUMN " + colDef;
                     executeSql(alterSql);
-                    log.info("NATIVE 表新增列: {}.{}", tableName, colName);
+                    log.info("NATIVE 表修改列类型: {}.{} ({} -> {})", tableName, colName, currentType, expectedType);
                 }
             }
         }
+    }
+
+    /**
+     * 查询现有表的所有列名及类型.
+     *
+     * @param tableName 表名
+     * @return 列名 -> 列类型 (如 "varchar(255)"), 查询失败返回 null
+     */
+    private Map<String, String> queryExistingColumns(String tableName)
+    {
+        Map<String, String> columns = new HashMap<>();
+        String sql = "SELECT column_name, column_type FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql))
+        {
+            ps.setString(1, tableName);
+            try (ResultSet rs = ps.executeQuery())
+            {
+                while (rs.next())
+                {
+                    columns.put(rs.getString("column_name"), rs.getString("column_type"));
+                }
+            }
+        }
+        catch (SQLException e)
+        {
+            log.error("查询现有列失败: {}", tableName, e);
+            return null;
+        }
+        return columns;
+    }
+
+    /**
+     * 判断是否为系统内置列 (不可删除).
+     */
+    private boolean isSystemColumn(String colName)
+    {
+        return SYSTEM_COLUMNS.contains(colName);
+    }
+
+    /**
+     * 检查列是否被索引引用.
+     *
+     * @param tableName 表名
+     * @param colName   列名
+     * @return true 表示该列至少被一个索引引用
+     */
+    private boolean isColumnIndexed(String tableName, String colName)
+    {
+        String sql = "SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?";
+        Integer count = queryForInt(sql, tableName, colName);
+        return count != null && count > 0;
+    }
+
+    /**
+     * 比较列类型是否一致 (忽略大小写).
+     *
+     * @param currentType  现有列类型 (来自 information_schema, 如 "varchar(255)")
+     * @param expectedType 期望类型 (来自 mapFieldType, 如 "VARCHAR(255)")
+     * @return true 表示类型一致
+     */
+    private boolean typeEquals(String currentType, String expectedType)
+    {
+        if (currentType == null || expectedType == null) return false;
+        return currentType.equalsIgnoreCase(expectedType);
     }
 
     private String buildColumnDef(LcBizField field)

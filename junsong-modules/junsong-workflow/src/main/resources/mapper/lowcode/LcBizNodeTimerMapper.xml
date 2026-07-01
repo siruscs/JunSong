@@ -38,12 +38,16 @@
 
     <select id="selectLcBizNodeTimerById" parameterType="Long" resultMap="LcBizNodeTimerResult">
         <include refid="selectLcBizNodeTimerVo"/>
-        where id = #{id} and del_flag = '0'
+        <where>
+            id = #{id} and del_flag = '0'
+        </where>
     </select>
 
     <select id="selectByBizCode" parameterType="String" resultMap="LcBizNodeTimerResult">
         <include refid="selectLcBizNodeTimerVo"/>
-        where biz_code = #{bizCode} and del_flag = '0'
+        <where>
+            biz_code = #{bizCode} and del_flag = '0'
+        </where>
         order by id asc
     </select>
 

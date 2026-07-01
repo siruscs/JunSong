@@ -17,7 +17,6 @@
     </resultMap>
     <select id="selectFinProfitShareDetailByShareId" resultMap="FinProfitShareDetailResult">
         select detail_id, share_id, dept_id, period_id, receiver_type, receiver_id, receiver_name, invest_amount, invest_ratio, share_amount, payment_id, create_time
-        from fin_profit_share_detail where share_id=#{shareId} order by detail_id asc
     </select>
     <insert id="insertFinProfitShareDetail" parameterType="FinProfitShareDetail" useGeneratedKeys="true" keyProperty="detailId">
         insert into fin_profit_share_detail(share_id, dept_id, period_id, receiver_type, receiver_id, receiver_name, invest_amount, invest_ratio, share_amount, payment_id, create_time)
@@ -30,4 +29,8 @@
         </trim>
         where detail_id=#{detailId}
     </update>
+
+    <select id="selectDetailSumByShareId" parameterType="Long" resultType="java.math.BigDecimal">
+        select ifnull(sum(share_amount), 0) from fin_profit_share_detail where share_id = #{shareId}
+    </select>
 </mapper>

@@ -30,6 +30,7 @@ public class FinAccountingPeriod extends BaseEntity
     private Date breakEvenTime;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date carryForwardTime;
+    private String carryForwardBy;
     private BigDecimal totalVerifiedExpense;
     private BigDecimal totalPurchase;
     private BigDecimal totalSalePayment;
@@ -57,6 +58,8 @@ public class FinAccountingPeriod extends BaseEntity
     public void setBreakEvenTime(Date breakEvenTime) { this.breakEvenTime = breakEvenTime; }
     public Date getCarryForwardTime() { return carryForwardTime; }
     public void setCarryForwardTime(Date carryForwardTime) { this.carryForwardTime = carryForwardTime; }
+    public String getCarryForwardBy() { return carryForwardBy; }
+    public void setCarryForwardBy(String carryForwardBy) { this.carryForwardBy = carryForwardBy; }
     public BigDecimal getTotalVerifiedExpense() { return totalVerifiedExpense; }
     public void setTotalVerifiedExpense(BigDecimal totalVerifiedExpense) { this.totalVerifiedExpense = totalVerifiedExpense; }
     public BigDecimal getTotalPurchase() { return totalPurchase; }

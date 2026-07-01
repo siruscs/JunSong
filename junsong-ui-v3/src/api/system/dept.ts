@@ -20,14 +20,10 @@ export function delDept(deptId: number) {
   return request({ url: '/system/dept/' + deptId, method: 'delete' })
 }
 
-export function treeselect() {
-  return request({ url: '/system/dept/treeselect', method: 'get' })
-}
-
-export function roleDeptTreeselect(roleId: number) {
-  return request({ url: '/system/dept/roleDeptTreeselect/' + roleId, method: 'get' })
-}
-
 export function getDeptTreeSelect() {
   return request({ url: '/system/dept/treeselect', method: 'get' })
+}
+
+export function treeselect() {
+  return getDeptTreeSelect()
 }

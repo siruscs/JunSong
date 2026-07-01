@@ -45,4 +45,12 @@ public interface SysOperLogMapper
      * 清空操作日志
      */
     public void cleanOperLog();
+
+    /**
+     * 按保留天数清理过期操作日志
+     *
+     * @param expireDate 过期日期（早于此日期的记录将被删除）
+     * @return 删除的记录数
+     */
+    public int deleteOperLogBeforeExpire(java.util.Date expireDate);
 }

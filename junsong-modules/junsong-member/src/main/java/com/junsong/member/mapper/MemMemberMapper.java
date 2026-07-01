@@ -109,4 +109,12 @@ public interface MemMemberMapper
      * @return 有效会员列表
      */
     public List<MemMember> selectActiveMembersForSeckill(@Param("deptId") Long deptId, @Param("seckillDate") Date seckillDate);
+
+    /**
+     * 批量过期会员卡：将 expire_date < today 且 status='0' 的会员置为 status='1'（失效）
+     *
+     * @param today 当天日期
+     * @return 更新行数
+     */
+    public int expireMemberCards(@Param("today") Date today);
 }

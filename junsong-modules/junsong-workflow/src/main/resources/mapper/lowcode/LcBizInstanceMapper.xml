@@ -43,17 +43,23 @@
 
     <select id="selectLcBizInstanceById" parameterType="Long" resultMap="LcBizInstanceResult">
         <include refid="selectLcBizInstanceVo"/>
-        where id = #{id} and del_flag = '0'
+        <where>
+            id = #{id} and del_flag = '0'
+        </where>
     </select>
 
     <select id="selectByBizCodeAndOrderNo" resultMap="LcBizInstanceResult">
         <include refid="selectLcBizInstanceVo"/>
-        where biz_code = #{bizCode} and order_no = #{orderNo} and del_flag = '0'
+        <where>
+            biz_code = #{bizCode} and order_no = #{orderNo} and del_flag = '0'
+        </where>
     </select>
 
     <select id="selectByProcessInstanceId" parameterType="String" resultMap="LcBizInstanceResult">
         <include refid="selectLcBizInstanceVo"/>
-        where process_instance_id = #{processInstanceId} and del_flag = '0'
+        <where>
+            process_instance_id = #{processInstanceId} and del_flag = '0'
+        </where>
     </select>
 
     <insert id="insertLcBizInstance" parameterType="com.junsong.workflow.lowcode.domain.LcBizInstance" useGeneratedKeys="true" keyProperty="id">

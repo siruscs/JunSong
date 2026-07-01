@@ -10,9 +10,11 @@ export interface WorkflowTodoTaskRow {
   owner?: string | null
   createTime?: string | null
   dueDate?: string | null
+  priority?: number | null
   processInstanceId: string
   processDefinitionId?: string
   processDefinitionKey?: string
+  processDefinitionName?: string | null
   businessKey?: string | null
 }
 
@@ -26,6 +28,7 @@ export interface WorkflowDoneTaskRow {
   processInstanceId: string
   processDefinitionId?: string
   processDefinitionKey?: string
+  processDefinitionName?: string | null
   businessKey?: string | null
   deleteReason?: string | null
 }
@@ -34,15 +37,36 @@ export interface WorkflowAppliedTaskRow extends WorkflowInstanceRow {}
 
 export interface WorkflowTaskDetail extends WorkflowTodoTaskRow {
   variables?: Record<string, any>
+  attachments?: any[]
+  multiInstance?: {
+    total: number
+    active: number
+    completed: number
+    instances: any[]
+  }
 }
 
 export interface WorkflowApprovePayload {
   comment?: string
   variables?: Record<string, any>
+  attachments?: any[]
 }
 
 export interface WorkflowRejectPayload {
   comment?: string
+  targetActivityId?: string
+  targetType?: string
+  attachments?: any[]
+}
+
+export interface RejectTarget {
+  activityId: string
+  activityName: string
+  type: string
+  typeLabel: string
+  assignee?: string
+  endTime?: string
+  startTime?: string
 }
 
 function getWorkflowUserQuery() {
@@ -50,11 +74,11 @@ function getWorkflowUserQuery() {
   return userStore.name ? { user: userStore.name } : {}
 }
 
-export function listTodoWorkflowTasks() {
+export function listTodoWorkflowTasks(sortBy?: string) {
   return request({
     url: '/workflow/task/todo',
     method: 'get',
-    params: getWorkflowUserQuery(),
+    params: { ...getWorkflowUserQuery(), ...(sortBy ? { sortBy } : {}) },
   })
 }
 
@@ -104,10 +128,25 @@ export function rejectWorkflowTask(taskId: string, data?: WorkflowRejectPayload)
   })
 }
 
+export function getRejectTargets(taskId: string) {
+  return request({
+    url: `/workflow/task/${taskId}/reject-targets`,
+    method: 'get',
+  })
+}
+
 export function transferWorkflowTask(taskId: string, toUser: string) {
   return request({
     url: `/workflow/task/${taskId}/transfer`,
     method: 'post',
     params: { toUser },
+  })
+}
+
+export function batchApprove(taskIds: string[], comment: string) {
+  return request({
+    url: '/workflow/task/batch-approve',
+    method: 'post',
+    data: { taskIds, comment },
   })
 }

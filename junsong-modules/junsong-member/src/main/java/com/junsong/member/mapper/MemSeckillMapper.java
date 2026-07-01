@@ -1,6 +1,8 @@
 package com.junsong.member.mapper;
 
+import java.util.Date;
 import java.util.List;
+import org.apache.ibatis.annotations.Param;
 import com.junsong.member.domain.MemSeckill;
 
 /**
@@ -65,4 +67,12 @@ public interface MemSeckillMapper
      * @return 结果
      */
     public int checkMemSeckillNoUnique(MemSeckill memSeckill);
+
+    /**
+     * 批量关闭已结束的秒杀活动：将 end_date < today 且 status='0' 的活动置为 status='1'（已结束）
+     *
+     * @param today 当天日期
+     * @return 更新行数
+     */
+    public int closeExpiredSeckills(@Param("today") Date today);
 }

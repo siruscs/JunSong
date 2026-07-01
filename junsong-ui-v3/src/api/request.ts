@@ -2,9 +2,16 @@ import axios, { type AxiosRequestConfig } from 'axios'
 import { ElNotification, ElMessageBox, ElMessage, ElLoading } from 'element-plus'
 import { getToken } from '@/utils/auth'
 import errorCode from '@/utils/errorCode'
+import { resolveOpenApiError } from '@/utils/openApiErrorCode'
 import { tansParams, blobValidate } from '@/utils/junsong'
 import cache from '@/utils/cache'
 import { saveAs } from 'file-saver'
+
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    silentError?: boolean
+  }
+}
 
 let downloadLoadingInstance: ReturnType<typeof ElLoading.service>
 export const isRelogin = { show: false }
@@ -83,11 +90,18 @@ service.interceptors.request.use(
 service.interceptors.response.use(
   (res) => {
     const code = res.data.code || 200
-    const msg = errorCode[code] || res.data.msg || errorCode['default']
+    const msg = res.data.msg || errorCode[code] || errorCode['default']
+    const silentError = res.config.silentError === true
     if (res.request.responseType === 'blob' || res.request.responseType === 'arraybuffer') {
       return res.data
     }
     if (code === 401) {
+      // 开放平台 API 错误码：显示友好提示而非重新登录弹窗
+      const openApiHint = resolveOpenApiError(msg)
+      if (openApiHint) {
+        ElMessage({ message: openApiHint, type: 'error', duration: 5000 })
+        return Promise.reject(new Error(openApiHint))
+      }
       const requestConfig = res.config
       const isTokenRequest = !(requestConfig as any)._isToken
       const currentPath = window.location.pathname
@@ -123,7 +137,12 @@ service.interceptors.response.use(
       ElMessage({ message: msg, type: 'warning' })
       return Promise.reject('error')
     } else if (code !== 200) {
-      ElNotification.error({ title: msg })
+      if (silentError) {
+        return res.data
+      }
+      if (!silentError) {
+        ElNotification.error({ title: msg })
+      }
       return Promise.reject('error')
     } else {
       return res.data

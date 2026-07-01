@@ -42,12 +42,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     
     <select id="selectFinPurchaseDetailByDetailId" parameterType="Long" resultMap="FinPurchaseDetailResult">
         <include refid="selectFinPurchaseDetailVo"/>
-        where detail_id = #{detailId}
     </select>
 
     <select id="selectFinPurchaseDetailByPurchaseId" parameterType="Long" resultMap="FinPurchaseDetailResult">
         <include refid="selectFinPurchaseDetailVo"/>
-        where purchase_id = #{purchaseId} and del_flag = '0'
     </select>
         
     <insert id="insertFinPurchaseDetail" parameterType="FinPurchaseDetail" useGeneratedKeys="true" keyProperty="detailId">

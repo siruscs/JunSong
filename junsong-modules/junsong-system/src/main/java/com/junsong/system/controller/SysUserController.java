@@ -6,7 +6,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.ArrayUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,15 +24,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import com.junsong.common.core.domain.R;
+import com.junsong.common.core.context.TenantContext;
 import com.junsong.common.core.text.Convert;
 import com.junsong.common.core.utils.DateUtils;
 import com.junsong.common.core.utils.StringUtils;
 import com.junsong.common.core.utils.poi.ExcelUtil;
+import com.junsong.common.core.utils.ip.IpUtils;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
+import com.junsong.common.redis.service.RedisService;
 import com.junsong.common.security.annotation.InnerAuth;
 import com.junsong.common.security.annotation.RequiresPermissions;
 import com.junsong.common.security.service.TokenService;
@@ -39,11 +44,14 @@ import com.junsong.system.api.domain.SysDept;
 import com.junsong.system.api.domain.SysRole;
 import com.junsong.system.api.domain.SysUser;
 import com.junsong.system.api.model.LoginUser;
+import com.junsong.system.domain.SysNotification;
 import com.junsong.system.domain.SysUserDept;
 import com.junsong.system.domain.SysInviteCode;
 import com.junsong.system.mapper.SysInviteCodeMapper;
+import com.junsong.system.mapper.SysUserRoleMapper;
 import com.junsong.system.service.ISysConfigService;
 import com.junsong.system.service.ISysDeptService;
+import com.junsong.system.service.ISysNotificationService;
 import com.junsong.system.service.ISysPermissionService;
 import com.junsong.system.service.ISysPostService;
 import com.junsong.system.service.ISysRoleService;
@@ -86,6 +94,21 @@ public class SysUserController extends BaseController
     @Autowired
     private SysInviteCodeMapper inviteCodeMapper;
 
+    @Autowired
+    private SysUserRoleMapper userRoleMapper;
+
+    @Autowired
+    private ISysNotificationService notificationService;
+
+    @Autowired
+    private RedisService redisService;
+
+    /** 注册限流：每小时最多5次 */
+    private static final int REGISTER_MAX_PER_HOUR = 5;
+
+    /** 邀请码生成限流：每小时最多10次 */
+    private static final int INVITE_CODE_MAX_PER_HOUR = 10;
+
     /**
      * 获取用户列表
      */
@@ -120,6 +143,7 @@ public class SysUserController extends BaseController
         return success(message);
     }
 
+    @RequiresPermissions("system:user:import")
     @PostMapping("/importTemplate")
     public void importTemplate(HttpServletResponse response) throws IOException
     {
@@ -134,16 +158,25 @@ public class SysUserController extends BaseController
     @GetMapping("/info/{username}")
     public R<LoginUser> info(@PathVariable("username") String username)
     {
-        SysUser sysUser = userService.selectUserByUserName(username);
-        // 如果按用户名未找到，尝试按手机号查询
-        if (StringUtils.isNull(sysUser) && username.matches("^1[3-9]\\d{9}$"))
+        TenantContext.setIgnore(true);
+        SysUser sysUser;
+        try
         {
-            sysUser = userService.selectUserByPhonenumber(username);
+            sysUser = userService.selectUserByUserName(username);
+            if (StringUtils.isNull(sysUser) && username.matches("^1[3-9]\\d{9}$"))
+            {
+                sysUser = userService.selectUserByPhonenumber(username);
+            }
+        }
+        finally
+        {
+            TenantContext.setIgnore(false);
         }
         if (StringUtils.isNull(sysUser))
         {
             return R.fail("用户名或密码错误");
         }
+        TenantContext.setTenantId(sysUser.getTenantId());
         // 角色集合
         Set<String> roles = permissionService.getRolePermission(sysUser);
         // 权限集合
@@ -171,8 +204,17 @@ public class SysUserController extends BaseController
      */
     @InnerAuth
     @PostMapping("/register")
-    public R<Boolean> register(@RequestBody SysUser sysUser)
+    public R<Boolean> register(@RequestBody SysUser sysUser, HttpServletRequest request)
     {
+        String clientIp = IpUtils.getIpAddr(request);
+        String rateLimitKey = "rate_limit:register:" + clientIp;
+        Integer count = redisService.getCacheObject(rateLimitKey);
+        if (count != null && count >= REGISTER_MAX_PER_HOUR)
+        {
+            return R.fail("注册操作过于频繁，请1小时后再试");
+        }
+        redisService.setCacheObject(rateLimitKey, (count == null ? 0 : count) + 1, 1L, TimeUnit.HOURS);
+
         String username = sysUser.getUserName();
         if (!("true".equals(configService.selectConfigByKey("sys.account.registerUser"))))
         {
@@ -230,17 +272,44 @@ public class SysUserController extends BaseController
         // 使用事务方法保证用户注册与邀请码标记的原子性
         String inviteCode = inviteRecord != null ? sysUser.getInviteCode() : null;
         boolean result = userService.registerUserWithInviteCode(sysUser, inviteCode, inviteCodeMapper);
+
+        // 如果需要审核，发送通知给管理员
+        if (needAudit && result)
+        {
+            List<Long> adminUserIds = userRoleMapper.selectUserIdsByRoleKey("admin");
+            for (Long adminId : adminUserIds)
+            {
+                SysNotification notification = new SysNotification();
+                notification.setUserId(adminId);
+                notification.setTitle("新用户注册待审核");
+                notification.setContent("用户【" + sysUser.getUserName() + "】已注册，等待管理员审核。");
+                notification.setType("register_audit");
+                notification.setLinkUrl("/system/user");
+                notification.setBizId(String.valueOf(sysUser.getUserId()));
+                notification.setIsRead("0");
+                notificationService.insertNotification(notification);
+            }
+        }
+
         return R.ok(result);
     }
 
     /**
      * 生成邀请码（现有员工调用）
      */
+    @RequiresPermissions("system:user:edit")
     @PostMapping("/invite-code/generate")
-    public R<String> generateInviteCode()
+    public R<String> generateInviteCode(HttpServletRequest request)
     {
         Long userId = SecurityUtils.getUserId();
         String username = SecurityUtils.getUsername();
+        String rateLimitKey = "rate_limit:invite_code:" + userId;
+        Integer count = redisService.getCacheObject(rateLimitKey);
+        if (count != null && count >= INVITE_CODE_MAX_PER_HOUR)
+        {
+            return R.fail("邀请码生成过于频繁，请1小时后再试");
+        }
+        redisService.setCacheObject(rateLimitKey, (count == null ? 0 : count) + 1, 1L, TimeUnit.HOURS);
         // 生成随机邀请码：8位大写字母+数字
         String code = generateRandomCode(8);
         SysInviteCode inviteCode = new SysInviteCode();
@@ -326,6 +395,7 @@ public class SysUserController extends BaseController
         }
 
         AjaxResult ajax = AjaxResult.success();
+        user.setPassword(null);
         ajax.put("user", user);
         ajax.put("roles", roles);
         ajax.put("permissions", permissions);
@@ -566,9 +636,8 @@ public class SysUserController extends BaseController
     }
 
     /**
-     * 登录前根据用户名获取可选部门（内部接口，由 auth 模块通过 Feign 调用）
+     * 登录前根据用户名获取可选部门（登录页公开接口，网关白名单放行）
      */
-    @InnerAuth
     @GetMapping("/deptsForLogin")
     public R<List<SysDept>> deptsForLogin(@RequestParam("username") String username)
     {

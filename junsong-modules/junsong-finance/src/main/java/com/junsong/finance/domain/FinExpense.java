@@ -79,6 +79,9 @@ public class FinExpense extends BaseEntity
     @Excel(name = "核销时间", width = 30, dateFormat = "yyyy-MM-dd HH:mm:ss")
     private Date verifyTime;
 
+    /** 附件元数据（JSON 数组） */
+    private String attachments;
+
     /** 删除标志（0代表存在 2代表删除） */
     private String delFlag;
 
@@ -223,6 +226,16 @@ public class FinExpense extends BaseEntity
     public void setVerifyTime(Date verifyTime)
     {
         this.verifyTime = verifyTime;
+    }
+
+    public String getAttachments()
+    {
+        return attachments;
+    }
+
+    public void setAttachments(String attachments)
+    {
+        this.attachments = attachments;
     }
 
     public String getDelFlag()

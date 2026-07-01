@@ -264,12 +264,24 @@ public class LcBizServiceImpl implements LcBizService
         {
             return R.fail("未发起流程");
         }
+        // 校验：只有发起人本人可以撤回
+        String currentUser = userFacade.current().username();
+        if (instance.getSubmitter() != null && !instance.getSubmitter().equals(currentUser))
+        {
+            return R.fail("只有发起人本人可以撤回");
+        }
+        // 校验：已通过审批的流程不允许撤回
+        String status = instance.getWorkflowStatus();
+        if ("APPROVED".equals(status) || "WITHDRAWN".equals(status) || "REJECTED".equals(status))
+        {
+            return R.fail("当前单据状态（" + status + "）不允许撤回");
+        }
         // 终止流程
         runtimeService.deleteProcessInstance(pid, "用户撤回");
         // 回写已撤回
         instance.setWorkflowStatus("WITHDRAWN");
         instance.setCurrentTaskName("已撤回");
-        instance.setUpdateBy(userFacade.current().username());
+        instance.setUpdateBy(currentUser);
         instanceService.updateWorkflowSnapshot(instance);
 
         // 触发配置化后置动作

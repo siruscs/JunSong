@@ -69,6 +69,30 @@ spring:
                 - Path=/workflow/**
               filters:
                 - StripPrefix=1
+            - id: junsong-open
+              uri: lb://junsong-open
+              predicates:
+                - Path=/open/**
+              filters:
+                - StripPrefix=1
+            - id: junsong-openapi-v1
+              uri: lb://junsong-open
+              predicates:
+                - Path=/openapi/v1/**
+              filters:
+                - StripPrefix=2
+            - id: junsong-openapi-v2
+              uri: lb://junsong-open
+              predicates:
+                - Path=/openapi/v2/**
+              filters:
+                - StripPrefix=2
+            - id: junsong-openapi-latest
+              uri: lb://junsong-open
+              predicates:
+                - Path=/openapi/latest/**
+              filters:
+                - StripPrefix=2
 
 security:
   captcha:
@@ -94,13 +118,48 @@ security:
       - /member/swagger-ui/**
       - /member/doc.html
       - /workflow/health/**
+      - /open/v3/api-docs
+      - /open/swagger-ui/**
+      - /open/internal/**
+      - /openapi/v1/**/**
+      - /openapi/v2/**/**
+      - /openapi/latest/**/**
       - /csrf
 
 springdoc:
   webjars:
     prefix:
+  swagger-ui:
+    enabled: true
+    urls:
+      - name: 认证服务
+        url: /auth/v3/api-docs
+      - name: 系统模块
+        url: /system/v3/api-docs
+      - name: 财务模块
+        url: /finance/v3/api-docs
+      - name: 会员模块
+        url: /member/v3/api-docs
+      - name: 工作流模块
+        url: /workflow/v3/api-docs
+      - name: 文件服务
+        url: /file/v3/api-docs
+      - name: 定时任务
+        url: /job/v3/api-docs
+      - name: 代码生成
+        url: /gen/v3/api-docs
+      - name: 开放平台
+        url: /open/v3/api-docs
 
 sentinel:
+  eager: true
   transport:
-    dashboard: 127.0.0.1:8718
-  datasource: {}
+    dashboard: junsong-sentinel-dashboard:8718
+  datasource:
+    ds1:
+      nacos:
+        server-addr: junsong-nacos:8848
+        dataId: sentinel-junsong-gateway
+        groupId: DEFAULT_GROUP
+        data-type: json
+        rule-type: gw-flow

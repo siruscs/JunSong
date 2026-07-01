@@ -4,9 +4,12 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.junsong.common.core.constant.CacheConstants;
 import com.junsong.common.core.exception.ServiceException;
+import com.junsong.common.redis.service.RedisService;
 import com.junsong.system.domain.SysRegion;
 import com.junsong.system.domain.vo.RegionTreeSelect;
 import com.junsong.system.mapper.SysRegionMapper;
@@ -18,9 +21,21 @@ public class SysRegionServiceImpl implements ISysRegionService
     @Autowired
     private SysRegionMapper regionMapper;
 
+    @Autowired
+    private RedisService redisService;
+
+    private static final String REGION_TREE_CACHE_KEY = CacheConstants.SYS_REGION_KEY + "tree";
+    private static final long REGION_CACHE_TTL_MINUTES = 60;
+
     @Override
+    @SuppressWarnings("unchecked")
     public List<RegionTreeSelect> selectRegionTree()
     {
+        List<RegionTreeSelect> cached = redisService.getCacheObject(REGION_TREE_CACHE_KEY);
+        if (cached != null)
+        {
+            return cached;
+        }
         List<SysRegion> regions = regionMapper.selectRegionList();
         Map<String, RegionTreeSelect> nodeMap = new LinkedHashMap<>();
         List<RegionTreeSelect> roots = new ArrayList<>();
@@ -41,6 +56,7 @@ public class SysRegionServiceImpl implements ISysRegionService
                 parent.getChildren().add(node);
             }
         }
+        redisService.setCacheObject(REGION_TREE_CACHE_KEY, roots, REGION_CACHE_TTL_MINUTES, TimeUnit.MINUTES);
         return roots;
     }
 
@@ -59,13 +75,17 @@ public class SysRegionServiceImpl implements ISysRegionService
     @Override
     public int insertRegion(SysRegion region)
     {
-        return regionMapper.insertRegion(region);
+        int result = regionMapper.insertRegion(region);
+        redisService.deleteObject(REGION_TREE_CACHE_KEY);
+        return result;
     }
 
     @Override
     public int updateRegion(SysRegion region)
     {
-        return regionMapper.updateRegion(region);
+        int result = regionMapper.updateRegion(region);
+        redisService.deleteObject(REGION_TREE_CACHE_KEY);
+        return result;
     }
 
     @Override
@@ -75,6 +95,8 @@ public class SysRegionServiceImpl implements ISysRegionService
         {
             throw new ServiceException("存在下级地址,不能删除");
         }
-        return regionMapper.deleteRegionByCode(code);
+        int result = regionMapper.deleteRegionByCode(code);
+        redisService.deleteObject(REGION_TREE_CACHE_KEY);
+        return result;
     }
 }

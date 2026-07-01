@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.annotation.EnableAsync;
 import com.junsong.common.security.config.ApplicationConfig;
 import com.junsong.common.security.feign.FeignAutoConfiguration;
+import com.junsong.common.core.config.TenantConfig;
 
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
@@ -24,7 +25,7 @@ import com.junsong.common.security.feign.FeignAutoConfiguration;
 // 开启线程异步执行
 @EnableAsync
 // 自动加载类
-@Import({ ApplicationConfig.class, FeignAutoConfiguration.class })
+@Import({ ApplicationConfig.class, FeignAutoConfiguration.class, TenantConfig.class })
 public @interface EnableCustomConfig
 {
 

@@ -29,16 +29,20 @@
 
     <select id="selectByRoleIdAndDeptId" resultMap="MpRoleModuleResult">
         <include refid="selectVo"/>
-        WHERE p.role_id = #{roleId} AND p.dept_id = #{deptId}
+        <where>
+            AND p.role_id = #{roleId} AND p.dept_id = #{deptId}
+        </where>
         ORDER BY p.module_key
     </select>
 
     <select id="selectModuleKeysByRoleIds" resultType="String">
         SELECT DISTINCT module_key FROM mem_mp_role_module
-        WHERE (dept_id = #{deptId} OR dept_id IS NULL OR dept_id = 0) AND role_id IN
-        <foreach item="rid" collection="roleIds" open="(" separator="," close=")">
-            #{rid}
-        </foreach>
+        <where>
+            AND (dept_id = #{deptId} OR dept_id IS NULL OR dept_id = 0) AND role_id IN
+            <foreach item="rid" collection="roleIds" open="(" separator="," close=")">
+                #{rid}
+            </foreach>
+        </where>
     </select>
 
     <insert id="insertMpRoleModule" parameterType="com.junsong.member.domain.MemMpRoleModule" useGeneratedKeys="true" keyProperty="id">

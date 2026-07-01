@@ -1,6 +1,7 @@
 package com.junsong.auth.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import com.junsong.common.core.constant.Constants;
 import com.junsong.common.core.constant.SecurityConstants;
@@ -21,13 +22,14 @@ public class SysRecordLogService
     private RemoteLogService remoteLogService;
 
     /**
-     * 记录登录信息
+     * 记录登录信息（异步写入，不阻塞登录流程）
      * 
      * @param username 用户名
      * @param status 状态
      * @param message 消息内容
      * @return
      */
+    @Async
     public void recordLogininfor(String username, String status, String message)
     {
         SysLogininfor logininfor = new SysLogininfor();

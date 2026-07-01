@@ -4,8 +4,10 @@ import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.junsong.common.core.exception.ServiceException;
 import com.junsong.common.core.utils.StringUtils;
 import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.finance.domain.FinAccountingPeriod;
@@ -45,12 +47,6 @@ public class FinCostAccountingServiceImpl implements IFinCostAccountingService
     @Override
     public int insertFinCostAccounting(FinCostAccounting finCostAccounting)
     {
-        if (StringUtils.isEmpty(finCostAccounting.getAccountingNo()))
-        {
-            int todayCount = finCostAccountingMapper.countTodayAccountings();
-            finCostAccounting.setAccountingNo(CodeGenerator.generateCostAccountingNo(todayCount));
-        }
-
         finCostAccounting.setDeptId(SecurityUtils.getDeptId());
 
         FinAccountingPeriod currentPeriod = finAccountingPeriodService.initCurrentPeriod(finCostAccounting.getDeptId());
@@ -64,6 +60,25 @@ public class FinCostAccountingServiceImpl implements IFinCostAccountingService
         finCostAccounting.setTotalInvest(nvl(finInvestRecordMapper.sumInvestAmountByDeptId(finCostAccounting.getDeptId())));
         finCostAccounting.setCurrentAdvance(nvl(currentPeriod.getTotalUnverifiedAdvance()));
         finCostAccounting.setReturnSituation(nvl(currentPeriod.getNetProfit()));
+
+        // 自动生成核算单号（带重试机制防止并发重复）
+        if (StringUtils.isEmpty(finCostAccounting.getAccountingNo()))
+        {
+            int retryCount = 0;
+            int maxRetries = 3;
+            while (retryCount < maxRetries) {
+                try {
+                    int todayCount = finCostAccountingMapper.countTodayAccountings();
+                    finCostAccounting.setAccountingNo(CodeGenerator.generateCostAccountingNo(todayCount + retryCount));
+                    return finCostAccountingMapper.insertFinCostAccounting(finCostAccounting);
+                } catch (DuplicateKeyException e) {
+                    retryCount++;
+                    if (retryCount >= maxRetries) {
+                        throw new ServiceException("核算单号生成失败，请稍后重试");
+                    }
+                }
+            }
+        }
 
         return finCostAccountingMapper.insertFinCostAccounting(finCostAccounting);
     }
@@ -85,6 +100,16 @@ public class FinCostAccountingServiceImpl implements IFinCostAccountingService
     @Override
     public int updateFinCostAccounting(FinCostAccounting finCostAccounting)
     {
+        // 期间锁：已结转期间不允许修改成本核算
+        FinCostAccounting existing = finCostAccountingMapper.selectFinCostAccountingByAccountingId(finCostAccounting.getAccountingId());
+        if (existing != null && existing.getDeptId() != null)
+        {
+            FinAccountingPeriod currentPeriod = finAccountingPeriodService.selectCurrentPeriodByDeptId(existing.getDeptId());
+            if (currentPeriod != null)
+            {
+                finAccountingPeriodService.assertPeriodEditable(currentPeriod.getPeriodId());
+            }
+        }
         return finCostAccountingMapper.updateFinCostAccounting(finCostAccounting);
     }
 
@@ -92,6 +117,16 @@ public class FinCostAccountingServiceImpl implements IFinCostAccountingService
     @Override
     public int deleteFinCostAccountingByAccountingIds(Long[] accountingIds)
     {
+        // 期间锁：逐条检查已结转期间不允许批量删除成本核算
+        for (Long accountingId : accountingIds) {
+            FinCostAccounting existing = finCostAccountingMapper.selectFinCostAccountingByAccountingId(accountingId);
+            if (existing != null && existing.getDeptId() != null) {
+                FinAccountingPeriod currentPeriod = finAccountingPeriodService.selectCurrentPeriodByDeptId(existing.getDeptId());
+                if (currentPeriod != null) {
+                    finAccountingPeriodService.assertPeriodEditable(currentPeriod.getPeriodId());
+                }
+            }
+        }
         return finCostAccountingMapper.deleteFinCostAccountingByAccountingIds(accountingIds);
     }
 
@@ -99,6 +134,16 @@ public class FinCostAccountingServiceImpl implements IFinCostAccountingService
     @Override
     public int deleteFinCostAccountingByAccountingId(Long accountingId)
     {
+        // 期间锁：已结转期间不允许删除成本核算
+        FinCostAccounting existing = finCostAccountingMapper.selectFinCostAccountingByAccountingId(accountingId);
+        if (existing != null && existing.getDeptId() != null)
+        {
+            FinAccountingPeriod currentPeriod = finAccountingPeriodService.selectCurrentPeriodByDeptId(existing.getDeptId());
+            if (currentPeriod != null)
+            {
+                finAccountingPeriodService.assertPeriodEditable(currentPeriod.getPeriodId());
+            }
+        }
         return finCostAccountingMapper.deleteFinCostAccountingByAccountingId(accountingId);
     }
 

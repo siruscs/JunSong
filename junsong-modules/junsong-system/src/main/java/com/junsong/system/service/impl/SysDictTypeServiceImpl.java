@@ -117,6 +117,7 @@ public class SysDictTypeServiceImpl implements ISysDictTypeService
      * @param dictIds 需要删除的字典ID
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteDictTypeByIds(Long[] dictIds)
     {
         for (Long dictId : dictIds)

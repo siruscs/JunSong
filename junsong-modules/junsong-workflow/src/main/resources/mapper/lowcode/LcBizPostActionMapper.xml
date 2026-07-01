@@ -30,13 +30,17 @@
 
     <select id="selectByBizCode" parameterType="String" resultMap="LcBizPostActionResult">
         <include refid="selectLcBizPostActionVo"/>
-        where biz_code = #{bizCode} and del_flag = '0' and status = '0'
+        <where>
+            biz_code = #{bizCode} and del_flag = '0' and status = '0'
+        </where>
         order by sort_order asc, id asc
     </select>
 
     <select id="selectByBizCodeAndEvent" resultMap="LcBizPostActionResult">
         <include refid="selectLcBizPostActionVo"/>
-        where biz_code = #{bizCode} and trigger_event = #{triggerEvent} and del_flag = '0' and status = '0'
+        <where>
+            biz_code = #{bizCode} and trigger_event = #{triggerEvent} and del_flag = '0' and status = '0'
+        </where>
         order by sort_order asc, id asc
     </select>
 

@@ -28,6 +28,8 @@
 
     <div class="right-menu">
       <template v-if="appStore.device !== 'mobile'">
+        <!-- 通知 -->
+        <NotificationPanel />
         <!-- 主题切换 -->
         <div class="theme-switcher">
           <div
@@ -73,6 +75,9 @@
             <router-link to="/user/profile">
               <el-dropdown-item>个人中心</el-dropdown-item>
             </router-link>
+            <router-link to="/system/delegate">
+              <el-dropdown-item>委托设置</el-dropdown-item>
+            </router-link>
             <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
           </el-dropdown-menu>
         </template>
@@ -89,10 +94,11 @@ import { useLockStore } from '@/stores/lock'
 import { useSettingsStore } from '@/stores/settings'
 import { themePresets } from '@/utils/theme'
 import { useRoute, useRouter } from 'vue-router'
-import { Lock, ScaleToOriginal } from '@element-plus/icons-vue'
+import { Lock, ScaleToOriginal, Bell } from '@element-plus/icons-vue'
 import Hamburger from '@/components/Hamburger/index.vue'
 import Breadcrumb from '@/components/Breadcrumb/index.vue'
 import Screenfull from '@/components/Screenfull/index.vue'
+import NotificationPanel from './NotificationPanel.vue'
 
 const appStore = useAppStore()
 const userStore = useUserStore()

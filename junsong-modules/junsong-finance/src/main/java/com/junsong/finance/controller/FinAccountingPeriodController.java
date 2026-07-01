@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
@@ -37,6 +38,7 @@ import com.junsong.finance.mapper.FinProfitShareDetailMapper;
 import com.junsong.finance.service.IFinProfitShareRecordService;
 import com.junsong.finance.service.IFinPurchaseService;
 import com.junsong.finance.service.IFinSalePaymentService;
+import com.junsong.finance.service.IAccountingPeriodCheckService;
 import com.junsong.finance.service.IFinSaleRecordService;
 
 @RestController
@@ -72,6 +74,16 @@ public class FinAccountingPeriodController extends BaseController
 
     @Autowired
     private IFinInvestorPaymentService finInvestorPaymentService;
+
+    @Autowired
+    private IAccountingPeriodCheckService accountingPeriodCheckService;
+
+    @RequiresPermissions("finance:accountingPeriod:checkBeforeLock")
+    @GetMapping("/check-before-lock")
+    public AjaxResult checkBeforeLock(@RequestParam Long deptId)
+    {
+        return AjaxResult.success(accountingPeriodCheckService.checkBeforeLock(deptId));
+    }
 
     @RequiresPermissions("finance:accountingPeriod:list")
     @GetMapping("/list")
@@ -192,9 +204,10 @@ public class FinAccountingPeriodController extends BaseController
     @RequiresPermissions("finance:accountingPeriod:rollback")
     @Log(title = "财务核算周期-结转回退", businessType = BusinessType.UPDATE)
     @PostMapping("/current/{deptId}/rollbackCarryForward")
-    public AjaxResult rollbackCarryForward(@PathVariable Long deptId)
+    public AjaxResult rollbackCarryForward(@PathVariable Long deptId,
+                                           @RequestParam String reason)
     {
-        return success(finAccountingPeriodService.rollbackCarryForward(deptId));
+        return success(finAccountingPeriodService.rollbackCarryForward(deptId, reason));
     }
 
     @RequiresPermissions("finance:accountingPeriod:add")

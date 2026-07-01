@@ -74,25 +74,32 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             AND m.del_flag = '0'
             ${params.dataScope}
         </where>
-        order by m.create_time desc
+        order by m.member_no desc
     </select>
 
     <select id="selectMemMemberByMemberId" parameterType="Long" resultMap="MemMemberResult">
         <include refid="selectMemMemberVo"/>
-        where m.member_id = #{memberId} and m.del_flag = '0'
+        <where>
+            AND m.member_id = #{memberId} and m.del_flag = '0'
+        </where>
     </select>
 
     <select id="checkMemberNoUnique" parameterType="com.junsong.member.domain.MemMember" resultType="int">
-        select count(1) from mem_member where member_no = #{memberNo} and del_flag = '0'
-        <if test="memberId != null and memberId != 0">
-            AND member_id != #{memberId}
-        </if>
+        select count(1) from mem_member
+        <where>
+            AND member_no = #{memberNo} and del_flag = '0'
+            <if test="memberId != null and memberId != 0">
+                AND member_id != #{memberId}
+            </if>
+        </where>
     </select>
     
     <select id="selectNextMemberNo" parameterType="String" resultType="String">
         select concat(#{prefix}, lpad(coalesce(max(cast(substr(member_no, length(#{prefix}) + 1) as signed)), 0) + 1, 5, '0'))
         from mem_member
-        where member_no like concat(#{prefix}, '%') and del_flag = '0'
+        <where>
+            AND member_no like concat(#{prefix}, '%') and del_flag = '0'
+        </where>
     </select>
     
     <select id="selectDeptNameById" parameterType="Long" resultType="String">
@@ -101,23 +108,29 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="selectMemMemberByMemberNo" parameterType="String" resultMap="MemMemberResult">
         <include refid="selectMemMemberVo"/>
-        where m.member_no like concat('%', #{memberNo}, '%') and m.del_flag = '0'
+        <where>
+            AND m.member_no like concat('%', #{memberNo}, '%') and m.del_flag = '0'
+        </where>
     </select>
 
     <select id="selectMemMemberByNoAndDept" resultMap="MemMemberResult">
         <include refid="selectMemMemberVo"/>
-        where m.member_no like concat('%', #{memberNo}, '%') and m.dept_id = #{deptId} and m.del_flag = '0'
+        <where>
+            AND m.member_no like concat('%', #{memberNo}, '%') and m.dept_id = #{deptId} and m.del_flag = '0'
+        </where>
         limit 1
     </select>
 
     <select id="selectActiveMembersForSeckill" resultMap="MemMemberResult">
         <include refid="selectMemMemberVo"/>
-        where m.dept_id = #{deptId}
-          and m.del_flag = '0'
-          and m.status = '0'
-        <if test="seckillDate != null">
-            and (m.expire_date is null or m.expire_date &gt;= #{seckillDate})
-        </if>
+        <where>
+            AND m.dept_id = #{deptId}
+              and m.del_flag = '0'
+              and m.status = '0'
+            <if test="seckillDate != null">
+                and (m.expire_date is null or m.expire_date &gt;= #{seckillDate})
+            </if>
+        </where>
         order by m.member_no
     </select>
 
@@ -197,5 +210,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             #{memberId}
         </foreach>
     </delete>
+
+    <update id="expireMemberCards">
+        update mem_member set status = '1', update_time = sysdate(), update_by = 'system'
+        where status = '0' and del_flag = '0'
+          and expire_date is not null and expire_date &lt; #{today}
+    </update>
 
 </mapper>

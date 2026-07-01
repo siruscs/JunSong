@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.open.mapper.OpenIsvMapper">
+
+    <resultMap type="OpenIsv" id="OpenIsvResult">
+        <result property="id"              column="id"               />
+        <result property="tenantId"        column="tenant_id"        />
+        <result property="isvName"         column="isv_name"         />
+        <result property="contactName"     column="contact_name"     />
+        <result property="contactPhone"    column="contact_phone"    />
+        <result property="contactEmail"    column="contact_email"    />
+        <result property="companyName"     column="company_name"     />
+        <result property="businessLicense" column="business_license" />
+        <result property="websiteUrl"      column="website_url"      />
+        <result property="accessType"      column="access_type"      />
+        <result property="status"          column="status"           />
+        <result property="rejectReason"    column="reject_reason"    />
+        <result property="createTime"      column="create_time"      />
+        <result property="updateTime"      column="update_time"      />
+    </resultMap>
+
+    <sql id="selectOpenIsvVo">
+        select id, tenant_id, isv_name, contact_name, contact_phone, contact_email,
+               company_name, business_license, website_url, access_type,
+               status, reject_reason, create_time, update_time
+        from open_isv
+    </sql>
+
+    <select id="selectOpenIsvById" parameterType="Long" resultMap="OpenIsvResult">
+        <include refid="selectOpenIsvVo"/>
+        where id = #{id}
+    </select>
+
+    <select id="selectOpenIsvList" parameterType="OpenIsv" resultMap="OpenIsvResult">
+        <include refid="selectOpenIsvVo"/>
+        <where>
+            <if test="isvName != null and isvName != ''">
+                AND isv_name like concat('%', #{isvName}, '%')
+            </if>
+            <if test="companyName != null and companyName != ''">
+                AND company_name like concat('%', #{companyName}, '%')
+            </if>
+            <if test="accessType != null and accessType != ''">
+                AND access_type = #{accessType}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+        order by id desc
+    </select>
+
+    <insert id="insertOpenIsv" parameterType="OpenIsv" useGeneratedKeys="true" keyProperty="id">
+        insert into open_isv
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="tenantId != null">tenant_id,</if>
+            <if test="isvName != null and isvName != ''">isv_name,</if>
+            <if test="contactName != null and contactName != ''">contact_name,</if>
+            <if test="contactPhone != null and contactPhone != ''">contact_phone,</if>
+            <if test="contactEmail != null and contactEmail != ''">contact_email,</if>
+            <if test="companyName != null and companyName != ''">company_name,</if>
+            <if test="businessLicense != null and businessLicense != ''">business_license,</if>
+            <if test="websiteUrl != null and websiteUrl != ''">website_url,</if>
+            <if test="accessType != null and accessType != ''">access_type,</if>
+            <if test="status != null and status != ''">status,</if>
+            create_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="tenantId != null">#{tenantId},</if>
+            <if test="isvName != null and isvName != ''">#{isvName},</if>
+            <if test="contactName != null and contactName != ''">#{contactName},</if>
+            <if test="contactPhone != null and contactPhone != ''">#{contactPhone},</if>
+            <if test="contactEmail != null and contactEmail != ''">#{contactEmail},</if>
+            <if test="companyName != null and companyName != ''">#{companyName},</if>
+            <if test="businessLicense != null and businessLicense != ''">#{businessLicense},</if>
+            <if test="websiteUrl != null and websiteUrl != ''">#{websiteUrl},</if>
+            <if test="accessType != null and accessType != ''">#{accessType},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            sysdate(),
+        </trim>
+    </insert>
+
+    <update id="updateOpenIsv" parameterType="OpenIsv">
+        update open_isv
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="isvName != null and isvName != ''">isv_name = #{isvName},</if>
+            <if test="contactName != null">contact_name = #{contactName},</if>
+            <if test="contactPhone != null">contact_phone = #{contactPhone},</if>
+            <if test="contactEmail != null">contact_email = #{contactEmail},</if>
+            <if test="companyName != null">company_name = #{companyName},</if>
+            <if test="businessLicense != null">business_license = #{businessLicense},</if>
+            <if test="websiteUrl != null">website_url = #{websiteUrl},</if>
+            <if test="accessType != null">access_type = #{accessType},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="rejectReason != null">reject_reason = #{rejectReason},</if>
+            update_time = sysdate(),
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteOpenIsvByIds" parameterType="Long">
+        delete from open_isv where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>

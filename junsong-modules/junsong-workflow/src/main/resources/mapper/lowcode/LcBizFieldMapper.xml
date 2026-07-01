@@ -54,12 +54,16 @@
 
     <select id="selectLcBizFieldById" parameterType="Long" resultMap="LcBizFieldResult">
         <include refid="selectLcBizFieldVo"/>
-        where id = #{id} and del_flag = '0'
+        <where>
+            id = #{id} and del_flag = '0'
+        </where>
     </select>
 
     <select id="selectByBizCode" parameterType="String" resultMap="LcBizFieldResult">
         <include refid="selectLcBizFieldVo"/>
-        where biz_code = #{bizCode} and del_flag = '0'
+        <where>
+            biz_code = #{bizCode} and del_flag = '0'
+        </where>
         order by order_num asc, id asc
     </select>
 

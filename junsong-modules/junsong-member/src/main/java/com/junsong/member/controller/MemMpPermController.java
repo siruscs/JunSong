@@ -38,7 +38,12 @@ public class MemMpPermController extends BaseController {
                 {"deptProfitConfig", "店面分润配置", "财务管理"},
                 {"accountingPeriod", "核算周期", "财务管理"},
                 {"profitShare", "分润结转", "财务管理"},
-                {"costAccounting", "成本核算", "财务管理"}
+                {"costAccounting", "成本核算", "财务管理"},
+                {"wfTodo", "待办任务", "移动办公"},
+                {"wfDone", "已办任务", "移动办公"},
+                {"wfNotify", "消息通知", "移动办公"},
+                {"wfStart", "发起流程", "移动办公"},
+                {"wfMonitor", "流程监控", "移动办公"}
         };
         List<Map<String, String>> list = new ArrayList<>();
         for (String[] arr : defs) {

@@ -1,11 +1,9 @@
 <template>
-  <el-drawer title="${functionName}详情" v-model="visible" direction="rtl" size="60%" append-to-body :before-close="handleClose" class="detail-drawer">
+  <el-drawer v-model="visible" title="${functionName}详情" direction="rtl" size="68%" append-to-body>
     <div v-loading="loading" class="drawer-content">
       <h4 class="section-header">基本信息</h4>
-#set($i = 0)
+      <el-descriptions :column="2" border>
 #foreach($column in $columns)
-#if(!$column.pk && $column.list)
-#set($dictType=$column.dictType)
 #set($javaField=$column.javaField)
 #set($parentheseIndex=$column.columnComment.indexOf("（"))
 #if($parentheseIndex != -1)
@@ -13,72 +11,55 @@
 #else
 #set($comment=$column.columnComment)
 #end
-#if($i % 2 == 0)
-      <el-row :gutter="20" class="mb8">
-#end
-        <el-col :span="12">
-          <div class="info-item">
-            <label class="info-label">${comment}：</label>
-            <span class="info-value plaintext">
-#if("" != $dictType)
-#if($column.htmlType == "checkbox")
-              <dict-tag :options="${dictType}" :value="info.${javaField} ? info.${javaField}.split(',') : []" />
-#else
-              <dict-tag :options="${dictType}" :value="info.${javaField}" />
-#end
+#if($column.detail && "" != $javaField)
+#if("" != $column.dictType)
+        <el-descriptions-item label="${comment}">
+          <DictTag :options="dict.type.${column.dictType}" :value="info.${javaField}" />
+        </el-descriptions-item>
 #elseif($column.htmlType == "datetime")
-              {{ parseTime(info.${javaField}, '{y}-{m}-{d}') }}
-#elseif($column.htmlType == "imageUpload")
-              <image-preview :src="info.${javaField}" :width="60" :height="60" />
+        <el-descriptions-item label="${comment}">{{ info.${javaField} || '-' }}</el-descriptions-item>
 #else
-              {{ info.${javaField} }}
-#end
-            </span>
-          </div>
-        </el-col>
-#set($i = $i + 1)
-#if($i % 2 == 0)
-      </el-row>
+        <el-descriptions-item label="${comment}">{{ info.${javaField} || '-' }}</el-descriptions-item>
 #end
 #end
 #end
-#if($i % 2 != 0)
-      </el-row>
-#end
+      </el-descriptions>
     </div>
   </el-drawer>
 </template>
 
-<script setup lang="ts" name="${BusinessName}ViewDrawer">
-import type { ${ClassName} } from "@/types/api/${moduleName}/${businessName}"
+<script setup lang="ts">
+import { ref, reactive } from 'vue'
+import DictTag from '@/components/DictTag/index.vue'
+import { useDict } from '@/composables/useDict'
 import { get${BusinessName} } from '@/api/${moduleName}/${businessName}'
-#if(${dicts} != '')
-#set($dictsNoSymbol=$dicts.replace("'", ""))
 
-const { ${dictsNoSymbol} } = useDict(${dicts})
-#end
+const dict = useDict(${dicts})
+const visible = ref(false)
+const loading = ref(false)
+const info = reactive<any>({})
 
-const visible = ref<boolean>(false)
-const loading = ref<boolean>(false)
-const info = reactive<Partial<${ClassName}>>({})
-
-const open = async (#if($pkColumn.javaType == "Long" || $pkColumn.javaType == "Integer")${pkColumn.javaField}: number#else${pkColumn.javaField}: string#end): Promise<void> => {
+function open(${pkColumn.javaField}: number) {
   visible.value = true
   loading.value = true
-  try {
-    const res = await get${BusinessName}(${pkColumn.javaField})
-    Object.assign(info, res.data ?? {})
-  } catch (error) {
-    console.error('获取${functionName}信息失败:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
-const handleClose = (): void => {
-  visible.value = false
-  Object.keys(info).forEach(key => delete (info as any)[key])
+  get${BusinessName}(${pkColumn.javaField})
+    .then((res: any) => {
+      Object.assign(info, res.data || {})
+    })
+    .finally(() => {
+      loading.value = false
+    })
 }
 
 defineExpose({ open })
 </script>
+
+<style scoped>
+.drawer-content {
+  padding: 0 20px 20px;
+}
+.section-header {
+  margin: 16px 0 12px;
+  color: #303133;
+}
+</style>

@@ -133,6 +133,15 @@
             >
               终止
             </el-button>
+            <el-button
+              v-if="isRunning(row) && isStarter(row)"
+              link
+              type="warning"
+              @click="handleWithdraw(row)"
+              v-hasPermi="['workflow:instance:withdraw']"
+            >
+              撤回
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -231,6 +240,8 @@ import {
   listWorkflowRunningTasks,
   terminateWorkflowInstance,
 } from '@/api/workflow/instance'
+import { withdrawWorkflowInstance } from '@/api/workflow/withdraw'
+import { useUserStore } from '@/stores/user'
 import { listWorkflowHistoryInstances, type WorkflowHistoryInstanceRow } from '@/api/workflow/history'
 import {
   formatWorkflowDateTime,
@@ -326,6 +337,11 @@ const overviewCards = computed(() => {
 
 function isRunning(row: { running?: boolean; endTime?: string | null }) {
   return row.running === true || !row.endTime
+}
+
+function isStarter(row: { startUserId?: string | null }) {
+  const userStore = useUserStore()
+  return row.startUserId === userStore.name
 }
 
 function normalizeFinishedRow(row: WorkflowHistoryInstanceRow): WorkflowRuntimeRow {
@@ -441,10 +457,37 @@ async function handleTerminate(row: WorkflowRuntimeRow) {
   getList()
 }
 
+async function handleWithdraw(row: WorkflowRuntimeRow) {
+  await ElMessageBox.confirm(
+    `确认撤回流程实例「${row.processDefinitionName || row.processInstanceId}」吗？`,
+    '撤回确认',
+    {
+      type: 'warning',
+      confirmButtonText: '确认撤回',
+      cancelButtonText: '取消',
+    },
+  )
+  await withdrawWorkflowInstance(row.processInstanceId)
+  ElMessage.success('流程已撤回')
+  detailDrawer.visible = false
+  getList()
+}
+
 onMounted(() => {
   queryParams.processKey = typeof route.query.processKey === 'string' ? route.query.processKey : ''
   queryParams.businessKey = typeof route.query.businessKey === 'string' ? route.query.businessKey : ''
-  getList()
+  getList().then(() => {
+    const instanceId = route.query.processInstanceId as string
+    if (instanceId) {
+      const row = rawList.value.find((r: any) => r.processInstanceId === instanceId)
+      if (row) {
+        openDetail(row)
+      } else {
+        // 不在当前列表中，直接打开详情
+        openDetail({ processInstanceId: instanceId } as WorkflowRuntimeRow)
+      }
+    }
+  })
 })
 </script>
 

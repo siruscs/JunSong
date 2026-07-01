@@ -1,8 +1,6 @@
 package com.junsong.member.controller;
 
 import java.util.List;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -18,8 +16,6 @@ import com.junsong.member.service.IMemPointsExchangeService;
 import com.junsong.member.service.IMemPointsRecordService;
 import com.junsong.common.security.annotation.RequiresPermissions;
 import com.junsong.common.security.utils.SecurityUtils;
-
-import java.math.BigDecimal;
 
 @RestController
 @RequestMapping("/pointsExchange")
@@ -58,54 +54,19 @@ public class MemPointsExchangeController extends BaseController {
     @Log(title = "积分兑换", businessType = BusinessType.INSERT)
     @PostMapping
     public AjaxResult add(@RequestBody MemPointsExchange memPointsExchange) {
-        if (memPointsExchange.getExchangeNo() == null || memPointsExchange.getExchangeNo().isEmpty()) {
-            String exchangeNo = "EX" + new SimpleDateFormat("yyyyMMddHHmmssSSS").format(new Date());
-            memPointsExchange.setExchangeNo(exchangeNo);
-        }
-        if (!memPointsExchangeService.checkMemPointsExchangeNoUnique(memPointsExchange)) {
-            return error("新增积分兑换失败，编号已存在");
-        }
-        if (memPointsExchange.getDeptId() == null) {
-            memPointsExchange.setDeptId(SecurityUtils.getDeptId());
-        }
-        memPointsExchange.setCreateBy(SecurityUtils.getUsername());
-        calcAndSetActualPoints(memPointsExchange);
-        int rows = memPointsExchangeService.insertMemPointsExchange(memPointsExchange);
-        if (rows > 0) {
-            try {
-                createDeductPointsRecord(memPointsExchange);
-            } catch (Exception e) {
-                return error("兑换成功但积分扣减记录创建失败：" + e.getMessage());
+        try
+        {
+            if (memPointsExchange.getDeptId() == null)
+            {
+                memPointsExchange.setDeptId(SecurityUtils.getDeptId());
             }
+            memPointsExchangeService.exchangePoints(memPointsExchange, SecurityUtils.getUsername());
+            return success();
         }
-        return toAjax(rows);
-    }
-
-    private void calcAndSetActualPoints(MemPointsExchange exchange) {
-        BigDecimal currentBalance = BigDecimal.ZERO;
-        MemPointsRecord latest = memPointsRecordService.selectLatestBalanceByMemberId(exchange.getMemberId());
-        if (latest != null && latest.getBalance() != null) {
-            currentBalance = latest.getBalance();
+        catch (IllegalArgumentException e)
+        {
+            return error(e.getMessage());
         }
-        BigDecimal deductPoints = exchange.getPointsDeducted() != null ? exchange.getPointsDeducted() : BigDecimal.ZERO;
-        BigDecimal actualDeduct = deductPoints.min(currentBalance);
-        exchange.setActualPoints(actualDeduct);
-        exchange.setCurrentBalance(currentBalance);
-        exchange.setNewBalance(currentBalance.subtract(actualDeduct));
-    }
-
-    private void createDeductPointsRecord(MemPointsExchange exchange) {
-        MemPointsRecord pointsRecord = new MemPointsRecord();
-        pointsRecord.setDeptId(exchange.getDeptId());
-        pointsRecord.setMemberId(exchange.getMemberId());
-        pointsRecord.setMemberNo(exchange.getMemberNo());
-        pointsRecord.setMemberName(exchange.getMemberName());
-        pointsRecord.setRecordType("2");
-        pointsRecord.setPoints(exchange.getActualPoints().negate());
-        pointsRecord.setBalance(exchange.getNewBalance());
-        pointsRecord.setRemark("兑换扣减-" + exchange.getExchangeNo());
-        pointsRecord.setCreateBy(SecurityUtils.getUsername());
-        memPointsRecordService.insertMemPointsRecord(pointsRecord);
     }
 
     @RequiresPermissions("member:pointsExchange:edit")

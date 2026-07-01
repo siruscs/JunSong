@@ -13,6 +13,9 @@
         <result property="assigneeValue" column="assignee_value"/>
         <result property="assigneeExpr" column="assignee_expr"/>
         <result property="processVarName" column="process_var_name"/>
+        <result property="multiInstanceType" column="multi_instance_type"/>
+        <result property="completionCondition" column="completion_condition"/>
+        <result property="collectionSource" column="collection_source"/>
         <result property="delFlag" column="del_flag"/>
         <result property="createBy" column="create_by"/>
         <result property="createTime" column="create_time"/>
@@ -22,7 +25,8 @@
 
     <sql id="selectLcBizNodeAssigneeVo">
         select id, biz_code, task_key, task_name, assignee_source, assignee_value, assignee_expr,
-               process_var_name, del_flag, create_by, create_time, update_by, update_time
+               process_var_name, multi_instance_type, completion_condition, collection_source,
+               del_flag, create_by, create_time, update_by, update_time
         from lc_biz_node_assignee
     </sql>
 
@@ -39,21 +43,27 @@
 
     <select id="selectLcBizNodeAssigneeById" parameterType="Long" resultMap="LcBizNodeAssigneeResult">
         <include refid="selectLcBizNodeAssigneeVo"/>
-        where id = #{id} and del_flag = '0'
+        <where>
+            id = #{id} and del_flag = '0'
+        </where>
     </select>
 
     <select id="selectByBizCode" parameterType="String" resultMap="LcBizNodeAssigneeResult">
         <include refid="selectLcBizNodeAssigneeVo"/>
-        where biz_code = #{bizCode} and del_flag = '0'
+        <where>
+            biz_code = #{bizCode} and del_flag = '0'
+        </where>
         order by id asc
     </select>
 
     <insert id="insertLcBizNodeAssignee" parameterType="com.junsong.workflow.lowcode.domain.LcBizNodeAssignee" useGeneratedKeys="true" keyProperty="id">
         insert into lc_biz_node_assignee(
             biz_code, task_key, task_name, assignee_source, assignee_value, assignee_expr, process_var_name,
+            multi_instance_type, completion_condition, collection_source,
             del_flag, create_by, create_time, update_by, update_time
         ) values (
             #{bizCode}, #{taskKey}, #{taskName}, #{assigneeSource}, #{assigneeValue}, #{assigneeExpr}, #{processVarName},
+            #{multiInstanceType}, #{completionCondition}, #{collectionSource},
             #{delFlag}, #{createBy}, sysdate(), #{updateBy}, sysdate()
         )
     </insert>
@@ -68,6 +78,9 @@
             <if test="assigneeValue != null">assignee_value = #{assigneeValue},</if>
             <if test="assigneeExpr != null">assignee_expr = #{assigneeExpr},</if>
             <if test="processVarName != null">process_var_name = #{processVarName},</if>
+            <if test="multiInstanceType != null">multi_instance_type = #{multiInstanceType},</if>
+            <if test="completionCondition != null">completion_condition = #{completionCondition},</if>
+            <if test="collectionSource != null">collection_source = #{collectionSource},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>
             update_time = sysdate()
         </set>

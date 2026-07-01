@@ -287,3 +287,103 @@
  ---
 
  *本文档由 Genesis·峻松 维护，最后更新：2026-06-24*
+
+---
+
+ ## 六、开放平台 API（HMAC 签名鉴权）
+
+> 开放 API 供第三方应用通过 AppKey + HMAC-SHA256 签名方式调用，无需用户登录 Token。
+
+### 6.1 基础地址
+
+| 版本 | 路径前缀 | 说明 |
+|------|---------|------|
+| v1（已废弃） | `/openapi/v1/` | 自动添加 Deprecation/Sunset 头，建议迁移到 v2 |
+| v2（稳定版） | `/openapi/v2/` | 当前稳定版本 |
+| latest（别名） | `/openapi/latest/` | 透明转发到最新稳定版（v2） |
+
+### 6.2 认证方式 — HMAC-SHA256 签名
+
+**请求头：**
+
+| Header | 必填 | 说明 |
+|--------|------|------|
+| `X-App-Key` | 是 | AppKey（应用标识） |
+| `X-App-Timestamp` | 是 | 毫秒时间戳（5 分钟有效） |
+| `X-App-Nonce` | 是 | 随机串（防重放，10 分钟内不可重复） |
+| `X-App-Signature` | 是 | HMAC-SHA256 签名（十六进制） |
+
+**签名算法：**
+
+```
+签名串 = HTTP方法 + 完整请求路径 + 时间戳 + nonce + 请求体
+签名值 = HMAC-SHA256(AppSecret, 签名串)
+```
+
+> 注意：完整请求路径需包含版本前缀，如 `/openapi/v2/app/list`
+
+### 6.3 限流机制
+
+每个 AppKey 有每日调用配额，超限返回 HTTP 429：
+
+| Key 类型 | 每日配额 |
+|---------|---------|
+| 测试 Key | 100 次/天 |
+| 生产 Key | 10000 次/天 |
+
+响应头返回限流信息：
+- `X-RateLimit-Limit`：每日配额上限
+- `X-RateLimit-Remaining`：剩余可用次数
+
+### 6.4 差异化能力端点
+
+| 能力域 | 路径前缀 | 说明 |
+|--------|---------|------|
+| 工作流即服务 | `/openapi/v1/workflow/**` | 流程定义/实例/任务/历史/分析（14个端点） |
+| 会员能力即服务 | `/openapi/v1/members/**` | 会员/积分/秒杀/仪表盘（11个端点） |
+| 门店选址即服务 | `/openapi/v1/store-opening/**` | 开店申请/审批/撤回（6个端点） |
+
+### 6.5 响应格式
+
+```json
+{
+  "code": 200,
+  "msg": "操作成功",
+  "data": { ... }
+}
+```
+
+### 6.6 签名示例（Python）
+
+```python
+import hmac, hashlib, time, uuid
+
+app_key = "your_app_key"
+app_secret = "your_app_secret"
+method = "GET"
+path = "/openapi/v2/app/list"
+
+timestamp = str(int(time.time() * 1000))
+nonce = uuid.uuid4().hex
+sign_str = method + path + timestamp + nonce
+signature = hmac.new(app_secret.encode(), sign_str.encode(), hashlib.sha256).hexdigest()
+
+# 请求头
+headers = {
+    "X-App-Key": app_key,
+    "X-App-Timestamp": timestamp,
+    "X-App-Nonce": nonce,
+    "X-App-Signature": signature,
+}
+```
+
+### 6.7 多语言 SDK
+
+项目提供 4 种语言 SDK，基于 OpenAPI Generator 自动生成，详见 [sdk/](./sdk) 目录：
+
+| 语言 | 目录 | 包名 |
+|------|------|------|
+| Java | `sdk/sdk-java/` | com.junsong.open |
+| Python | `sdk/sdk-python/` | junsong_open_sdk |
+| Go | `sdk/sdk-go/` | junsongsdk |
+| JavaScript | `sdk/sdk-js/` | junsongOpenSdk |

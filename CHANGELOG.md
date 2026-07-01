@@ -11,6 +11,18 @@
 - 新增会员管理、财务管理、积分系统模块
 - 新增微信小程序端（uni-app + Vue3）
 - 新增公共开放平台文档：贡献指南、变更日志、Issue/PR 模板
+- **开放平台完整能力上线（12 项任务全部完成）**
+  - 新增开放平台后端微服务（junsong-open）：应用管理、API Key 发放（测试自动 + 生产审批）
+  - 新增网关 ApiKeyAuthFilter：HMAC-SHA256 签名校验 + 时间戳防过期 + Nonce 防重放
+  - 新增开放平台前端门户：Vue3 + Element Plus 应用管理界面（菜单已配置）
+  - 新增多版本 API 路由：v1（已废弃）/ v2（稳定）/ latest（别名），自动添加 Deprecation/Sunset 头
+  - 新增应用级限流 RateLimitFilter：基于 Redis 计数器的每日配额限流（测试 100/天，生产 10000/天）
+  - 新增可观测性体系：Prometheus + Grafana + Loki，9 个微服务 metrics 采集 + 容器日志聚合
+  - 新增 CI/CD 流水线：3 个 GitHub Actions workflow（CI 编译、CD-Docker、CD-K8s）
+  - 新增 Kubernetes 部署清单：36 个 K8s 资源（Deployment/Service/Ingress/HPA/ConfigMap）
+  - 新增多语言 SDK：基于 OpenAPI Generator 生成 Java/Python/Go/JavaScript 四种语言 SDK
+  - 新增差异化能力输出：工作流即服务、会员能力即服务、门店选址即服务（30 个开放 API 端点）
+- 新增开发者文档：OPEN_API_QUICKSTART.md（开放 API 快速入门）
 
 ### Changed
 - 升级 Spring Boot 至 4.0.3，Spring Cloud 至 2025.1.0

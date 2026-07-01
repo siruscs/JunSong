@@ -1,0 +1,19 @@
+{
+  "name": "junsong-e2e-tests",
+  "version": "1.0.0",
+  "description": "JunSong Cloud E2E regression tests with Playwright",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "test:report": "playwright show-report",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:workflow": "playwright test tests/workflow/",
+    "test:lowcode": "playwright test tests/lowcode/",
+    "test:biz": "playwright test tests/finance/ tests/member/",
+    "test:security": "playwright test tests/security/"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

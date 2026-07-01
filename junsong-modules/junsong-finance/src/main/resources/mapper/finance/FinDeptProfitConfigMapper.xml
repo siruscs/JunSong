@@ -15,9 +15,6 @@
         <result property="remark" column="remark"/>
     </resultMap>
     <sql id="selectVo">select c.config_id, c.dept_id, c.manager_profit_rate, c.auto_create_investor_payment, c.status, c.del_flag, c.create_by, c.create_time, c.update_by, c.update_time, c.remark from fin_dept_profit_config c</sql>
-    <select id="selectFinDeptProfitConfigByConfigId" resultMap="FinDeptProfitConfigResult"><include refid="selectVo"/> where config_id=#{configId}</select>
-    <select id="selectFinDeptProfitConfigByDeptId" resultMap="FinDeptProfitConfigResult"><include refid="selectVo"/> where dept_id=#{deptId} and del_flag='0' limit 1</select>
-    <select id="selectAnyFinDeptProfitConfigByDeptId" resultMap="FinDeptProfitConfigResult"><include refid="selectVo"/> where dept_id=#{deptId} limit 1</select>
     <select id="selectFinDeptProfitConfigList" resultMap="FinDeptProfitConfigResult">
         <include refid="selectVo"/>
         <where>

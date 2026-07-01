@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.open.mapper.OpenContractMapper">
+
+    <resultMap type="OpenContract" id="OpenContractResult">
+        <result property="id"                  column="id"                   />
+        <result property="contractNo"          column="contract_no"          />
+        <result property="isvId"               column="isv_id"               />
+        <result property="isvName"             column="isv_name"             />
+        <result property="contractType"        column="contract_type"        />
+        <result property="title"               column="title"                />
+        <result property="terms"               column="terms"                />
+        <result property="startDate"           column="start_date"           />
+        <result property="endDate"             column="end_date"             />
+        <result property="dailyQuota"          column="daily_quota"          />
+        <result property="allowedCapabilities" column="allowed_capabilities" />
+        <result property="status"              column="status"               />
+        <result property="createTime"          column="create_time"          />
+        <result property="updateTime"          column="update_time"          />
+    </resultMap>
+
+    <sql id="selectOpenContractVo">
+        select id, contract_no, isv_id, isv_name, contract_type, title, terms,
+               start_date, end_date, daily_quota, allowed_capabilities,
+               status, create_time, update_time
+        from open_contract
+    </sql>
+
+    <select id="selectOpenContractById" parameterType="Long" resultMap="OpenContractResult">
+        <include refid="selectOpenContractVo"/>
+        where id = #{id}
+    </select>
+
+    <select id="selectOpenContractList" parameterType="OpenContract" resultMap="OpenContractResult">
+        <include refid="selectOpenContractVo"/>
+        <where>
+            <if test="contractNo != null and contractNo != ''">
+                AND contract_no like concat('%', #{contractNo}, '%')
+            </if>
+            <if test="isvId != null">
+                AND isv_id = #{isvId}
+            </if>
+            <if test="isvName != null and isvName != ''">
+                AND isv_name like concat('%', #{isvName}, '%')
+            </if>
+            <if test="contractType != null and contractType != ''">
+                AND contract_type = #{contractType}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+        order by id desc
+    </select>
+
+    <insert id="insertOpenContract" parameterType="OpenContract" useGeneratedKeys="true" keyProperty="id">
+        insert into open_contract
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="contractNo != null and contractNo != ''">contract_no,</if>
+            <if test="isvId != null">isv_id,</if>
+            <if test="isvName != null and isvName != ''">isv_name,</if>
+            <if test="contractType != null and contractType != ''">contract_type,</if>
+            <if test="title != null and title != ''">title,</if>
+            <if test="terms != null">terms,</if>
+            <if test="startDate != null">start_date,</if>
+            <if test="endDate != null">end_date,</if>
+            <if test="dailyQuota != null">daily_quota,</if>
+            <if test="allowedCapabilities != null">allowed_capabilities,</if>
+            <if test="status != null and status != ''">status,</if>
+            create_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="contractNo != null and contractNo != ''">#{contractNo},</if>
+            <if test="isvId != null">#{isvId},</if>
+            <if test="isvName != null and isvName != ''">#{isvName},</if>
+            <if test="contractType != null and contractType != ''">#{contractType},</if>
+            <if test="title != null and title != ''">#{title},</if>
+            <if test="terms != null">#{terms},</if>
+            <if test="startDate != null">#{startDate},</if>
+            <if test="endDate != null">#{endDate},</if>
+            <if test="dailyQuota != null">#{dailyQuota},</if>
+            <if test="allowedCapabilities != null">#{allowedCapabilities},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            sysdate(),
+        </trim>
+    </insert>
+
+    <update id="updateOpenContract" parameterType="OpenContract">
+        update open_contract
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="contractNo != null">contract_no = #{contractNo},</if>
+            <if test="isvId != null">isv_id = #{isvId},</if>
+            <if test="isvName != null">isv_name = #{isvName},</if>
+            <if test="contractType != null">contract_type = #{contractType},</if>
+            <if test="title != null">title = #{title},</if>
+            <if test="terms != null">terms = #{terms},</if>
+            <if test="startDate != null">start_date = #{startDate},</if>
+            <if test="endDate != null">end_date = #{endDate},</if>
+            <if test="dailyQuota != null">daily_quota = #{dailyQuota},</if>
+            <if test="allowedCapabilities != null">allowed_capabilities = #{allowedCapabilities},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            update_time = sysdate(),
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteOpenContractByIds" parameterType="Long">
+        delete from open_contract where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>

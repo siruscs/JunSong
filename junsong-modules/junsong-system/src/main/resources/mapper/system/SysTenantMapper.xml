@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.system.mapper.SysTenantMapper">
+
+	<resultMap type="SysTenant" id="SysTenantResult">
+		<id     property="tenantId"        column="tenant_id"       />
+		<result property="tenantName"      column="tenant_name"     />
+		<result property="contactName"     column="contact_name"    />
+		<result property="contactPhone"    column="contact_phone"   />
+		<result property="domain"          column="domain"          />
+		<result property="status"          column="status"          />
+		<result property="expireTime"      column="expire_time"     />
+		<result property="accountCount"    column="account_count"   />
+		<result property="createBy"        column="create_by"       />
+		<result property="createTime"      column="create_time"     />
+		<result property="updateBy"        column="update_by"       />
+		<result property="updateTime"      column="update_time"     />
+		<result property="remark"          column="remark"          />
+	</resultMap>
+
+	<sql id="selectTenantVo">
+        select tenant_id, tenant_name, contact_name, contact_phone, domain, status, expire_time, account_count, create_by, create_time, update_by, update_time, remark
+		from sys_tenant
+    </sql>
+
+	<select id="selectTenantList" parameterType="SysTenant" resultMap="SysTenantResult">
+	    <include refid="selectTenantVo"/>
+		<where>
+			<if test="tenantName != null and tenantName != ''">
+				AND tenant_name like concat('%', #{tenantName}, '%')
+			</if>
+			<if test="contactName != null and contactName != ''">
+				AND contact_name like concat('%', #{contactName}, '%')
+			</if>
+			<if test="contactPhone != null and contactPhone != ''">
+				AND contact_phone like concat('%', #{contactPhone}, '%')
+			</if>
+			<if test="domain != null and domain != ''">
+				AND domain like concat('%', #{domain}, '%')
+			</if>
+			<if test="status != null and status != ''">
+				AND status = #{status}
+			</if>
+		</where>
+	</select>
+
+	<select id="selectTenantByTenantId" parameterType="Long" resultMap="SysTenantResult">
+		<include refid="selectTenantVo"/>
+		<where>tenant_id = #{tenantId}
+		</where>
+	</select>
+
+	<select id="checkTenantNameUnique" parameterType="String" resultMap="SysTenantResult">
+		<include refid="selectTenantVo"/>
+		<where>tenant_name=#{tenantName}
+		</where>
+		limit 1
+	</select>
+
+	<update id="updateTenant" parameterType="SysTenant">
+ 		update sys_tenant
+ 		<set>
+ 			<if test="tenantName != null and tenantName != ''">tenant_name = #{tenantName},</if>
+ 			<if test="contactName != null and contactName != ''">contact_name = #{contactName},</if>
+ 			<if test="contactPhone != null and contactPhone != ''">contact_phone = #{contactPhone},</if>
+ 			<if test="domain != null and domain != ''">domain = #{domain},</if>
+ 			<if test="status != null and status != ''">status = #{status},</if>
+ 			<if test="expireTime != null">expire_time = #{expireTime},</if>
+ 			<if test="accountCount != null">account_count = #{accountCount},</if>
+ 			<if test="remark != null">remark = #{remark},</if>
+ 			<if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+ 			update_time = sysdate()
+ 		</set>
+ 		where tenant_id = #{tenantId}
+	</update>
+
+ 	<insert id="insertTenant" parameterType="SysTenant" useGeneratedKeys="true" keyProperty="tenantId">
+ 		insert into sys_tenant(
+ 			<if test="tenantId != null and tenantId != 0">tenant_id,</if>
+ 			<if test="tenantName != null and tenantName != ''">tenant_name,</if>
+ 			<if test="contactName != null and contactName != ''">contact_name,</if>
+ 			<if test="contactPhone != null and contactPhone != ''">contact_phone,</if>
+ 			<if test="domain != null and domain != ''">domain,</if>
+ 			<if test="status != null and status != ''">status,</if>
+ 			<if test="expireTime != null">expire_time,</if>
+ 			<if test="accountCount != null">account_count,</if>
+ 			<if test="remark != null and remark != ''">remark,</if>
+ 			<if test="createBy != null and createBy != ''">create_by,</if>
+ 			create_time
+ 		)values(
+ 			<if test="tenantId != null and tenantId != 0">#{tenantId},</if>
+ 			<if test="tenantName != null and tenantName != ''">#{tenantName},</if>
+ 			<if test="contactName != null and contactName != ''">#{contactName},</if>
+ 			<if test="contactPhone != null and contactPhone != ''">#{contactPhone},</if>
+ 			<if test="domain != null and domain != ''">#{domain},</if>
+ 			<if test="status != null and status != ''">#{status},</if>
+ 			<if test="expireTime != null">#{expireTime},</if>
+ 			<if test="accountCount != null">#{accountCount},</if>
+ 			<if test="remark != null and remark != ''">#{remark},</if>
+ 			<if test="createBy != null and createBy != ''">#{createBy},</if>
+ 			sysdate()
+ 		)
+	</insert>
+
+	<delete id="deleteTenantById" parameterType="Long">
+		delete from sys_tenant where tenant_id = #{tenantId}
+	</delete>
+
+	<!-- 初始化租户数据：创建根部门 -->
+	<insert id="initTenantDept" parameterType="map" useGeneratedKeys="true" keyProperty="deptId">
+		INSERT INTO sys_dept (tenant_id, parent_id, dept_name, order_num, leader, phone, status, del_flag, create_by, create_time)
+		VALUES (#{tenantId}, 0, #{tenantName}, 0, '管理员', '', '0', '0', 'admin', NOW())
+	</insert>
+
+	<!-- 初始化租户数据：创建管理员角色 -->
+	<insert id="initTenantAdminRole" parameterType="map" useGeneratedKeys="true" keyProperty="roleId">
+		INSERT INTO sys_role (tenant_id, role_name, role_key, role_sort, data_scope, menu_check_strictly, dept_check_strictly, status, del_flag, create_by, create_time)
+		VALUES (#{tenantId}, #{roleName}, 'admin', 1, '1', 1, 1, '0', '0', 'admin', NOW())
+	</insert>
+
+	<!-- 初始化租户数据：创建普通角色 -->
+	<insert id="initTenantCommonRole" parameterType="map" useGeneratedKeys="true" keyProperty="roleId">
+		INSERT INTO sys_role (tenant_id, role_name, role_key, role_sort, data_scope, menu_check_strictly, dept_check_strictly, status, del_flag, create_by, create_time)
+		VALUES (#{tenantId}, #{roleName}, 'common', 2, '2', 1, 1, '0', '0', 'admin', NOW())
+	</insert>
+
+	<!-- 初始化租户数据：创建管理员用户 -->
+	<insert id="initTenantAdminUser" parameterType="map" useGeneratedKeys="true" keyProperty="userId">
+		INSERT INTO sys_user (tenant_id, dept_id, user_name, nick_name, password, status, del_flag, create_by, create_time)
+		VALUES (#{tenantId}, #{deptId}, #{userName}, #{nickName}, #{password}, '0', '0', 'admin', NOW())
+	</insert>
+
+	<!-- 初始化租户数据：关联用户角色 -->
+	<insert id="initTenantUserRole" parameterType="map">
+		INSERT INTO sys_user_role (tenant_id, user_id, role_id)
+		VALUES (#{tenantId}, #{userId}, #{roleId})
+	</insert>
+	<!-- 初始化租户数据：批量关联角色与租户可用菜单 -->
+	<insert id="initTenantRoleMenu" parameterType="map">
+		INSERT INTO sys_role_menu (tenant_id, role_id, menu_id)
+		SELECT #{tenantId}, #{roleId}, menu_id FROM sys_menu
+		WHERE NOT (
+			path IN ('tenant', 'open', 'mobile')
+			OR path LIKE 'open/%'
+			OR perms LIKE 'system:tenant:%'
+			OR perms LIKE 'open:%'
+			OR perms LIKE 'workflow:mobile:%'
+		)
+	</insert>
+
+	<!-- 初始化租户数据：复制租户定制配置(从租户1)到新租户 -->
+ 	<insert id="initTenantConfig" parameterType="map">
+ 		INSERT INTO sys_config (tenant_id, config_name, config_key, config_value, config_type, create_by, create_time, remark)
+ 		SELECT #{tenantId}, config_name, config_key, config_value, config_type, 'admin', NOW(), remark
+ 		FROM sys_config WHERE tenant_id = 1
+ 	</insert>
+
+</mapper>

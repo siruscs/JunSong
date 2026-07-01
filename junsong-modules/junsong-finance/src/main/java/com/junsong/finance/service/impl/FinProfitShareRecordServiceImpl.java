@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.junsong.common.core.exception.ServiceException;
@@ -25,6 +26,7 @@ import com.junsong.finance.mapper.FinInvestRecordMapper;
 import com.junsong.finance.mapper.FinInvestorPaymentMapper;
 import com.junsong.finance.mapper.FinProfitShareDetailMapper;
 import com.junsong.finance.mapper.FinProfitShareRecordMapper;
+import com.junsong.finance.service.IFinAccountingPeriodService;
 import com.junsong.finance.service.IFinProfitShareRecordService;
 import com.junsong.finance.constant.ShareStatus;
 import com.junsong.finance.constant.PeriodStatus;
@@ -44,6 +46,9 @@ public class FinProfitShareRecordServiceImpl implements IFinProfitShareRecordSer
     private FinInvestRecordMapper finInvestRecordMapper;
     @Autowired
     private FinInvestorPaymentMapper finInvestorPaymentMapper;
+    @Autowired
+    @Lazy
+    private IFinAccountingPeriodService finAccountingPeriodService;
 
     public FinProfitShareRecord selectFinProfitShareRecordByShareId(Long shareId) { return finProfitShareRecordMapper.selectFinProfitShareRecordByShareId(shareId); }
 
@@ -116,6 +121,8 @@ public class FinProfitShareRecordServiceImpl implements IFinProfitShareRecordSer
 
     public List<FinProfitShareRecord> selectFinProfitShareRecordList(FinProfitShareRecord finProfitShareRecord) { return finProfitShareRecordMapper.selectFinProfitShareRecordList(finProfitShareRecord); }
     public int insertFinProfitShareRecord(FinProfitShareRecord finProfitShareRecord) {
+        // 期间锁：已结转期间不允许新增分润记录
+        finAccountingPeriodService.assertPeriodEditable(finProfitShareRecord.getPeriodId());
         int rows = finProfitShareRecordMapper.insertFinProfitShareRecord(finProfitShareRecord);
         if (finProfitShareRecord.getDetails() != null) {
             for (FinProfitShareDetail detail : finProfitShareRecord.getDetails()) {
@@ -127,7 +134,11 @@ public class FinProfitShareRecordServiceImpl implements IFinProfitShareRecordSer
         }
         return rows;
     }
-    public int updateFinProfitShareRecord(FinProfitShareRecord finProfitShareRecord) { return finProfitShareRecordMapper.updateFinProfitShareRecord(finProfitShareRecord); }
+    public int updateFinProfitShareRecord(FinProfitShareRecord finProfitShareRecord) {
+        // 期间锁：已结转期间不允许修改分润记录
+        finAccountingPeriodService.assertPeriodEditable(finProfitShareRecord.getPeriodId());
+        return finProfitShareRecordMapper.updateFinProfitShareRecord(finProfitShareRecord);
+    }
     @Transactional(rollbackFor = Exception.class)
     public int deleteFinProfitShareRecordByShareIds(Long[] shareIds) {
         if (shareIds == null || shareIds.length == 0) {
@@ -143,6 +154,8 @@ public class FinProfitShareRecordServiceImpl implements IFinProfitShareRecordSer
             if ("2".equals(share.getStatus())) {
                 continue;
             }
+            // 期间锁：已结转期间不允许作废分润记录
+            finAccountingPeriodService.assertPeriodEditable(share.getPeriodId());
             finInvestorPaymentMapper.deleteAutoInvestorPaymentByShareId(shareId);
             share.setStatus(ShareStatus.CANCELLED);
             share.setUpdateBy(username);

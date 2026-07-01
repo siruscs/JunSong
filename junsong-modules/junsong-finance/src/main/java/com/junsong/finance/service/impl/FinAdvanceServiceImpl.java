@@ -5,6 +5,7 @@ import java.util.Date;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.transaction.annotation.Transactional;
 import com.junsong.common.core.utils.StringUtils;
 import com.junsong.common.security.utils.SecurityUtils;
@@ -41,18 +42,31 @@ public class FinAdvanceServiceImpl implements IFinAdvanceService
     @Override
     public int insertFinAdvance(FinAdvance finAdvance)
     {
-        if (StringUtils.isEmpty(finAdvance.getAdvanceNo()))
-        {
-            int todayCount = finAdvanceMapper.countTodayAdvances();
-            finAdvance.setAdvanceNo(CodeGenerator.generateAdvanceNo(todayCount));
-        }
-        
         finAdvance.setDeptId(SecurityUtils.getDeptId());
         fillCurrentPeriod(finAdvance);
         finAccountingPeriodService.assertPeriodEditable(finAdvance.getPeriodId());
-        
+
         finAdvance.setStatus(VerifyStatus.UNVERIFIED);
-        
+
+        // 自动生成借支单号（带重试机制防止并发重复）
+        if (StringUtils.isEmpty(finAdvance.getAdvanceNo()))
+        {
+            int retryCount = 0;
+            int maxRetries = 3;
+            while (retryCount < maxRetries) {
+                try {
+                    int todayCount = finAdvanceMapper.countTodayAdvances();
+                    finAdvance.setAdvanceNo(CodeGenerator.generateAdvanceNo(todayCount + retryCount));
+                    return finAdvanceMapper.insertFinAdvance(finAdvance);
+                } catch (DuplicateKeyException e) {
+                    retryCount++;
+                    if (retryCount >= maxRetries) {
+                        throw new ServiceException("借支单号生成失败，请稍后重试");
+                    }
+                }
+            }
+        }
+
         return finAdvanceMapper.insertFinAdvance(finAdvance);
     }
 

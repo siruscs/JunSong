@@ -188,6 +188,7 @@ public class SysDeptController extends BaseController
     /**
      * 门店地图查询：返回所有门店和顶级部门的地理坐标
      */
+    @RequiresPermissions("system:dept:list")
     @GetMapping("/map/stores")
     public AjaxResult mapStores()
     {
@@ -200,6 +201,7 @@ public class SysDeptController extends BaseController
     /**
      * 门店密度查询：按省市区街道过滤查询门店地理坐标
      */
+    @RequiresPermissions("system:dept:list")
     @GetMapping("/map/density")
     public AjaxResult mapDensity(SysDept dept)
     {

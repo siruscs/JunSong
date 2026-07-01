@@ -2,7 +2,9 @@ package com.junsong.finance.service.impl;
 
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import com.junsong.common.core.exception.ServiceException;
 import com.junsong.common.core.utils.StringUtils;
 import com.junsong.finance.domain.FinProduct;
 import com.junsong.finance.mapper.FinProductMapper;
@@ -53,10 +55,22 @@ public class FinProductServiceImpl implements IFinProductService
     @Override
     public int insertFinProduct(FinProduct finProduct)
     {
-        // 自动生成8位数字商品编码
+        // 自动生成8位数字商品编码（带重试机制防止并发重复）
         if (StringUtils.isEmpty(finProduct.getProductCode()))
         {
-            finProduct.setProductCode(CodeGenerator.generateProductCode());
+            int retryCount = 0;
+            int maxRetries = 3;
+            while (retryCount < maxRetries) {
+                try {
+                    finProduct.setProductCode(CodeGenerator.generateProductCode());
+                    return finProductMapper.insertFinProduct(finProduct);
+                } catch (DuplicateKeyException e) {
+                    retryCount++;
+                    if (retryCount >= maxRetries) {
+                        throw new ServiceException("商品编码生成失败，请稍后重试");
+                    }
+                }
+            }
         }
         return finProductMapper.insertFinProduct(finProduct);
     }

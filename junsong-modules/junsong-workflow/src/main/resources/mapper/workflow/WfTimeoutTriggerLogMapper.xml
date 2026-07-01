@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.workflow.mapper.WfTimeoutTriggerLogMapper">
+
+    <insert id="insert" parameterType="com.junsong.workflow.domain.WfTimeoutTriggerLog" useGeneratedKeys="true" keyProperty="id">
+        insert into wf_timeout_trigger_log (timeout_config_id, task_id, process_instance_id, escalation_type, status)
+        values (#{timeoutConfigId}, #{taskId}, #{processInstanceId}, #{escalationType}, #{status})
+    </insert>
+
+</mapper>

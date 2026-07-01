@@ -24,7 +24,7 @@
       </el-descriptions>
 
       <!-- 履约阶段：可补录材料并完成履约 -->
-      <template v-if="showFulfillForm">
+      <div v-if="showFulfillForm" class="lc-detail-fulfill">
         <el-divider content-position="left">履约补录</el-divider>
         <el-form ref="fulfillRef" :model="fulfillModel" :rules="fulfillRules" label-width="120px">
           <el-form-item
@@ -39,10 +39,14 @@
         <div class="lc-detail-actions">
           <el-button type="primary" :loading="fulfilling" @click="handleFulfill">提交履约</el-button>
         </div>
-      </template>
+      </div>
     </template>
 
     <el-empty v-else description="未找到单据" />
+
+    <template #footer>
+      <el-button v-if="record" @click="handlePrint">打印</el-button>
+    </template>
   </el-drawer>
 </template>
 
@@ -149,6 +153,16 @@ async function handleFulfill() {
   }
 }
 
+function handlePrint() {
+  document.body.classList.add('print-mode')
+  const onAfterPrint = () => {
+    document.body.classList.remove('print-mode')
+    window.removeEventListener('afterprint', onAfterPrint)
+  }
+  window.addEventListener('afterprint', onAfterPrint)
+  window.print()
+}
+
 watch(
   () => [visible.value, props.recordId],
   ([show]) => {
@@ -164,5 +178,38 @@ watch(
 .lc-detail-actions {
   margin-top: 16px;
   text-align: right;
+}
+</style>
+
+<style>
+@media print {
+  body.print-mode > *:not(.el-overlay) {
+    display: none !important;
+  }
+  body.print-mode .el-overlay {
+    position: static !important;
+    background: transparent !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+  body.print-mode .el-drawer {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+  body.print-mode .el-drawer__body {
+    overflow: visible !important;
+    height: auto !important;
+  }
+  body.print-mode .el-drawer__close-btn {
+    display: none !important;
+  }
+  body.print-mode .el-drawer__footer,
+  body.print-mode .lc-detail-actions,
+  body.print-mode .lc-detail-fulfill {
+    display: none !important;
+  }
 }
 </style>

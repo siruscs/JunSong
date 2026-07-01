@@ -84,11 +84,22 @@ public class ProcessInstanceController
     }
 
     /**
+     * 发起人撤回流程（下一节点未处理前）
+     */
+    @PreAuthorize("@ss.hasPermi('workflow:instance:withdraw')")
+    @PostMapping("/{id}/withdraw")
+    public R<Void> withdraw(@PathVariable("id") String id)
+    {
+        return workflowInstanceService.withdraw(id);
+    }
+
+    /**
      * 启动请求体
      */
     public static class StartInstanceReq {
         public String processKey;
         public String businessKey;
         public Map<String, Object> variables;
+        public String processDefinitionId;  // 可选：指定流程定义ID（发起特定版本）
     }
 }

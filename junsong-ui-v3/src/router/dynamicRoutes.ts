@@ -78,6 +78,97 @@ export const dynamicRoutes: any[] = [
     ],
   },
   {
+    path: '/system/delegate',
+    component: () => import('@/layout/index.vue'),
+    meta: { hidden: true, permissions: ['system:delegate:list'] },
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/system/delegate/index.vue'),
+        name: 'SysDelegate',
+        meta: { title: '委托代理', activeMenu: '/system/user' },
+      },
+    ],
+  },
+  {
+    path: '/workflow/timeout',
+    component: () => import('@/layout/index.vue'),
+    meta: { permissions: ['workflow:timeout:list'] },
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/workflow/timeout/index.vue'),
+        name: 'WorkflowTimeout',
+        meta: { title: '超时配置', activeMenu: '/workflow/definition' },
+      },
+    ],
+  },
+  {
+    path: '/workflow/field-permission',
+    component: () => import('@/layout/index.vue'),
+    meta: { permissions: ['workflow:fieldPermission:list'] },
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/workflow/field-permission/index.vue'),
+        name: 'WorkflowFieldPermission',
+        meta: { title: '字段权限', activeMenu: '/workflow/definition' },
+      },
+    ],
+  },
+  {
+    path: '/workflow/analytics',
+    component: () => import('@/layout/index.vue'),
+    meta: { permissions: ['workflow:analytics:list'] },
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/workflow/analytics/index.vue'),
+        name: 'WorkflowAnalytics',
+        meta: { title: '流程分析', activeMenu: '/workflow/definition' },
+      },
+    ],
+  },
+  {
+    path: '/workflow/monitor',
+    component: () => import('@/layout/index.vue'),
+    meta: { permissions: ['workflow:task:list'] },
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/workflow/monitor/index.vue'),
+        name: 'WorkflowMonitor',
+        meta: { title: '流程监控', activeMenu: '/workflow/instance' },
+      },
+    ],
+  },
+  {
+    path: '/workflow/intervene',
+    component: () => import('@/layout/index.vue'),
+    meta: { permissions: ['workflow:instance:intervene'] },
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/workflow/intervene/index.vue'),
+        name: 'WorkflowIntervene',
+        meta: { title: '实例干预', activeMenu: '/workflow/instance' },
+      },
+    ],
+  },
+  {
+    path: '/workflow/version',
+    component: () => import('@/layout/index.vue'),
+    meta: { permissions: ['workflow:definition:list'] },
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/workflow/version/index.vue'),
+        name: 'WorkflowVersion',
+        meta: { title: '版本管理', activeMenu: '/workflow/definition' },
+      },
+    ],
+  },
+  {
     path: '/lowcode',
     component: () => import('@/layout/index.vue'),
     meta: { hidden: true, permissions: ['lowcode:biz:list'] },

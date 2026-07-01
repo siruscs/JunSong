@@ -7,6 +7,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <resultMap type="SysUser" id="SysUserResult">
         <id     property="userId"        column="user_id"         />
         <result property="deptId"        column="dept_id"         />
+        <result property="tenantId"      column="tenant_id"      />
         <result property="userName"      column="user_name"       />
         <result property="nickName"      column="nick_name"       />
         <result property="email"         column="email"           />
@@ -49,7 +50,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 	
 	<sql id="selectUserVo">
-        select u.user_id, u.dept_id, u.user_name, u.nick_name, u.email, u.avatar, u.phonenumber, u.id_card, u.password, u.sex, u.status, u.del_flag, u.login_ip, u.login_date, u.pwd_update_date, u.create_by, u.create_time, u.update_by, u.update_time, u.remark, 
+        select u.user_id, u.dept_id, u.tenant_id, u.user_name, u.nick_name, u.email, u.avatar, u.phonenumber, u.id_card, u.password, u.sex, u.status, u.del_flag, u.login_ip, u.login_date, u.pwd_update_date, u.create_by, u.create_time, u.update_by, u.update_time, u.remark, 
+        d.dept_id, d.parent_id, d.ancestors, d.dept_name, d.order_num, d.leader, d.status as dept_status,
+        r.role_id, r.role_name, r.role_key, r.role_sort, r.data_scope, r.status as role_status
+        from sys_user u
+		    left join sys_dept d on u.dept_id = d.dept_id
+		    left join sys_user_role ur on u.user_id = ur.user_id
+		    left join sys_role r on r.role_id = ur.role_id
+    </sql>
+
+    <sql id="selectUserVoNoPwd">
+        select u.user_id, u.dept_id, u.tenant_id, u.user_name, u.nick_name, u.email, u.avatar, u.phonenumber, u.id_card, u.sex, u.status, u.del_flag, u.login_ip, u.login_date, u.pwd_update_date, u.create_by, u.create_time, u.update_by, u.update_time, u.remark, 
         d.dept_id, d.parent_id, d.ancestors, d.dept_name, d.order_num, d.leader, d.status as dept_status,
         r.role_id, r.role_name, r.role_key, r.role_sort, r.data_scope, r.status as role_status
         from sys_user u
@@ -138,29 +149,50 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	
 	<select id="selectUserByUserName" parameterType="String" resultMap="SysUserResult">
 	    <include refid="selectUserVo"/>
-	    where u.user_name = #{userName} and u.del_flag = '0'
+	    <where>u.user_name = #{userName} and u.del_flag = '0'
+    </where>
+	</select>
+
+	<select id="selectUsersByUserNames" parameterType="String" resultMap="SysUserResult">
+	    <include refid="selectUserVo"/>
+	    <where>u.del_flag = '0' and u.user_name in
+    <foreach collection="array" item="name" open="(" separator="," close=")">
+        #{name}
+    </foreach>
+    </where>
 	</select>
 
 	<select id="selectUserByPhonenumber" parameterType="String" resultMap="SysUserResult">
 	    <include refid="selectUserVo"/>
-	    where u.phonenumber = #{phonenumber} and u.del_flag = '0'
+	    <where>u.phonenumber = #{phonenumber} and u.del_flag = '0'
+    </where>
 	</select>
 	
 	<select id="selectUserById" parameterType="Long" resultMap="SysUserResult">
-		<include refid="selectUserVo"/>
-		where u.user_id = #{userId}
-	</select>
+	<include refid="selectUserVoNoPwd"/>
+	<where>u.user_id = #{userId}
+	</where>
+    </select>
 	
 	<select id="checkUserNameUnique" parameterType="String" resultMap="SysUserResult">
-		select user_id, user_name from sys_user where user_name = #{userName} and del_flag = '0' limit 1
+		select user_id, user_name from sys_user
+		<where>user_name = #{userName} and del_flag = '0'
+		</where>
+		limit 1
 	</select>
 	
 	<select id="checkPhoneUnique" parameterType="String" resultMap="SysUserResult">
-		select user_id, phonenumber from sys_user where phonenumber = #{phonenumber} and del_flag = '0' limit 1
+		select user_id, phonenumber from sys_user
+		<where>phonenumber = #{phonenumber} and del_flag = '0'
+		</where>
+		limit 1
 	</select>
 	
 	<select id="checkEmailUnique" parameterType="String" resultMap="SysUserResult">
-		select user_id, email from sys_user where email = #{email} and del_flag = '0' limit 1
+		select user_id, email from sys_user
+		<where>email = #{email} and del_flag = '0'
+		</where>
+		limit 1
 	</select>
 	
 	<insert id="insertUser" parameterType="SysUser" useGeneratedKeys="true" keyProperty="userId">
@@ -253,10 +285,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		from sys_user u
 		inner join sys_user_role ur on u.user_id = ur.user_id
 		inner join sys_role r on ur.role_id = r.role_id
-		where r.role_key = #{roleKey}
+		<where>r.role_key = #{roleKey}
 		  and u.status = '0'
 		  and u.del_flag = '0'
 		  and r.status = '0'
+		</where>
 	</select>
 
 </mapper> 

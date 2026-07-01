@@ -36,7 +36,9 @@ public class SpringDocConfig implements InitializingBean
     @Override
     public void afterPropertiesSet()
     {
-        NotifyCenter.registerSubscriber(new SwaggerDocRegister(swaggerUiConfigProperties, discoveryClient));
+        SwaggerDocRegister register = new SwaggerDocRegister(swaggerUiConfigProperties, discoveryClient);
+        NotifyCenter.registerSubscriber(register);
+        register.registerUrls();
     }
 }
 
@@ -51,7 +53,7 @@ class SwaggerDocRegister extends Subscriber<InstancesChangeEvent>
     @Autowired
     private DiscoveryClient discoveryClient;
 
-    private final static String[] EXCLUDE_ROUTES = new String[] { "junsong-gateway", "junsong-auth", "junsong-file", "junsong-monitor" };
+    private final static String[] EXCLUDE_ROUTES = new String[] { "junsong-gateway", "junsong-visual-monitor" };
 
     public SwaggerDocRegister(SwaggerUiConfigProperties swaggerUiConfigProperties, DiscoveryClient discoveryClient)
     {
@@ -60,11 +62,9 @@ class SwaggerDocRegister extends Subscriber<InstancesChangeEvent>
     }
 
     /**
-     * 事件回调方法，处理InstancesChangeEvent事件
-     * @param event 事件对象
+     * 注册swagger urls到配置中
      */
-    @Override
-    public void onEvent(InstancesChangeEvent event)
+    public void registerUrls()
     {
         Set<AbstractSwaggerUiConfigProperties.SwaggerUrl> swaggerUrlSet = discoveryClient.getServices()
             .stream()
@@ -79,6 +79,16 @@ class SwaggerDocRegister extends Subscriber<InstancesChangeEvent>
             .collect(Collectors.toSet());
 
         swaggerUiConfigProperties.setUrls(swaggerUrlSet);
+    }
+
+    /**
+     * 事件回调方法，处理InstancesChangeEvent事件
+     * @param event 事件对象
+     */
+    @Override
+    public void onEvent(InstancesChangeEvent event)
+    {
+        registerUrls();
     }
 
     /**

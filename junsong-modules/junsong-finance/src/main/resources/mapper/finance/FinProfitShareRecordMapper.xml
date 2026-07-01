@@ -21,8 +21,6 @@
         <collection property="details" ofType="FinProfitShareDetail" select="com.junsong.finance.mapper.FinProfitShareDetailMapper.selectFinProfitShareDetailByShareId" column="share_id"/>
     </resultMap>
     <sql id="selectVo">select s.share_id, s.dept_id, s.period_id, s.share_no, s.net_profit, s.manager_profit_rate, s.manager_profit_amount, s.investor_profit_amount, s.status, s.share_time, s.del_flag, s.create_by, s.create_time, s.update_by, s.update_time, s.remark from fin_profit_share_record s</sql>
-    <select id="selectFinProfitShareRecordByShareId" resultMap="FinProfitShareRecordResult"><include refid="selectVo"/> where share_id=#{shareId}</select>
-    <select id="selectFinProfitShareRecordByPeriodId" resultMap="FinProfitShareRecordResult"><include refid="selectVo"/> where period_id=#{periodId} and status != '2' and del_flag='0' limit 1</select>
     <select id="selectFinProfitShareRecordList" resultMap="FinProfitShareRecordResult">
         <include refid="selectVo"/>
         <where>
@@ -54,7 +52,7 @@
     <select id="selectProfitShareTotal" resultType="java.math.BigDecimal">
         select ifnull(sum(manager_profit_amount + investor_profit_amount), 0)
         from fin_profit_share_record
-        where del_flag = '0'
+        <where> del_flag = '0'
         <if test="deptIds != null and deptIds.size() > 0">
             and dept_id in
             <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
@@ -67,12 +65,13 @@
         <if test="endTime != null">
             and share_time &lt;= #{endTime}
         </if>
+        </where>
     </select>
     
     <select id="selectManagerProfitTotal" resultType="java.math.BigDecimal">
         select ifnull(sum(manager_profit_amount), 0)
         from fin_profit_share_record
-        where del_flag = '0'
+        <where> del_flag = '0'
         <if test="deptIds != null and deptIds.size() > 0">
             and dept_id in
             <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
@@ -85,12 +84,13 @@
         <if test="endTime != null">
             and share_time &lt;= #{endTime}
         </if>
+        </where>
     </select>
     
     <select id="selectInvestorProfitTotal" resultType="java.math.BigDecimal">
         select ifnull(sum(investor_profit_amount), 0)
         from fin_profit_share_record
-        where del_flag = '0'
+        <where> del_flag = '0'
         <if test="deptIds != null and deptIds.size() > 0">
             and dept_id in
             <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
@@ -103,6 +103,7 @@
         <if test="endTime != null">
             and share_time &lt;= #{endTime}
         </if>
+        </where>
     </select>
     
     <select id="selectManagerProfitByDept" resultType="java.util.HashMap">
@@ -111,7 +112,7 @@
                ifnull(sum(s.manager_profit_amount), 0) as amount
         from fin_profit_share_record s
         left join sys_dept d on s.dept_id = d.dept_id
-        where s.del_flag = '0'
+        <where> s.del_flag = '0'
         <if test="deptIds != null and deptIds.size() > 0">
             and s.dept_id in
             <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
@@ -124,6 +125,7 @@
         <if test="endTime != null">
             and s.share_time &lt;= #{endTime}
         </if>
+        </where>
         group by s.dept_id, d.dept_name
         order by amount desc
     </select>
@@ -134,7 +136,7 @@
                ifnull(sum(s.investor_profit_amount), 0) as amount
         from fin_profit_share_record s
         left join sys_dept d on s.dept_id = d.dept_id
-        where s.del_flag = '0'
+        <where> s.del_flag = '0'
         <if test="deptIds != null and deptIds.size() > 0">
             and s.dept_id in
             <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
@@ -147,6 +149,7 @@
         <if test="endTime != null">
             and s.share_time &lt;= #{endTime}
         </if>
+        </where>
         group by s.dept_id, d.dept_name
         order by amount desc
     </select>
@@ -160,7 +163,7 @@
                ifnull(sum(s.investor_profit_amount), 0) as investorAmount
         from fin_profit_share_record s
         left join sys_dept d on s.dept_id = d.dept_id
-        where s.del_flag = '0'
+        <where> s.del_flag = '0'
         <if test="deptIds != null and deptIds.size() > 0">
             and s.dept_id in
             <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
@@ -173,7 +176,46 @@
         <if test="endTime != null">
             and s.share_time &lt;= #{endTime}
         </if>
+        </where>
         group by date_format(s.share_time, '%Y-%m-%d'), s.dept_id, d.dept_name
         order by dateStr, s.dept_id
+    </select>
+
+    <select id="countUnsettledRecords" resultType="int">
+        select count(1) from fin_profit_share_record
+        where del_flag = '0' and status = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+    </select>
+
+    <select id="selectSettlementByDept" resultType="java.util.HashMap">
+        select s.dept_id as deptId, d.dept_name as deptName,
+               ifnull(sum(s.manager_profit_amount + s.investor_profit_amount), 0) as payableAmount,
+               ifnull(sum(case when s.status = '1' then s.manager_profit_amount + s.investor_profit_amount else 0 end), 0) as paidAmount,
+               ifnull(sum(s.manager_profit_amount), 0) as managerShare,
+               ifnull(sum(s.investor_profit_amount), 0) as investorShare
+        from fin_profit_share_record s
+        left join sys_dept d on s.dept_id = d.dept_id
+        <where> s.del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and s.dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+        <if test="startTime != null"> and s.share_time &gt;= #{startTime} </if>
+        <if test="endTime != null"> and s.share_time &lt;= #{endTime} </if>
+        </where>
+        group by s.dept_id, d.dept_name
+        order by payableAmount desc
+    </select>
+
+    <select id="selectPaidAmount" resultType="java.math.BigDecimal">
+        select ifnull(sum(manager_profit_amount + investor_profit_amount), 0)
+        from fin_profit_share_record
+        where del_flag = '0' and status = '1'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+        <if test="startTime != null"> and share_time &gt;= #{startTime} </if>
+        <if test="endTime != null"> and share_time &lt;= #{endTime} </if>
     </select>
 </mapper>

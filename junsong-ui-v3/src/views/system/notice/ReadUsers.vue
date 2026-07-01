@@ -28,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
+import { reactive, ref, watch, computed } from 'vue'
 import Pagination from '@/components/Pagination/index.vue'
 import { listNoticeReadUsers } from '@/api/system/notice'
 
@@ -42,7 +42,11 @@ const emit = defineEmits<{
   (event: 'update:modelValue', value: boolean): void
 }>()
 
-const visible = ref(false)
+const visible = computed({
+  get: () => props.modelValue,
+  set: (val: boolean) => emit('update:modelValue', val),
+})
+
 const loading = ref(false)
 const total = ref(0)
 const userList = ref<any[]>([])
@@ -56,7 +60,6 @@ const queryParams = reactive<any>({
 watch(
   () => props.modelValue,
   (value) => {
-    visible.value = value
     if (value) {
       queryParams.noticeId = props.noticeId
       getList()

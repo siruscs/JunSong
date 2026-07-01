@@ -37,12 +37,16 @@
 
     <select id="selectLcBizPageSchemaById" parameterType="Long" resultMap="LcBizPageSchemaResult">
         <include refid="selectLcBizPageSchemaVo"/>
-        where id = #{id} and del_flag = '0'
+        <where>
+            id = #{id} and del_flag = '0'
+        </where>
     </select>
 
     <select id="selectByBizCode" parameterType="String" resultMap="LcBizPageSchemaResult">
         <include refid="selectLcBizPageSchemaVo"/>
-        where biz_code = #{bizCode} and del_flag = '0'
+        <where>
+            biz_code = #{bizCode} and del_flag = '0'
+        </where>
         order by id asc
     </select>
 

@@ -1,6 +1,8 @@
 import request from '../request'
 
 export interface StoreOpeningQuery {
+  pageNum?: number
+  pageSize?: number
   orderNo?: string
   storeName?: string
   regionName?: string

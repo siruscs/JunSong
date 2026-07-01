@@ -3,6 +3,7 @@ package com.junsong.finance.service.impl;
 import java.math.BigDecimal;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.junsong.common.core.exception.ServiceException;
@@ -49,12 +50,6 @@ public class FinInvestorPaymentServiceImpl implements IFinInvestorPaymentService
     @Override
     public int insertFinInvestorPayment(FinInvestorPayment finInvestorPayment)
     {
-        if (StringUtils.isEmpty(finInvestorPayment.getPaymentNo()))
-        {
-            int todayCount = finInvestorPaymentMapper.countTodayInvestorPayments();
-            finInvestorPayment.setPaymentNo(CodeGenerator.generateInvestorPaymentNo(todayCount));
-        }
-        
         finInvestorPayment.setDeptId(SecurityUtils.getDeptId());
         if (StringUtils.isEmpty(finInvestorPayment.getSourceType()))
         {
@@ -72,7 +67,26 @@ public class FinInvestorPaymentServiceImpl implements IFinInvestorPaymentService
         {
             finInvestorPayment.setPaymentStatus("1");
         }
-        
+
+        // 自动生成返款单号（带重试机制防止并发重复）
+        if (StringUtils.isEmpty(finInvestorPayment.getPaymentNo()))
+        {
+            int retryCount = 0;
+            int maxRetries = 3;
+            while (retryCount < maxRetries) {
+                try {
+                    int todayCount = finInvestorPaymentMapper.countTodayInvestorPayments();
+                    finInvestorPayment.setPaymentNo(CodeGenerator.generateInvestorPaymentNo(todayCount + retryCount));
+                    return finInvestorPaymentMapper.insertFinInvestorPayment(finInvestorPayment);
+                } catch (DuplicateKeyException e) {
+                    retryCount++;
+                    if (retryCount >= maxRetries) {
+                        throw new ServiceException("返款单号生成失败，请稍后重试");
+                    }
+                }
+            }
+        }
+
         return finInvestorPaymentMapper.insertFinInvestorPayment(finInvestorPayment);
     }
 

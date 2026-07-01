@@ -1,0 +1,40 @@
+server:
+  port: 9208
+
+spring:
+  application:
+    name: junsong-open
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  cloud:
+    nacos:
+      discovery:
+        server-addr: junsong-nacos:8848
+        username: nacos
+        password: ${NACOS_PASSWORD:nacos}
+      config:
+        server-addr: junsong-nacos:8848
+        username: nacos
+        password: ${NACOS_PASSWORD:nacos}
+        file-extension: yml
+  config:
+    import:
+      - optional:nacos:application-${SPRING_PROFILES_ACTIVE:dev}.yml
+      - optional:nacos:redis-${SPRING_PROFILES_ACTIVE:dev}.yml
+      - optional:nacos:datasource-druid-${SPRING_PROFILES_ACTIVE:dev}.yml
+      - optional:nacos:junsong-open-${SPRING_PROFILES_ACTIVE:dev}.yml
+
+# MyBatis配置
+mybatis:
+  mapper-locations: classpath*:mapper/open/*Mapper.xml
+  type-aliases-package: com.junsong.open.domain
+
+# SpringDoc配置
+springdoc:
+  gatewayUrl: http://localhost:8080/${spring.application.name}
+  api-docs:
+    enabled: true
+  info:
+    title: 开放平台接口文档
+    description: 开放平台应用管理与API Key服务接口
+    version: 1.0.0

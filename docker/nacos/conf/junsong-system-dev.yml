@@ -4,6 +4,20 @@ spring:
       host: junsong-redis
       port: 6379
       password:
+  rabbitmq:
+    host: junsong-rabbitmq
+    port: 5672
+    username: admin
+    password: ${MQ_PASSWORD:admin123}
+    virtual-host: /
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: 5
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 2000ms
   servlet:
     encoding:
       charset: UTF-8

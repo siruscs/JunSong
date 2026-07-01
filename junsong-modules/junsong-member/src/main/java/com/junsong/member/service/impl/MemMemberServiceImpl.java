@@ -29,7 +29,7 @@ public class MemMemberServiceImpl implements IMemMemberService {
      * @return 会员信息
      */
     @Override
-    @DataScope(deptAlias = "mem_member")
+    @DataScope(deptAlias = "m")
     public MemMember selectMemMemberById(Long id) {
         return memMemberMapper.selectMemMemberByMemberId(id);
     }
@@ -41,7 +41,7 @@ public class MemMemberServiceImpl implements IMemMemberService {
      * @return 会员信息
      */
     @Override
-    @DataScope(deptAlias = "mem_member")
+    @DataScope(deptAlias = "m")
     public List<MemMember> selectMemMemberList(MemMember memMember) {
         return memMemberMapper.selectMemMemberList(memMember);
     }

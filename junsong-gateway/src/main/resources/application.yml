@@ -18,6 +18,10 @@ spring:
         username: nacos
         password: ${NACOS_PASSWORD:nacos}
         remote-first: false
+    sentinel:
+      eager: true
+      transport:
+        dashboard: junsong-sentinel-dashboard:8718
 
 springdoc:
   api-docs:

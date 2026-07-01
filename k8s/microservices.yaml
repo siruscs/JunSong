@@ -1,0 +1,367 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: junsong-modules-system
+  namespace: junsong
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: junsong-modules-system
+  template:
+    metadata:
+      labels:
+        app: junsong-modules-system
+    spec:
+      containers:
+        - name: system
+          image: junsong-modules-system:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9201
+          envFrom:
+            - configMapRef:
+                name: junsong-config
+            - secretRef:
+                name: junsong-secrets
+          resources:
+            requests: { memory: "256Mi", cpu: "200m" }
+            limits:   { memory: "512Mi", cpu: "500m" }
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: 9201 }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: junsong-modules-system
+  namespace: junsong
+spec:
+  selector:
+    app: junsong-modules-system
+  ports:
+    - port: 9201
+      targetPort: 9201
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: junsong-modules-gen
+  namespace: junsong
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: junsong-modules-gen
+  template:
+    metadata:
+      labels:
+        app: junsong-modules-gen
+    spec:
+      containers:
+        - name: gen
+          image: junsong-modules-gen:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9202
+          envFrom:
+            - configMapRef:
+                name: junsong-config
+            - secretRef:
+                name: junsong-secrets
+          resources:
+            requests: { memory: "256Mi", cpu: "200m" }
+            limits:   { memory: "512Mi", cpu: "500m" }
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: 9202 }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: junsong-modules-gen
+  namespace: junsong
+spec:
+  selector:
+    app: junsong-modules-gen
+  ports:
+    - port: 9202
+      targetPort: 9202
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: junsong-modules-job
+  namespace: junsong
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: junsong-modules-job
+  template:
+    metadata:
+      labels:
+        app: junsong-modules-job
+    spec:
+      containers:
+        - name: job
+          image: junsong-modules-job:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9203
+          envFrom:
+            - configMapRef:
+                name: junsong-config
+            - secretRef:
+                name: junsong-secrets
+          resources:
+            requests: { memory: "256Mi", cpu: "200m" }
+            limits:   { memory: "512Mi", cpu: "500m" }
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: 9203 }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: junsong-modules-job
+  namespace: junsong
+spec:
+  selector:
+    app: junsong-modules-job
+  ports:
+    - port: 9203
+      targetPort: 9203
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: junsong-modules-file
+  namespace: junsong
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: junsong-modules-file
+  template:
+    metadata:
+      labels:
+        app: junsong-modules-file
+    spec:
+      containers:
+        - name: file
+          image: junsong-modules-file:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9300
+          envFrom:
+            - configMapRef:
+                name: junsong-config
+            - secretRef:
+                name: junsong-secrets
+          resources:
+            requests: { memory: "256Mi", cpu: "200m" }
+            limits:   { memory: "512Mi", cpu: "500m" }
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: 9300 }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: junsong-modules-file
+  namespace: junsong
+spec:
+  selector:
+    app: junsong-modules-file
+  ports:
+    - port: 9300
+      targetPort: 9300
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: junsong-modules-member
+  namespace: junsong
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: junsong-modules-member
+  template:
+    metadata:
+      labels:
+        app: junsong-modules-member
+    spec:
+      containers:
+        - name: member
+          image: junsong-modules-member:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9206
+          envFrom:
+            - configMapRef:
+                name: junsong-config
+            - secretRef:
+                name: junsong-secrets
+          resources:
+            requests: { memory: "256Mi", cpu: "200m" }
+            limits:   { memory: "512Mi", cpu: "500m" }
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: 9206 }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: junsong-modules-member
+  namespace: junsong
+spec:
+  selector:
+    app: junsong-modules-member
+  ports:
+    - port: 9206
+      targetPort: 9206
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: junsong-modules-finance
+  namespace: junsong
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: junsong-modules-finance
+  template:
+    metadata:
+      labels:
+        app: junsong-modules-finance
+    spec:
+      containers:
+        - name: finance
+          image: junsong-modules-finance:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9205
+          envFrom:
+            - configMapRef:
+                name: junsong-config
+            - secretRef:
+                name: junsong-secrets
+          resources:
+            requests: { memory: "256Mi", cpu: "200m" }
+            limits:   { memory: "512Mi", cpu: "500m" }
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: 9205 }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: junsong-modules-finance
+  namespace: junsong
+spec:
+  selector:
+    app: junsong-modules-finance
+  ports:
+    - port: 9205
+      targetPort: 9205
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: junsong-modules-workflow
+  namespace: junsong
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: junsong-modules-workflow
+  template:
+    metadata:
+      labels:
+        app: junsong-modules-workflow
+    spec:
+      containers:
+        - name: workflow
+          image: junsong-modules-workflow:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9207
+          envFrom:
+            - configMapRef:
+                name: junsong-config
+            - secretRef:
+                name: junsong-secrets
+          resources:
+            requests: { memory: "256Mi", cpu: "200m" }
+            limits:   { memory: "512Mi", cpu: "500m" }
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: 9207 }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: junsong-modules-workflow
+  namespace: junsong
+spec:
+  selector:
+    app: junsong-modules-workflow
+  ports:
+    - port: 9207
+      targetPort: 9207
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: junsong-modules-open
+  namespace: junsong
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: junsong-modules-open
+  template:
+    metadata:
+      labels:
+        app: junsong-modules-open
+    spec:
+      containers:
+        - name: open
+          image: junsong-modules-open:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9208
+          envFrom:
+            - configMapRef:
+                name: junsong-config
+            - secretRef:
+                name: junsong-secrets
+          resources:
+            requests: { memory: "256Mi", cpu: "200m" }
+            limits:   { memory: "512Mi", cpu: "500m" }
+          readinessProbe:
+            httpGet: { path: /actuator/health, port: 9208 }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: junsong-modules-open
+  namespace: junsong
+spec:
+  selector:
+    app: junsong-modules-open
+  ports:
+    - port: 9208
+      targetPort: 9208

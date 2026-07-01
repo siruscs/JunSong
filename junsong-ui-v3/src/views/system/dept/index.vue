@@ -98,7 +98,10 @@
             <el-row :gutter="16">
               <el-col :span="24">
                 <el-form-item label="详细地址">
-                  <el-input v-model="form.detailAddress" type="textarea" :rows="2" maxlength="255" show-word-limit placeholder="请输入详细地址" />
+                  <div class="detail-address-wrap">
+                    <el-input v-model="form.detailAddress" maxlength="255" show-word-limit placeholder="请输入详细地址" class="detail-address-input" />
+                    <el-button :icon="Location" @click="openMapPicker" title="地图选点" class="detail-address-btn" />
+                  </div>
                 </el-form-item>
               </el-col>
             </el-row>
@@ -116,14 +119,6 @@
               <el-col :span="8">
                 <el-form-item label="纬度">
                   <el-input-number v-model="form.latitude" :precision="7" :step="0.0000001" :controls="false" placeholder="纬度" style="width: 100%" />
-                </el-form-item>
-              </el-col>
-            </el-row>
-            <el-row :gutter="16">
-              <el-col :span="24">
-                <el-form-item label="地图选点">
-                  <el-button type="primary" plain :icon="Location" @click="openMapPicker">在地图上选择位置</el-button>
-                  <span v-if="form.longitude != null && form.latitude != null" class="geo-display">当前坐标: {{ form.longitude.toFixed(7) }}, {{ form.latitude.toFixed(7) }}</span>
                 </el-form-item>
               </el-col>
             </el-row>
@@ -211,11 +206,12 @@ function openMapPicker() {
   mapPickerVisible.value = true
 }
 
-function onMapPickerConfirm(payload: { lng: number; lat: number; address: string; region?: any }) {
+function onMapPickerConfirm(payload: { lng: number; lat: number; address: string; detail?: string; region?: any }) {
   form.longitude = payload.lng
   form.latitude = payload.lat
-  if (payload.address) {
-    form.detailAddress = payload.address
+  const detail = payload.detail != null && payload.detail !== '' ? payload.detail : payload.address
+  if (detail) {
+    form.detailAddress = detail
   }
   if (payload.region) {
     matchRegionFromMap(payload.region)
@@ -698,5 +694,17 @@ onMounted(() => {
   margin-left: 12px;
   font-size: 13px;
   color: #909399;
+}
+.detail-address-wrap {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  align-items: center;
+}
+.detail-address-input {
+  flex: 1;
+}
+.detail-address-btn {
+  flex-shrink: 0;
 }
 </style>

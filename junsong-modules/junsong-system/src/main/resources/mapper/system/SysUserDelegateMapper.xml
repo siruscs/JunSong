@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.system.mapper.SysUserDelegateMapper">
+
+    <resultMap type="com.junsong.system.domain.SysUserDelegate" id="SysUserDelegateResult">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="delegateUserId" column="delegate_user_id"/>
+        <result property="delegateType" column="delegate_type"/>
+        <result property="processKeys" column="process_keys"/>
+        <result property="startTime" column="start_time"/>
+        <result property="endTime" column="end_time"/>
+        <result property="status" column="status"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <sql id="selectSysUserDelegateVo">
+        select id, user_id, delegate_user_id, delegate_type, process_keys,
+               start_time, end_time, status, create_by, create_time, update_by, update_time, remark
+        from sys_user_delegate
+    </sql>
+
+    <select id="selectById" parameterType="Long" resultMap="SysUserDelegateResult">
+        <include refid="selectSysUserDelegateVo"/>
+        <where>
+            id = #{id}
+        </where>
+    </select>
+
+    <select id="selectList" parameterType="com.junsong.system.domain.SysUserDelegate"
+            resultMap="SysUserDelegateResult">
+        <include refid="selectSysUserDelegateVo"/>
+        <where>
+            <if test="userId != null">and user_id = #{userId}</if>
+            <if test="delegateUserId != null">and delegate_user_id = #{delegateUserId}</if>
+            <if test="delegateType != null and delegateType != ''">and delegate_type = #{delegateType}</if>
+            <if test="status != null and status != ''">and status = #{status}</if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="selectActiveByUserId" resultMap="SysUserDelegateResult">
+        <include refid="selectSysUserDelegateVo"/>
+        <where>
+            user_id = #{userId}
+            and status = '0'
+            and start_time &lt;= NOW()
+            and end_time &gt;= NOW()
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="selectActiveByDelegateUserId" resultMap="SysUserDelegateResult">
+        <include refid="selectSysUserDelegateVo"/>
+        <where>
+            delegate_user_id = #{delegateUserId}
+            and status = '0'
+            and start_time &lt;= NOW()
+            and end_time &gt;= NOW()
+        </where>
+        order by create_time desc
+    </select>
+
+    <insert id="insert" parameterType="com.junsong.system.domain.SysUserDelegate" useGeneratedKeys="true"
+            keyProperty="id">
+        insert into sys_user_delegate
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="delegateUserId != null">delegate_user_id,</if>
+            <if test="delegateType != null and delegateType != ''">delegate_type,</if>
+            <if test="processKeys != null">process_keys,</if>
+            <if test="startTime != null">start_time,</if>
+            <if test="endTime != null">end_time,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId},</if>
+            <if test="delegateUserId != null">#{delegateUserId},</if>
+            <if test="delegateType != null and delegateType != ''">#{delegateType},</if>
+            <if test="processKeys != null">#{processKeys},</if>
+            <if test="startTime != null">#{startTime},</if>
+            <if test="endTime != null">#{endTime},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+        </trim>
+    </insert>
+
+    <update id="update" parameterType="com.junsong.system.domain.SysUserDelegate">
+        update sys_user_delegate
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="delegateUserId != null">delegate_user_id = #{delegateUserId},</if>
+            <if test="delegateType != null and delegateType != ''">delegate_type = #{delegateType},</if>
+            <if test="processKeys != null">process_keys = #{processKeys},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="Long">
+        delete from sys_user_delegate where id = #{id}
+    </delete>
+
+    <delete id="deleteByIds">
+        delete from sys_user_delegate where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+</mapper>

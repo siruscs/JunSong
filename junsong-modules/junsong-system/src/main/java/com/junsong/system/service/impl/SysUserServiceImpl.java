@@ -1,7 +1,10 @@
 package com.junsong.system.service.impl;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import jakarta.validation.Validator;
 import org.slf4j.Logger;
@@ -69,6 +72,9 @@ public class SysUserServiceImpl implements ISysUserService
 
     @Autowired
     protected Validator validator;
+
+    @Autowired
+    private SysAuditTrailRecorder auditTrailRecorder;
 
     /**
      * 根据条件分页查询用户列表
@@ -377,8 +383,12 @@ public class SysUserServiceImpl implements ISysUserService
     @Transactional(rollbackFor = Exception.class)
     public void insertUserAuth(Long userId, Long[] roleIds)
     {
+        List<Long> oldRoles = roleMapper.selectRoleListByUserId(userId);
         userRoleMapper.deleteUserRoleByUserId(userId);
         insertUserRole(userId, roleIds);
+        auditTrailRecorder.record("role_auth", "user", String.valueOf(userId),
+                "{\"userId\":" + userId + ",\"roleIds\":" + oldRoles + "}",
+                "{\"userId\":" + userId + ",\"roleIds\":" + Arrays.toString(roleIds) + "}");
     }
 
     /**
@@ -438,7 +448,15 @@ public class SysUserServiceImpl implements ISysUserService
     @Override
     public int resetPwd(SysUser user)
     {
-        return userMapper.resetUserPwd(user.getUserId(), user.getPassword());
+        String oldHash = auditTrailRecorder.queryPasswordHash(user.getUserId());
+        int rows = userMapper.resetUserPwd(user.getUserId(), user.getPassword());
+        if (rows > 0)
+        {
+            auditTrailRecorder.record("password_reset", "user", String.valueOf(user.getUserId()),
+                    "{\"userId\":" + user.getUserId() + ",\"passwordHash\":\"" + (oldHash != null ? oldHash.substring(0, Math.min(8, oldHash.length())) : "") + "...\"}",
+                    "{\"userId\":" + user.getUserId() + ",\"passwordHash\":\"(reset)\"}");
+        }
+        return rows;
     }
 
     /**
@@ -558,6 +576,7 @@ public class SysUserServiceImpl implements ISysUserService
      * @return 结果
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String importUser(List<SysUser> userList, Boolean isUpdateSupport, String operName)
     {
         if (StringUtils.isNull(userList) || userList.size() == 0)
@@ -568,17 +587,26 @@ public class SysUserServiceImpl implements ISysUserService
         int failureNum = 0;
         StringBuilder successMsg = new StringBuilder();
         StringBuilder failureMsg = new StringBuilder();
+        String password = configService.selectConfigByKey("sys.user.initPassword");
+        String[] userNames = userList.stream().map(SysUser::getUserName).toArray(String[]::new);
+        List<SysUser> existingUsers = userMapper.selectUsersByUserNames(userNames);
+        Map<String, SysUser> userMap = new HashMap<>();
+        if (existingUsers != null)
+        {
+            for (SysUser u : existingUsers)
+            {
+                userMap.put(u.getUserName(), u);
+            }
+        }
         for (SysUser user : userList)
         {
             try
             {
-                // 验证是否存在这个用户
-                SysUser u = userMapper.selectUserByUserName(user.getUserName());
+                SysUser u = userMap.get(user.getUserName());
                 if (StringUtils.isNull(u))
                 {
                     BeanValidators.validateWithException(validator, user);
                     deptService.checkDeptDataScope(user.getDeptId());
-                    String password = configService.selectConfigByKey("sys.user.initPassword");
                     user.setPassword(SecurityUtils.encryptPassword(password));
                     user.setCreateBy(operName);
                     userMapper.insertUser(user);

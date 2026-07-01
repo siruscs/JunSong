@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.StoreFinanceReportMapper">
+
+    <select id="selectStoreTotalSales" resultType="java.math.BigDecimal">
+        select ifnull(sum(r.sale_amount), 0)
+        from fin_sale_record r
+        <where> r.del_flag = '0'
+            and r.dept_id = #{deptId}
+            <if test="startTime != null">
+                and r.sale_date &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                and r.sale_date &lt;= #{endTime}
+            </if>
+        </where>
+    </select>
+
+    <select id="countStoreSaleRecords" resultType="java.lang.Integer">
+        select count(1)
+        from fin_sale_record r
+        <where> r.del_flag = '0'
+            and r.dept_id = #{deptId}
+            <if test="startTime != null">
+                and r.sale_date &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                and r.sale_date &lt;= #{endTime}
+            </if>
+        </where>
+    </select>
+
+    <select id="sumStoreSaleQuantity" resultType="java.lang.Integer">
+        select ifnull(sum(r.total_quantity), 0)
+        from fin_sale_record r
+        <where> r.del_flag = '0'
+            and r.dept_id = #{deptId}
+            <if test="startTime != null">
+                and r.sale_date &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                and r.sale_date &lt;= #{endTime}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectStoreTotalExpense" resultType="java.math.BigDecimal">
+        select ifnull(sum(e.expense_amount), 0)
+        from fin_expense e
+        <where> e.del_flag = '0'
+            and e.dept_id = #{deptId}
+            <if test="startTime != null">
+                and e.expense_date &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                and e.expense_date &lt;= #{endTime}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectStoreUnverifiedExpense" resultType="java.math.BigDecimal">
+        select ifnull(sum(e.expense_amount), 0)
+        from fin_expense e
+        <where> e.del_flag = '0'
+            and e.status = '0'
+            and e.dept_id = #{deptId}
+            <if test="startTime != null">
+                and e.expense_date &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                and e.expense_date &lt;= #{endTime}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectStoreUnverifiedAdvance" resultType="java.math.BigDecimal">
+        select ifnull(sum(a.advance_amount), 0)
+        from fin_advance a
+        <where> a.del_flag = '0'
+            and a.status = '0'
+            and a.dept_id = #{deptId}
+            <if test="startTime != null">
+                and a.advance_date &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                and a.advance_date &lt;= #{endTime}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectCurrentAccountingPeriodStatus" resultType="java.lang.String">
+        select status
+        from fin_accounting_period
+        where dept_id = #{deptId}
+          and del_flag = '0'
+        order by start_time desc
+        limit 1
+    </select>
+
+    <select id="selectStoreSalesTrend" resultType="com.junsong.finance.domain.vo.StoreTrendRowVO">
+        select
+            <choose>
+                <when test="timeType == 'week'">date_format(r.sale_date, '%x-W%v')</when>
+                <when test="timeType == 'month'">date_format(r.sale_date, '%Y-%m')</when>
+                <otherwise>date_format(r.sale_date, '%Y-%m-%d')</otherwise>
+            </choose> as dateStr,
+               ifnull(sum(r.sale_amount), 0) as salesAmount
+        from fin_sale_record r
+        <where> r.del_flag = '0'
+            and r.dept_id = #{deptId}
+            <if test="startTime != null">
+                and r.sale_date &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                and r.sale_date &lt;= #{endTime}
+            </if>
+        </where>
+        group by
+            <choose>
+                <when test="timeType == 'week'">date_format(r.sale_date, '%x-W%v')</when>
+                <when test="timeType == 'month'">date_format(r.sale_date, '%Y-%m')</when>
+                <otherwise>date_format(r.sale_date, '%Y-%m-%d')</otherwise>
+            </choose>
+        order by dateStr
+    </select>
+
+    <select id="selectStoreExpenseTrend" resultType="com.junsong.finance.domain.vo.StoreTrendRowVO">
+        select
+            <choose>
+                <when test="timeType == 'week'">date_format(e.expense_date, '%x-W%v')</when>
+                <when test="timeType == 'month'">date_format(e.expense_date, '%Y-%m')</when>
+                <otherwise>date_format(e.expense_date, '%Y-%m-%d')</otherwise>
+            </choose> as dateStr,
+               ifnull(sum(e.expense_amount), 0) as expenseAmount
+        from fin_expense e
+        <where> e.del_flag = '0'
+            and e.dept_id = #{deptId}
+            <if test="startTime != null">
+                and e.expense_date &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                and e.expense_date &lt;= #{endTime}
+            </if>
+        </where>
+        group by
+            <choose>
+                <when test="timeType == 'week'">date_format(e.expense_date, '%x-W%v')</when>
+                <when test="timeType == 'month'">date_format(e.expense_date, '%Y-%m')</when>
+                <otherwise>date_format(e.expense_date, '%Y-%m-%d')</otherwise>
+            </choose>
+        order by dateStr
+    </select>
+
+    <select id="selectStoreExpenseCategories" resultType="com.junsong.finance.domain.vo.StoreExpenseCategoryVO">
+        select e.expense_type as categoryName,
+               ifnull(sum(abs(e.expense_amount)), 0) as amount
+        from fin_expense e
+        <where> e.del_flag = '0'
+            and e.dept_id = #{deptId}
+            <if test="startTime != null">
+                and e.expense_date &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                and e.expense_date &lt;= #{endTime}
+            </if>
+        </where>
+        group by e.expense_type
+        order by amount desc
+    </select>
+
+    <select id="selectStoreUnverifiedExpenses" resultType="com.junsong.finance.domain.vo.StorePendingItemVO">
+        select 'EXPENSE' as itemType,
+               e.expense_id as itemId,
+               e.expense_no as itemNo,
+               e.expense_amount as amount,
+               e.status as status,
+               e.expense_date as occurTime
+        from fin_expense e
+        <where> e.del_flag = '0'
+            and e.status = '0'
+            and e.dept_id = #{deptId}
+            <if test="startTime != null">
+                and e.expense_date &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                and e.expense_date &lt;= #{endTime}
+            </if>
+        </where>
+        order by e.expense_date desc
+    </select>
+
+    <select id="selectStoreUnverifiedAdvances" resultType="com.junsong.finance.domain.vo.StorePendingItemVO">
+        select 'ADVANCE' as itemType,
+               a.advance_id as itemId,
+               a.advance_no as itemNo,
+               a.advance_amount as amount,
+               a.status as status,
+               a.advance_date as occurTime
+        from fin_advance a
+        <where> a.del_flag = '0'
+            and a.status = '0'
+            and a.dept_id = #{deptId}
+            <if test="startTime != null">
+                and a.advance_date &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                and a.advance_date &lt;= #{endTime}
+            </if>
+        </where>
+        order by a.advance_date desc
+    </select>
+
+    <select id="selectStoreTotalSalesForRange" resultType="java.math.BigDecimal">
+        select ifnull(sum(r.sale_amount), 0)
+        from fin_sale_record r
+        where r.del_flag = '0'
+          and r.dept_id = #{deptId}
+          and r.sale_date &gt;= #{startTime}
+          and r.sale_date &lt;= #{endTime}
+    </select>
+
+    <select id="selectStoreTotalExpenseForRange" resultType="java.math.BigDecimal">
+        select ifnull(sum(e.expense_amount), 0)
+        from fin_expense e
+        where e.del_flag = '0'
+          and e.dept_id = #{deptId}
+          and e.expense_date &gt;= #{startTime}
+          and e.expense_date &lt;= #{endTime}
+    </select>
+
+    <select id="selectAuthorizedStoreRows" resultType="com.junsong.finance.domain.vo.AuthorizedStoreRowVO">
+        select d.dept_id as deptId,
+               d.dept_name as deptName,
+               ifnull(s.total_sales, 0) as totalSales,
+               ifnull(s.sale_count, 0) as saleCount,
+               ifnull(s.sale_quantity, 0) as saleQuantity,
+               ifnull(e.total_expense, 0) as totalExpense,
+               ifnull(e.unverified_expense, 0) + ifnull(a.unverified_advance, 0) as unverifiedAmount
+        from sys_dept d
+        left join (
+            select dept_id,
+                   sum(sale_amount) as total_sales,
+                   count(1) as sale_count,
+                   sum(total_quantity) as sale_quantity
+            from fin_sale_record
+            <where>
+                del_flag = '0'
+                and dept_id in
+                <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">#{deptId}</foreach>
+                <if test="startTime != null">and sale_date &gt;= #{startTime}</if>
+                <if test="endTime != null">and sale_date &lt;= #{endTime}</if>
+            </where>
+            group by dept_id
+        ) s on d.dept_id = s.dept_id
+        left join (
+            select dept_id,
+                   sum(expense_amount) as total_expense,
+                   sum(case when status = '0' then expense_amount else 0 end) as unverified_expense
+            from fin_expense
+            <where>
+                del_flag = '0'
+                and dept_id in
+                <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">#{deptId}</foreach>
+                <if test="startTime != null">and expense_date &gt;= #{startTime}</if>
+                <if test="endTime != null">and expense_date &lt;= #{endTime}</if>
+            </where>
+            group by dept_id
+        ) e on d.dept_id = e.dept_id
+        left join (
+            select dept_id, sum(advance_amount) as unverified_advance
+            from fin_advance
+            <where>
+                del_flag = '0'
+                and status = '0'
+                and dept_id in
+                <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">#{deptId}</foreach>
+                <if test="startTime != null">and advance_date &gt;= #{startTime}</if>
+                <if test="endTime != null">and advance_date &lt;= #{endTime}</if>
+            </where>
+            group by dept_id
+        ) a on d.dept_id = a.dept_id
+        where d.dept_id in
+        <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">#{deptId}</foreach>
+    </select>
+
+    <select id="selectMemberSalesByDepts" resultType="java.util.HashMap">
+        select r.dept_id as deptId, ifnull(sum(r.sale_amount), 0) as memberSales
+        from fin_sale_record r
+        <where>
+            r.del_flag = '0'
+            and r.sale_no in (select sr.sale_no from fin_sale_record sr where sr.del_flag = '0' and sr.remark like '%member%')
+            and r.dept_id in
+            <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">#{deptId}</foreach>
+            <if test="startTime != null"> and r.sale_date &gt;= #{startTime} </if>
+            <if test="endTime != null"> and r.sale_date &lt;= #{endTime} </if>
+        </where>
+        group by r.dept_id
+    </select>
+
+</mapper>

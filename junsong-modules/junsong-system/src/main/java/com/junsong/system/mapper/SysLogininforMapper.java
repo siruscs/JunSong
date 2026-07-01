@@ -39,4 +39,12 @@ public interface SysLogininforMapper
      * @return 结果
      */
     public int cleanLogininfor();
+
+    /**
+     * 按保留天数清理过期登录日志
+     *
+     * @param expireDate 过期日期（早于此日期的记录将被删除）
+     * @return 删除的记录数
+     */
+    public int deleteLogininforBeforeExpire(java.util.Date expireDate);
 }

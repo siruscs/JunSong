@@ -4,25 +4,21 @@
       <div class="header-left">
         <span class="map-title">门店地图查询</span>
         <div class="filter-bar">
-          <select v-model="filters.provinceCode" @change="onProvinceChange" class="filter-select">
-            <option value="">全部省份</option>
-            <option v-for="p in provinces" :key="p.code" :value="p.code">{{ p.name }}</option>
-          </select>
-          <select v-model="filters.cityCode" @change="onCityChange" class="filter-select">
-            <option value="">全部城市</option>
-            <option v-for="c in cities" :key="c.code" :value="c.code">{{ c.name }}</option>
-          </select>
-          <select v-model="filters.districtCode" @change="onDistrictChange" class="filter-select">
-            <option value="">全部区县</option>
-            <option v-for="d in districts" :key="d.code" :value="d.code">{{ d.name }}</option>
-          </select>
-          <select v-model="filters.streetCode" class="filter-select">
-            <option value="">全部街道</option>
-            <option v-for="s in streets" :key="s.code" :value="s.code">{{ s.name }}</option>
-          </select>
-          <input v-model="filters.deptName" placeholder="门店名称" class="filter-input" @keyup.enter="applyFilter" />
-          <button class="filter-btn" @click="applyFilter">查询</button>
-          <button class="filter-btn reset-btn" @click="resetFilter">重置</button>
+          <el-select v-model="filters.provinceCode" @change="onProvinceChange" placeholder="全部省份" clearable size="small" style="width: 140px">
+            <el-option v-for="p in provinces" :key="p.code" :label="p.name" :value="p.code" />
+          </el-select>
+          <el-select v-model="filters.cityCode" @change="onCityChange" placeholder="全部城市" clearable size="small" style="width: 140px">
+            <el-option v-for="c in cities" :key="c.code" :label="c.name" :value="c.code" />
+          </el-select>
+          <el-select v-model="filters.districtCode" @change="onDistrictChange" placeholder="全部区县" clearable size="small" style="width: 140px">
+            <el-option v-for="d in districts" :key="d.code" :label="d.name" :value="d.code" />
+          </el-select>
+          <el-select v-model="filters.streetCode" placeholder="全部街道" clearable size="small" style="width: 140px">
+            <el-option v-for="s in streets" :key="s.code" :label="s.name" :value="s.code" />
+          </el-select>
+          <el-input v-model="filters.deptName" placeholder="门店名称" clearable size="small" style="width: 160px" @keyup.enter="applyFilter" />
+          <el-button type="primary" size="small" @click="applyFilter">查询</el-button>
+          <el-button size="small" @click="resetFilter">重置</el-button>
         </div>
       </div>
       <div class="map-legend">
@@ -31,7 +27,9 @@
         <span class="legend-count">门店: {{ storeCount }}</span>
       </div>
     </div>
-    <div id="storeMap" class="map-box"></div>
+    <div v-loading="loading" element-loading-text="加载地图数据中..." class="map-box-wrapper">
+      <div id="storeMap" class="map-box"></div>
+    </div>
   </div>
 </template>
 
@@ -49,6 +47,7 @@ const allStores = ref<any[]>([])
 const allTopDepts = ref<any[]>([])
 const storeCount = ref(0)
 const amapKey = ref('')
+const loading = ref(false)
 
 const filters = reactive({
   provinceCode: '',
@@ -248,6 +247,7 @@ async function onDistrictChange() {
 }
 
 async function loadData() {
+  loading.value = true
   try {
     const res: any = await getStoreMap()
     if (res.code === 200 && res.data) {
@@ -257,6 +257,8 @@ async function loadData() {
     }
   } catch (e) {
     console.error('加载门店地图数据失败', e)
+  } finally {
+    loading.value = false
   }
 }
 
@@ -304,42 +306,6 @@ onUnmounted(() => {
   flex-wrap: wrap;
   align-items: center;
 }
-.filter-select {
-  padding: 6px 10px;
-  border: 1px solid var(--el-border-color, #dcdfe6);
-  border-radius: 4px;
-  font-size: 13px;
-  background: var(--el-bg-color, #fff);
-  color: var(--el-text-color-primary, #303133);
-  outline: none;
-  min-width: 120px;
-}
-.filter-input {
-  padding: 6px 10px;
-  border: 1px solid var(--el-border-color, #dcdfe6);
-  border-radius: 4px;
-  font-size: 13px;
-  background: var(--el-bg-color, #fff);
-  color: var(--el-text-color-primary, #303133);
-  outline: none;
-  min-width: 140px;
-}
-.filter-btn {
-  padding: 6px 16px;
-  background: var(--el-color-primary, #409eff);
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
-}
-.filter-btn:hover {
-  opacity: 0.85;
-}
-.reset-btn {
-  background: var(--el-border-color, #dcdfe6);
-  color: var(--el-text-color-primary, #303133);
-}
 .map-legend {
   display: flex;
   gap: 20px;
@@ -351,15 +317,6 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
 }
-.legend-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  display: inline-block;
-}
-.legend-store {
-  background: #2563eb;
-}
 .legend-star {
   color: #f59e0b;
   font-size: 18px;
@@ -370,9 +327,14 @@ onUnmounted(() => {
 .legend-count {
   color: var(--el-text-color-secondary, #909399);
 }
-.map-box {
+.map-box-wrapper {
   flex: 1;
   width: 100%;
+  position: relative;
+}
+.map-box {
+  width: 100%;
+  height: 100%;
 }
 </style>
 

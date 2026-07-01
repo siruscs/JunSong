@@ -61,6 +61,7 @@ public class VelocityUtils
         velocityContext.put("packageName", packageName);
         velocityContext.put("author", genTable.getFunctionAuthor());
         velocityContext.put("colSpan", getColSpan(genTable.getFormColNum()));
+        velocityContext.put("dialogWidth", getDialogWidth(genTable.getFormColNum()));
         velocityContext.put("datetime", DateUtils.getDate());
         velocityContext.put("pkColumn", genTable.getPkColumn());
         velocityContext.put("importList", getImportList(genTable));
@@ -168,11 +169,6 @@ public class VelocityUtils
         templates.add("vm/xml/mapper.xml.vm");
         templates.add("vm/sql/sql.vm");
         templates.add(apiTemplate);
-        if (StringUtils.equals(ELEMENT_PLUS_TYPESSRIPT, tplWebType))
-        {
-            templates.add("vm/ts/type.ts.vm");
-            templates.add("vm/ts/index.ts.vm");
-        }
         if (GenConstants.TPL_CRUD.equals(tplCategory))
         {
             templates.add(useWebType + "/index.vue.vm");
@@ -488,5 +484,18 @@ public class VelocityUtils
             return "8";
         }
         return "24";
+    }
+
+    public static String getDialogWidth(int formColNum)
+    {
+        if (formColNum == 3)
+        {
+            return "1100px";
+        }
+        else if (formColNum == 2)
+        {
+            return "800px";
+        }
+        return "500px";
     }
 }

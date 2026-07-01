@@ -40,6 +40,9 @@ public class FinExpenseServiceImpl implements IFinExpenseService
     @Autowired
     private IFinAccountingPeriodService finAccountingPeriodService;
 
+    @Autowired
+    private FinAuditTrailRecorder auditTrailRecorder;
+
     /**
      * 查询费用记录
      * 
@@ -173,6 +176,11 @@ public class FinExpenseServiceImpl implements IFinExpenseService
         if (expenseIds != null) {
             for (Long expenseId : expenseIds) {
                 assertExpenseDeletable(expenseId);
+                FinExpense old = finExpenseMapper.selectFinExpenseByExpenseId(expenseId);
+                if (old != null) {
+                    auditTrailRecorder.record("delete_expense", "fin_expense", String.valueOf(expenseId),
+                            "{\"expenseNo\":\"" + old.getExpenseNo() + "\",\"amount\":" + old.getExpenseAmount() + "}", null);
+                }
             }
         }
         return finExpenseMapper.deleteFinExpenseByExpenseIds(expenseIds);
@@ -189,6 +197,11 @@ public class FinExpenseServiceImpl implements IFinExpenseService
     public int deleteFinExpenseByExpenseId(Long expenseId)
     {
         assertExpenseDeletable(expenseId);
+        FinExpense old = finExpenseMapper.selectFinExpenseByExpenseId(expenseId);
+        if (old != null) {
+            auditTrailRecorder.record("delete_expense", "fin_expense", String.valueOf(expenseId),
+                    "{\"expenseNo\":\"" + old.getExpenseNo() + "\",\"amount\":" + old.getExpenseAmount() + "}", null);
+        }
         return finExpenseMapper.deleteFinExpenseByExpenseId(expenseId);
     }
 
@@ -518,6 +531,7 @@ public class FinExpenseServiceImpl implements IFinExpenseService
                                 expense.setCreateBy(operName);
                                 // 自动设置核算周期
                                 fillCurrentPeriod(expense);
+                                finAccountingPeriodService.assertPeriodEditable(expense.getPeriodId());
                                 finExpenseMapper.insertFinExpense(expense);
                                 break; // 插入成功，跳出重试循环
                             } catch (org.springframework.dao.DuplicateKeyException e) {
@@ -532,6 +546,7 @@ public class FinExpenseServiceImpl implements IFinExpenseService
                         expense.setCreateBy(operName);
                         // 自动设置核算周期
                         fillCurrentPeriod(expense);
+                        finAccountingPeriodService.assertPeriodEditable(expense.getPeriodId());
                         finExpenseMapper.insertFinExpense(expense);
                     }
                     successNum++;

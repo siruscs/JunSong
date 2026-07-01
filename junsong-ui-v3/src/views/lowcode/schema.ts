@@ -64,11 +64,76 @@ export function parseFieldExt(field: LcBizField): Record<string, any> {
   }
 }
 
-export function buildFieldRules(field: LcBizField): FormItemRule[] {
+type ConditionOp = 'eq' | 'ne' | 'gt' | 'ge' | 'lt' | 'le' | 'contains'
+
+interface RequiredCondition {
+  when?: {
+    field: string
+    op?: ConditionOp
+    value: any
+  }
+}
+
+function toNumber(val: any): number {
+  if (val === null || val === undefined || val === '') return NaN
+  return Number(val)
+}
+
+function looseEquals(a: any, b: any): boolean {
+  if (a === b) return true
+  if (typeof a === 'string' || typeof b === 'string') {
+    const na = Number(a)
+    const nb = Number(b)
+    if (!Number.isNaN(na) && !Number.isNaN(nb)) return na === nb
+  }
+  return false
+}
+
+function containsValue(actual: any, expected: any): boolean {
+  if (actual == null) return false
+  if (Array.isArray(actual)) return actual.includes(expected)
+  return String(actual).includes(String(expected))
+}
+
+export function evaluateOp(actual: any, op: ConditionOp, expected: any): boolean {
+  switch (op) {
+    case 'eq':
+      return looseEquals(actual, expected)
+    case 'ne':
+      return !looseEquals(actual, expected)
+    case 'gt':
+      return toNumber(actual) > toNumber(expected)
+    case 'ge':
+      return toNumber(actual) >= toNumber(expected)
+    case 'lt':
+      return toNumber(actual) < toNumber(expected)
+    case 'le':
+      return toNumber(actual) <= toNumber(expected)
+    case 'contains':
+      return containsValue(actual, expected)
+    default:
+      return false
+  }
+}
+
+export function buildFieldRules(field: LcBizField, formModel?: Record<string, any>): FormItemRule[] {
   const rules: FormItemRule[] = []
+  const trigger = isSelectLike(field.fieldType) || isDateLike(field.fieldType) ? 'change' : 'blur'
   if (isTrue(field.required)) {
-    const trigger = isSelectLike(field.fieldType) || isDateLike(field.fieldType) ? 'change' : 'blur'
     rules.push({ required: true, message: `请填写${field.fieldLabel}`, trigger })
+  }
+  // 条件必填：当依赖字段满足条件时，当前字段必填
+  const ext = parseFieldExt(field)
+  const cond = ext.requiredCondition as RequiredCondition | undefined
+  if (cond && cond.when && formModel) {
+    const actual = formModel[cond.when.field]
+    const op = (cond.when.op || 'eq') as ConditionOp
+    if (evaluateOp(actual, op, cond.when.value)) {
+      const hasRequired = rules.some((r: any) => r.required)
+      if (!hasRequired) {
+        rules.push({ required: true, message: `请填写${field.fieldLabel}`, trigger })
+      }
+    }
   }
   const rule = (field.validateRule || '').trim()
   if (rule) {
@@ -212,13 +277,13 @@ function safeEvaluateExpression(expr: string, scope: Record<string, any>): numbe
 
 export function defaultValueFor(field: LcBizField): any {
   const dv = field.defaultValue
-  if (field.fieldType === 'multi-select' || field.fieldType === 'date-range' || field.fieldType === 'time-range') {
+  if (field.fieldType === 'multi-select' || field.fieldType === 'date-range' || field.fieldType === 'time-range' || field.fieldType === 'subform') {
     if (!dv) return []
     try {
       const parsed = JSON.parse(dv)
       return Array.isArray(parsed) ? parsed : []
     } catch {
-      return dv.split(',').map((item) => item.trim()).filter(Boolean)
+      return field.fieldType === 'subform' ? [] : dv.split(',').map((item) => item.trim()).filter(Boolean)
     }
   }
   if (field.fieldType === 'boolean') {
@@ -226,6 +291,15 @@ export function defaultValueFor(field: LcBizField): any {
   }
   if (field.fieldType === 'number' || field.fieldType === 'decimal' || field.fieldType === 'percent') {
     return dv === undefined || dv === null || dv === '' ? null : Number(dv)
+  }
+  if (field.fieldType === 'address' || field.fieldType === 'region' || field.fieldType === 'geo') {
+    if (!dv) return {}
+    try {
+      const parsed = JSON.parse(dv)
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+    } catch {
+      return {}
+    }
   }
   return dv ?? ''
 }

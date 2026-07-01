@@ -55,11 +55,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="selectMemPointsGoodsById" parameterType="Long" resultMap="MemPointsGoodsResult">
         <include refid="selectMemPointsGoodsVo"/>
-        where goods_id = #{goodsId} and del_flag = '0'
+        <where>
+            AND goods_id = #{goodsId} and del_flag = '0'
+        </where>
     </select>
 
     <select id="checkMemGoodsCodeUnique" parameterType="String" resultType="int">
-        select count(1) from mem_points_goods where goods_code = #{goodsNo} and del_flag = '0'
+        select count(1) from mem_points_goods
+        <where>
+            AND goods_code = #{goodsNo} and del_flag = '0'
+        </where>
     </select>
 
     <insert id="insertMemPointsGoods" parameterType="com.junsong.member.domain.MemPointsGoods" useGeneratedKeys="true" keyProperty="goodsId">
@@ -119,5 +124,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             #{goodsId}
         </foreach>
     </delete>
+
+    <update id="deductStock">
+        UPDATE mem_points_goods
+        SET stock = stock - #{quantity},
+            exchanged = exchanged + #{quantity},
+            update_time = sysdate()
+        WHERE goods_id = #{goodsId}
+          AND stock >= #{quantity}
+          AND del_flag = '0'
+    </update>
 
 </mapper>

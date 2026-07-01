@@ -23,9 +23,12 @@
 
 - **现代技术栈**：后端 Spring Boot 4.x + Spring Cloud 2025.x + JDK 17，前端 Vue 3.5 + Vite 8 + TypeScript + Element Plus。
 - **微服务架构**：以 Nacos 为注册/配置中心，Gateway 统一网关，Redis 鉴权，按业务域拆分独立服务。
+- **开放平台**：提供 HMAC-SHA256 签名鉴权、多版本路由（v1/v2/latest）、应用级限流、多语言 SDK（Java/Python/Go/JS）、Webhook 订阅等完整的开放 API 能力。
 - **业务驱动**：覆盖会员积分/秒杀/退款、进销存与投资人分润核算、门店地图选址与开业流程、Flowable 工作流。
 - **低代码能力**：基于元数据可视化配置业务表单与审批流程，自动装配流程变量，加速业务交付。
 - **地理可视化**：集成高德地图，支持门店地图查询、门店密度热力分析、地图选点回填省市区街道。
+- **可观测性**：Prometheus + Grafana + Loki 全链路监控，9 个微服务 metrics 采集 + 容器日志聚合。
+- **云原生就绪**：GitHub Actions CI/CD 流水线 + Kubernetes 部署清单（含 HPA 自动扩缩、Ingress 路由）。
 
 ---
 
@@ -47,6 +50,7 @@
 | MinIO | - | 对象存储 |
 | JJWT | - | 令牌鉴权 |
 | SpringDoc OpenAPI | - | 接口文档 |
+| Micrometer | - | 指标采集（Prometheus） |
 
 ### 前端
 
@@ -84,7 +88,7 @@ flowchart TB
     end
 
     subgraph Gateway["网关层"]
-        GW["Spring Cloud Gateway<br/>junsong-gateway :8080<br/>路由 / 鉴权 / 限流 / Sentinel"]
+        GW["Spring Cloud Gateway<br/>junsong-gateway :8080<br/>路由 / 鉴权 / 限流 / Sentinel<br/>开放API: HMAC签名 + 版本路由"]
     end
 
     subgraph Auth["认证中心"]
@@ -96,9 +100,16 @@ flowchart TB
         MEM["Spring Boot<br/>junsong-member<br/>会员 / 积分 / 秒杀 / 退款"]
         FIN["Spring Boot<br/>junsong-finance<br/>进销存 / 投资分润 / 财务报表"]
         WF["Spring Boot<br/>junsong-workflow<br/>Flowable 工作流 / 低代码引擎"]
+        OPEN["Spring Boot<br/>junsong-open :9208<br/>开放平台 / 应用管理<br/>差异化能力聚合"]
         GEN["Spring Boot<br/>junsong-gen :9202<br/>代码生成"]
         JOB["Spring Boot<br/>junsong-job :9203<br/>定时任务调度"]
         FILE["Spring Boot<br/>junsong-file :9300<br/>文件服务 / MinIO 存储"]
+    end
+
+    subgraph Monitor["可观测性层"]
+        PROM["Prometheus :9090<br/>指标采集"]
+        GRAF["Grafana :3000<br/>可视化面板"]
+        LOKI["Loki :3100<br/>日志聚合"]
     end
 
     subgraph Infra["基础设施层<br/>Docker 容器化"]
@@ -116,9 +127,21 @@ flowchart TB
     Gateway --> MEM
     Gateway --> FIN
     Gateway --> WF
+    Gateway --> OPEN
     Gateway --> GEN
     Gateway --> JOB
     Gateway --> FILE
+
+    %% 开放平台差异化能力聚合
+    OPEN -. "聚合调用" .-> WF
+    OPEN -. "聚合调用" .-> MEM
+    OPEN -. "聚合调用" .-> SYS
+
+    %% 可观测性采集
+    PROM -. "metrics采集" .-> Gateway
+    PROM -. "metrics采集" .-> Business
+    GRAF --> PROM
+    GRAF --> LOKI
 
     %% 服务间调用：OpenFeign 声明式 REST（基于 Nacos 服务发现 + LoadBalancer 负载均衡）
     AUTH -. "Feign 调用<br/>查用户/权限" .-> SYS
@@ -182,6 +205,7 @@ com.junsong
 │   ├── junsong-member       // 会员营销：会员、积分、秒杀、退款、小程序权限
 │   ├── junsong-finance      // 财务核算：进销存、投资人分润、报表、票据 OCR
 │   ├── junsong-workflow     // 工作流：Flowable 引擎 + 低代码配置引擎
+│   ├── junsong-open         // 开放平台 [9208]：应用管理、API Key、差异化能力聚合
 │   ├── junsong-gen          // 代码生成 [9202]
 │   ├── junsong-job          // 定时任务 [9203]
 │   └── junsong-file         // 文件服务 [9300]
@@ -193,6 +217,8 @@ com.junsong
 ---
 
 ## 五、核心业务功能
+
+> 完整功能清单请参阅 [功能清单.md](./功能清单.md)，以下为各模块能力概述。
 
 ### 系统管理（junsong-system）
 - 通用后台：用户、角色、菜单、部门、岗位、字典、参数、通知公告、操作/登录日志、在线用户、个人中心。
@@ -218,6 +244,24 @@ com.junsong
 - **代码生成**（junsong-gen）：数据库表导入、字段编辑、预览并生成前后端 CRUD 代码。
 - **定时任务**（junsong-job）：任务调度增删改查、立即执行、启停与调度日志。
 - **文件服务**（junsong-file）：统一附件/图片存储（MinIO）。
+
+### 开放平台（junsong-open）
+
+> 详细演进规划请参阅 [OPEN_PLATFORM_ROADMAP.md](./OPEN_PLATFORM_ROADMAP.md)，开发者快速入门请参阅 [OPEN_API_QUICKSTART.md](./OPEN_API_QUICKSTART.md)。
+
+- **应用与密钥管理**：开发者注册应用，自动发放测试 Key（100 次/天），管理员审批后发放生产 Key（10000 次/天）。
+- **HMAC-SHA256 签名鉴权**：网关 `ApiKeyAuthFilter` 校验请求签名，防篡改 + 时间戳（5 分钟有效）+ Nonce 防重放（10 分钟）。
+- **多版本 API 路由**：`/openapi/v1/**`（已废弃）、`/openapi/v2/**`（稳定版）、`/openapi/latest/**`（别名），自动添加 `Deprecation` / `Sunset` 响应头。
+- **应用级限流**：`RateLimitFilter` 基于 Redis 计数器实现每日配额限流，响应头返回 `X-RateLimit-Limit` / `X-RateLimit-Remaining`。
+- **差异化能力即服务**：工作流即服务、会员能力即服务、门店选址即服务，共 30 个开放 API 端点。
+- **多语言 SDK**：基于 OpenAPI Generator 自动生成 Java / Python / Go / JavaScript 四种语言 SDK，详见 [sdk/](./sdk) 目录。
+
+### 可观测性与云原生
+
+- **指标监控**：Prometheus 采集 9 个微服务的 JVM / HTTP / 自定义指标，Grafana 可视化面板（http://localhost:3000）。
+- **日志聚合**：Promtail 采集所有 Docker 容器日志到 Loki，支持按容器名、时间范围检索。
+- **CI/CD 流水线**：3 个 GitHub Actions workflow（CI 编译、CD-Docker 镜像、CD-K8s 部署），详见 [.github/workflows/](./.github/workflows)。
+- **Kubernetes 部署**：36 个 K8s 资源清单（Deployment / Service / Ingress / HPA / ConfigMap），详见 [k8s/](./k8s) 目录。
 
 ---
 
@@ -290,7 +334,10 @@ JunSong-Cloud
 ├── junsong-visual/          # 图形化管理
 ├── junsong-ui-v3/           # 前端工程
 ├── junsong-miniprogram/     # 微信小程序
+├── sdk/                     # 多语言 SDK（Java/Python/Go/JS）+ 调用示例
+├── k8s/                     # Kubernetes 部署清单
 ├── docker/                  # 容器编排与配置（敏感信息已脱敏）
+├── .github/workflows/       # GitHub Actions CI/CD 流水线
 ├── sql/                     # 数据库初始化脚本
 └── pom.xml                  # 父级依赖管理
 ```

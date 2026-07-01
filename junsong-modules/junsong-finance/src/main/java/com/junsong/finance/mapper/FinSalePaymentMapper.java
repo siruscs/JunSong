@@ -1,5 +1,6 @@
 package com.junsong.finance.mapper;
 
+import java.math.BigDecimal;
 import java.util.List;
 import com.junsong.finance.domain.FinSalePayment;
 

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.workflow.mapper.WfNodeFieldPermissionMapper">
+
+    <resultMap type="com.junsong.workflow.domain.WfNodeFieldPermission" id="WfNodeFieldPermissionResult">
+        <id property="id" column="id"/>
+        <result property="processDefinitionKey" column="process_definition_key"/>
+        <result property="activityId" column="activity_id"/>
+        <result property="fieldKey" column="field_key"/>
+        <result property="fieldLabel" column="field_label"/>
+        <result property="permission" column="permission"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="selectWfNodeFieldPermissionVo">
+        select id, process_definition_key, activity_id, field_key, field_label, permission, create_time, update_time
+        from wf_node_field_permission
+    </sql>
+
+    <select id="selectById" parameterType="Long" resultMap="WfNodeFieldPermissionResult">
+        <include refid="selectWfNodeFieldPermissionVo"/>
+        <where>
+            id = #{id}
+        </where>
+    </select>
+
+    <select id="selectList" parameterType="com.junsong.workflow.domain.WfNodeFieldPermission" resultMap="WfNodeFieldPermissionResult">
+        <include refid="selectWfNodeFieldPermissionVo"/>
+        <where>
+            <if test="processDefinitionKey != null and processDefinitionKey != ''">and process_definition_key = #{processDefinitionKey}</if>
+            <if test="activityId != null and activityId != ''">and activity_id = #{activityId}</if>
+        </where>
+    </select>
+
+    <select id="selectByNode" resultMap="WfNodeFieldPermissionResult">
+        <include refid="selectWfNodeFieldPermissionVo"/>
+        <where>
+            process_definition_key = #{processDefinitionKey} and activity_id = #{activityId}
+        </where>
+    </select>
+
+    <insert id="insert" parameterType="com.junsong.workflow.domain.WfNodeFieldPermission" useGeneratedKeys="true" keyProperty="id">
+        insert into wf_node_field_permission
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="processDefinitionKey != null">process_definition_key,</if>
+            <if test="activityId != null">activity_id,</if>
+            <if test="fieldKey != null">field_key,</if>
+            <if test="fieldLabel != null">field_label,</if>
+            <if test="permission != null">permission,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="processDefinitionKey != null">#{processDefinitionKey},</if>
+            <if test="activityId != null">#{activityId},</if>
+            <if test="fieldKey != null">#{fieldKey},</if>
+            <if test="fieldLabel != null">#{fieldLabel},</if>
+            <if test="permission != null">#{permission},</if>
+        </trim>
+    </insert>
+
+    <update id="update" parameterType="com.junsong.workflow.domain.WfNodeFieldPermission">
+        update wf_node_field_permission
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="processDefinitionKey != null">process_definition_key = #{processDefinitionKey},</if>
+            <if test="activityId != null">activity_id = #{activityId},</if>
+            <if test="fieldKey != null">field_key = #{fieldKey},</if>
+            <if test="fieldLabel != null">field_label = #{fieldLabel},</if>
+            <if test="permission != null">permission = #{permission},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="Long">
+        delete from wf_node_field_permission where id = #{id}
+    </delete>
+
+</mapper>

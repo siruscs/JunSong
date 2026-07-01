@@ -13,19 +13,19 @@ import org.springframework.stereotype.Component;
 public class GenConfig
 {
     /** 作者 */
-    public static String author;
+    public static String author = "junsong";
 
     /** 生成包路径 */
-    public static String packageName;
+    public static String packageName = "com.junsong";
 
     /** 自动去除表前缀 */
-    public static boolean autoRemovePre;
+    public static boolean autoRemovePre = false;
 
     /** 表前缀 */
-    public static String tablePrefix;
+    public static String tablePrefix = "sys_";
 
     /** 是否允许生成文件覆盖到本地（自定义路径） */
-    public static boolean allowOverwrite;
+    public static boolean allowOverwrite = false;
 
     public static String getAuthor()
     {

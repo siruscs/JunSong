@@ -26,14 +26,16 @@
         </template>
         <div class="template-body">
           <div class="template-thumb">
-            <el-icon v-if="!tpl.thumbnail" :size="48"><Document /></el-icon>
-            <img v-else :src="tpl.thumbnail" />
+            <el-icon :size="48"><Document /></el-icon>
           </div>
           <div class="template-info">
             <p class="description">{{ tpl.description || '暂无描述' }}</p>
             <div class="meta">
               <span><el-icon><User /></el-icon> {{ tpl.createBy || 'admin' }}</span>
               <span><el-icon><Star /></el-icon> {{ tpl.usageCount || 0 }} 次使用</span>
+              <span class="field-count" v-if="tpl._fieldCount !== undefined">
+                <el-icon><Document /></el-icon> {{ tpl._fieldCount }} 个字段
+              </span>
             </div>
           </div>
         </div>
@@ -67,40 +69,47 @@
       </template>
     </el-dialog>
 
-    <!-- 预览对话框 -->
-    <el-dialog v-model="previewDialogVisible" title="模板详情" width="640px" destroy-on-close>
-      <el-descriptions :column="2" border v-if="selectedTemplate">
-        <el-descriptions-item label="模板编码">{{ selectedTemplate.templateCode }}</el-descriptions-item>
-        <el-descriptions-item label="模板名称">{{ selectedTemplate.templateName }}</el-descriptions-item>
-        <el-descriptions-item label="分类">{{ categoryLabel(selectedTemplate.category) }}</el-descriptions-item>
-        <el-descriptions-item label="流程Key">{{ selectedTemplate.processKey || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="使用次数">{{ selectedTemplate.usageCount || 0 }}</el-descriptions-item>
-        <el-descriptions-item label="内置模板">{{ selectedTemplate.isStarter === '1' ? '是' : '否' }}</el-descriptions-item>
-        <el-descriptions-item label="描述" :span="2">{{ selectedTemplate.description }}</el-descriptions-item>
-        <el-descriptions-item label="备注" :span="2">{{ selectedTemplate.remark }}</el-descriptions-item>
-      </el-descriptions>
+    <!-- 预览对话框：真实表单渲染 -->
+    <el-dialog v-model="previewDialogVisible" :title="previewTitle" width="780px" top="6vh" destroy-on-close class="preview-dialog">
+      <div v-if="previewFields.length > 0" class="preview-form-wrap">
+        <el-form label-width="110px" label-position="right" disabled>
+          <el-row :gutter="12">
+            <el-col
+              v-for="field in previewFields"
+              :key="field.fieldKey || field.fieldLabel"
+              :span="fieldSpan(field)"
+            >
+              <el-form-item :label="field.fieldLabel || '未命名'" :required="field.required === '1'">
+                <FieldRenderer :field="field" :model-value="previewValue(field)" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </el-form>
+      </div>
+      <el-empty v-else description="该模板暂无字段配置" :image-size="80" />
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Search, Refresh, Document, DocumentCopy, View, Star, User } from '@element-plus/icons-vue'
 import { listTemplate, cloneTemplate, type LcBizTemplate } from '@/api/lowcode/admin'
+import FieldRenderer from '../fields/FieldRenderer.vue'
 
 const router = useRouter()
 
 const loading = ref(false)
 const showSearch = ref(true)
-const templateList = ref<LcBizTemplate[]>([])
+const templateList = ref<(LcBizTemplate & { _config?: any; _fieldCount?: number })[]>([])
 const queryParams = reactive({ category: '' as string | undefined })
 
 const cloneDialogVisible = ref(false)
 const previewDialogVisible = ref(false)
 const cloneLoading = ref(false)
-const selectedTemplate = ref<LcBizTemplate | null>(null)
+const selectedTemplate = ref<any>(null)
 
 const cloneForm = reactive({ newBizCode: '', newBizName: '' })
 const cloneFormRef = ref()
@@ -111,16 +120,58 @@ const cloneRules = {
   newBizName: [{ required: true, message: '请输入新业务名称', trigger: 'blur' }],
 }
 
+const previewFields = computed<any[]>(() => {
+  return selectedTemplate.value?._config?.fields || []
+})
+
+const previewTitle = computed(() => {
+  return selectedTemplate.value ? '预览：' + selectedTemplate.value.templateName : '模板预览'
+})
+
 function categoryLabel(cat?: string) {
   const map: Record<string, string> = { APPROVAL: '审批单', PURCHASE: '采购单', REFUND: '退款单' }
   return map[cat || ''] || cat || '-'
+}
+
+function fieldSpan(field: any): number {
+  try {
+    const ext = field.fieldExt ? (typeof field.fieldExt === 'string' ? JSON.parse(field.fieldExt) : field.fieldExt) : {}
+    const span = Number(ext.span)
+    return span >= 4 && span <= 24 ? span : 12
+  } catch {
+    return 12
+  }
+}
+
+function previewValue(field: any): any {
+  const type = field.fieldType
+  if (type === 'boolean') return false
+  if (type === 'number' || type === 'decimal' || type === 'percent') return null
+  if (type === 'multi-select' || type === 'subform' || type === 'date-range' || type === 'time-range') return []
+  if (type === 'address' || type === 'region' || type === 'geo') return {}
+  return ''
 }
 
 function fetchTemplates() {
   loading.value = true
   listTemplate(queryParams.category || undefined)
     .then((res: any) => {
-      templateList.value = res.data || []
+      const list = res.data || []
+      list.forEach((tpl: any) => {
+        if (tpl.configJson) {
+          try {
+            tpl._config = JSON.parse(tpl.configJson)
+            tpl._fieldCount = tpl._config?.fields?.length || 0
+          } catch {
+            tpl._config = null
+            tpl._fieldCount = 0
+          }
+        } else {
+          tpl._config = null
+          tpl._fieldCount = 0
+        }
+      })
+      templateList.value = list
       loading.value = false
     })
     .catch(() => { loading.value = false })
@@ -133,7 +184,7 @@ function resetQuery() {
   fetchTemplates()
 }
 
-function handleClone(tpl: LcBizTemplate) {
+function handleClone(tpl: any) {
   selectedTemplate.value = tpl
   cloneForm.newBizCode = ''
   cloneForm.newBizName = tpl.templateName ? '新' + tpl.templateName : ''
@@ -159,7 +210,7 @@ function confirmClone() {
   })
 }
 
-function handlePreview(tpl: LcBizTemplate) {
+function handlePreview(tpl: any) {
   selectedTemplate.value = tpl
   previewDialogVisible.value = true
 }
@@ -202,8 +253,6 @@ onMounted(() => { fetchTemplates() })
   color: #909399;
 }
 
-.template-thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
-
 .description {
   font-size: 13px;
   color: #606266;
@@ -218,6 +267,7 @@ onMounted(() => { fetchTemplates() })
 
 .meta {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   font-size: 12px;
   color: #909399;
@@ -229,5 +279,23 @@ onMounted(() => { fetchTemplates() })
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+}
+
+.preview-form-wrap {
+  max-height: 65vh;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.preview-form-wrap :deep(.el-form-item) {
+  margin-bottom: 18px;
+}
+
+.preview-form-wrap :deep(.el-form-item__content) {
+  width: 100%;
+}
+
+.preview-form-wrap :deep(.lc-field-root) {
+  width: 100%;
 }
 </style>

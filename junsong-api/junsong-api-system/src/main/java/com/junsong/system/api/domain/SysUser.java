@@ -4,6 +4,8 @@ import java.util.Date;
 import java.util.List;
 import jakarta.validation.constraints.*;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import com.junsong.common.core.annotation.Excel;
@@ -198,11 +200,13 @@ public class SysUser extends BaseEntity
         this.phonenumber = phonenumber;
     }
 
+    @JsonIgnore
     public String getIdCard()
     {
         return idCard;
     }
 
+    @JsonProperty("idCard")
     public void setIdCard(String idCard)
     {
         this.idCard = idCard;

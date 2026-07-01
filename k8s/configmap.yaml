@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: junsong-config
+  namespace: junsong
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  NACOS_HOST: "junsong-nacos"
+  NACOS_PORT: "8848"
+  NACOS_USERNAME: "nacos"
+  MYSQL_HOST: "junsong-mysql"
+  MYSQL_PORT: "3306"
+  REDIS_HOST: "junsong-redis"
+  REDIS_PORT: "6379"
+  RABBITMQ_HOST: "junsong-rabbitmq"
+  RABBITMQ_PORT: "5672"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: junsong-secrets
+  namespace: junsong
+type: Opaque
+stringData:
+  MYSQL_ROOT_PASSWORD: "root_123"
+  MYSQL_PASSWORD: "root_123"
+  NACOS_PASSWORD: "nacos"
+  NACOS_AUTH_TOKEN: "c2VjcmV0S2V5Rm9yTmFjb3NBdXRoMzJDaGFycw=="
+  REDIS_PASSWORD: ""

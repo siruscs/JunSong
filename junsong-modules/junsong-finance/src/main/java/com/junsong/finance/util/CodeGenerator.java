@@ -2,16 +2,15 @@ package com.junsong.finance.util;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * 编码生成工具类
- * 
+ *
  * @author junsong
  */
 public class CodeGenerator
 {
-    private static final Random random = new Random();
     private static final String DIGITS = "0123456789";
     private static final String ALPHANUMERIC = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -199,7 +198,7 @@ public class CodeGenerator
         StringBuilder sb = new StringBuilder(length);
         for (int i = 0; i < length; i++)
         {
-            sb.append(chars.charAt(random.nextInt(chars.length())));
+            sb.append(chars.charAt(ThreadLocalRandom.current().nextInt(chars.length())));
         }
         return sb.toString();
     }

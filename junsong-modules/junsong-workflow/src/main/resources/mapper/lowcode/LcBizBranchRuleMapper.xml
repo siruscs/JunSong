@@ -41,12 +41,16 @@
 
     <select id="selectLcBizBranchRuleById" parameterType="Long" resultMap="LcBizBranchRuleResult">
         <include refid="selectLcBizBranchRuleVo"/>
-        where id = #{id} and del_flag = '0'
+        <where>
+            id = #{id} and del_flag = '0'
+        </where>
     </select>
 
     <select id="selectByBizCode" parameterType="String" resultMap="LcBizBranchRuleResult">
         <include refid="selectLcBizBranchRuleVo"/>
-        where biz_code = #{bizCode} and del_flag = '0'
+        <where>
+            biz_code = #{bizCode} and del_flag = '0'
+        </where>
         order by id asc
     </select>
 

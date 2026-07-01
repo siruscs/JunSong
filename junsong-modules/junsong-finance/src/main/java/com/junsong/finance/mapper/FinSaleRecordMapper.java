@@ -1,5 +1,6 @@
 package com.junsong.finance.mapper;
 
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +65,16 @@ public interface FinSaleRecordMapper
     public List<Map<String, Object>> selectSaleTrendStats(@Param("deptIds") List<Long> deptIds, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
 
     /**
+     * 统计销售笔数
+     */
+    public int countSaleRecords(@Param("deptIds") List<Long> deptIds, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
+
+    /**
+     * 统计销售总数量（件数）
+     */
+    public int sumSaleQuantity(@Param("deptIds") List<Long> deptIds, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
+
+    /**
      * 校验销售单号是否唯一
      * 
      * @param saleNo 销售单号
@@ -77,4 +88,13 @@ public interface FinSaleRecordMapper
      * @return 结果
      */
     public int countTodaySales();
+
+    BigDecimal selectTodayTotalSales(@Param("deptIds") List<Long> deptIds);
+    BigDecimal selectMonthTotalSales(@Param("deptIds") List<Long> deptIds);
+    BigDecimal selectTodayTotalSalesForPrev(@Param("deptIds") List<Long> deptIds);
+    BigDecimal selectMonthTotalSalesForPrev(@Param("deptIds") List<Long> deptIds);
+    List<Map<String, Object>> selectSalesByDept(@Param("deptIds") List<Long> deptIds, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
+    List<Map<String, Object>> selectProductSalesRank(@Param("deptIds") List<Long> deptIds, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
+    BigDecimal selectMemberSales(@Param("deptIds") List<Long> deptIds, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
+    BigDecimal selectSeckillSales(@Param("deptIds") List<Long> deptIds, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
 }

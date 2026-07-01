@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.system.mapper.WebhookDeliveryMapper">
+
+    <resultMap type="WebhookDelivery" id="WebhookDeliveryResult">
+        <result property="id" column="id"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="subscriptionId" column="subscription_id"/>
+        <result property="eventType" column="event_type"/>
+        <result property="eventId" column="event_id"/>
+        <result property="payload" column="payload"/>
+        <result property="httpStatus" column="http_status"/>
+        <result property="responseBody" column="response_body"/>
+        <result property="retryCount" column="retry_count"/>
+        <result property="status" column="status"/>
+        <result property="nextRetryTime" column="next_retry_time"/>
+        <result property="createTime" column="create_time"/>
+        <result property="completeTime" column="complete_time"/>
+    </resultMap>
+
+    <sql id="selectWebhookDeliveryVo">
+        select id, tenant_id, subscription_id, event_type, event_id, payload, http_status, response_body, retry_count, status, next_retry_time, create_time, complete_time
+        from webhook_delivery
+    </sql>
+
+    <select id="selectWebhookDeliveryList" parameterType="WebhookDelivery" resultMap="WebhookDeliveryResult">
+        <include refid="selectWebhookDeliveryVo"/>
+        <where>
+            <if test="subscriptionId != null">and subscription_id = #{subscriptionId}</if>
+            <if test="eventType != null and eventType != ''">and event_type = #{eventType}</if>
+            <if test="status != null and status != ''">and status = #{status}</if>
+            <if test="eventId != null and eventId != ''">and event_id = #{eventId}</if>
+        </where>
+        order by id desc
+    </select>
+
+    <select id="selectWebhookDeliveryById" parameterType="Long" resultMap="WebhookDeliveryResult">
+        <include refid="selectWebhookDeliveryVo"/>
+        where id = #{id}
+    </select>
+
+    <select id="selectPendingRetries" parameterType="java.util.Date" resultMap="WebhookDeliveryResult">
+        <include refid="selectWebhookDeliveryVo"/>
+        where status = 'FAILED' and next_retry_time is not null and next_retry_time &lt;= #{beforeTime}
+        limit 50
+    </select>
+
+    <insert id="insertWebhookDelivery" parameterType="WebhookDelivery" useGeneratedKeys="true" keyProperty="id">
+        insert into webhook_delivery (tenant_id, subscription_id, event_type, event_id, payload, retry_count, status, create_time)
+        values (#{tenantId}, #{subscriptionId}, #{eventType}, #{eventId}, #{payload}, #{retryCount}, #{status}, sysdate())
+    </insert>
+
+    <update id="updateWebhookDelivery" parameterType="WebhookDelivery">
+        update webhook_delivery
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="httpStatus != null">http_status = #{httpStatus},</if>
+            <if test="responseBody != null">response_body = #{responseBody},</if>
+            <if test="retryCount != null">retry_count = #{retryCount},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="nextRetryTime != null">next_retry_time = #{nextRetryTime},</if>
+            <if test="completeTime != null">complete_time = #{completeTime},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+</mapper>

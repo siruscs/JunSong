@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Positive;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.prepost.PreAuthorize;
+import com.junsong.common.security.annotation.RequiresPermissions;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,7 +35,7 @@ public class LcReportController extends BaseController
     /**
      * NATIVE 表数据列表查询（支持动态字段过滤）
      */
-    @PreAuthorize("@ss.hasPermi('lowcode:report:list')")
+    @RequiresPermissions("lowcode:report:list")
     @GetMapping("/{bizCode}/data")
     public R<TableDataInfo> dataList(
         @PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode,
@@ -49,7 +49,7 @@ public class LcReportController extends BaseController
     /**
      * NATIVE 表简单统计（计数、总和）
      */
-    @PreAuthorize("@ss.hasPermi('lowcode:report:stat')")
+    @RequiresPermissions("lowcode:report:stat")
     @GetMapping("/{bizCode}/stat")
     public R<Map<String, Object>> statistics(
         @PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode,
@@ -62,7 +62,7 @@ public class LcReportController extends BaseController
     /**
      * 获取 NATIVE 表的列信息（用于前端报表配置）
      */
-    @PreAuthorize("@ss.hasPermi('lowcode:report:list')")
+    @RequiresPermissions("lowcode:report:list")
     @GetMapping("/{bizCode}/columns")
     public R<List<Map<String, Object>>> columns(
         @PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode)

@@ -58,11 +58,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="checkSaleNoUnique" parameterType="String" resultMap="FinSaleRecordResult">
         <include refid="selectFinSaleRecordVo"/>
-        where r.sale_no = #{saleNo} and r.del_flag = '0' limit 1
+        where r.sale_no = #{saleNo} and r.del_flag = '0'
+        limit 1
     </select>
 
     <select id="countTodaySales" resultType="int">
-        select count(*) from fin_sale_record where date(create_time) = curdate()
+        select count(*) from fin_sale_record
+        <where> date(create_time) = curdate()
+        and del_flag = '0'
+        </where>
     </select>
         
     <insert id="insertFinSaleRecord" parameterType="FinSaleRecord" useGeneratedKeys="true" keyProperty="saleId">
@@ -148,7 +152,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                ifnull(sum(r.sale_amount), 0) as totalSales
         from fin_sale_record r
         left join sys_dept d on r.dept_id = d.dept_id
-        where r.del_flag = '0'
+        <where> r.del_flag = '0'
         <if test="deptIds != null and deptIds.size() > 0">
             and r.dept_id in
             <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
@@ -161,8 +165,139 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <if test="endTime != null">
             and r.sale_date &lt;= #{endTime}
         </if>
+        </where>
         group by date_format(r.sale_date, '%Y-%m-%d'), r.dept_id, d.dept_name
         order by dateStr, r.dept_id
+    </select>
+
+    <!-- 统计销售笔数 -->
+    <select id="countSaleRecords" resultType="int">
+        select count(1) from fin_sale_record r
+        <where> r.del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and r.dept_id in
+            <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+        <if test="startTime != null">
+            and r.sale_date &gt;= #{startTime}
+        </if>
+        <if test="endTime != null">
+            and r.sale_date &lt;= #{endTime}
+        </if>
+        </where>
+    </select>
+
+    <!-- 统计销售总数量（件数） -->
+    <select id="sumSaleQuantity" resultType="int">
+        select ifnull(sum(r.total_quantity), 0) from fin_sale_record r
+        <where> r.del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and r.dept_id in
+            <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+        <if test="startTime != null">
+            and r.sale_date &gt;= #{startTime}
+        </if>
+        <if test="endTime != null">
+            and r.sale_date &lt;= #{endTime}
+        </if>
+        </where>
+    </select>
+
+    <select id="selectTodayTotalSales" resultType="java.math.BigDecimal">
+        select ifnull(sum(sale_amount), 0) from fin_sale_record
+        where del_flag = '0' and date(sale_date) = curdate()
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+    </select>
+
+    <select id="selectMonthTotalSales" resultType="java.math.BigDecimal">
+        select ifnull(sum(sale_amount), 0) from fin_sale_record
+        where del_flag = '0' and date_format(sale_date, '%Y-%m') = date_format(curdate(), '%Y-%m')
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+    </select>
+
+    <select id="selectTodayTotalSalesForPrev" resultType="java.math.BigDecimal">
+        select ifnull(sum(sale_amount), 0) from fin_sale_record
+        where del_flag = '0' and date(sale_date) = date_sub(curdate(), interval 1 day)
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+    </select>
+
+    <select id="selectMonthTotalSalesForPrev" resultType="java.math.BigDecimal">
+        select ifnull(sum(sale_amount), 0) from fin_sale_record
+        where del_flag = '0' and date_format(sale_date, '%Y-%m') = date_format(date_sub(curdate(), interval 1 month), '%Y-%m')
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+    </select>
+
+    <select id="selectSalesByDept" resultType="java.util.HashMap">
+        select r.dept_id as deptId, d.dept_name as deptName,
+               ifnull(sum(r.sale_amount), 0) as totalSales,
+               count(1) as orderCount,
+               ifnull(sum(r.total_quantity), 0) as totalQuantity
+        from fin_sale_record r
+        left join sys_dept d on r.dept_id = d.dept_id
+        <where> r.del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and r.dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+        <if test="startTime != null"> and r.sale_date &gt;= #{startTime} </if>
+        <if test="endTime != null"> and r.sale_date &lt;= #{endTime} </if>
+        </where>
+        group by r.dept_id, d.dept_name
+        order by totalSales desc
+    </select>
+
+    <select id="selectProductSalesRank" resultType="java.util.HashMap">
+        select r.product_id as productId, r.product_name as productName,
+               ifnull(sum(r.sale_amount), 0) as totalSales,
+               ifnull(sum(r.total_quantity), 0) as totalQuantity,
+               r.dept_id as deptId, d.dept_name as deptName
+        from fin_sale_record r
+        left join sys_dept d on r.dept_id = d.dept_id
+        <where> r.del_flag = '0'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and r.dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+        <if test="startTime != null"> and r.sale_date &gt;= #{startTime} </if>
+        <if test="endTime != null"> and r.sale_date &lt;= #{endTime} </if>
+        </where>
+        group by r.product_id, r.product_name, r.dept_id, d.dept_name
+        order by totalSales desc
+        limit 20
+    </select>
+
+    <select id="selectMemberSales" resultType="java.math.BigDecimal">
+        select ifnull(sum(r.sale_amount), 0) from fin_sale_record r
+        <where> r.del_flag = '0'
+        and r.sale_no in (select sr.sale_no from fin_sale_record sr where sr.del_flag = '0' and sr.remark like '%member%')
+        <if test="deptIds != null and deptIds.size() > 0">
+            and r.dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+        <if test="startTime != null"> and r.sale_date &gt;= #{startTime} </if>
+        <if test="endTime != null"> and r.sale_date &lt;= #{endTime} </if>
+        </where>
+    </select>
+
+    <select id="selectSeckillSales" resultType="java.math.BigDecimal">
+        select ifnull(sum(r.sale_amount), 0) from fin_sale_record r
+        <where> r.del_flag = '0' and r.remark like '%seckill%'
+        <if test="deptIds != null and deptIds.size() > 0">
+            and r.dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+        <if test="startTime != null"> and r.sale_date &gt;= #{startTime} </if>
+        <if test="endTime != null"> and r.sale_date &lt;= #{endTime} </if>
+        </where>
     </select>
 
 </mapper>

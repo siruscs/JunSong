@@ -1,0 +1,728 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Genesis Cloud Open Platform API",
+    "description": "Genesis Cloud 开放平台公共 API v1。所有外部可调用能力都必须经过网关签名校验。",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Genesis Cloud Open Platform"
+    }
+  },
+  "servers": [
+    {
+      "url": "/openapi/v1",
+      "description": "v1 公共 API 前缀（生产环境由网关路由决定）"
+    }
+  ],
+  "security": [
+    { "appKeySignature": [] }
+  ],
+  "tags": [
+    { "name": "member", "description": "会员能力：会员查询、积分、兑换和运营看板" },
+    { "name": "workflow", "description": "流程能力：流程定义、实例发起、任务处理和历史查询" },
+    { "name": "request", "description": "业务申请能力：门店开办申请查询、创建、提交和撤回" },
+    { "name": "foundation", "description": "平台基础能力：应用管理、Key 管理和 Webhook 订阅" }
+  ],
+  "paths": {
+    "/members": {
+      "get": {
+        "operationId": "listMembers",
+        "summary": "查询会员列表",
+        "tags": ["member"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "pageNum", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "default": 10 } },
+          { "name": "memberNo", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "memberName", "in": "query", "required": false, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PageResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/members/{id}": {
+      "get": {
+        "operationId": "getMember",
+        "summary": "获取会员详情",
+        "tags": ["member"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/members/no/{memberNo}": {
+      "get": {
+        "operationId": "getMemberByNo",
+        "summary": "按会员编号查询",
+        "tags": ["member"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "memberNo", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/members/{memberId}/points": {
+      "get": {
+        "operationId": "getMemberPoints",
+        "summary": "查询会员积分记录",
+        "tags": ["member"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "memberId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } },
+          { "name": "pageNum", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "default": 10 } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PageResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/members/points-rules/effective": {
+      "get": {
+        "operationId": "getEffectivePointsRules",
+        "summary": "获取当前生效的积分规则",
+        "tags": ["member"],
+        "security": [{ "appKeySignature": [] }],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/members/{memberId}/points/records": {
+      "post": {
+        "operationId": "createPointsRecord",
+        "summary": "写入积分变动记录",
+        "tags": ["member"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "memberId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "points": { "type": "integer", "description": "积分变动值（正数增加，负数扣减）" },
+                  "reason": { "type": "string", "description": "变动原因" },
+                  "idempotencyKey": { "type": "string", "description": "幂等键" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/members/points-exchanges": {
+      "post": {
+        "operationId": "createPointsExchange",
+        "summary": "积分兑换",
+        "tags": ["member"],
+        "security": [{ "appKeySignature": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "memberId": { "type": "integer", "format": "int64" },
+                  "exchangeItemId": { "type": "integer", "format": "int64" },
+                  "quantity": { "type": "integer" },
+                  "idempotencyKey": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/members/seckills/active": {
+      "get": {
+        "operationId": "getActiveSeckills",
+        "summary": "查询进行中的秒杀活动",
+        "tags": ["member"],
+        "security": [{ "appKeySignature": [] }],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/members/dashboard/stats": {
+      "get": {
+        "operationId": "getMemberDashboardStats",
+        "summary": "会员运营统计",
+        "tags": ["member"],
+        "security": [{ "appKeySignature": [] }],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/members/dashboard/trend": {
+      "get": {
+        "operationId": "getMemberDashboardTrend",
+        "summary": "会员运营趋势（近7天）",
+        "tags": ["member"],
+        "security": [{ "appKeySignature": [] }],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/members/dashboard/ranking": {
+      "get": {
+        "operationId": "getMemberDashboardRanking",
+        "summary": "积分余额排行榜 TOP10",
+        "tags": ["member"],
+        "security": [{ "appKeySignature": [] }],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/workflow/definitions": {
+      "get": {
+        "operationId": "listWorkflowDefinitions",
+        "summary": "查询流程定义列表",
+        "tags": ["workflow"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "pageNum", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "default": 10 } },
+          { "name": "processKey", "in": "query", "required": false, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PageResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/workflow/definitions/{id}": {
+      "get": {
+        "operationId": "getWorkflowDefinition",
+        "summary": "获取流程定义详情",
+        "tags": ["workflow"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/workflow/definitions/{id}/diagram": {
+      "get": {
+        "operationId": "getWorkflowDiagram",
+        "summary": "获取流程图（含高亮节点）",
+        "tags": ["workflow"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/workflow/instances": {
+      "post": {
+        "operationId": "startWorkflowInstance",
+        "summary": "发起流程实例",
+        "tags": ["workflow"],
+        "security": [{ "appKeySignature": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "processKey": { "type": "string", "description": "流程定义标识" },
+                  "businessKey": { "type": "string", "description": "业务主键" },
+                  "variables": { "type": "object", "description": "流程变量" },
+                  "idempotencyKey": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "get": {
+        "operationId": "listWorkflowInstances",
+        "summary": "查询流程实例列表",
+        "tags": ["workflow"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "pageNum", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "default": 10 } },
+          { "name": "processKey", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "businessKey", "in": "query", "required": false, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PageResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/workflow/instances/{id}": {
+      "get": {
+        "operationId": "getWorkflowInstance",
+        "summary": "获取流程实例详情",
+        "tags": ["workflow"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/workflow/tasks/todo": {
+      "get": {
+        "operationId": "listTodoTasks",
+        "summary": "查询待办任务列表",
+        "tags": ["workflow"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "pageNum", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "default": 10 } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PageResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/workflow/tasks/done": {
+      "get": {
+        "operationId": "listDoneTasks",
+        "summary": "查询已办任务列表",
+        "tags": ["workflow"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "pageNum", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "default": 10 } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PageResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/workflow/tasks/{taskId}/approve": {
+      "post": {
+        "operationId": "approveTask",
+        "summary": "审批通过任务",
+        "tags": ["workflow"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "taskId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "comment": { "type": "string", "description": "审批意见" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/workflow/tasks/{taskId}/reject": {
+      "post": {
+        "operationId": "rejectTask",
+        "summary": "驳回任务",
+        "tags": ["workflow"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "taskId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "comment": { "type": "string", "description": "驳回原因" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/workflow/tasks/{taskId}/transfer": {
+      "post": {
+        "operationId": "transferTask",
+        "summary": "转办任务",
+        "tags": ["workflow"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "taskId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "targetUserId": { "type": "string", "description": "目标办理人 ID" },
+                  "comment": { "type": "string", "description": "转办说明" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/workflow/history/instances/{processInstanceId}/activities": {
+      "get": {
+        "operationId": "getHistoryActivities",
+        "summary": "流程历史流转记录",
+        "tags": ["workflow"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "processInstanceId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/workflow/history/instances/{processInstanceId}/comments": {
+      "get": {
+        "operationId": "getHistoryComments",
+        "summary": "流程审批意见",
+        "tags": ["workflow"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "processInstanceId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/workflow/analytics/node-duration": {
+      "get": {
+        "operationId": "getNodeDurationAnalytics",
+        "summary": "流程节点耗时统计",
+        "tags": ["workflow"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "processKey", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "startTime", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "endTime", "in": "query", "required": false, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/store-openings": {
+      "get": {
+        "operationId": "listStoreOpenings",
+        "summary": "查询门店开办申请列表",
+        "tags": ["request"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "pageNum", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "default": 10 } },
+          { "name": "storeName", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "required": false, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PageResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "operationId": "createStoreOpening",
+        "summary": "创建门店开办申请",
+        "tags": ["request"],
+        "security": [{ "appKeySignature": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "storeName": { "type": "string" },
+                  "storeAddress": { "type": "string" },
+                  "contactName": { "type": "string" },
+                  "contactPhone": { "type": "string" },
+                  "idempotencyKey": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/store-openings/{id}": {
+      "get": {
+        "operationId": "getStoreOpening",
+        "summary": "获取门店开办申请详情",
+        "tags": ["request"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/store-openings/orders/{orderNo}": {
+      "get": {
+        "operationId": "getStoreOpeningByOrderNo",
+        "summary": "按业务单号查询申请",
+        "tags": ["request"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "orderNo", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/store-openings/{id}/submit": {
+      "post": {
+        "operationId": "submitStoreOpening",
+        "summary": "提交门店开办申请进入审批",
+        "tags": ["request"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/store-openings/{id}/withdraw": {
+      "post": {
+        "operationId": "withdrawStoreOpening",
+        "summary": "撤回门店开办申请",
+        "tags": ["request"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/open/apps": {
+      "get": {
+        "operationId": "listOpenApps",
+        "summary": "查询授权应用列表",
+        "tags": ["foundation"],
+        "security": [{ "appKeySignature": [] }],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PageResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/open/apps/{appId}/keys": {
+      "get": {
+        "operationId": "listAppKeys",
+        "summary": "查询应用 Key 概览（脱敏）",
+        "tags": ["foundation"],
+        "security": [{ "appKeySignature": [] }],
+        "parameters": [
+          { "name": "appId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int64" } }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/open/webhooks/subscriptions": {
+      "post": {
+        "operationId": "createWebhookSubscription",
+        "summary": "登记 Webhook 回调地址和事件订阅",
+        "tags": ["foundation"],
+        "security": [{ "appKeySignature": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "callbackUrl": { "type": "string", "format": "uri", "description": "回调地址" },
+                  "events": { "type": "array", "items": { "type": "string" }, "description": "订阅事件列表" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApiResponse": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "description": "业务状态码，0 表示成功" },
+          "message": { "type": "string", "description": "提示信息" },
+          "data": { "description": "响应数据" },
+          "requestId": { "type": "string", "description": "请求唯一标识" },
+          "traceId": { "type": "string", "description": "链路追踪标识（可选）" }
+        },
+        "required": ["code", "message", "requestId"]
+      },
+      "PageResponse": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "description": "业务状态码，0 表示成功" },
+          "message": { "type": "string" },
+          "total": { "type": "integer", "format": "int64", "description": "总记录数" },
+          "rows": { "type": "array", "items": {}, "description": "数据列表" },
+          "requestId": { "type": "string" }
+        },
+        "required": ["code", "message", "total", "rows", "requestId"]
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer", "description": "业务错误码" },
+          "message": { "type": "string", "description": "错误描述" },
+          "errorCode": { "type": "string", "description": "机器可读错误码，如 OPEN_AUTH_SIGNATURE_INVALID" },
+          "requestId": { "type": "string" }
+        },
+        "required": ["code", "message", "requestId"]
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "认证失败：签名错误、时间戳过期、Nonce 重放或缺失请求头",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "权限不足：缺少所需 scope 或租户上下文",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "资源不存在",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "appKeySignature": {
+        "type": "apiKey",
+        "name": "X-App-Key",
+        "in": "header",
+        "description": "HMAC-SHA256 签名认证。需同时传递 X-App-Key、X-App-Timestamp、X-App-Nonce、X-App-Signature 四个请求头。"
+      }
+    }
+  }
+}

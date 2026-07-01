@@ -141,9 +141,10 @@
       <el-table-column label="结转时间" align="center" prop="carryForwardTime" width="170">
         <template #default="scope">{{ parseTime(scope.row.carryForwardTime, '{y}-{m}-{d} {h}:{i}:{s}') || '-' }}</template>
       </el-table-column>
-      <el-table-column label="操作" align="center" fixed="right" width="120">
+      <el-table-column label="操作" align="center" fixed="right" width="180">
         <template #default="scope">
           <el-button size="small" type="text" @click="handleDetail(scope.row)">明细</el-button>
+          <el-button size="small" type="text" @click="handleCheckBeforeLock(scope.row)" v-hasPermi="['finance:accountingPeriod:checkBeforeLock']">锁账检查</el-button>
         </template>
       </el-table-column>
       </el-table>
@@ -287,12 +288,64 @@
       </div>
       </template>
     </el-dialog>
+
+    <!-- 锁账前检查弹窗 -->
+    <el-dialog title="锁账前检查" v-model="checkDialogOpen" width="600px" append-to-body>
+      <div v-loading="checkLoading">
+        <div v-if="checkResult">
+          <div v-if="checkResult.canLock && !checkResult.hasWarning" class="check-summary check-summary-success">
+            <el-icon class="check-summary-icon"><SuccessFilled /></el-icon>
+            <span>所有检查项均通过，可以安全锁账。</span>
+          </div>
+          <div v-else-if="checkResult.canLock && checkResult.hasWarning" class="check-summary check-summary-warning">
+            <el-icon class="check-summary-icon"><WarningFilled /></el-icon>
+            <span>存在警告项，可以强制结转但建议先处理。</span>
+          </div>
+          <div v-else class="check-summary check-summary-block">
+            <el-icon class="check-summary-icon"><CircleCloseFilled /></el-icon>
+            <span>存在阻塞项，必须先处理后才能锁账。</span>
+          </div>
+
+          <div class="check-items">
+            <div v-for="item in checkResult.items" :key="item.checkType"
+                 class="check-item"
+                 :class="{ 'check-item-block': item.level === 'BLOCK' && item.count > 0, 'check-item-warning': item.level === 'WARNING' && item.count > 0, 'check-item-info': item.level === 'INFO' && item.count > 0, 'check-item-clean': item.count === 0 }">
+              <div class="check-item-header">
+                <el-tag :type="getCheckLevelTagType(item)" size="small">{{ item.level }}</el-tag>
+                <span class="check-item-title">{{ item.title }}</span>
+                <span class="check-item-count">{{ item.count }}笔</span>
+              </div>
+              <div class="check-item-desc">{{ item.description }}</div>
+            </div>
+          </div>
+
+          <div v-if="checkResult.canLock && checkResult.hasWarning" class="force-carry-forward-section">
+            <el-divider>强制结转</el-divider>
+            <el-input v-model="forceCarryForwardReason" type="textarea" :rows="3" placeholder="请填写强制结转原因（必填）" />
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="checkDialogOpen = false">关 闭</el-button>
+          <el-button v-if="checkResult && checkResult.canLock && checkResult.hasWarning"
+                     type="warning"
+                     :disabled="!forceCarryForwardReason || forceCarryForwardReason.trim().length === 0"
+                     @click="handleForceCarryForward"
+                     v-hasPermi="['finance:accountingPeriod:carryForward']">强制结转</el-button>
+          <el-button v-if="checkResult && checkResult.canLock && !checkResult.hasWarning"
+                     type="success"
+                     @click="handleProceedCarryForward"
+                     v-hasPermi="['finance:accountingPeriod:carryForward']">确认结转</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listAccountingPeriod, getCurrentAccountingPeriod, initCurrentAccountingPeriod, trialBreakEven, carryForward, rollbackCarryForward, getAccountingPeriodDetail } from '@/api/finance/accountingPeriod'
+import { listAccountingPeriod, getCurrentAccountingPeriod, initCurrentAccountingPeriod, trialBreakEven, carryForward, rollbackCarryForward, getAccountingPeriodDetail, checkBeforeLock } from '@/api/finance/accountingPeriod'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
@@ -328,7 +381,13 @@ export default {
         deptIds: [],
         status: undefined,
         periodNo: undefined
-      }
+      },
+      // 锁账检查弹窗
+      checkDialogOpen: false,
+      checkLoading: false,
+      checkResult: null,
+      checkDeptId: null,
+      forceCarryForwardReason: ''
     }
   },
   computed: {
@@ -507,6 +566,50 @@ export default {
     },
     formatMoney(value) {
       return Number(value || 0).toFixed(2)
+    },
+    handleCheckBeforeLock(row) {
+      this.checkDeptId = row.deptId
+      this.checkResult = null
+      this.forceCarryForwardReason = ''
+      this.checkDialogOpen = true
+      this.checkLoading = true
+      checkBeforeLock(row.deptId).then(response => {
+        this.checkResult = response.data
+      }).catch(() => {
+        ElMessage.error('锁账检查请求失败')
+      }).finally(() => {
+        this.checkLoading = false
+      })
+    },
+    getCheckLevelTagType(item) {
+      if (item.count === 0) return 'success'
+      if (item.level === 'BLOCK') return 'danger'
+      if (item.level === 'WARNING') return 'warning'
+      return 'info'
+    },
+    handleForceCarryForward() {
+      if (!this.forceCarryForwardReason || this.forceCarryForwardReason.trim().length === 0) {
+        ElMessage.warning('请填写强制结转原因')
+        return
+      }
+      ElMessageBox.confirm('确认强制结转？当前存在未处理的警告项。').then(() => {
+        return carryForward(this.checkDeptId || userStore.currentDeptId)
+      }).then(response => {
+        this.currentPeriod = response.data
+        this.getList()
+        this.checkDialogOpen = false
+        ElMessage.success('强制结转完成')
+      }).catch(() => {})
+    },
+    handleProceedCarryForward() {
+      ElMessageBox.confirm('确认对当前核算周期进行结转？').then(() => {
+        return carryForward(this.checkDeptId || userStore.currentDeptId)
+      }).then(response => {
+        this.currentPeriod = response.data
+        this.getList()
+        this.checkDialogOpen = false
+        ElMessage.success('结转完成')
+      }).catch(() => {})
     }
   }
 }
@@ -717,5 +820,99 @@ export default {
   .metric-grid {
     grid-template-columns: repeat(2, minmax(160px, 1fr));
   }
+}
+
+.check-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.check-summary-success {
+  background: #f0f9eb;
+  color: #67c23a;
+  border: 1px solid #e1f3d8;
+}
+
+.check-summary-warning {
+  background: #fdf6ec;
+  color: #e6a23c;
+  border: 1px solid #faecd8;
+}
+
+.check-summary-block {
+  background: #fef0f0;
+  color: #f56c6c;
+  border: 1px solid #fde2e2;
+}
+
+.check-summary-icon {
+  font-size: 20px;
+}
+
+.check-items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.check-item {
+  border-radius: 6px;
+  padding: 12px 14px;
+  border: 1px solid #ebeef5;
+}
+
+.check-item-block {
+  background: #fef0f0;
+  border-color: #fbc4c4;
+}
+
+.check-item-warning {
+  background: #fdf6ec;
+  border-color: #f5dab1;
+}
+
+.check-item-info {
+  background: #f4f4f5;
+  border-color: #d3d4d6;
+}
+
+.check-item-clean {
+  background: #f0f9eb;
+  border-color: #e1f3d8;
+}
+
+.check-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.check-item-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #303133;
+}
+
+.check-item-count {
+  margin-left: auto;
+  font-size: 13px;
+  color: #909399;
+}
+
+.check-item-desc {
+  font-size: 13px;
+  color: #606266;
+  line-height: 20px;
+}
+
+.force-carry-forward-section {
+  margin-top: 12px;
 }
 </style>

@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.system.mapper.SysNotificationMapper">
+
+    <resultMap type="com.junsong.system.domain.SysNotification" id="SysNotificationResult">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="type" column="type"/>
+        <result property="linkUrl" column="link_url"/>
+        <result property="bizId" column="biz_id"/>
+        <result property="isRead" column="is_read"/>
+        <result property="createTime" column="create_time"/>
+        <result property="readTime" column="read_time"/>
+    </resultMap>
+
+    <sql id="selectSysNotificationVo">
+        select id, user_id, title, content, type, link_url, biz_id, is_read, create_time, read_time
+        from sys_notification
+    </sql>
+
+    <select id="selectNotificationById" parameterType="Long" resultMap="SysNotificationResult">
+        <include refid="selectSysNotificationVo"/>
+        <where>
+            id = #{id}
+        </where>
+    </select>
+
+    <select id="selectNotificationList" parameterType="com.junsong.system.domain.SysNotification"
+            resultMap="SysNotificationResult">
+        <include refid="selectSysNotificationVo"/>
+        <where>
+            <if test="userId != null">and user_id = #{userId}</if>
+            <if test="type != null and type != ''">and type = #{type}</if>
+            <if test="isRead != null and isRead != ''">and is_read = #{isRead}</if>
+            <if test="title != null and title != ''">and title like concat('%', #{title}, '%')</if>
+        </where>
+        order by is_read asc, create_time desc
+    </select>
+
+    <select id="selectUnreadCount" parameterType="Long" resultType="int">
+        select count(*) from sys_notification
+        <where>
+            user_id = #{userId} and is_read = '0'
+        </where>
+    </select>
+
+    <insert id="insertNotification" parameterType="com.junsong.system.domain.SysNotification"
+            useGeneratedKeys="true" keyProperty="id">
+        insert ignore into sys_notification
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="title != null and title != ''">title,</if>
+            <if test="content != null">content,</if>
+            <if test="type != null and type != ''">type,</if>
+            <if test="linkUrl != null">link_url,</if>
+            <if test="bizId != null">biz_id,</if>
+            <if test="isRead != null and isRead != ''">is_read,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId},</if>
+            <if test="title != null and title != ''">#{title},</if>
+            <if test="content != null">#{content},</if>
+            <if test="type != null and type != ''">#{type},</if>
+            <if test="linkUrl != null">#{linkUrl},</if>
+            <if test="bizId != null">#{bizId},</if>
+            <if test="isRead != null and isRead != ''">#{isRead},</if>
+        </trim>
+    </insert>
+
+    <update id="markAsRead" parameterType="Long">
+        update sys_notification
+        set is_read = '1',
+            read_time = now()
+        where id = #{id}
+    </update>
+
+    <update id="markAllAsRead" parameterType="Long">
+        update sys_notification
+        set is_read = '1',
+            read_time = now()
+        where user_id = #{userId}
+          and is_read = '0'
+    </update>
+
+    <delete id="deleteNotificationByIds">
+        delete from sys_notification where id in
+        <foreach collection="array" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <select id="countByUserTypeBizId" resultType="int">
+        select count(1)
+        from sys_notification
+        where user_id = #{userId}
+          and type = #{type}
+          and biz_id = #{bizId}
+    </select>
+
+</mapper>

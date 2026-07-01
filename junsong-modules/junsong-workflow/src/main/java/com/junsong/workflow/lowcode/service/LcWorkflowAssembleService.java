@@ -3,12 +3,14 @@ package com.junsong.workflow.lowcode.service;
 import com.junsong.workflow.lowcode.domain.LcBizBranchRule;
 import com.junsong.workflow.lowcode.domain.LcBizField;
 import com.junsong.workflow.lowcode.domain.LcBizNodeAssignee;
+import com.junsong.workflow.lowcode.domain.LcBizObject;
 import com.junsong.workflow.lowcode.engine.LcBranchRuleEngine;
 import com.junsong.workflow.service.identity.DeptUserResolveService;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
@@ -75,6 +77,17 @@ public class LcWorkflowAssembleService
                 {
                     variables.put(varName, value);
                 }
+
+                // 会签/或签：生成人员集合变量 assigneeList_{taskKey}
+                String miType = assignee.getMultiInstanceType();
+                if (miType != null && !"none".equals(miType) && !miType.isBlank())
+                {
+                    List<String> assigneeList = resolveAssigneeList(assignee, form, initiator);
+                    if (assigneeList != null && !assigneeList.isEmpty())
+                    {
+                        variables.put("assigneeList_" + assignee.getTaskKey(), assigneeList);
+                    }
+                }
             }
         }
 
@@ -98,6 +111,47 @@ public class LcWorkflowAssembleService
             }
         }
         return variables;
+    }
+
+    /**
+     * 装配子流程（callActivity）输入变量。
+     * <p>
+     * 在主流程启动前调用：依据业务对象配置的 subProcessKey 判断是否需要调用子流程。
+     * 若配置了子流程，则将主流程变量映射为子流程的输入变量。
+     * <p>
+     * 当前为最小实现：未配置 subProcessKey 时直接返回空 Map 跳过；已配置时默认把
+     * 主流程全部变量透传给子流程。
+     *
+     * @param bizCode   业务编码
+     * @param variables 已装配的主流程变量
+     * @return 子流程输入变量映射；未配置子流程时返回空 Map
+     */
+    public Map<String, Object> assembleCallActivity(String bizCode, Map<String, Object> variables)
+    {
+        Map<String, Object> subProcessVariables = new LinkedHashMap<>();
+        if (bizCode == null || bizCode.isBlank())
+        {
+            return subProcessVariables;
+        }
+        LcBizObject bizObject = metadataService.selectBizObjectByBizCode(bizCode);
+        if (bizObject == null)
+        {
+            return subProcessVariables;
+        }
+        String subProcessKey = bizObject.getSubProcessKey();
+        if (subProcessKey == null || subProcessKey.isBlank())
+        {
+            return subProcessVariables;
+        }
+        // TODO: 实现主流程变量到子流程输入变量的精细化映射。
+        //  当前最小实现：将主流程变量整体透传给子流程；后续可基于 subProcessKey
+        //  解析子流程输入参数定义，做字段级映射（in/out source 表达式）。
+        if (variables != null)
+        {
+            subProcessVariables.putAll(variables);
+        }
+        subProcessVariables.put("__subProcessKey", subProcessKey);
+        return subProcessVariables;
     }
 
     /**
@@ -180,6 +234,97 @@ public class LcWorkflowAssembleService
             default:
                 return null;
         }
+    }
+
+    /**
+     * 解析会签人员列表。
+     */
+    private List<String> resolveAssigneeList(LcBizNodeAssignee assignee, Map<String, Object> form, String initiator)
+    {
+        String source = assignee.getAssigneeSource();
+        String value = assignee.getAssigneeValue();
+        List<String> result = new ArrayList<>();
+        if (source == null) return result;
+
+        switch (source)
+        {
+            case "FIXED_USER":
+                if (value != null && !value.isBlank())
+                {
+                    for (String u : value.split(",")) result.add(u.trim());
+                }
+                break;
+            case "FIXED_ROLE":
+            case "ROLE":
+                if (value != null)
+                {
+                    List<String> users = deptUserResolveService.getUsersByRoleCode(value);
+                    if (users != null) result.addAll(users);
+                }
+                break;
+            case "DEPT":
+                if (value != null)
+                {
+                    List<String> users = deptUserResolveService.getUsersByDeptId(value);
+                    if (users != null) result.addAll(users);
+                }
+                break;
+            case "FORM_FIELD_USER":
+                if (value != null)
+                {
+                    String username = asText(form.get(value));
+                    if (username != null && !username.isBlank()) result.add(username);
+                }
+                break;
+            case "INITIATOR":
+                if (initiator != null) result.add(initiator);
+                break;
+            case "INITIATOR_LEADER":
+                if (initiator != null)
+                {
+                    String leader = deptUserResolveService.getDirectLeader(initiator);
+                    if (leader != null) result.add(leader);
+                }
+                break;
+            case "DEPT_LEADER":
+                if (initiator != null)
+                {
+                    String leader = deptUserResolveService.getDeptLeader(initiator);
+                    if (leader != null) result.add(leader);
+                }
+                break;
+            case "EXPRESSION":
+                String expr = assignee.getAssigneeExpr();
+                if (expr != null && !expr.isBlank())
+                {
+                    Map<String, Object> vars = new LinkedHashMap<>();
+                    vars.put("initiator", initiator);
+                    if (form != null) vars.putAll(form);
+                    Object evalResult = expressionService.evaluateSpEL(expr, vars);
+                    if (evalResult instanceof String && !((String) evalResult).isBlank())
+                    {
+                        result.add((String) evalResult);
+                    }
+                    else if (evalResult instanceof Iterable)
+                    {
+                        @SuppressWarnings("unchecked")
+                        Iterable<String> iterable = (Iterable<String>) evalResult;
+                        iterable.forEach(result::add);
+                    }
+                }
+                break;
+            default:
+                break;
+        }
+        return result;
+    }
+
+    /**
+     * 将对象安全地转为字符串。
+     */
+    private static String asText(Object value)
+    {
+        return value == null ? null : value.toString();
     }
 
 }

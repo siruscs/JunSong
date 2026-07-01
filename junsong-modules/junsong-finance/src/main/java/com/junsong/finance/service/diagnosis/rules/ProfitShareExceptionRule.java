@@ -62,7 +62,7 @@ public class ProfitShareExceptionRule implements FinanceDiagnosisRule {
                 BigDecimal.ZERO,
                 impactAmount,
                 "查看分润结算看板，处理异常记录",
-                "/finance/report/profitShare",
+                "/finance/profitShareSettlement",
                 "{}"
         ));
         return results;

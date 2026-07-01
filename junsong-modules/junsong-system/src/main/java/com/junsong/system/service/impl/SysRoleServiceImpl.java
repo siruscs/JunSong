@@ -2,16 +2,19 @@ package com.junsong.system.service.impl;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.junsong.common.core.constant.CacheConstants;
 import com.junsong.common.core.constant.UserConstants;
 import com.junsong.common.core.exception.ServiceException;
 import com.junsong.common.core.utils.SpringUtils;
 import com.junsong.common.core.utils.StringUtils;
+import com.junsong.common.redis.service.RedisService;
 import com.junsong.common.datascope.annotation.DataScope;
 import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.system.api.domain.SysRole;
@@ -43,6 +46,18 @@ public class SysRoleServiceImpl implements ISysRoleService
 
     @Autowired
     private SysRoleDeptMapper roleDeptMapper;
+
+    @Autowired
+    private RedisService redisService;
+
+    private void clearMenuCache()
+    {
+        Collection<String> keys = redisService.keys(CacheConstants.SYS_MENU_KEY + "*");
+        if (keys != null && !keys.isEmpty())
+        {
+            redisService.deleteObject(keys);
+        }
+    }
 
     /**
      * 根据条件分页查询角色数据
@@ -233,9 +248,10 @@ public class SysRoleServiceImpl implements ISysRoleService
     @Transactional(rollbackFor = Exception.class)
     public int insertRole(SysRole role)
     {
-        // 新增角色信息
         roleMapper.insertRole(role);
-        return insertRoleMenu(role);
+        int rows = insertRoleMenu(role);
+        clearMenuCache();
+        return rows;
     }
 
     /**
@@ -248,11 +264,11 @@ public class SysRoleServiceImpl implements ISysRoleService
     @Transactional(rollbackFor = Exception.class)
     public int updateRole(SysRole role)
     {
-        // 修改角色信息
         roleMapper.updateRole(role);
-        // 删除角色与菜单关联
         roleMenuMapper.deleteRoleMenuByRoleId(role.getRoleId());
-        return insertRoleMenu(role);
+        int rows = insertRoleMenu(role);
+        clearMenuCache();
+        return rows;
     }
 
     /**
@@ -264,7 +280,9 @@ public class SysRoleServiceImpl implements ISysRoleService
     @Override
     public int updateRoleStatus(SysRole role)
     {
-        return roleMapper.updateRole(role);
+        int rows = roleMapper.updateRole(role);
+        clearMenuCache();
+        return rows;
     }
 
     /**
@@ -351,11 +369,11 @@ public class SysRoleServiceImpl implements ISysRoleService
     @Transactional(rollbackFor = Exception.class)
     public int deleteRoleById(Long roleId)
     {
-        // 删除角色与菜单关联
         roleMenuMapper.deleteRoleMenuByRoleId(roleId);
-        // 删除角色与部门关联
         roleDeptMapper.deleteRoleDeptByRoleId(roleId);
-        return roleMapper.deleteRoleById(roleId);
+        int rows = roleMapper.deleteRoleById(roleId);
+        clearMenuCache();
+        return rows;
     }
 
     /**
@@ -378,11 +396,11 @@ public class SysRoleServiceImpl implements ISysRoleService
                 throw new ServiceException(String.format("%1$s已分配,不能删除", role.getRoleName()));
             }
         }
-        // 删除角色与菜单关联
         roleMenuMapper.deleteRoleMenu(roleIds);
-        // 删除角色与部门关联
         roleDeptMapper.deleteRoleDept(roleIds);
-        return roleMapper.deleteRoleByIds(roleIds);
+        int rows = roleMapper.deleteRoleByIds(roleIds);
+        clearMenuCache();
+        return rows;
     }
 
     /**
@@ -394,7 +412,9 @@ public class SysRoleServiceImpl implements ISysRoleService
     @Override
     public int deleteAuthUser(SysUserRole userRole)
     {
-        return userRoleMapper.deleteUserRoleInfo(userRole);
+        int rows = userRoleMapper.deleteUserRoleInfo(userRole);
+        clearMenuCache();
+        return rows;
     }
 
     /**
@@ -407,7 +427,9 @@ public class SysRoleServiceImpl implements ISysRoleService
     @Override
     public int deleteAuthUsers(Long roleId, Long[] userIds)
     {
-        return userRoleMapper.deleteUserRoleInfos(roleId, userIds);
+        int rows = userRoleMapper.deleteUserRoleInfos(roleId, userIds);
+        clearMenuCache();
+        return rows;
     }
 
     /**
@@ -420,7 +442,6 @@ public class SysRoleServiceImpl implements ISysRoleService
     @Override
     public int insertAuthUsers(Long roleId, Long[] userIds)
     {
-        // 新增用户与角色管理
         List<SysUserRole> list = new ArrayList<SysUserRole>();
         for (Long userId : userIds)
         {
@@ -429,6 +450,8 @@ public class SysRoleServiceImpl implements ISysRoleService
             ur.setRoleId(roleId);
             list.add(ur);
         }
-        return userRoleMapper.batchUserRole(list);
+        int rows = userRoleMapper.batchUserRole(list);
+        clearMenuCache();
+        return rows;
     }
 }

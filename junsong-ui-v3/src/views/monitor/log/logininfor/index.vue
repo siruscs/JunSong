@@ -25,6 +25,7 @@
       <el-form-item>
         <el-button type="primary" @click="handleQuery">搜索</el-button>
         <el-button @click="resetQuery">重置</el-button>
+        <el-button type="primary" :icon="Unlock" :disabled="!queryParams.userName" @click="handleUnlockByQuery" v-hasPermi="['monitor:logininfor:unlock', 'system:logininfor:unlock']">解锁该用户</el-button>
       </el-form-item>
     </el-form>
 
@@ -173,6 +174,15 @@ function handleClean() {
 
 function handleUnlock() {
   const username = names.value[0]
+  unlockByUserName(username)
+}
+
+function handleUnlockByQuery() {
+  if (!queryParams.userName) return
+  unlockByUserName(queryParams.userName)
+}
+
+function unlockByUserName(username: string) {
   ElMessageBox.confirm('是否确认解锁用户"' + username + '"数据项？', '警告', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
@@ -181,6 +191,7 @@ function handleUnlock() {
     .then(() => unlockUser(username))
     .then(() => {
       ElMessage.success('用户' + username + '解锁成功')
+      getList()
     })
     .catch(() => {})
 }

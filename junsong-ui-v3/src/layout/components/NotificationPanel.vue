@@ -84,6 +84,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Bell, Refresh, Delete } from '@element-plus/icons-vue'
 import { parseTime } from '@/utils/junsong'
+import { normalizeNotificationLink } from '@/utils/notificationRoute'
 import {
   listNotification,
   getUnreadCount,
@@ -180,10 +181,10 @@ function handleClick(item: NotificationItem) {
     // 已驳回：跳转到流程实例列表
     router.push(`/workflow/instance?processInstanceId=${item.bizId}`)
   } else if (item.type === 'register_audit') {
-    // 注册审核
-    router.push(item.linkUrl || '/system/user')
+    router.push(normalizeNotificationLink(item.linkUrl) || '/system/user')
   } else if (item.linkUrl) {
-    router.push(item.linkUrl)
+    const target = normalizeNotificationLink(item.linkUrl)
+    router.push(target)
   } else {
     handleRead(item.id)
   }

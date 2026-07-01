@@ -45,7 +45,7 @@ public class ExpenseSpikeRule implements FinanceDiagnosisRule {
                 ctx.getPrevMonthExpense(),
                 ctx.getMonthExpense().subtract(ctx.getPrevMonthExpense()),
                 "查看费用异常分析，排查突增费用项",
-                "/finance/report/expense",
+                "/finance/expenseAnomaly",
                 "{\"timeType\":\"month\"}"
         ));
         return results;

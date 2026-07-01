@@ -50,7 +50,7 @@ public class MemberContributionDropRule implements FinanceDiagnosisRule {
                 RATIO_THRESHOLD,
                 ctx.getMonthSales().subtract(ctx.getMemberSales()),
                 "查看会员贡献报表，分析会员复购和活动效果",
-                "/member/report/member",
+                "/member/contribution",
                 "{\"timeType\":\"month\"}"
         ));
         return results;

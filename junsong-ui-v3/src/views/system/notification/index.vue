@@ -175,6 +175,7 @@ import {
   Bell, Message, Tickets, CircleCheck, Search, Refresh, Check, Delete,
 } from '@element-plus/icons-vue'
 import { parseTime } from '@/utils/junsong'
+import { normalizeNotificationLink } from '@/utils/notificationRoute'
 import {
   listNotification,
   getUnreadCount,
@@ -376,9 +377,10 @@ function handleView(row: NotificationItem) {
   } else if ((row.type === 'wf_finished' || row.type === 'wf_rejected') && row.bizId) {
     router.push(`/workflow/instance?processInstanceId=${row.bizId}`)
   } else if (row.type === 'register_audit') {
-    router.push(row.linkUrl || '/system/user')
+    router.push(normalizeNotificationLink(row.linkUrl) || '/system/user')
   } else if (row.linkUrl) {
-    router.push(row.linkUrl)
+    const target = normalizeNotificationLink(row.linkUrl)
+    router.push(target)
   }
 }
 

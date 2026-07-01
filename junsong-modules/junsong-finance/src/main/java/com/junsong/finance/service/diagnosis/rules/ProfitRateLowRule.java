@@ -44,7 +44,7 @@ public class ProfitRateLowRule implements FinanceDiagnosisRule {
                 PROFIT_RATE_THRESHOLD,
                 ctx.getNetProfit(),
                 "查看利润报表，分析成本与收入结构",
-                "/finance/report/profit",
+                "/finance/profitDrilldown",
                 "{\"timeType\":\"month\"}"
         ));
         return results;

@@ -45,7 +45,7 @@ public class SalesDropRule implements FinanceDiagnosisRule {
                 ctx.getPrevMonthSales(),
                 ctx.getPrevMonthSales().subtract(ctx.getMonthSales()),
                 "查看销售经营分析，定位下滑门店和品类",
-                "/finance/report/sale",
+                "/finance/salesOperation",
                 "{\"timeType\":\"month\"}"
         ));
         return results;

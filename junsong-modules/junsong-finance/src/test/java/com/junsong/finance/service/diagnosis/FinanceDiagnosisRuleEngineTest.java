@@ -632,12 +632,12 @@ class FinanceDiagnosisRuleEngineTest {
         }
 
         // Verify specific target routes per governance plan
-        assertEquals("/finance/report/sale", byRuleId.get("SALES_DROP").getTargetRoute());
-        assertEquals("/finance/report/expense", byRuleId.get("EXPENSE_SPIKE").getTargetRoute());
-        assertEquals("/finance/report/profit", byRuleId.get("PROFIT_RATE_DROP").getTargetRoute());
+        assertEquals("/finance/salesOperation", byRuleId.get("SALES_DROP").getTargetRoute());
+        assertEquals("/finance/expenseAnomaly", byRuleId.get("EXPENSE_SPIKE").getTargetRoute());
+        assertEquals("/finance/profitDrilldown", byRuleId.get("PROFIT_RATE_DROP").getTargetRoute());
         assertEquals("/finance/expense", byRuleId.get("PENDING_VERIFY").getTargetRoute());
-        assertEquals("/finance/report/profitShare", byRuleId.get("PROFIT_SHARE_EXCEPTION").getTargetRoute());
-        assertEquals("/member/report/member", byRuleId.get("MEMBER_CONTRIBUTION_DROP").getTargetRoute());
+        assertEquals("/finance/profitShareSettlement", byRuleId.get("PROFIT_SHARE_EXCEPTION").getTargetRoute());
+        assertEquals("/member/contribution", byRuleId.get("MEMBER_CONTRIBUTION_DROP").getTargetRoute());
     }
 
     /**
@@ -656,7 +656,7 @@ class FinanceDiagnosisRuleEngineTest {
 
         List<FinanceDiagnosisResult> results = rule.evaluate(c);
         assertEquals(1, results.size());
-        assertEquals("/member/report/member", results.get(0).getTargetRoute());
+        assertEquals("/member/contribution", results.get(0).getTargetRoute());
     }
 
     /**

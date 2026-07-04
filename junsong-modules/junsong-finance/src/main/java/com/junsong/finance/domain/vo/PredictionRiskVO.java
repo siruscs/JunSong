@@ -22,6 +22,7 @@ public class PredictionRiskVO {
     private String predictionType;
     private String predictionLabel;
 
+    private Long actionId;
     private Integer score = 0;
     private String level = "LOW";
 
@@ -43,6 +44,8 @@ public class PredictionRiskVO {
     public void setPredictionType(String predictionType) { this.predictionType = predictionType; }
     public String getPredictionLabel() { return predictionLabel; }
     public void setPredictionLabel(String predictionLabel) { this.predictionLabel = predictionLabel; }
+    public Long getActionId() { return actionId; }
+    public void setActionId(Long actionId) { this.actionId = actionId; }
     public Integer getScore() { return score; }
     public void setScore(Integer score) { this.score = score == null ? 0 : score; }
     public String getLevel() { return level; }

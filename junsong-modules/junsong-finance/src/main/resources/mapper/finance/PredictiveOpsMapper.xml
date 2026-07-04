@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.PredictiveOpsMapper">
+
+    <sql id="paramsDeptScope">
+        <if test="params.deptId != null">and dept_id = #{params.deptId}</if>
+        <if test="params.deptIds != null and params.deptIds.size() > 0">
+            and dept_id in
+            <foreach collection="params.deptIds" item="deptId" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+    </sql>
+
+    <sql id="paramsDeptScopeNoAlias">
+        <if test="params.deptId != null">and c.dept_id = #{params.deptId}</if>
+        <if test="params.deptIds != null and params.deptIds.size() > 0">
+            and c.dept_id in
+            <foreach collection="params.deptIds" item="deptId" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+    </sql>
+
+    <sql id="paramsDeptScopePosition">
+        <if test="params.deptId != null">and p.dept_id = #{params.deptId}</if>
+        <if test="params.deptIds != null and params.deptIds.size() > 0">
+            and p.dept_id in
+            <foreach collection="params.deptIds" item="deptId" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+    </sql>
+
+    <!-- R24 现金流近 N 天偏差率绝对值（取最近 5 条 R16 快照的偏差率平均） -->
+    <select id="selectRecentCashflowDeviation" resultType="java.math.BigDecimal">
+        select coalesce(avg(abs(deviation_rate)), 0)
+        from finance_cashflow_forecast_snapshot
+        where forecast_date &gt;= date_sub(curdate(), interval 30 day)
+        <if test="params.deptId != null">and dept_id = #{params.deptId}</if>
+        <if test="params.deptIds != null and params.deptIds.size() > 0">
+            and dept_id in
+            <foreach collection="params.deptIds" item="deptId" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+    </select>
+
+    <!-- R24 现金流近 7 天净流入：实收 - 已核销费用 -->
+    <select id="selectRecentNetCashflow" resultType="java.math.BigDecimal">
+        select coalesce((
+            select sum(p.payment_amount) from fin_sale_payment p
+            join fin_sale_record r on p.sale_id = r.sale_id
+            where p.del_flag = '0'
+              and p.payment_date &gt;= date_sub(curdate(), interval 7 day)
+              <if test="params.deptId != null">and r.dept_id = #{params.deptId}</if>
+              <if test="params.deptIds != null and params.deptIds.size() > 0">
+                  and r.dept_id in
+                  <foreach collection="params.deptIds" item="deptId" open="(" separator="," close=")">
+                      #{deptId}
+                  </foreach>
+              </if>
+        ), 0) - coalesce((
+            select sum(e.expense_amount) from fin_expense e
+            where e.del_flag = '0'
+              and e.verify_status = 'VERIFIED'
+              and e.expense_date &gt;= date_sub(curdate(), interval 7 day)
+              <include refid="paramsDeptScope"/>
+        ), 0)
+    </select>
+
+    <!-- R24 应收 R15 风险行（含历史跳票次数） -->
+    <select id="selectReceivableRiskRows" resultType="java.util.LinkedHashMap">
+        select c.collection_id as collectionId,
+               c.sale_id as saleId,
+               c.dept_id as deptId,
+               c.collection_status as collectionStatus,
+               c.promised_pay_date as promisedPayDate,
+               c.last_follow_time as lastFollowTime,
+               c.age_days as ageDays,
+               c.unpaid_amount as unpaidAmount,
+               c.member_id as memberId,
+               coalesce(miss.missCount, 0) as historyMissCount
+        from finance_receivable_collection c
+        left join (
+            select sale_id, count(1) as missCount
+            from finance_receivable_collection
+            where collection_status = 'PROMISED'
+              and promised_pay_date is not null
+              and promised_pay_date &lt; curdate()
+            group by sale_id
+        ) miss on miss.sale_id = c.sale_id
+        where c.del_flag = '0'
+          and c.collection_status in ('PENDING', 'PROMISED')
+        <include refid="paramsDeptScopeNoAlias"/>
+        order by c.unpaid_amount desc
+        limit 50
+    </select>
+
+    <!-- R24 库存风险行 -->
+    <select id="selectStockRiskRows" resultType="java.util.LinkedHashMap">
+        select p.dept_id as deptId,
+               p.product_id as productId,
+               p.quantity as currentQuantity,
+               coalesce(out.recentOutbound, 0) as recentOutbound,
+               coalesce(snap.snapshotDate, '1970-01-01') as snapshotDate,
+               case
+                 when exists (
+                   select 1 from fin_stock_snapshot s
+                   where s.dept_id = p.dept_id
+                     and s.product_id = p.product_id
+                     and s.snapshot_date = curdate()
+                     and s.quantity != p.quantity
+                 ) then 1 else 0
+               end as snapshotMismatch
+        from fin_stock_position p
+        left join (
+            select dept_id, product_id, sum(abs(after_quantity - before_quantity)) as recentOutbound
+            from fin_stock_ledger
+            where del_flag = '0'
+              and biz_type = 'OUTBOUND'
+              and ledger_date &gt;= date_sub(curdate(), interval 7 day)
+            group by dept_id, product_id
+        ) out on out.dept_id = p.dept_id and out.product_id = p.product_id
+        left join (
+            select dept_id, product_id, max(snapshot_date) as snapshotDate
+            from fin_stock_snapshot
+            group by dept_id, product_id
+        ) snap on snap.dept_id = p.dept_id and snap.product_id = p.product_id
+        where p.quantity != 0
+           or exists (
+              select 1 from fin_stock_ledger l
+              where l.dept_id = p.dept_id
+                and l.product_id = p.product_id
+                and l.del_flag = '0'
+                and l.after_quantity &lt; 0
+           )
+        <include refid="paramsDeptScopePosition"/>
+        limit 50
+    </select>
+
+    <insert id="insertPredictionSample" parameterType="com.junsong.finance.domain.FinancePredictionSample" useGeneratedKeys="true" keyProperty="sampleId">
+        insert into finance_prediction_sample
+        (tenant_id, dept_id, prediction_type, source_id, sample_date, window_days,
+         score, level, forecast_amount, actual_amount, deviation_amount, deviation_rate,
+         basis, create_by, create_time)
+        values
+        (#{tenantId}, #{deptId}, #{predictionType}, #{sourceId}, #{sampleDate}, #{windowDays},
+         #{score}, #{level}, #{forecastAmount}, #{actualAmount}, #{deviationAmount}, #{deviationRate},
+         #{basis}, #{createBy}, #{createTime})
+    </insert>
+
+    <insert id="insertPredictionFactor" parameterType="com.junsong.finance.domain.FinancePredictionFactor" useGeneratedKeys="true" keyProperty="factorId">
+        insert into finance_prediction_factor
+        (sample_id, factor_code, factor_name, factor_value, factor_weight, explanation, create_time)
+        values
+        (#{sampleId}, #{factorCode}, #{factorName}, #{factorValue}, #{factorWeight}, #{explanation}, #{createTime})
+    </insert>
+
+    <insert id="insertWhatIfSimulation" parameterType="com.junsong.finance.domain.FinanceWhatIfSimulation" useGeneratedKeys="true" keyProperty="simulationId">
+        insert into finance_what_if_simulation
+        (tenant_id, dept_id, simulation_date, base_pressure_score, simulated_pressure_score, delta_score,
+         input_json, result_json, create_by, create_time)
+        values
+        (#{tenantId}, #{deptId}, #{simulationDate}, #{basePressureScore}, #{simulatedPressureScore}, #{deltaScore},
+         #{inputJson}, #{resultJson}, #{createBy}, #{createTime})
+    </insert>
+</mapper>

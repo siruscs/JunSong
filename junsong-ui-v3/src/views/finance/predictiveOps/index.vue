@@ -61,7 +61,9 @@
       <template #header><span>what-if 模拟（只读，不修改任何业务表）</span></template>
       <el-form :inline="true" :model="simulationForm" class="what-if-form">
         <el-form-item label="门店/部门">
-          <el-input-number v-model="simulationForm.deptId" :min="0" :step="1" controls-position="right" placeholder="留空为全量" />
+          <el-select v-model="simulationForm.deptId" placeholder="由后端授权门店收口" clearable style="width: 220px">
+            <el-option v-for="dept in deptOptions" :key="dept.deptId" :label="dept.deptName" :value="dept.deptId" />
+          </el-select>
         </el-form-item>
         <el-form-item label="窗口天数">
           <el-input-number v-model="simulationForm.windowDays" :min="1" :max="30" :step="1" controls-position="right" />
@@ -134,12 +136,15 @@ import {
   getPredictiveOpsDashboard,
   simulatePredictiveOpsWhatIf,
 } from '@/api/finance/predictiveOps'
+import { useUserStore } from '@/stores/user'
 
 const loading = ref(false)
 const snapshotLoading = ref(false)
 const simulating = ref(false)
 const dashboard = ref<any>({})
 const simulationResult = ref<any>(null)
+const userStore = useUserStore()
+const deptOptions = computed<any[]>(() => userStore.depts || [])
 
 const simulationForm = reactive({
   deptId: undefined as number | undefined,

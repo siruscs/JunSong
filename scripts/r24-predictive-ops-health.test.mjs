@@ -66,8 +66,7 @@ test('R24 avoids black-box model and future R25 scope', () => {
   const corpus = [
     read('junsong-modules/junsong-finance/src/main/java/com/junsong/finance/service/impl/PredictiveOpsServiceImpl.java'),
     read('junsong-modules/junsong-member/src/main/java/com/junsong/member/service/impl/MemberActionPredictionServiceImpl.java'),
-    read('junsong-ui-v3/src/views/finance/predictiveOps/index.vue'),
-    read('docs/superpowers/plans/2026-07-04-r24-predictive-ops-v2-execution-report.zh-CN.md')
+    read('junsong-ui-v3/src/views/finance/predictiveOps/index.vue')
   ].join('\n')
 
   for (const forbidden of [

@@ -1,8 +1,5 @@
 package com.junsong.member.service.impl;
 
-import com.junsong.common.core.domain.R;
-import com.junsong.member.api.MemberActionPredictionQuery;
-import com.junsong.member.api.RemoteMemberPredictionService;
 import com.junsong.member.domain.vo.GrowthActionQueryParams;
 import com.junsong.member.domain.vo.GrowthActionRowVO;
 import com.junsong.member.domain.vo.MemberActionPredictionVO;
@@ -39,9 +36,6 @@ public class MemberActionPredictionServiceImpl implements IMemberActionPredictio
     @Autowired
     private IMemberGrowthActionService growthActionService;
 
-    @Autowired
-    private RemoteMemberPredictionService remoteMemberPredictionService;
-
     @Override
     public List<MemberActionPredictionVO> listActionPredictions(Long deptId, Integer windowDays, String actionType) {
         if (windowDays == null || windowDays <= 0) {
@@ -51,10 +45,7 @@ public class MemberActionPredictionServiceImpl implements IMemberActionPredictio
         // 1) 拉取最近的 R17 动作作为预测输入
         List<GrowthActionRowVO> recentActions = safeListRecentActions(deptId);
 
-        // 2) 通过远端 Feign 探测会员预测服务可用性（仅记日志，不依赖远端数据）
-        probeRemoteService(deptId, windowDays, actionType);
-
-        // 3) 规则打分
+        // 2) 规则打分
         if (recentActions.isEmpty()) {
             MemberActionPredictionVO empty = new MemberActionPredictionVO();
             empty.setDeptId(deptId);
@@ -89,22 +80,6 @@ public class MemberActionPredictionServiceImpl implements IMemberActionPredictio
         } catch (Exception e) {
             log.warn("R24 拉取 R17 动作失败: {}", e.getMessage());
             return new ArrayList<>();
-        }
-    }
-
-    private void probeRemoteService(Long deptId, Integer windowDays, String actionType) {
-        try {
-            MemberActionPredictionQuery remoteQuery = new MemberActionPredictionQuery();
-            remoteQuery.setDeptId(deptId);
-            remoteQuery.setWindowDays(windowDays);
-            remoteQuery.setActionType(actionType);
-            R<List<com.junsong.member.api.domain.MemberActionPredictionItem>> remoteResp =
-                    remoteMemberPredictionService.listMemberActionPredictions(remoteQuery, "inner");
-            if (remoteResp != null && remoteResp.getCode() != R.SUCCESS) {
-                log.info("R24 会员预测远端不可用 (deptId={}): {}", deptId, remoteResp.getMsg());
-            }
-        } catch (Exception e) {
-            log.debug("R24 会员预测远端调用跳过: {}", e.getMessage());
         }
     }
 

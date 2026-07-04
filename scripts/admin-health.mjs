@@ -149,6 +149,11 @@ export function createAdminHealthChecks({ includeDev = false } = {}) {
       command: [NODE, '--test', 'scripts/r24-predictive-ops-health.test.mjs'],
       timeoutMs: 30_000,
     },
+    {
+      name: 'R25 enterprise hardening health',
+      command: [NODE, '--test', 'scripts/r25-enterprise-hardening-health.test.mjs'],
+      timeoutMs: 30_000,
+    },
   ]
 
   if (includeDev) {

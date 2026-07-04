@@ -13,7 +13,7 @@ test('createAdminHealthChecks returns offline checks by default', () => {
 
   assert.deepEqual(
     checks.map((check) => check.name),
-    ['module overview verifier', 'admin menu health unit tests', 'admin menu static health', 'backend permission health (full scan)', 'mybatis mapper empty statement unit tests', 'mybatis mapper empty statement scan', 'finance sql health unit tests', 'list order health unit tests', 'expense verified edit health unit tests', 'stock ledger health unit tests', 'stock negative sale config health unit tests', 'overview real data health unit tests', 'overview real data static health', 'store dashboard evolution health unit tests', 'r9 closure health unit tests', 'r10 readiness health unit tests', 'r10 config quality health unit tests', 'r11 readiness health unit tests', 'r11 store health knowledge health unit tests', 'r12 action effect health unit tests', 'r13 receivable cashflow health unit tests', 'r14 receivable closure health unit tests', 'r15 receivable command center health unit tests', 'r16 cashflow forecast health unit tests', 'R17 member growth action loop health', 'R18 R1-R18 closure health', 'R19 release governance health', 'R20 metrics governance health', 'R21 operations scheduler health', 'R22 action center touch health', 'R23 open platform health', 'R23 openapi drift check', 'R24 predictive ops health'],
+    ['module overview verifier', 'admin menu health unit tests', 'admin menu static health', 'backend permission health (full scan)', 'mybatis mapper empty statement unit tests', 'mybatis mapper empty statement scan', 'finance sql health unit tests', 'list order health unit tests', 'expense verified edit health unit tests', 'stock ledger health unit tests', 'stock negative sale config health unit tests', 'overview real data health unit tests', 'overview real data static health', 'store dashboard evolution health unit tests', 'r9 closure health unit tests', 'r10 readiness health unit tests', 'r10 config quality health unit tests', 'r11 readiness health unit tests', 'r11 store health knowledge health unit tests', 'r12 action effect health unit tests', 'r13 receivable cashflow health unit tests', 'r14 receivable closure health unit tests', 'r15 receivable command center health unit tests', 'r16 cashflow forecast health unit tests', 'R17 member growth action loop health', 'R18 R1-R18 closure health', 'R19 release governance health', 'R20 metrics governance health', 'R21 operations scheduler health', 'R22 action center touch health', 'R23 open platform health', 'R23 openapi drift check', 'R24 predictive ops health', 'R25 enterprise hardening health'],
   )
   assert.deepEqual(checks[0].command, [NODE, 'scripts/verify-module-overviews.mjs'])
   assert.deepEqual(checks[1].command, [NODE, '--test', 'scripts/admin-menu-health.test.mjs'])
@@ -48,6 +48,7 @@ test('createAdminHealthChecks returns offline checks by default', () => {
   assert.deepEqual(checks[30].command, [NODE, '--test', 'scripts/r23-open-platform-health.test.mjs'])
   assert.deepEqual(checks[31].command, [NODE, 'scripts/r23-openapi-drift-check.mjs'])
   assert.deepEqual(checks[32].command, [NODE, '--test', 'scripts/r24-predictive-ops-health.test.mjs'])
+  assert.deepEqual(checks[33].command, [NODE, '--test', 'scripts/r25-enterprise-hardening-health.test.mjs'])
   assert.ok(checks.some((check) => check.name.includes('R17 member growth action loop health')))
   assert.ok(checks.some((check) => check.name.includes('R18 R1-R18 closure health')))
   assert.ok(checks.some((check) => check.name.includes('R19 release governance health')))
@@ -57,13 +58,14 @@ test('createAdminHealthChecks returns offline checks by default', () => {
   assert.ok(checks.some((check) => check.name.includes('R23 open platform health')))
   assert.ok(checks.some((check) => check.name.includes('R23 openapi drift check')))
   assert.ok(checks.some((check) => check.name.includes('R24 predictive ops health')))
+  assert.ok(checks.some((check) => check.name.includes('R25 enterprise hardening health')))
 })
 
 test('createAdminHealthChecks includes DEV database check when requested', () => {
   const checks = createAdminHealthChecks({ includeDev: true })
 
-  assert.equal(checks.length, 34)
-  assert.deepEqual(checks[33], {
+  assert.equal(checks.length, 35)
+  assert.deepEqual(checks[34], {
     name: 'admin menu DEV database health',
     command: [NODE, 'scripts/admin-menu-health.mjs', '--dev'],
   })
@@ -77,10 +79,10 @@ test('createAdminHealthReport returns machine-readable passing report', () => {
 
   assert.equal(report.ok, true)
   assert.equal(report.mode, 'offline')
-  assert.equal(report.checks.length, 33)
+  assert.equal(report.checks.length, 34)
   assert.deepEqual(
     report.checks.map((check) => check.status),
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   )
 })
 

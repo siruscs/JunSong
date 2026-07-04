@@ -1,6 +1,5 @@
 package com.junsong.system.controller;
 
-import java.util.ArrayList;
 import java.util.List;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,23 +45,11 @@ public class SysConfigController extends BaseController
     {
         startPage();
         List<SysConfig> list = configService.selectConfigList(config);
-        List<SysConfig> masked = new ArrayList<>(list.size());
         for (SysConfig c : list)
         {
-            SysConfig copy = new SysConfig();
-            copy.setConfigId(c.getConfigId());
-            copy.setConfigName(c.getConfigName());
-            copy.setConfigKey(c.getConfigKey());
-            copy.setConfigType(c.getConfigType());
-            copy.setConfigValue(SysConfigServiceImpl.maskConfigValue(c.getConfigKey(), c.getConfigValue()));
-            copy.setCreateBy(c.getCreateBy());
-            copy.setCreateTime(c.getCreateTime());
-            copy.setUpdateBy(c.getUpdateBy());
-            copy.setUpdateTime(c.getUpdateTime());
-            copy.setRemark(c.getRemark());
-            masked.add(copy);
+            c.setConfigValue(SysConfigServiceImpl.maskConfigValue(c.getConfigKey(), c.getConfigValue()));
         }
-        return getDataTable(masked);
+        return getDataTable(list);
     }
 
     @Log(title = "参数管理", businessType = BusinessType.EXPORT)

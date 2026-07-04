@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.system.mapper.SysDataArchiveRunMapper">
+
+    <resultMap type="com.junsong.system.domain.SysDataArchiveRun" id="SysDataArchiveRunResult">
+        <id property="runId" column="run_id"/>
+        <result property="policyId" column="policy_id"/>
+        <result property="tableName" column="table_name"/>
+        <result property="cutoffTime" column="cutoff_time"/>
+        <result property="candidateCount" column="candidate_count"/>
+        <result property="archivedCount" column="archived_count"/>
+        <result property="dryRun" column="dry_run"/>
+        <result property="status" column="status"/>
+        <result property="errorMessage" column="error_message"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+        <result property="tenantId" column="tenant_id"/>
+    </resultMap>
+
+    <insert id="insertArchiveRun" parameterType="com.junsong.system.domain.SysDataArchiveRun"
+            useGeneratedKeys="true" keyProperty="runId">
+        insert into sys_data_archive_run
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="policyId != null">policy_id,</if>
+            <if test="tableName != null and tableName != ''">table_name,</if>
+            <if test="cutoffTime != null">cutoff_time,</if>
+            <if test="candidateCount != null">candidate_count,</if>
+            <if test="archivedCount != null">archived_count,</if>
+            <if test="dryRun != null and dryRun != ''">dry_run,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="errorMessage != null">error_message,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="policyId != null">#{policyId},</if>
+            <if test="tableName != null and tableName != ''">#{tableName},</if>
+            <if test="cutoffTime != null">#{cutoffTime},</if>
+            <if test="candidateCount != null">#{candidateCount},</if>
+            <if test="archivedCount != null">#{archivedCount},</if>
+            <if test="dryRun != null and dryRun != ''">#{dryRun},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="errorMessage != null">#{errorMessage},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+        </trim>
+    </insert>
+
+    <select id="sumLatestCandidateCount" resultType="java.lang.Long">
+        select COALESCE(MAX(candidate_count), 0) from sys_data_archive_run
+        where create_time &gt; DATE_SUB(NOW(), INTERVAL 7 DAY)
+    </select>
+
+    <select id="countArchiveCandidates" resultType="java.lang.Long">
+        select count(*) from ${tableName} where create_time &lt; #{cutoffTime}
+    </select>
+
+</mapper>

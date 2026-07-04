@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.system.mapper.SysOperationAlertRuleMapper">
+
+    <resultMap type="com.junsong.system.domain.SysOperationAlertRule" id="SysOperationAlertRuleResult">
+        <id property="ruleId" column="rule_id"/>
+        <result property="ruleKey" column="rule_key"/>
+        <result property="ruleName" column="rule_name"/>
+        <result property="sourceType" column="source_type"/>
+        <result property="severity" column="severity"/>
+        <result property="thresholdJson" column="threshold_json"/>
+        <result property="enabled" column="enabled"/>
+        <result property="remark" column="remark"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="tenantId" column="tenant_id"/>
+    </resultMap>
+
+    <sql id="selectAlertRuleVo">
+        select rule_id, rule_key, rule_name, source_type, severity, threshold_json, enabled,
+               remark, create_by, create_time, update_by, update_time
+        from sys_operation_alert_rule
+    </sql>
+
+    <select id="selectByRuleKey" parameterType="String" resultMap="SysOperationAlertRuleResult">
+        <include refid="selectAlertRuleVo"/>
+        where rule_key = #{ruleKey}
+    </select>
+
+</mapper>

@@ -15,7 +15,7 @@ import com.junsong.common.security.annotation.RequiresPermissions;
  * 用户委托代理 控制器
  */
 @RestController
-@RequestMapping("/system/delegate")
+@RequestMapping("/delegate")
 public class SysUserDelegateController extends BaseController
 {
     @Autowired

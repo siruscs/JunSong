@@ -41,6 +41,12 @@ public class SysUserDept extends BaseEntity
     /** 用户昵称（非持久化） */
     private String nickName;
 
+    /** 用户名称（非持久化，登录账号） */
+    private String userName;
+
+    /** 部门名称（非持久化） */
+    private String deptName;
+
     public String getNickName()
     {
         return nickName;
@@ -49,6 +55,26 @@ public class SysUserDept extends BaseEntity
     public void setNickName(String nickName)
     {
         this.nickName = nickName;
+    }
+
+    public String getUserName()
+    {
+        return userName;
+    }
+
+    public void setUserName(String userName)
+    {
+        this.userName = userName;
+    }
+
+    public String getDeptName()
+    {
+        return deptName;
+    }
+
+    public void setDeptName(String deptName)
+    {
+        this.deptName = deptName;
     }
 
     public Long getUserDeptId()

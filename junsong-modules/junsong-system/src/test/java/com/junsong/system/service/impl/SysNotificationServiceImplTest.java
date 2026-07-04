@@ -4,7 +4,9 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import com.junsong.system.domain.SysNotification;
@@ -162,6 +164,59 @@ class SysNotificationServiceImplTest
         assertArrayEquals(ids, mapper.lastDeleteIds);
     }
 
+    // ── R7-C Task 5.1: dedup_key 幂等 ──
+
+    @Test
+    void insertNotification_ignoresDuplicateDedupKeyForSameUser()
+    {
+        mapper.insertResult = 1;
+        // 第一次：同 user_id + dedupKey 不存在，应插入成功
+        SysNotification first = buildNotificationWithDedup(
+                100L, "工作台告警", "SYSTEM:LOGIN_FAIL:", "0");
+        int rowsFirst = service.insertNotification(first);
+
+        assertEquals(1, rowsFirst, "首次插入应返回 1");
+        assertEquals(1, pushService.pushCount, "首次应推送");
+        assertEquals(1, mapper.dedupKeysSeen.size(), "应记录 dedupKey");
+
+        // 第二次：相同 user_id + dedupKey，应幂等跳过
+        SysNotification second = buildNotificationWithDedup(
+                100L, "工作台告警-重复", "SYSTEM:LOGIN_FAIL:", "0");
+        int rowsSecond = service.insertNotification(second);
+
+        assertEquals(0, rowsSecond, "重复 dedupKey 应返回 0（幂等跳过）");
+        assertEquals(1, pushService.pushCount, "重复时不应再次推送");
+    }
+
+    @Test
+    void insertNotification_allowsSameDedupKeyForDifferentUsers()
+    {
+        mapper.insertResult = 1;
+        // 不同用户 + 相同 dedupKey，应都能插入
+        SysNotification userA = buildNotificationWithDedup(
+                100L, "告警A", "SYSTEM:LOGIN_FAIL:", "0");
+        SysNotification userB = buildNotificationWithDedup(
+                200L, "告警B", "SYSTEM:LOGIN_FAIL:", "0");
+
+        assertEquals(1, service.insertNotification(userA));
+        assertEquals(1, service.insertNotification(userB));
+        assertEquals(2, pushService.pushCount, "两个不同用户都应推送");
+    }
+
+    @Test
+    void insertNotification_skipsDedupCheckWhenDedupKeyBlank()
+    {
+        mapper.insertResult = 1;
+        // dedupKey 为空时，走原有逻辑，不触发去重查询
+        SysNotification n = buildNotification(null, 100L, "普通通知", "0");
+        n.setDedupKey("");
+
+        int rows = service.insertNotification(n);
+
+        assertEquals(1, rows);
+        assertEquals(0, mapper.countByUserDedupKeyCalls, "空 dedupKey 不应查询去重");
+    }
+
     // ── 辅助方法 ──
 
     private static SysNotification buildNotification(Long id, Long userId, String title, String isRead)
@@ -171,6 +226,13 @@ class SysNotificationServiceImplTest
         n.setUserId(userId);
         n.setTitle(title);
         n.setIsRead(isRead);
+        return n;
+    }
+
+    private static SysNotification buildNotificationWithDedup(Long userId, String title, String dedupKey, String isRead)
+    {
+        SysNotification n = buildNotification(null, userId, title, isRead);
+        n.setDedupKey(dedupKey);
         return n;
     }
 
@@ -198,6 +260,9 @@ class SysNotificationServiceImplTest
         int insertResult = 1;
         int deleteResult = 0;
         Long[] lastDeleteIds = null;
+        /** 已记录的 dedup_key（key=userId:dedupKey），模拟数据库唯一约束 */
+        final Set<String> dedupKeysSeen = new HashSet<>();
+        int countByUserDedupKeyCalls = 0;
 
         @Override
         public SysNotification selectNotificationById(Long id)
@@ -223,6 +288,12 @@ class SysNotificationServiceImplTest
         @Override
         public int insertNotification(SysNotification notification)
         {
+            // 成功插入时记录 dedup_key，使后续 countByUserDedupKey 返回 1
+            if (notification.getDedupKey() != null && !notification.getDedupKey().isEmpty()
+                    && notification.getUserId() != null)
+            {
+                dedupKeysSeen.add(notification.getUserId() + ":" + notification.getDedupKey());
+            }
             return insertResult;
         }
 
@@ -251,6 +322,13 @@ class SysNotificationServiceImplTest
         public int countByUserTypeBizId(Long userId, String type, String bizId)
         {
             return 0;
+        }
+
+        @Override
+        public int countByUserDedupKey(Long userId, String dedupKey)
+        {
+            countByUserDedupKeyCalls++;
+            return dedupKeysSeen.contains(userId + ":" + dedupKey) ? 1 : 0;
         }
     }
 

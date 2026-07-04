@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.system.mapper.SysDataRetentionPolicyMapper">
+
+    <resultMap type="com.junsong.system.domain.SysDataRetentionPolicy" id="SysDataRetentionPolicyResult">
+        <id property="policyId" column="policy_id"/>
+        <result property="tableName" column="table_name"/>
+        <result property="retentionDays" column="retention_days"/>
+        <result property="archiveMode" column="archive_mode"/>
+        <result property="enabled" column="enabled"/>
+        <result property="remark" column="remark"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="tenantId" column="tenant_id"/>
+    </resultMap>
+
+    <sql id="selectRetentionPolicyVo">
+        select policy_id, table_name, retention_days, archive_mode, enabled, remark,
+               create_by, create_time, update_by, update_time
+        from sys_data_retention_policy
+    </sql>
+
+    <select id="selectAllEnabledPolicies" resultMap="SysDataRetentionPolicyResult">
+        <include refid="selectRetentionPolicyVo"/>
+        where enabled = '1'
+        order by table_name asc
+    </select>
+
+    <select id="selectByTableName" parameterType="String" resultMap="SysDataRetentionPolicyResult">
+        <include refid="selectRetentionPolicyVo"/>
+        where table_name = #{tableName}
+    </select>
+
+</mapper>

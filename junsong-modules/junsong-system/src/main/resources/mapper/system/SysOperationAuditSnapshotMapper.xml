@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.system.mapper.SysOperationAuditSnapshotMapper">
+
+    <resultMap type="com.junsong.system.domain.SysOperationAuditSnapshot" id="SysOperationAuditSnapshotResult">
+        <id property="auditId" column="audit_id"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="bizType" column="biz_type"/>
+        <result property="bizId" column="biz_id"/>
+        <result property="operation" column="operation"/>
+        <result property="riskLevel" column="risk_level"/>
+        <result property="beforeSnapshot" column="before_snapshot"/>
+        <result property="afterSnapshot" column="after_snapshot"/>
+        <result property="diffSummary" column="diff_summary"/>
+        <result property="operatorId" column="operator_id"/>
+        <result property="operatorName" column="operator_name"/>
+        <result property="requestIp" column="request_ip"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <sql id="selectAuditSnapshotVo">
+        select audit_id, tenant_id, biz_type, biz_id, operation, risk_level, before_snapshot, after_snapshot,
+               diff_summary, operator_id, operator_name, request_ip, create_by, create_time, update_by, update_time, remark
+        from sys_operation_audit_snapshot
+    </sql>
+
+    <insert id="insertAuditSnapshot" parameterType="com.junsong.system.domain.SysOperationAuditSnapshot"
+            useGeneratedKeys="true" keyProperty="auditId">
+        insert into sys_operation_audit_snapshot
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="tenantId != null">tenant_id,</if>
+            <if test="bizType != null and bizType != ''">biz_type,</if>
+            <if test="bizId != null and bizId != ''">biz_id,</if>
+            <if test="operation != null and operation != ''">operation,</if>
+            <if test="riskLevel != null and riskLevel != ''">risk_level,</if>
+            <if test="beforeSnapshot != null">before_snapshot,</if>
+            <if test="afterSnapshot != null">after_snapshot,</if>
+            <if test="diffSummary != null">diff_summary,</if>
+            <if test="operatorId != null">operator_id,</if>
+            <if test="operatorName != null">operator_name,</if>
+            <if test="requestIp != null">request_ip,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="tenantId != null">#{tenantId},</if>
+            <if test="bizType != null and bizType != ''">#{bizType},</if>
+            <if test="bizId != null and bizId != ''">#{bizId},</if>
+            <if test="operation != null and operation != ''">#{operation},</if>
+            <if test="riskLevel != null and riskLevel != ''">#{riskLevel},</if>
+            <if test="beforeSnapshot != null">#{beforeSnapshot},</if>
+            <if test="afterSnapshot != null">#{afterSnapshot},</if>
+            <if test="diffSummary != null">#{diffSummary},</if>
+            <if test="operatorId != null">#{operatorId},</if>
+            <if test="operatorName != null">#{operatorName},</if>
+            <if test="requestIp != null">#{requestIp},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+        </trim>
+    </insert>
+
+    <select id="selectAuditSnapshots" parameterType="com.junsong.system.domain.vo.AuditSnapshotQueryParams"
+            resultMap="SysOperationAuditSnapshotResult">
+        <include refid="selectAuditSnapshotVo"/>
+        <where>
+            <if test="bizType != null and bizType != ''">and biz_type = #{bizType}</if>
+            <if test="bizId != null and bizId != ''">and biz_id = #{bizId}</if>
+            <if test="riskLevel != null and riskLevel != ''">and risk_level = #{riskLevel}</if>
+            <if test="operation != null and operation != ''">and operation = #{operation}</if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="countHighRiskSince" parameterType="java.util.Date" resultType="int">
+        select count(*) from sys_operation_audit_snapshot
+        where risk_level = 'HIGH'
+          and create_time &gt;= #{since}
+    </select>
+
+</mapper>

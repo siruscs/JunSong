@@ -33,6 +33,7 @@ import com.junsong.system.mapper.SysUserPostMapper;
 import com.junsong.system.mapper.SysUserRoleMapper;
 import com.junsong.system.service.ISysConfigService;
 import com.junsong.system.service.ISysDeptService;
+import com.junsong.system.service.ISysMenuService;
 import com.junsong.system.service.ISysUserDeptService;
 import com.junsong.system.service.ISysUserService;
 
@@ -75,6 +76,9 @@ public class SysUserServiceImpl implements ISysUserService
 
     @Autowired
     private SysAuditTrailRecorder auditTrailRecorder;
+
+    @Autowired
+    private ISysMenuService menuService;
 
     /**
      * 根据条件分页查询用户列表
@@ -341,6 +345,8 @@ public class SysUserServiceImpl implements ISysUserService
         userRoleMapper.deleteUserRoleByUserId(userId);
         // 新增用户与角色管理
         insertUserRole(user);
+        // 用户角色关联已变更，清除该用户菜单路由缓存，避免旧缓存（可能为空）继续生效
+        menuService.clearMenuCacheByUserId(userId);
         // 删除用户与岗位关联
         userPostMapper.deleteUserPostByUserId(userId);
         // 新增用户与岗位管理
@@ -386,6 +392,8 @@ public class SysUserServiceImpl implements ISysUserService
         List<Long> oldRoles = roleMapper.selectRoleListByUserId(userId);
         userRoleMapper.deleteUserRoleByUserId(userId);
         insertUserRole(userId, roleIds);
+        // 用户角色关联已变更，清除该用户菜单路由缓存
+        menuService.clearMenuCacheByUserId(userId);
         auditTrailRecorder.record("role_auth", "user", String.valueOf(userId),
                 "{\"userId\":" + userId + ",\"roleIds\":" + oldRoles + "}",
                 "{\"userId\":" + userId + ",\"roleIds\":" + Arrays.toString(roleIds) + "}");

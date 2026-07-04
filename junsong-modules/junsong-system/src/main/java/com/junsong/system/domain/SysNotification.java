@@ -29,6 +29,9 @@ public class SysNotification extends BaseEntity
     /** 跳转链接 */
     private String linkUrl;
 
+    /** 通知去重键（同 user_id + dedup_key 唯一，用于幂等发送） */
+    private String dedupKey;
+
     /** 业务ID */
     private String bizId;
 
@@ -97,6 +100,16 @@ public class SysNotification extends BaseEntity
     public void setLinkUrl(String linkUrl)
     {
         this.linkUrl = linkUrl;
+    }
+
+    public String getDedupKey()
+    {
+        return dedupKey;
+    }
+
+    public void setDedupKey(String dedupKey)
+    {
+        this.dedupKey = dedupKey;
     }
 
     public String getBizId()

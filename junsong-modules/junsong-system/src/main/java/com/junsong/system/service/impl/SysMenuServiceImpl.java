@@ -76,6 +76,25 @@ public class SysMenuServiceImpl implements ISysMenuService
     }
 
     /**
+     * 清除指定用户的菜单路由缓存
+     *
+     * 用于用户角色关联发生变更（分配/取消角色）后，
+     * 使该用户下次 getRouters 时重新按最新角色查库生成菜单，
+     * 避免旧的（可能为空的）菜单缓存在 TTL 内继续生效。
+     *
+     * @param userId 用户ID
+     */
+    @Override
+    public void clearMenuCacheByUserId(Long userId)
+    {
+        if (userId == null)
+        {
+            return;
+        }
+        redisService.deleteObject(getMenuTreeCacheKey(userId));
+    }
+
+    /**
      * 根据用户查询系统菜单列表
      * 
      * @param userId 用户ID

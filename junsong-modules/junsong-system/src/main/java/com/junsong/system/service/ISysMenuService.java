@@ -55,6 +55,13 @@ public interface ISysMenuService
     public List<SysMenu> selectMenuTreeByUserId(Long userId);
 
     /**
+     * 清除指定用户的菜单路由缓存（用户角色变更后调用）
+     *
+     * @param userId 用户ID
+     */
+    public void clearMenuCacheByUserId(Long userId);
+
+    /**
      * 根据角色ID查询菜单树信息
      * 
      * @param roleId 角色ID

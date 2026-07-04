@@ -48,4 +48,9 @@ public interface SysNotificationMapper
      * 按用户、类型、bizId 统计通知数量（用于去重）
      */
     int countByUserTypeBizId(@Param("userId") Long userId, @Param("type") String type, @Param("bizId") String bizId);
+
+    /**
+     * 按用户、dedupKey 统计通知数量（用于 R7-C 工作台告警去重）
+     */
+    int countByUserDedupKey(@Param("userId") Long userId, @Param("dedupKey") String dedupKey);
 }

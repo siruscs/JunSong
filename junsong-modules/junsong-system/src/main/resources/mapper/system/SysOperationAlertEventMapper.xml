@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.system.mapper.SysOperationAlertEventMapper">
+
+    <resultMap type="com.junsong.system.domain.SysOperationAlertEvent" id="SysOperationAlertEventResult">
+        <id property="eventId" column="event_id"/>
+        <result property="ruleKey" column="rule_key"/>
+        <result property="dedupKey" column="dedup_key"/>
+        <result property="sourceType" column="source_type"/>
+        <result property="sourceId" column="source_id"/>
+        <result property="severity" column="severity"/>
+        <result property="status" column="status"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="firstSeenTime" column="first_seen_time"/>
+        <result property="lastSeenTime" column="last_seen_time"/>
+        <result property="hitCount" column="hit_count"/>
+        <result property="remark" column="remark"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="tenantId" column="tenant_id"/>
+    </resultMap>
+
+    <sql id="selectAlertEventVo">
+        select event_id, rule_key, dedup_key, source_type, source_id, severity, status, title, content,
+               first_seen_time, last_seen_time, hit_count, remark, create_by, create_time, update_by, update_time
+        from sys_operation_alert_event
+    </sql>
+
+    <insert id="insertAlertEvent" parameterType="com.junsong.system.domain.SysOperationAlertEvent"
+            useGeneratedKeys="true" keyProperty="eventId">
+        insert into sys_operation_alert_event
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="ruleKey != null and ruleKey != ''">rule_key,</if>
+            <if test="dedupKey != null and dedupKey != ''">dedup_key,</if>
+            <if test="sourceType != null and sourceType != ''">source_type,</if>
+            <if test="sourceId != null">source_id,</if>
+            <if test="severity != null and severity != ''">severity,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="title != null and title != ''">title,</if>
+            <if test="content != null">content,</if>
+            <if test="firstSeenTime != null">first_seen_time,</if>
+            <if test="lastSeenTime != null">last_seen_time,</if>
+            <if test="hitCount != null">hit_count,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="ruleKey != null and ruleKey != ''">#{ruleKey},</if>
+            <if test="dedupKey != null and dedupKey != ''">#{dedupKey},</if>
+            <if test="sourceType != null and sourceType != ''">#{sourceType},</if>
+            <if test="sourceId != null">#{sourceId},</if>
+            <if test="severity != null and severity != ''">#{severity},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="title != null and title != ''">#{title},</if>
+            <if test="content != null">#{content},</if>
+            <if test="firstSeenTime != null">#{firstSeenTime},</if>
+            <if test="lastSeenTime != null">#{lastSeenTime},</if>
+            <if test="hitCount != null">#{hitCount},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+        </trim>
+    </insert>
+
+    <select id="selectOpenByDedupKey" parameterType="String" resultMap="SysOperationAlertEventResult">
+        <include refid="selectAlertEventVo"/>
+        where dedup_key = #{dedupKey} and status = 'OPEN'
+        limit 1
+    </select>
+
+    <update id="incrementHitCount" parameterType="Long">
+        update sys_operation_alert_event
+        set hit_count = hit_count + 1,
+            last_seen_time = now()
+        where event_id = #{eventId}
+    </update>
+
+    <update id="updateEventStatus">
+        update sys_operation_alert_event
+        set status = #{status},
+            update_time = now()
+        where event_id = #{eventId}
+    </update>
+
+    <select id="selectAlertEvents" parameterType="com.junsong.system.domain.vo.AlertEventQueryParams"
+            resultMap="SysOperationAlertEventResult">
+        <include refid="selectAlertEventVo"/>
+        <where>
+            <if test="status != null and status != ''">and status = #{status}</if>
+            <if test="severity != null and severity != ''">and severity = #{severity}</if>
+            <if test="ruleKey != null and ruleKey != ''">and rule_key = #{ruleKey}</if>
+            <if test="sourceType != null and sourceType != ''">and source_type = #{sourceType}</if>
+        </where>
+        order by last_seen_time desc
+    </select>
+
+    <select id="countOpenCritical" resultType="int">
+        select count(*) from sys_operation_alert_event
+        where status = 'OPEN' and severity = 'CRITICAL'
+    </select>
+
+</mapper>

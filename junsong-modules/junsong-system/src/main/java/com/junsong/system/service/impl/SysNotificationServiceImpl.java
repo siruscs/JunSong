@@ -35,6 +35,17 @@ public class SysNotificationServiceImpl implements ISysNotificationService
     @Override
     public int insertNotification(SysNotification notification)
     {
+        // dedup_key 幂等：相同 user_id + dedupKey 已存在则跳过，避免重复通知
+        if (notification.getDedupKey() != null && !notification.getDedupKey().isEmpty()
+                && notification.getUserId() != null)
+        {
+            int exists = notificationMapper.countByUserDedupKey(
+                    notification.getUserId(), notification.getDedupKey());
+            if (exists > 0)
+            {
+                return 0;
+            }
+        }
         int rows = notificationMapper.insertNotification(notification);
         if (rows > 0 && notification.getUserId() != null)
         {

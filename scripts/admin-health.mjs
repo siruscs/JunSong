@@ -2,46 +2,159 @@ import { spawnSync } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+// R11-FIX-E: 使用 process.execPath 替代硬编码 'node'，
+// 兼容 PATH 中没有 node 的执行环境（如某些 CI/Codex shell）。
+const NODE = process.execPath
+
 export function createAdminHealthChecks({ includeDev = false } = {}) {
   const checks = [
     {
       name: 'module overview verifier',
-      command: ['node', 'scripts/verify-module-overviews.mjs'],
+      command: [NODE, 'scripts/verify-module-overviews.mjs'],
     },
     {
       name: 'admin menu health unit tests',
-      command: ['node', '--test', 'scripts/admin-menu-health.test.mjs'],
+      command: [NODE, '--test', 'scripts/admin-menu-health.test.mjs'],
     },
     {
       name: 'admin menu static health',
-      command: ['node', 'scripts/admin-menu-health.mjs'],
+      command: [NODE, 'scripts/admin-menu-health.mjs'],
     },
     {
       name: 'backend permission health (full scan)',
-      command: ['node', 'scripts/backend-permission-health.mjs'],
+      command: [NODE, 'scripts/backend-permission-health.mjs'],
     },
     {
       name: 'mybatis mapper empty statement unit tests',
-      command: ['node', '--test', 'scripts/backend-mybatis-health.test.mjs'],
+      command: [NODE, '--test', 'scripts/backend-mybatis-health.test.mjs'],
     },
     {
       name: 'mybatis mapper empty statement scan',
-      command: ['node', 'scripts/backend-mybatis-health.mjs'],
+      command: [NODE, 'scripts/backend-mybatis-health.mjs'],
     },
     {
       name: 'finance sql health unit tests',
-      command: ['node', '--test', 'scripts/finance-sql-health.test.mjs'],
+      command: [NODE, '--test', 'scripts/finance-sql-health.test.mjs'],
     },
     {
       name: 'list order health unit tests',
-      command: ['node', '--test', 'scripts/list-order-health.test.mjs'],
+      command: [NODE, '--test', 'scripts/list-order-health.test.mjs'],
+    },
+    {
+      name: 'expense verified edit health unit tests',
+      command: [NODE, '--test', 'scripts/expense-verified-edit-health.test.mjs'],
+    },
+    {
+      name: 'stock ledger health unit tests',
+      command: [NODE, '--test', 'scripts/stock-ledger-health.test.mjs'],
+    },
+    {
+      name: 'stock negative sale config health unit tests',
+      command: [NODE, '--test', 'scripts/stock-negative-sale-config-health.test.mjs'],
+    },
+    {
+      name: 'overview real data health unit tests',
+      command: [NODE, '--test', 'scripts/overview-real-data-health.test.mjs'],
+    },
+    {
+      name: 'overview real data static health',
+      command: [NODE, 'scripts/overview-real-data-health.mjs'],
+    },
+    {
+      name: 'store dashboard evolution health unit tests',
+      command: [NODE, '--test', 'scripts/store-dashboard-evolution-health.test.mjs'],
+    },
+    {
+      name: 'r9 closure health unit tests',
+      command: [NODE, '--test', 'scripts/r9-closure-health.test.mjs'],
+    },
+    {
+      name: 'r10 readiness health unit tests',
+      command: [NODE, '--test', 'scripts/r10-readiness-health.test.mjs'],
+    },
+    {
+      name: 'r10 config quality health unit tests',
+      command: [NODE, '--test', 'scripts/r10-config-quality-health.test.mjs'],
+    },
+    {
+      name: 'r11 readiness health unit tests',
+      command: [NODE, '--test', 'scripts/r11-readiness-health.test.mjs'],
+    },
+    {
+      name: 'r11 store health knowledge health unit tests',
+      command: [NODE, '--test', 'scripts/r11-store-health-knowledge-health.test.mjs'],
+    },
+    {
+      name: 'r12 action effect health unit tests',
+      command: [NODE, '--test', 'scripts/r12-action-effect-health.test.mjs'],
+    },
+    {
+      name: 'r13 receivable cashflow health unit tests',
+      command: [NODE, '--test', 'scripts/r13-receivable-cashflow-health.test.mjs'],
+    },
+    {
+      name: 'r14 receivable closure health unit tests',
+      command: [NODE, '--test', 'scripts/r14-receivable-closure-health.test.mjs'],
+    },
+    {
+      name: 'r15 receivable command center health unit tests',
+      command: [NODE, '--test', 'scripts/r15-receivable-command-center-health.test.mjs'],
+    },
+    {
+      name: 'r16 cashflow forecast health unit tests',
+      command: [NODE, '--test', 'scripts/r16-cashflow-forecast-health.test.mjs'],
+    },
+    {
+      name: 'R17 member growth action loop health',
+      command: [NODE, '--test', 'scripts/r17-member-growth-action-health.test.mjs'],
+      timeoutMs: 30_000,
+    },
+    {
+      name: 'R18 R1-R18 closure health',
+      command: [NODE, '--test', 'scripts/r18-r1-r18-closure-health.test.mjs'],
+      timeoutMs: 30_000,
+    },
+    {
+      name: 'R19 release governance health',
+      command: [NODE, '--test', 'scripts/r19-release-governance-health.test.mjs'],
+      timeoutMs: 30_000,
+    },
+    {
+      name: 'R20 metrics governance health',
+      command: [NODE, '--test', 'scripts/r20-metrics-governance-health.test.mjs'],
+      timeoutMs: 30_000,
+    },
+    {
+      name: 'R21 operations scheduler health',
+      command: [NODE, '--test', 'scripts/r21-operations-scheduler-health.test.mjs'],
+      timeoutMs: 30_000,
+    },
+    {
+      name: 'R22 action center touch health',
+      command: [NODE, '--test', 'scripts/r22-action-center-touch-health.test.mjs'],
+      timeoutMs: 30_000,
+    },
+    {
+      name: 'R23 open platform health',
+      command: [NODE, '--test', 'scripts/r23-open-platform-health.test.mjs'],
+      timeoutMs: 30_000,
+    },
+    {
+      name: 'R23 openapi drift check',
+      command: [NODE, 'scripts/r23-openapi-drift-check.mjs'],
+      timeoutMs: 30_000,
+    },
+    {
+      name: 'R24 predictive ops health',
+      command: [NODE, '--test', 'scripts/r24-predictive-ops-health.test.mjs'],
+      timeoutMs: 30_000,
     },
   ]
 
   if (includeDev) {
     checks.push({
       name: 'admin menu DEV database health',
-      command: ['node', 'scripts/admin-menu-health.mjs', '--dev'],
+      command: [NODE, 'scripts/admin-menu-health.mjs', '--dev'],
     })
   }
 

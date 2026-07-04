@@ -52,12 +52,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectRecentNetCashflow" resultType="java.math.BigDecimal">
         select coalesce((
             select sum(p.payment_amount) from fin_sale_payment p
-            join fin_sale_record r on p.sale_id = r.sale_id
             where p.del_flag = '0'
               and p.payment_date &gt;= date_sub(curdate(), interval 7 day)
-              <if test="params.deptId != null">and r.dept_id = #{params.deptId}</if>
+              <if test="params.deptId != null">and p.dept_id = #{params.deptId}</if>
               <if test="params.deptIds != null and params.deptIds.size() > 0">
-                  and r.dept_id in
+                  and p.dept_id in
                   <foreach collection="params.deptIds" item="deptId" open="(" separator="," close=")">
                       #{deptId}
                   </foreach>
@@ -65,7 +64,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         ), 0) - coalesce((
             select sum(e.expense_amount) from fin_expense e
             where e.del_flag = '0'
-              and e.verify_status = 'VERIFIED'
+              and e.status = '0'
               and e.expense_date &gt;= date_sub(curdate(), interval 7 day)
               <include refid="paramsDeptScope"/>
         ), 0)
@@ -104,7 +103,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select p.dept_id as deptId,
                p.product_id as productId,
                p.quantity as currentQuantity,
-               coalesce(out.recentOutbound, 0) as recentOutbound,
+               coalesce(stk_out.recentOutbound, 0) as recentOutbound,
                coalesce(snap.snapshotDate, '1970-01-01') as snapshotDate,
                case
                  when exists (
@@ -120,10 +119,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             select dept_id, product_id, sum(abs(after_quantity - before_quantity)) as recentOutbound
             from fin_stock_ledger
             where del_flag = '0'
-              and biz_type = 'OUTBOUND'
-              and ledger_date &gt;= date_sub(curdate(), interval 7 day)
+              and change_type = 'SALE_OUT'
+              and create_time &gt;= date_sub(curdate(), interval 7 day)
             group by dept_id, product_id
-        ) out on out.dept_id = p.dept_id and out.product_id = p.product_id
+        ) stk_out on stk_out.dept_id = p.dept_id and stk_out.product_id = p.product_id
         left join (
             select dept_id, product_id, max(snapshot_date) as snapshotDate
             from fin_stock_snapshot

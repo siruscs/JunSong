@@ -13,6 +13,10 @@ import com.junsong.finance.mapper.PredictiveOpsMapper;
 import com.junsong.member.api.MemberActionPredictionQuery;
 import com.junsong.member.api.RemoteMemberPredictionService;
 import com.junsong.member.api.domain.MemberActionPredictionItem;
+import com.junsong.system.api.RemoteUserService;
+import com.junsong.system.api.domain.SysDept;
+import com.junsong.system.api.domain.SysUser;
+import com.junsong.system.api.model.LoginUser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -34,14 +38,19 @@ class PredictiveOpsServiceImplTest {
     private PredictiveOpsServiceImpl service;
     private RecordingPredictiveOpsMapper mapper;
     private StubRemoteMemberService remoteService;
+    private StubRemoteUserService userService;
 
     @BeforeEach
     void setUp() throws Exception {
         service = new PredictiveOpsServiceImpl();
         mapper = new RecordingPredictiveOpsMapper();
         remoteService = new StubRemoteMemberService();
+        userService = new StubRemoteUserService();
         inject(service, "predictiveOpsMapper", mapper);
         inject(service, "remoteMemberPredictionService", remoteService);
+        // 数据权限收口需要 RemoteUserService；测试中不直接测授权门店内，
+        // 所以塞一个空 stub（listActionPredictions 在 admin 路径下跳过授权）。
+        inject(service, "remoteUserService", userService);
     }
 
     @Test
@@ -182,6 +191,28 @@ class PredictiveOpsServiceImplTest {
                 "must surface a 'service unavailable' factor when Feign fallback fires");
     }
 
+    @Test
+    void dashboardAppliesDataScopeForNonAdmin() {
+        // 非 admin 路径：SecurityUtils.isAdmin() 返回 false（无 SecurityContext），
+        // 应进入 loadAllowedDeptIds()。allowedDeptIds 留空 → 触发 SENTINEL (-1)
+        mapper.cashflowDeviation = BigDecimal.ZERO;
+        mapper.netCashflow = BigDecimal.ZERO;
+        mapper.receivableRows = Collections.emptyList();
+        mapper.stockRows = Collections.emptyList();
+        remoteService.success = true;
+        remoteService.items = Collections.emptyList();
+
+        PredictiveOpsQueryParams params = new PredictiveOpsQueryParams();
+        params.setDeptId(999L);
+        params.setDeptIds(new ArrayList<>(java.util.Arrays.asList(1L, 2L, 3L)));
+        service.getDashboard(params);
+
+        // 非 admin 授权为空时：deptId 被清空（不在 allowed），deptIds 改为哨兵 [-1]
+        assertEquals(null, params.getDeptId(), "非 admin 提交的非授权 deptId 应被清空");
+        assertEquals(Collections.singletonList(-1L), params.getDeptIds(),
+                "非 admin 授权为空时 deptIds 应被强制为哨兵 [-1]");
+    }
+
     // ============= helpers =============
     private static Map<String, Object> buildReceivableRow(boolean overdue, int ageDays, long historyMiss, int daysSinceFollow, int id) {
         Map<String, Object> row = new HashMap<>();
@@ -268,6 +299,45 @@ class PredictiveOpsServiceImplTest {
         public R<List<MemberActionPredictionItem>> listMemberActionPredictions(MemberActionPredictionQuery request, String source) {
             if (!success) return R.fail(code, "fallback");
             return R.ok(items);
+        }
+    }
+
+    /**
+     * 测试专用 RemoteUserService stub：默认返回空授权门店内列表，
+     * 触发 sentinel -1 路径。允许单测设置 allowedDeptIds 模拟授权门店。
+     */
+    static class StubRemoteUserService implements RemoteUserService {
+        List<Long> allowedDeptIds = new ArrayList<>();
+
+        @Override
+        public R<LoginUser> getUserInfo(String username, String source) {
+            return R.ok(new LoginUser());
+        }
+
+        @Override
+        public R<Boolean> registerUserInfo(SysUser sysUser, String source) {
+            return R.ok(true);
+        }
+
+        @Override
+        public R<Boolean> recordUserLogin(SysUser sysUser, String source) {
+            return R.ok(true);
+        }
+
+        @Override
+        public R<List<SysDept>> getUserDeptList(String username, String source) {
+            List<SysDept> list = new ArrayList<>();
+            for (Long deptId : allowedDeptIds) {
+                SysDept dept = new SysDept();
+                dept.setDeptId(deptId);
+                list.add(dept);
+            }
+            return R.ok(list);
+        }
+
+        @Override
+        public R<List<String>> listUsernamesByRoleKey(String roleKey, String source) {
+            return R.ok(new ArrayList<>());
         }
     }
 }

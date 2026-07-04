@@ -19,6 +19,8 @@ import com.junsong.finance.service.IPredictiveOpsService;
 import com.junsong.member.api.MemberActionPredictionQuery;
 import com.junsong.member.api.RemoteMemberPredictionService;
 import com.junsong.member.api.domain.MemberActionPredictionItem;
+import com.junsong.system.api.RemoteUserService;
+import com.junsong.system.api.domain.SysDept;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,9 +31,11 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * R24 预测辅助 V2 服务实现。
@@ -60,6 +64,9 @@ public class PredictiveOpsServiceImpl implements IPredictiveOpsService {
     private static final String STOCK_BASIS = "R24 库存风险基于当前库存、流水和快照偏差";
     private static final String WHAT_IF_BASIS = "R24 what-if 是只读模拟，不修改业务表，只调整基线压力分";
 
+    /** 哨兵：用户没有任何授权门店时返回 -1，确保 SQL 永远过滤为 0 行 */
+    private static final List<Long> SENTINEL_DEPT_IDS = Collections.singletonList(-1L);
+
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Autowired
@@ -68,11 +75,15 @@ public class PredictiveOpsServiceImpl implements IPredictiveOpsService {
     @Autowired
     private RemoteMemberPredictionService remoteMemberPredictionService;
 
+    @Autowired
+    private RemoteUserService remoteUserService;
+
     @Override
     public PredictiveOpsDashboardVO getDashboard(PredictiveOpsQueryParams params) {
         if (params == null) {
             params = new PredictiveOpsQueryParams();
         }
+        applyDataScope(params);
         int windowDays = params.getWindowDays() == null || params.getWindowDays() <= 0 ? 7 : params.getWindowDays();
 
         PredictiveOpsDashboardVO dashboard = new PredictiveOpsDashboardVO();
@@ -117,6 +128,7 @@ public class PredictiveOpsServiceImpl implements IPredictiveOpsService {
         if (params == null) {
             params = new PredictiveOpsQueryParams();
         }
+        applyDataScope(params);
         int windowDays = params.getWindowDays() == null || params.getWindowDays() <= 0 ? 7 : params.getWindowDays();
         Date today = truncateToDate(new Date());
         String username = currentUsername();
@@ -166,6 +178,8 @@ public class PredictiveOpsServiceImpl implements IPredictiveOpsService {
         if (params == null) {
             params = new WhatIfSimulationParams();
         }
+        // what-if 需要先按授权门店收口 deptId，避免用户能模拟未授权门店
+        applyDataScopeToWhatIf(params);
         int windowDays = params.getWindowDays() == null || params.getWindowDays() <= 0 ? 7 : params.getWindowDays();
         Date today = truncateToDate(new Date());
 
@@ -290,6 +304,85 @@ public class PredictiveOpsServiceImpl implements IPredictiveOpsService {
         result.setSimulationId(sim.getSimulationId());
 
         return result;
+    }
+
+    // ============ 数据权限收口（强制授权门店过滤） ============
+
+    /**
+     * 授权门店收口：admin 跳过；其他用户按授权门店裁剪
+     * - 单 deptId：必须落在授权门店内，否则改用全部授权门店
+     * - deptIds 列表：与授权门店求交集；空则用全部授权门店
+     * - 授权为空（无门店）：强制 -1 哨兵，确保 SQL 永不为空集合
+     */
+    private void applyDataScope(PredictiveOpsQueryParams params) {
+        if (SecurityUtils.isAdmin()) {
+            return;
+        }
+        List<Long> allowed = loadAllowedDeptIds();
+        if (allowed.isEmpty()) {
+            Long currentDeptId = SecurityUtils.getDeptId();
+            allowed = currentDeptId != null ? Collections.singletonList(currentDeptId) : SENTINEL_DEPT_IDS;
+        }
+        List<Long> allowedFinal = allowed;
+        if (params.getDeptId() != null) {
+            params.setDeptId(allowedFinal.contains(params.getDeptId()) ? params.getDeptId() : null);
+        }
+        List<Long> requested = params.getDeptIds();
+        if (requested == null || requested.isEmpty()) {
+            params.setDeptIds(new ArrayList<>(allowedFinal));
+            return;
+        }
+        List<Long> filtered = requested.stream().filter(allowedFinal::contains).collect(Collectors.toList());
+        if (filtered.isEmpty()) {
+            params.setDeptIds(new ArrayList<>(allowedFinal));
+        } else {
+            params.setDeptIds(filtered);
+        }
+    }
+
+    /**
+     * what-if 的 deptId 收口：只允许单个门店，且必须在授权内；admin 跳过。
+     * what-if 不支持 deptIds 集合（单店场景），所以只处理单 deptId。
+     */
+    private void applyDataScopeToWhatIf(WhatIfSimulationParams params) {
+        if (SecurityUtils.isAdmin()) {
+            return;
+        }
+        List<Long> allowed = loadAllowedDeptIds();
+        if (allowed.isEmpty()) {
+            Long currentDeptId = SecurityUtils.getDeptId();
+            allowed = currentDeptId != null ? Collections.singletonList(currentDeptId) : SENTINEL_DEPT_IDS;
+        }
+        if (params.getDeptId() == null) {
+            // 非 admin 不允许模拟"全量"，强制使用第一个授权门店
+            params.setDeptId(allowed.get(0));
+            return;
+        }
+        if (!allowed.contains(params.getDeptId())) {
+            log.warn("R24 what-if 拒绝非授权门店 deptId={}，强制改为 {}",
+                    params.getDeptId(), allowed.get(0));
+            params.setDeptId(allowed.get(0));
+        }
+    }
+
+    private List<Long> loadAllowedDeptIds() {
+        String username = SecurityUtils.getUsername();
+        if (username == null || username.isEmpty()) {
+            return Collections.emptyList();
+        }
+        try {
+            R<List<SysDept>> response = remoteUserService.getUserDeptList(username, SecurityConstants.INNER);
+            if (response == null || response.getData() == null) {
+                return Collections.emptyList();
+            }
+            return response.getData().stream()
+                    .map(SysDept::getDeptId)
+                    .filter(java.util.Objects::nonNull)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.warn("R24 加载用户授权门店失败: {}", e.getMessage());
+            return Collections.emptyList();
+        }
     }
 
     // ============ 规则引擎 ============

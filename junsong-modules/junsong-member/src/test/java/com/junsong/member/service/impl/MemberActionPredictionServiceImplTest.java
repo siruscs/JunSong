@@ -219,6 +219,165 @@ class MemberActionPredictionServiceImplTest {
                 "remoteMemberPredictionService field should be removed to avoid self-Feign recursion");
     }
 
+    @Test
+    void getDashboardCalledOnlyOncePerRequest() {
+        // 回归：历史实现 safeListRecentActions 重复调用 getDashboard() 三次
+        growthService.recentActions = new ArrayList<>();
+
+        service.listActionPredictions(100L, 30, null);
+
+        assertEquals(1, growthService.getDashboardCallCount,
+                "getDashboard must be called exactly once per listActionPredictions request, got "
+                        + growthService.getDashboardCallCount);
+    }
+
+    @Test
+    void actionTypeFiltersResults() {
+        // 准备两个不同 actionType 的动作
+        GrowthActionRowVO a = new GrowthActionRowVO();
+        a.setActionId(1L);
+        a.setActionTitle("GROWTH 动作");
+        a.setActionType("GROWTH");
+        a.setCandidateCount(10);
+        a.setExecutedCount(2);
+        a.setStatus("PENDING");
+        a.setPressureLevel("HIGH");
+
+        GrowthActionRowVO b = new GrowthActionRowVO();
+        b.setActionId(2L);
+        b.setActionTitle("RETENTION 动作");
+        b.setActionType("RETENTION");
+        b.setCandidateCount(20);
+        b.setExecutedCount(20);
+        b.setStatus("DONE");
+        b.setPressureLevel("LOW");
+
+        growthService.recentActions = new ArrayList<>();
+        growthService.recentActions.add(a);
+        growthService.recentActions.add(b);
+
+        // 只查 GROWTH 类型
+        List<MemberActionPredictionVO> result = service.listActionPredictions(100L, 30, "GROWTH");
+
+        assertEquals(1, result.size(), "actionType=GROWTH should filter out RETENTION row");
+        assertEquals("GROWTH", result.get(0).getActionType());
+        assertEquals("GROWTH 动作", result.get(0).getActionTitle());
+    }
+
+    @Test
+    void actionTypeCaseInsensitive() {
+        GrowthActionRowVO row = new GrowthActionRowVO();
+        row.setActionId(1L);
+        row.setActionTitle("GROWTH 动作");
+        row.setActionType("GROWTH");
+        row.setCandidateCount(10);
+        row.setExecutedCount(2);
+        row.setStatus("PENDING");
+        row.setPressureLevel("HIGH");
+        growthService.recentActions = new ArrayList<>();
+        growthService.recentActions.add(row);
+
+        // 传小写 growth，应能匹配到 GROWTH 类型
+        List<MemberActionPredictionVO> result = service.listActionPredictions(100L, 30, "growth");
+
+        assertEquals(1, result.size(), "actionType matching should be case-insensitive");
+        assertEquals("GROWTH", result.get(0).getActionType());
+    }
+
+    @Test
+    void actionTypeNullReturnsAllActions() {
+        GrowthActionRowVO a = new GrowthActionRowVO();
+        a.setActionId(1L);
+        a.setActionTitle("动作A");
+        a.setActionType("GROWTH");
+        a.setCandidateCount(10);
+        a.setExecutedCount(2);
+        a.setStatus("PENDING");
+        a.setPressureLevel("HIGH");
+
+        GrowthActionRowVO b = new GrowthActionRowVO();
+        b.setActionId(2L);
+        b.setActionTitle("动作B");
+        b.setActionType("RETENTION");
+        b.setCandidateCount(20);
+        b.setExecutedCount(20);
+        b.setStatus("DONE");
+        b.setPressureLevel("LOW");
+
+        growthService.recentActions = new ArrayList<>();
+        growthService.recentActions.add(a);
+        growthService.recentActions.add(b);
+
+        // actionType 为 null：应返回全部
+        List<MemberActionPredictionVO> result = service.listActionPredictions(100L, 30, null);
+        assertEquals(2, result.size());
+    }
+
+    @Test
+    void actionTypeEmptyStringReturnsAllActions() {
+        GrowthActionRowVO a = new GrowthActionRowVO();
+        a.setActionId(1L);
+        a.setActionTitle("动作A");
+        a.setActionType("GROWTH");
+        a.setCandidateCount(10);
+        a.setExecutedCount(2);
+        a.setStatus("PENDING");
+        a.setPressureLevel("HIGH");
+
+        growthService.recentActions = new ArrayList<>();
+        growthService.recentActions.add(a);
+
+        // actionType 为空串：应返回全部
+        List<MemberActionPredictionVO> result = service.listActionPredictions(100L, 30, "");
+        assertEquals(1, result.size());
+    }
+
+    @Test
+    void actionTypeNoMatchReturnsEmptyWithLowBasis() {
+        GrowthActionRowVO a = new GrowthActionRowVO();
+        a.setActionId(1L);
+        a.setActionTitle("动作A");
+        a.setActionType("GROWTH");
+        a.setCandidateCount(10);
+        a.setExecutedCount(2);
+        a.setStatus("PENDING");
+        a.setPressureLevel("HIGH");
+
+        growthService.recentActions = new ArrayList<>();
+        growthService.recentActions.add(a);
+
+        // 查不存在的 actionType：应返回空 + LOW + NO_DATA_BASIS
+        List<MemberActionPredictionVO> result = service.listActionPredictions(100L, 30, "NON_EXISTENT");
+        assertEquals(1, result.size());
+        assertEquals("LOW", result.get(0).getLevel());
+        assertEquals("NON_EXISTENT", result.get(0).getActionType());
+        assertTrue(result.get(0).getBasis().contains("无会员动作历史样本"),
+                "empty filter result should carry NO_DATA_BASIS");
+    }
+
+    @Test
+    void windowDaysPassedToDashboardQuery() {
+        // 验证 windowDays 透传给 dashboard 查询参数
+        growthService.recentActions = new ArrayList<>();
+
+        service.listActionPredictions(100L, 14, null);
+
+        assertEquals(Integer.valueOf(14), growthService.lastQueryParams.getWindowDays(),
+                "windowDays should be passed through to GrowthActionQueryParams");
+    }
+
+    @Test
+    void emptyResultCarriesActionTypeForTraceability() {
+        // 验证空结果时 VO 上的 actionType 也被填充，方便上游定位
+        growthService.recentActions = new ArrayList<>();
+
+        List<MemberActionPredictionVO> result = service.listActionPredictions(100L, 30, "RETENTION");
+
+        assertEquals(1, result.size());
+        assertEquals("RETENTION", result.get(0).getActionType(),
+                "empty result VO should carry actionType for traceability");
+    }
+
     // ============ helpers ============
 
     private static void inject(Object target, String fieldName, Object value) throws Exception {
@@ -234,9 +393,13 @@ class MemberActionPredictionServiceImplTest {
     static class StubGrowthActionService implements IMemberGrowthActionService {
         List<GrowthActionRowVO> recentActions = new ArrayList<>();
         GrowthActionDashboardVO dashboard;
+        int getDashboardCallCount = 0;
+        GrowthActionQueryParams lastQueryParams;
 
         @Override
         public GrowthActionDashboardVO getDashboard(GrowthActionQueryParams params) {
+            getDashboardCallCount++;
+            lastQueryParams = params;
             if (dashboard == null) {
                 dashboard = new GrowthActionDashboardVO();
             }

@@ -42,13 +42,14 @@ public class MemberActionPredictionServiceImpl implements IMemberActionPredictio
             windowDays = 30;
         }
 
-        // 1) 拉取最近的 R17 动作作为预测输入
-        List<GrowthActionRowVO> recentActions = safeListRecentActions(deptId);
+        // 1) 拉取最近的 R17 动作作为预测输入（单次调用 dashboard，避免重复请求）
+        List<GrowthActionRowVO> recentActions = listRecentActions(deptId, windowDays, actionType);
 
         // 2) 规则打分
         if (recentActions.isEmpty()) {
             MemberActionPredictionVO empty = new MemberActionPredictionVO();
             empty.setDeptId(deptId);
+            empty.setActionType(actionType);
             empty.setLevel(LOW);
             empty.setScore(0);
             empty.setRecentActiveRate(BigDecimal.ZERO);
@@ -67,18 +68,39 @@ public class MemberActionPredictionServiceImpl implements IMemberActionPredictio
         return result;
     }
 
-    private List<GrowthActionRowVO> safeListRecentActions(Long deptId) {
+    /**
+     * 拉取最近 R17 动作行，单次 dashboard 调用 + actionType 过滤。
+     *
+     * <p>历史实现重复调用 getDashboard() 三次（判空 + 取 recentActions），
+     * 且忽略 windowDays/actionType 参数。现收口为单次调用，
+     * 在内存中按 actionType 过滤，避免冗余 Feign/RPC。</p>
+     *
+     * @param deptId 门店 ID（可空表示全量）
+     * @param windowDays 窗口天数（透传给 dashboard 查询，由 R17 实现层处理）
+     * @param actionType 动作类型过滤；为空表示不过滤
+     */
+    private List<GrowthActionRowVO> listRecentActions(Long deptId, Integer windowDays, String actionType) {
         try {
             GrowthActionQueryParams listParams = new GrowthActionQueryParams();
             listParams.setDeptId(deptId);
-            // 复用 R17 仪表盘的 recentActions（已完成 7 天窗口回填）
-            return growthActionService.getDashboard(listParams) == null
-                    ? new ArrayList<>()
-                    : growthActionService.getDashboard(listParams).getRecentActions() == null
-                        ? new ArrayList<>()
-                        : growthActionService.getDashboard(listParams).getRecentActions();
+            listParams.setWindowDays(windowDays);
+            com.junsong.member.domain.vo.GrowthActionDashboardVO dashboard = growthActionService.getDashboard(listParams);
+            if (dashboard == null || dashboard.getRecentActions() == null) {
+                return new ArrayList<>();
+            }
+            List<GrowthActionRowVO> all = dashboard.getRecentActions();
+            if (actionType == null || actionType.isEmpty()) {
+                return all;
+            }
+            List<GrowthActionRowVO> filtered = new ArrayList<>();
+            for (GrowthActionRowVO row : all) {
+                if (actionType.equalsIgnoreCase(row.getActionType())) {
+                    filtered.add(row);
+                }
+            }
+            return filtered;
         } catch (Exception e) {
-            log.warn("R24 拉取 R17 动作失败: {}", e.getMessage());
+            log.warn("R24 拉取 R17 动作失败 (deptId={}, actionType={}): {}", deptId, actionType, e.getMessage());
             return new ArrayList<>();
         }
     }

@@ -18,8 +18,8 @@
     <section class="hero-section">
       <div class="hero-copy">
         <p class="section-kicker">OPEN PLATFORM</p>
-        <h1>开放能力的公共入口</h1>
-        <p class="hero-subtitle">面向商户、开发者和交付伙伴，统一说明可开放能力、接入路径、密钥治理和生产边界。</p>
+        <h1>可信开放平台</h1>
+        <p class="hero-subtitle">面向商户、开发者和交付伙伴，以 API、Webhook 和密钥治理连接门店经营能力。</p>
         <div class="hero-actions">
           <a class="primary-action" href="#capabilities">
             查看能力
@@ -39,7 +39,7 @@
       <aside class="network-panel" aria-label="开放平台能力网络">
         <div class="network-header">
           <span>接入工作台</span>
-          <strong>从文档到生产</strong>
+          <strong>从签名到生产</strong>
         </div>
         <div class="access-panel">
           <div class="access-core">
@@ -83,7 +83,7 @@
 
     <section id="capabilities" class="capability-section">
       <div class="section-heading">
-        <h2>当前先开放确定能力</h2>
+        <h2>当前开放可信集成能力</h2>
         <p>首页只展示可以对外说明的能力范围。高风险模块继续走审批、白名单和场景评审。</p>
       </div>
 
@@ -127,7 +127,7 @@
     <section id="flow" class="journey-section">
       <div class="section-heading">
         <h2>接入路径必须可控</h2>
-        <p>测试 Key 只用于联调，生产 Key 经过审批后启用。每个应用都绑定租户、联系人和回调地址。</p>
+        <p>测试 Key 只用于联调，生产 Key 经过审批后启用。每个应用都绑定租户、联系人、X-Open-* 上下文和回调地址。</p>
       </div>
       <div class="flow-track">
         <article v-for="step in accessFlow" :key="step.title" class="flow-card">
@@ -141,7 +141,7 @@
     <section id="governance" class="governance-section">
       <div class="governance-copy">
         <h2>开放能力，不开放后台菜单</h2>
-        <p>平台按租户、应用、能力和密钥治理访问范围，新租户不会默认拿到平台运营类菜单。</p>
+        <p>平台按租户、应用、能力和密钥治理访问范围，调用日志完整留痕，新租户不会默认拿到平台运营类菜单。</p>
       </div>
       <div class="governance-grid">
         <div v-for="item in governance" :key="item.title" class="governance-item">
@@ -190,21 +190,21 @@ import {
 
 const gatewayNodes = [
   { label: '接口目录', desc: '确认路径、scope 和开放状态', icon: Document },
-  { label: '签名调试', desc: '生成签名串和 curl 请求', icon: Key },
-  { label: '接入样例', desc: '复制 Node.js、Java 和 curl 样例', icon: Monitor },
+  { label: '签名调试', desc: '生成 HMAC 签名和 curl 请求', icon: Key },
+  { label: '可信上下文', desc: '网关注入 X-Open-* 调用身份', icon: Lock },
   { label: '申请接入', desc: '提交应用、租户和回调信息', icon: Bell },
 ]
 
 const heroSignals = [
-  { label: '鉴权方式', value: 'Key + Secret' },
+  { label: '鉴权方式', value: 'HMAC-SHA256' },
   { label: '接入方式', value: 'API + Webhook' },
-  { label: '生产启用', value: '审批后开放' },
+  { label: '日志治理', value: '调用日志' },
 ]
 
 const heroBrief = [
-  { label: '01', title: '先判断能力', desc: '确认会员、流程、业务申请和基础能力是否覆盖你的场景。' },
-  { label: '02', title: '再进入文档', desc: '接口目录、签名规则、样例代码和申请入口都在开发文档中完成。' },
-  { label: '03', title: '最后走审批', desc: '生产 Key、写入能力和高风险模块按租户、应用和 scope 审核。' },
+  { label: '能力', title: '先判断范围', desc: '确认会员、流程、业务申请、Webhook 和基础能力是否覆盖你的场景。' },
+  { label: '接入', title: '再完成签名', desc: '接口目录、签名规则、样例代码和 X-Open-* 上下文都在开发文档中说明。' },
+  { label: '上线', title: '最后走审批', desc: '生产 Key、写入能力和高风险模块按租户、应用和 scope 审核。' },
 ]
 
 const docEntries = [
@@ -268,8 +268,16 @@ const openCapabilities = [
     status: '已开放',
     icon: Connection,
     className: 'is-foundation',
-    summary: '应用、密钥、SDK、Webhook 和元数据管理组成统一开放底座。',
-    points: ['应用申请', '回调地址', '额度权限'],
+    summary: '应用、密钥、SDK、Webhook、调用日志和元数据管理组成统一开放底座。',
+    points: ['应用申请', '调用日志', '额度权限'],
+  },
+  {
+    title: 'Webhook 能力',
+    status: '已开放',
+    icon: Bell,
+    className: 'is-foundation',
+    summary: '订阅持久化绑定应用和租户，回调地址、事件类型和投递边界可审计。',
+    points: ['事件订阅', '回调治理', '投递留痕'],
   },
 ]
 
@@ -289,7 +297,7 @@ const controlledCapabilities = [
 const accessFlow = [
   { verb: '了解', title: '确认开放能力', desc: '先确认当前能力状态、数据范围和使用边界。' },
   { verb: '申请', title: '提交应用信息', desc: '登记应用、租户、联系人和回调地址。' },
-  { verb: '联调', title: '获取测试 Key', desc: '在测试额度内验证接口、签名和回调。' },
+  { verb: '联调', title: '获取测试 Key', desc: '在测试额度内验证接口、签名、X-Open-* 上下文和回调。' },
   { verb: '验证', title: '完成业务验收', desc: '确认错误码、事件通知和审批流程闭环。' },
   { verb: '上线', title: '启用生产 Key', desc: '审批通过后启用正式凭证和生产额度。' },
 ]
@@ -297,10 +305,10 @@ const accessFlow = [
 const governance = [
   { title: '测试 Key 不进生产', desc: '测试凭证只用于联调环境，默认低额度。', icon: Key },
   { title: '生产 Key 必须审批', desc: '生产凭证启用前需要审核应用和能力范围。', icon: Stamp },
-  { title: '应用绑定租户', desc: '调用数据始终限制在授权租户和能力内。', icon: Lock },
+  { title: '可信上下文透传', desc: '网关验签后注入 X-Open-*，下游按授权租户读取数据。', icon: Lock },
   { title: '回调地址受控', desc: 'Webhook 订阅绑定应用，并校验回调地址。', icon: Link },
-  { title: '权限额度分级', desc: '不同能力可以设置不同访问权限、频次和额度。', icon: Management },
-  { title: '高风险能力隔离', desc: '财务与低代码能力先白名单内测，不默认开放。', icon: Guide },
+  { title: '调用日志留痕', desc: '成功、拒绝和异常请求都进入调用日志，便于审计和排查。', icon: Monitor },
+  { title: '内部接口隔离', desc: '内部端点使用 @InnerAuth 与 X-Inner-Token，不对公网暴露。', icon: Guide },
 ]
 </script>
 

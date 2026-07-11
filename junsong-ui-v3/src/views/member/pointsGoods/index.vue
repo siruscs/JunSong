@@ -78,8 +78,8 @@
           <el-image
             v-if="scope.row.goodsImage"
             style="width: 80px; height: 80px"
-            :src="scope.row.goodsImage"
-            :preview-src-list="[scope.row.goodsImage]"
+            :src="normalizeImageUrl(scope.row.goodsImage)"
+            :preview-src-list="[normalizeImageUrl(scope.row.goodsImage)]"
             fit="cover"
           />
           <span v-else>-</span>
@@ -203,7 +203,7 @@
             :show-file-list="false"
             :before-upload="beforeImageUpload"
           >
-            <img v-if="form.goodsImage" :src="form.goodsImage" class="avatar" />
+            <img v-if="form.goodsImage" :src="normalizeImageUrl(form.goodsImage)" class="avatar" />
             <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
           </el-upload>
         </el-form-item>
@@ -227,8 +227,8 @@
           <el-image
             v-if="viewForm.goodsImage"
             style="width: 100px; height: 100px"
-            :src="viewForm.goodsImage"
-            :preview-src-list="[viewForm.goodsImage]"
+            :src="normalizeImageUrl(viewForm.goodsImage)"
+            :preview-src-list="[normalizeImageUrl(viewForm.goodsImage)]"
             fit="cover"
           />
           <span v-else>-</span>
@@ -407,12 +407,20 @@ export default {
     uploadImage(param) {
       const formData = new FormData()
       formData.append('file', param.file)
-      request.post('/common/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(response => {
-        this.form.goodsImage = response.url
+      request.post('/file/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }).then(response => {
+        this.form.goodsImage = response.data.url
         ElMessage.success("上传成功")
       }).catch(() => {
         ElMessage.error("上传失败")
       })
+    },
+    normalizeImageUrl(url) {
+      if (!url) return ''
+      if (/^(data:|blob:)/.test(url)) return url
+      const staticsIndex = url.indexOf('/statics/')
+      if (staticsIndex >= 0) return url.substring(staticsIndex)
+      if (url.startsWith('/')) return url
+      return '/' + url
     },
     submitForm() {
       this.$refs["form"].validate(valid => {

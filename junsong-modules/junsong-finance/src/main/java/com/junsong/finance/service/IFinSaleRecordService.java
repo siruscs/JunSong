@@ -27,6 +27,14 @@ public interface IFinSaleRecordService
     public List<FinSaleRecord> selectFinSaleRecordList(FinSaleRecord finSaleRecord);
 
     /**
+     * 查询未缴清销售单（历史欠款）列表
+     *
+     * @param finSaleRecord 查询条件
+     * @return 未缴清销售记录集合
+     */
+    public List<FinSaleRecord> selectReceivableList(FinSaleRecord finSaleRecord);
+
+    /**
      * 新增销售记录
      * 
      * @param finSaleRecord 销售记录

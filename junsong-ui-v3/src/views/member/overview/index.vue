@@ -82,6 +82,39 @@
       </div>
     </div>
 
+    <div class="metric-grid ops-grid">
+      <div class="metric-card">
+        <span>会员增长（30日）</span>
+        <strong>{{ stats.newMemberCount30d ?? 0 }}</strong>
+        <p>近 30 天新增会员数</p>
+      </div>
+      <div class="metric-card" :class="opActiveMemberClass">
+        <span>30 日活跃</span>
+        <strong>{{ stats.activeMemberCount30d ?? 0 }}</strong>
+        <p>近 30 天有积分变动的会员</p>
+      </div>
+      <div class="metric-card" :class="opRepeatRateClass">
+        <span>90 日复购率</span>
+        <strong>{{ stats.repeatRate90d ?? 0 }}%</strong>
+        <p>复购会员 {{ stats.repeatMemberCount90d ?? 0 }} 人</p>
+      </div>
+      <div class="metric-card warning">
+        <span>积分负债</span>
+        <strong>{{ money(stats.pointsLiability) }}</strong>
+        <p>已兑换成本 {{ money(stats.pointsRedeemedCost) }}</p>
+      </div>
+      <div class="metric-card success">
+        <span>活动贡献</span>
+        <strong>{{ money(stats.activityContributionAmount) }}</strong>
+        <p>{{ stats.activityRoiText || 'ROI 暂不可算 / 缺少活动成本' }}</p>
+      </div>
+      <div class="metric-card success">
+        <span>会员销售贡献</span>
+        <strong>{{ money(stats.memberSalesAmount) }}</strong>
+        <p>销售订单 {{ stats.memberSalesOrderCount ?? 0 }} 单</p>
+      </div>
+    </div>
+
     <div v-if="opWarnings.length > 0" class="op-warnings">
       <el-alert
         v-for="(warn, idx) in opWarnings"
@@ -124,6 +157,58 @@
           <p><strong>建议：</strong>{{ s.suggestion }}</p>
         </div>
       </el-alert>
+    </el-card>
+
+    <el-card v-if="memberActionItems.length > 0" class="section-card action-items-card">
+      <template #header>
+        <div class="card-head">
+          <span>会员经营动作</span>
+          <el-tag type="warning">{{ memberActionItems.length }} 项</el-tag>
+        </div>
+      </template>
+      <div class="action-item-list">
+        <div v-for="(item, idx) in memberActionItems" :key="idx" class="action-item" :class="item.level?.toLowerCase()">
+          <div class="action-item-head">
+            <el-tag :type="actionLevelTagType(item.level)" size="small">{{ item.level }}</el-tag>
+            <strong>{{ item.title }}</strong>
+          </div>
+          <p class="action-reason">{{ item.reason }}</p>
+          <p class="action-suggestion"><strong>建议：</strong>{{ item.suggestion }}</p>
+          <div class="action-go">
+            <router-link :to="item.targetRoute" class="action-link">去处理 &rarr;</router-link>
+          </div>
+        </div>
+      </div>
+    </el-card>
+
+    <el-card class="section-card growth-action-card">
+      <template #header>
+        <div class="card-head">
+          <span>增长动作</span>
+          <el-tag v-if="growthAction.pressureFallbackUsed" type="warning" size="small">压力 fallback</el-tag>
+        </div>
+      </template>
+      <div class="growth-action-body">
+        <div class="growth-action-metric">
+          <span>待执行动作</span>
+          <strong>{{ growthAction.pendingActionCount ?? 0 }}</strong>
+        </div>
+        <div class="growth-action-metric">
+          <span>待触达会员</span>
+          <strong>{{ growthAction.pendingMemberCount ?? 0 }}</strong>
+        </div>
+        <div class="growth-action-metric">
+          <span>有效率</span>
+          <strong>{{ ratePercent(growthAction.effectRate) }}%</strong>
+        </div>
+        <div class="growth-action-metric">
+          <span>优先分层</span>
+          <strong class="growth-segment">{{ growthSegmentLabel(growthAction.topSegmentType) }}</strong>
+        </div>
+        <div class="growth-action-go">
+          <router-link to="/member/growthAction" class="action-link">查看动作台 &rarr;</router-link>
+        </div>
+      </div>
     </el-card>
 
     <div class="content-grid">
@@ -205,6 +290,8 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { getDashboardOperation, getDashboardRanking, getDashboardStats, getDashboardTrend } from '@/api/member/dashboard'
+import { getPointsOperationSummary } from '@/api/member/pointsOperation'
+import { getGrowthActionDashboard } from '@/api/member/growthAction'
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -216,6 +303,8 @@ const stats = ref<Record<string, any>>({})
 const trend = ref<Record<string, any>>({})
 const ranking = ref<Record<string, any>[]>([])
 const operation = ref<Record<string, any>>({})
+const pointsSummary = ref<Record<string, any>>({})
+const growthAction = ref<Record<string, any>>({})
 
 // store multi-select filter
 const depts = computed(() =>
@@ -273,6 +362,23 @@ const opPointsUseRateClass = computed(() => {
   return 'danger'
 })
 
+const opActiveMemberClass = computed(() => {
+  const count = Number(stats.value.activeMemberCount30d ?? 0)
+  const total = Number(stats.value.totalMembers ?? 0)
+  if (total <= 0) return 'danger'
+  const rate = (count / total) * 100
+  if (rate >= 30) return 'success'
+  if (rate >= 10) return 'warning'
+  return 'danger'
+})
+
+const opRepeatRateClass = computed(() => {
+  const rate = Number(stats.value.repeatRate90d ?? 0)
+  if (rate >= 30) return 'success'
+  if (rate >= 10) return 'warning'
+  return 'danger'
+})
+
 const opWarnings = computed(() => {
   const warnings = operation.value.operationWarnings
   return Array.isArray(warnings) ? warnings : []
@@ -286,6 +392,11 @@ const segmentRows = computed(() => {
 const suggestions = computed(() => {
   const list = operation.value.suggestions
   return Array.isArray(list) ? list : []
+})
+
+const memberActionItems = computed(() => {
+  const items = stats.value.memberActionItems
+  return Array.isArray(items) ? items : []
 })
 
 function segmentClass(type: string) {
@@ -307,6 +418,15 @@ function suggestionAlertType(severity: string) {
   }
 }
 
+function actionLevelTagType(level: string) {
+  switch (level) {
+    case 'HIGH': return 'danger'
+    case 'MEDIUM': return 'warning'
+    case 'LOW': return 'info'
+    default: return 'info'
+  }
+}
+
 function money(value: any) {
   const num = Number(value ?? 0)
   if (!Number.isFinite(num)) return '¥0.00'
@@ -317,6 +437,20 @@ function number(value: any) {
   const num = Number(value ?? 0)
   if (!Number.isFinite(num)) return '0'
   return num.toLocaleString()
+}
+
+function ratePercent(value: any) {
+  return Number(value ?? 0).toFixed(2)
+}
+
+function growthSegmentLabel(type: string) {
+  const labels: Record<string, string> = {
+    SLEEPING_HIGH_VALUE: '高价值沉睡',
+    NEAR_LEVEL_UP: '临门升级',
+    RECENT_ACTIVE_NO_REPEAT: '活跃未复购',
+    PRESSURE_STORE_RECALL: '压力门店召回',
+  }
+  return labels[type || ''] || '暂无'
 }
 
 function handleDeptChange() {
@@ -333,16 +467,26 @@ async function loadData() {
   permissionDenied.value = false
   const deptIds = selectedDeptIds.value.length > 0 ? selectedDeptIds.value : undefined
   try {
-    const [statsRes, trendRes, rankingRes, operationRes] = await Promise.all([
+    const [statsRes, trendRes, rankingRes, operationRes, pointsSummaryRes] = await Promise.all([
       getDashboardStats(deptIds),
       getDashboardTrend(deptIds),
       getDashboardRanking(deptIds),
       getDashboardOperation(deptIds),
+      getPointsOperationSummary(deptIds),
     ])
     stats.value = statsRes.data || {}
     trend.value = trendRes.data || {}
     ranking.value = rankingRes.data || []
     operation.value = operationRes.data || {}
+    pointsSummary.value = pointsSummaryRes.data || {}
+
+    // R17: 增长动作轻量卡片，best-effort 加载，无权限或失败不影响概览主流程
+    try {
+      const growthRes = await getGrowthActionDashboard({})
+      growthAction.value = growthRes.data || {}
+    } catch {
+      growthAction.value = {}
+    }
   } catch (e: any) {
     if (e?.response?.status === 403 || e?.message?.includes('403')) {
       permissionDenied.value = true
@@ -372,7 +516,8 @@ onMounted(() => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 16px;
+  padding: 12px 20px 4px;
+  margin-bottom: 0;
 
   .page-title {
     margin: 0 0 6px;
@@ -434,6 +579,10 @@ onMounted(() => {
   margin-bottom: 14px;
 }
 
+.ops-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .segment-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -458,6 +607,113 @@ onMounted(() => {
   p {
     margin: 4px 0;
     line-height: 1.6;
+  }
+}
+
+.action-items-card {
+  margin-bottom: 14px;
+}
+
+.growth-action-card {
+  margin-bottom: 14px;
+}
+
+.growth-action-body {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+  align-items: center;
+}
+
+.growth-action-metric {
+  padding: 10px 14px;
+  border: 1px solid #e5e9f2;
+  border-radius: 6px;
+  background: #fafbfc;
+
+  span {
+    display: block;
+    color: #7a879c;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  strong {
+    display: block;
+    color: #18202f;
+    font-size: 22px;
+    line-height: 1.1;
+  }
+
+  .growth-segment {
+    font-size: 15px;
+  }
+}
+
+.growth-action-go {
+  text-align: right;
+}
+
+@media (max-width: 900px) {
+  .growth-action-body {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .growth-action-go {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+}
+
+.action-item-list {
+  display: grid;
+  gap: 12px;
+}
+
+.action-item {
+  padding: 14px 16px;
+  border: 1px solid #e5e9f2;
+  border-radius: 6px;
+  border-left: 3px solid #909399;
+
+  &.high { border-left-color: #f56c6c; }
+  &.medium { border-left-color: #e6a23c; }
+  &.low { border-left-color: #909399; }
+}
+
+.action-item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+
+  strong {
+    color: #18202f;
+    font-size: 14px;
+  }
+}
+
+.action-reason,
+.action-suggestion {
+  margin: 4px 0;
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.action-go {
+  margin-top: 8px;
+}
+
+.action-link {
+  color: #409eff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
   }
 }
 

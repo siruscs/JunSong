@@ -2,12 +2,16 @@ package com.junsong.system.controller;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import com.junsong.system.domain.SysHealthRuleConfig;
+import com.junsong.system.domain.SysOperationAuditSnapshot;
+import com.junsong.system.domain.vo.AuditSnapshotQueryParams;
 import com.junsong.system.domain.vo.SystemGovernanceTaskVO;
 import com.junsong.system.mapper.SysHealthRuleConfigMapper;
+import com.junsong.system.service.ISysOperationAuditService;
 import com.junsong.system.service.impl.SysHealthRuleConfigServiceImpl;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -32,7 +36,7 @@ class SysDashboardControllerTest
         try {
             var field = SysDashboardController.class.getDeclaredField("healthRuleConfigService");
             field.setAccessible(true);
-            field.set(controller, new SysHealthRuleConfigServiceImpl(new StubHealthRuleConfigMapper()));
+            field.set(controller, new SysHealthRuleConfigServiceImpl(new StubHealthRuleConfigMapper(), new NoOpAuditService()));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -85,7 +89,8 @@ class SysDashboardControllerTest
         // R10-FIX-E: 验证治理任务生成使用配置阈值，而非硬编码 20。
         // 配置阈值为 5 时，6 次失败应触发任务，5 次不应触发。
         SysHealthRuleConfigServiceImpl configuredService = new SysHealthRuleConfigServiceImpl(
-                new ConfigurableStubHealthRuleConfigMapper("SYS_LOGIN_FAIL_24H", "5", "1"));
+                new ConfigurableStubHealthRuleConfigMapper("SYS_LOGIN_FAIL_24H", "5", "1"),
+                new NoOpAuditService());
         SysDashboardController configuredController = new SysDashboardController();
         try {
             var field = SysDashboardController.class.getDeclaredField("healthRuleConfigService");
@@ -207,7 +212,7 @@ class SysDashboardControllerTest
         try {
             var field = SysDashboardController.class.getDeclaredField("healthRuleConfigService");
             field.setAccessible(true);
-            field.set(testController, new SysHealthRuleConfigServiceImpl(new StubHealthRuleConfigMapper()));
+            field.set(testController, new SysHealthRuleConfigServiceImpl(new StubHealthRuleConfigMapper(), new NoOpAuditService()));
             // Inject a fake governanceTaskLogMapper that captures the inserted log
             var mapperField = SysDashboardController.class.getDeclaredField("governanceTaskLogMapper");
             mapperField.setAccessible(true);
@@ -281,7 +286,7 @@ class SysDashboardControllerTest
         try {
             var field = SysDashboardController.class.getDeclaredField("healthRuleConfigService");
             field.setAccessible(true);
-            field.set(testController, new SysHealthRuleConfigServiceImpl(new StubHealthRuleConfigMapper()));
+            field.set(testController, new SysHealthRuleConfigServiceImpl(new StubHealthRuleConfigMapper(), new NoOpAuditService()));
             var mapperField = SysDashboardController.class.getDeclaredField("governanceTaskLogMapper");
             mapperField.setAccessible(true);
             mapperField.set(testController, new CapturingGovernanceTaskLogMapper());
@@ -435,7 +440,7 @@ class SysDashboardControllerTest
         try {
             var field = SysDashboardController.class.getDeclaredField("healthRuleConfigService");
             field.setAccessible(true);
-            field.set(testController, new SysHealthRuleConfigServiceImpl(new StubHealthRuleConfigMapper()));
+            field.set(testController, new SysHealthRuleConfigServiceImpl(new StubHealthRuleConfigMapper(), new NoOpAuditService()));
             var mapperField = SysDashboardController.class.getDeclaredField("governanceTaskLogMapper");
             mapperField.setAccessible(true);
             mapperField.set(testController, new CapturingGovernanceTaskLogMapper());
@@ -487,7 +492,7 @@ class SysDashboardControllerTest
         try {
             var healthField = SysDashboardController.class.getDeclaredField("healthRuleConfigService");
             healthField.setAccessible(true);
-            healthField.set(ctrl, new SysHealthRuleConfigServiceImpl(new StubHealthRuleConfigMapper()));
+            healthField.set(ctrl, new SysHealthRuleConfigServiceImpl(new StubHealthRuleConfigMapper(), new NoOpAuditService()));
             var mapperField = SysDashboardController.class.getDeclaredField("governanceTaskLogMapper");
             mapperField.setAccessible(true);
             mapperField.set(ctrl, mapper);
@@ -536,5 +541,11 @@ class SysDashboardControllerTest
         @Override public com.junsong.system.domain.SysGovernanceTaskLog selectLatestLogByType(String taskType) {
             return latestLogs.get(taskType);
         }
+    }
+
+    /** R25 no-op 审计服务 fake：构造签名变化后需要注入，但不参与断言。 */
+    static class NoOpAuditService implements ISysOperationAuditService {
+        @Override public void recordSnapshot(String bizType, String bizId, String operation, String riskLevel, Object before, Object after) { }
+        @Override public List<SysOperationAuditSnapshot> listSnapshots(AuditSnapshotQueryParams params) { return Collections.emptyList(); }
     }
 }

@@ -171,6 +171,12 @@ class MemberLifecycleTaskTest
         @Override public List<MemMember> selectMemMemberByMemberNo(String no) { return Collections.emptyList(); }
         @Override public MemMember selectMemMemberByNoAndDept(String no, Long deptId) { return null; }
         @Override public List<MemMember> selectActiveMembersForSeckill(Long deptId, Date d) { return Collections.emptyList(); }
+        @Override public int addPointsAndGrowth(Long memberId, java.math.BigDecimal pointsDelta, Long growthDelta, String operator) { return 1; }
+        @Override public int addGrowthOnly(Long memberId, Long growthDelta, String operator) { return 1; }
+        @Override public int addGrowthOnlyWithoutActiveTime(Long memberId, Long growthDelta, String operator) { return 1; }
+        @Override public int updateMemberLevel(Long memberId, String newLevel, String operator) { return 1; }
+        @Override public int updateLastActiveTime(Long memberId) { return 1; }
+        @Override public List<MemMember> selectInactiveMembers(Long tenantId, Date threshold) { return Collections.emptyList(); }
     }
 
     static class FakeSeckillMapper implements MemSeckillMapper

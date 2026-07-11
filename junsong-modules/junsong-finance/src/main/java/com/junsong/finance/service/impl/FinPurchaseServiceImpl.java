@@ -14,8 +14,10 @@ import com.junsong.finance.domain.FinPurchase;
 import com.junsong.finance.domain.FinPurchaseDetail;
 import com.junsong.finance.mapper.FinPurchaseMapper;
 import com.junsong.finance.mapper.FinPurchaseDetailMapper;
+import com.junsong.finance.mapper.FinStockLedgerMapper;
 import com.junsong.finance.service.IFinAccountingPeriodService;
 import com.junsong.finance.service.IFinPurchaseService;
+import com.junsong.finance.service.IFinStockLedgerService;
 import com.junsong.finance.util.CodeGenerator;
 
 /**
@@ -34,6 +36,12 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
 
     @Autowired
     private IFinAccountingPeriodService finAccountingPeriodService;
+
+    @Autowired
+    private IFinStockLedgerService finStockLedgerService;
+
+    @Autowired
+    private FinStockLedgerMapper finStockLedgerMapper;
 
     /**
      * 查询进货单
@@ -115,6 +123,7 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
         int rows = finPurchaseMapper.insertFinPurchase(finPurchase);
         insertFinPurchaseDetail(finPurchase);
         refreshPeriodStatsIfNeeded(finPurchase);
+        applyPurchaseStockIn(finPurchase);
         return rows;
     }
 
@@ -184,6 +193,7 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
         insertFinPurchaseDetail(finPurchase);
         int rows = finPurchaseMapper.updateFinPurchase(finPurchase);
         refreshPeriodStatsIfNeeded(finPurchase);
+        applyPurchaseStockIn(finPurchase);
         return rows;
     }
 
@@ -192,6 +202,86 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
         if (finPurchase.getDeptId() != null && ("1".equals(finPurchase.getStatus()) || "2".equals(finPurchase.getStatus())))
         {
             finAccountingPeriodService.selectCurrentPeriodByDeptId(finPurchase.getDeptId());
+        }
+    }
+
+    /**
+     * 采购入库时对账生成库存流水（支持新增/修改数量/删除明细）。
+     * 已确认(1)或已完成(2)的采购单按明细目标数量对账；草稿(0)视为目标 0 反向冲销已入库量。
+     * 对账天然幂等：内部按 reference_id + product_id 计算与已记录净额的差额。
+     */
+    void applyPurchaseStockIn(FinPurchase finPurchase)
+    {
+        if (finPurchase.getPurchaseId() == null)
+        {
+            return;
+        }
+
+        boolean active = "1".equals(finPurchase.getStatus()) || "2".equals(finPurchase.getStatus());
+
+        // 汇总本次明细中每个商品的目标入库量（同一商品多明细合并）
+        java.util.Map<Long, Integer> targetByProduct = new java.util.HashMap<>();
+        java.util.Map<Long, String> nameByProduct = new java.util.HashMap<>();
+        java.util.Map<Long, BigDecimal> costByProduct = new java.util.HashMap<>();
+        if (active && finPurchase.getDetails() != null)
+        {
+            for (FinPurchaseDetail detail : finPurchase.getDetails())
+            {
+                if (detail.getProductId() == null || detail.getQuantity() == null || detail.getQuantity() <= 0)
+                {
+                    continue;
+                }
+                Long pid = detail.getProductId();
+                targetByProduct.merge(pid, detail.getQuantity(), Integer::sum);
+                nameByProduct.put(pid, detail.getProductName());
+                costByProduct.put(pid, detail.getPrice() != null ? detail.getPrice() : BigDecimal.ZERO);
+            }
+        }
+
+        // 并集：本次目标商品 + 该单历史已记录商品（历史有但本次没有 => 目标 0 反向冲销）
+        java.util.Set<Long> productIds = new java.util.HashSet<>(targetByProduct.keySet());
+        List<Long> recordedProductIds = finStockLedgerMapper.selectRecordedProductIds("PURCHASE", finPurchase.getPurchaseId());
+        if (recordedProductIds != null)
+        {
+            productIds.addAll(recordedProductIds);
+        }
+
+        for (Long productId : productIds)
+        {
+            int target = targetByProduct.getOrDefault(productId, 0);
+            String productName = nameByProduct.get(productId);
+            BigDecimal cost = costByProduct.getOrDefault(productId, BigDecimal.ZERO);
+            finStockLedgerService.reconcilePurchaseStock(
+                    finPurchase.getDeptId(),
+                    productId,
+                    productName,
+                    finPurchase.getPurchaseId(),
+                    finPurchase.getPurchaseNo(),
+                    target,
+                    cost,
+                    finPurchase.getCreateBy()
+            );
+        }
+    }
+
+    /**
+     * 删除采购单前反向冲销其库存流水（对齐目标 0）。
+     */
+    void reversePurchaseStock(Long purchaseId, String purchaseNo, Long deptId, String operator)
+    {
+        if (purchaseId == null)
+        {
+            return;
+        }
+        List<Long> recordedProductIds = finStockLedgerMapper.selectRecordedProductIds("PURCHASE", purchaseId);
+        if (recordedProductIds == null)
+        {
+            return;
+        }
+        for (Long productId : recordedProductIds)
+        {
+            finStockLedgerService.reconcilePurchaseStock(deptId, productId, null, purchaseId, purchaseNo,
+                    0, BigDecimal.ZERO, operator);
         }
     }
 
@@ -209,6 +299,7 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
             List<FinPurchase> list = finPurchaseMapper.selectFinPurchaseByPurchaseIds(purchaseIds);
             for (FinPurchase p : list) {
                 assertPurchaseEditable(p);
+                reversePurchaseStock(p.getPurchaseId(), p.getPurchaseNo(), p.getDeptId(), p.getUpdateBy());
             }
         }
         finPurchaseMapper.deleteFinPurchaseDetailByPurchaseIds(purchaseIds);
@@ -226,6 +317,10 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
     public int deleteFinPurchaseByPurchaseId(Long purchaseId)
     {
         assertPurchaseEditable(purchaseId);
+        FinPurchase old = finPurchaseMapper.selectFinPurchaseByPurchaseId(purchaseId);
+        if (old != null) {
+            reversePurchaseStock(old.getPurchaseId(), old.getPurchaseNo(), old.getDeptId(), old.getUpdateBy());
+        }
         finPurchaseMapper.deleteFinPurchaseDetailByPurchaseId(purchaseId);
         return finPurchaseMapper.deleteFinPurchaseByPurchaseId(purchaseId);
     }

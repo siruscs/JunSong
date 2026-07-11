@@ -3,10 +3,17 @@ package com.junsong.gateway.service.impl;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.concurrent.TimeUnit;
 import jakarta.annotation.Resource;
 import javax.imageio.ImageIO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.FastByteArrayOutputStream;
@@ -20,6 +27,8 @@ import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.redis.service.RedisService;
 import com.junsong.gateway.config.properties.CaptchaProperties;
 import com.junsong.gateway.service.ValidateCodeService;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * 验证码实现处理
@@ -29,6 +38,9 @@ import com.junsong.gateway.service.ValidateCodeService;
 @Service
 public class ValidateCodeServiceImpl implements ValidateCodeService
 {
+    private static final Logger log = LoggerFactory.getLogger(ValidateCodeServiceImpl.class);
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
     @Resource(name = "captchaProducer")
     private Producer captchaProducer;
 
@@ -57,6 +69,14 @@ public class ValidateCodeServiceImpl implements ValidateCodeService
             if (isFalse(captchaObj))
             {
                 captchaEnabled = false;
+            }
+            else if (captchaObj == null)
+            {
+                // Redis 缓存丢失（如 FLUSHDB 后），兜底查库避免配置失效
+                if (isCaptchaDisabledFromRemote())
+                {
+                    captchaEnabled = false;
+                }
             }
         }
 
@@ -157,6 +177,39 @@ public class ValidateCodeServiceImpl implements ValidateCodeService
             return null;
         }
         return new Color(Integer.parseInt(normalized, 16));
+    }
+
+    /**
+     * Redis 缓存丢失时，兜底查库获取验证码开关配置
+     * 用同步 HttpClient 避开 reactive 线程 block 限制
+     */
+    private boolean isCaptchaDisabledFromRemote()
+    {
+        try
+        {
+            HttpClient client = HttpClient.newBuilder()
+                    .connectTimeout(Duration.ofSeconds(2))
+                    .build();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("http://junsong-modules-system:9201/config/configKey/sys.account.captchaEnabled"))
+                    .timeout(Duration.ofSeconds(3))
+                    .GET()
+                    .build();
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200)
+            {
+                log.warn("Redis 缓存丢失，远程查询验证码配置 HTTP {}，默认保持开启", response.statusCode());
+                return false;
+            }
+            JsonNode node = objectMapper.readTree(response.body());
+            String value = node.has("data") ? node.get("data").asText() : null;
+            return "false".equalsIgnoreCase(value);
+        }
+        catch (Exception e)
+        {
+            log.warn("Redis 缓存丢失，远程查询验证码配置失败，默认保持开启: {}", e.getMessage());
+            return false;
+        }
     }
 
     private boolean isFalse(Object value)

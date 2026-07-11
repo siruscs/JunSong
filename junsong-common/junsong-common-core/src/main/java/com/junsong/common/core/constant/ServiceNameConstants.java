@@ -26,4 +26,9 @@ public class ServiceNameConstants
      * 会员服务的serviceid
      */
     public static final String MEMBER_SERVICE = "junsong-member";
+
+    /**
+     * 财务服务的serviceid
+     */
+    public static final String FINANCE_SERVICE = "junsong-finance";
 }

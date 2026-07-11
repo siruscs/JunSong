@@ -279,6 +279,7 @@ import {
   changeUserStatus,
   switchDept,
   getUserDeptByUserId,
+  getAuthRole,
   updateAuthRole,
 } from '@/api/system/user'
 import { listRole } from '@/api/system/role'
@@ -525,8 +526,10 @@ function handleUpdate(row?: any) {
   const userId = row?.userId || ids.value[0]
   getUser(userId).then((res: any) => {
     Object.assign(form, res.data)
-    form.postIds = res.data.postIds || []
-    form.roleIds = res.data.roleIds || []
+    postOptions.value = res.posts || []
+    roleOptions.value = res.roles || []
+    form.postIds = res.postIds || []
+    form.roleIds = res.roleIds || []
     getUserDeptByUserId(userId).then((deptRes: any) => {
       const userDepts = deptRes.data || deptRes.rows || []
       form.deptIds = userDepts.map((dept: any) => dept.deptId)
@@ -546,11 +549,17 @@ function submitForm() {
     if (valid) {
       form.deptId = form.deptIds?.[0]
       if (form.userId !== undefined) {
-        updateUser(form).then(() => {
-          ElMessage.success('修改成功')
-          formDialog.visible = false
-          getList()
-        })
+        if (!form.roleIds || form.roleIds.length === 0) {
+          ElMessageBox.confirm(
+            '当前未选择任何角色，保存后将清空该用户的全部角色，导致其失去所有权限（需重新登录后生效）。是否确认继续？',
+            '角色为空警告',
+            { confirmButtonText: '仍然保存', cancelButtonText: '返回修改', type: 'warning' }
+          ).then(() => {
+            doUpdateUser()
+          }).catch(() => {})
+        } else {
+          doUpdateUser()
+        }
       } else {
         addUser(form).then(() => {
           ElMessage.success('新增成功')
@@ -559,6 +568,14 @@ function submitForm() {
         })
       }
     }
+  })
+}
+
+function doUpdateUser() {
+  updateUser(form).then(() => {
+    ElMessage.success('修改成功')
+    formDialog.visible = false
+    getList()
   })
 }
 
@@ -625,19 +642,22 @@ function handleAuthRole(row: any) {
   form.userId = row.userId
   form.userName = row.userName
   form.roleIds = []
-  nextTick(() => {
-    listRole({ pageNum: 1, pageSize: 100 }).then((res: any) => {
-      roleOptions.value = res.rows
-      roleIds.value = row.roleIds || []
+  getAuthRole(row.userId).then((res: any) => {
+    const roles = res.roles || []
+    roleOptions.value = roles
+    roleIds.value = roles.filter((item: any) => item.flag).map((item: any) => item.roleId)
+    // 先显示对话框，确保 el-table DOM 已挂载，再在 nextTick 中勾选行
+    authRoleDialog.visible = true
+    authRoleDialog.title = '分配角色'
+    nextTick(() => {
       if (roleTableRef.value) {
+        ;(roleTableRef.value as any).clearSelection()
         roleOptions.value.forEach((item) => {
           if (roleIds.value.includes(item.roleId)) {
             ;(roleTableRef.value as any).toggleRowSelection(item, true)
           }
         })
       }
-      authRoleDialog.visible = true
-      authRoleDialog.title = '分配角色'
     })
   })
 }

@@ -2,11 +2,15 @@ package com.junsong.system.service.impl;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import com.junsong.system.domain.SysHealthRuleConfig;
+import com.junsong.system.domain.SysOperationAuditSnapshot;
+import com.junsong.system.domain.vo.AuditSnapshotQueryParams;
 import com.junsong.system.mapper.SysHealthRuleConfigMapper;
+import com.junsong.system.service.ISysOperationAuditService;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -17,13 +21,15 @@ import static org.junit.jupiter.api.Assertions.*;
 class SysHealthRuleConfigServiceImplTest
 {
     private FakeHealthRuleConfigMapper mapper;
+    private NoOpAuditService auditService;
     private SysHealthRuleConfigServiceImpl service;
 
     @BeforeEach
     void setUp()
     {
         mapper = new FakeHealthRuleConfigMapper();
-        service = new SysHealthRuleConfigServiceImpl(mapper);
+        auditService = new NoOpAuditService();
+        service = new SysHealthRuleConfigServiceImpl(mapper, auditService);
     }
 
     @Test
@@ -172,6 +178,24 @@ class SysHealthRuleConfigServiceImplTest
         {
             updated.add(config);
             return 1;
+        }
+    }
+
+    /**
+     * R25 审计服务 no-op fake：构造签名变化后需要注入，但不参与断言。
+     */
+    static class NoOpAuditService implements ISysOperationAuditService
+    {
+        @Override
+        public void recordSnapshot(String bizType, String bizId, String operation, String riskLevel, Object before, Object after)
+        {
+            // no-op
+        }
+
+        @Override
+        public List<SysOperationAuditSnapshot> listSnapshots(AuditSnapshotQueryParams params)
+        {
+            return Collections.emptyList();
         }
     }
 }

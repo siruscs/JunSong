@@ -7,6 +7,11 @@ export interface ThemePreset {
   primaryLight: string
   primaryDark: string
   primaryRgb: string
+  action?: string
+  actionHover?: string
+  actionText?: string
+  actionRgb?: string
+  radiusScale?: 'soft' | 'compact'
   sidebarBg: string
   sidebarSubmenuBg: string
   sidebarActiveStart?: string
@@ -288,6 +293,44 @@ export const themePresets: ThemePreset[] = [
     loginPanelEnd: '#8EC8D2',
   },
   {
+    key: 'jam-purple-lime',
+    name: '酱紫青柠',
+    primary: '#3B1B8B',
+    primaryLight: '#7355C6',
+    primaryDark: '#24104F',
+    primaryRgb: '59, 27, 139',
+    action: '#9DE805',
+    actionHover: '#86C900',
+    actionText: '#24104F',
+    actionRgb: '157, 232, 5',
+    radiusScale: 'compact',
+    sidebarBg: '#24104F',
+    sidebarSubmenuBg: '#2D155F',
+    sidebarActiveStart: 'rgba(59, 27, 139, 0.82)',
+    sidebarActiveEnd: 'rgba(59, 27, 139, 0.82)',
+    sidebarActiveText: '#9DE805',
+    sidebarHoverText: '#B8F34B',
+    sidebarText: '#C9C0DD',
+    sidebarHoverBg: 'rgba(115, 85, 198, 0.18)',
+    sidebarSubmenuActiveBg: 'rgba(157, 232, 5, 0.1)',
+    sidebarActiveShadow: 'none',
+    sidebarLogoText: '#9DE805',
+    appBg: '#F7F7F8',
+    appBgSoft: '#F0EFF3',
+    appSurface: '#FFFFFF',
+    appSurfaceMuted: '#FAFAFB',
+    appBorder: '#DDD9E5',
+    appText: '#211C2B',
+    appMuted: '#6C6675',
+    appHeaderBg: 'rgba(255, 255, 255, 0.94)',
+    appHeaderShadow: '0 6px 18px rgba(36, 16, 79, 0.06)',
+    loginBgStart: '#190B38',
+    loginBgEnd: '#3B1B8B',
+    loginPanelStart: '#24104F',
+    loginPanelMid: '#3B1B8B',
+    loginPanelEnd: '#9DE805',
+  },
+  {
     key: 'apple-silver',
     name: '苹果银灰',
     primary: '#0071E3',
@@ -341,10 +384,22 @@ function mixWithWhite(hex: string, ratio: number): string {
 
 export function applyTheme(preset: ThemePreset): void {
   const root = document.documentElement
+  const action = preset.action || preset.primary
+  const actionHover = preset.actionHover || preset.primaryDark
+  const actionText = preset.actionText || '#FFFFFF'
+  const actionRgb = preset.actionRgb || preset.primaryRgb
+
+  root.dataset.themePreset = preset.key
   root.style.setProperty('--theme-primary', preset.primary)
   root.style.setProperty('--theme-primary-light', preset.primaryLight)
   root.style.setProperty('--theme-primary-dark', preset.primaryDark)
   root.style.setProperty('--theme-primary-rgb', preset.primaryRgb)
+  root.style.setProperty('--theme-action', action)
+  root.style.setProperty('--theme-action-hover', actionHover)
+  root.style.setProperty('--theme-action-text', actionText)
+  root.style.setProperty('--theme-action-rgb', actionRgb)
+  root.style.setProperty('--theme-radius-control', preset.radiusScale === 'compact' ? '6px' : '10px')
+  root.style.setProperty('--theme-radius-surface', preset.radiusScale === 'compact' ? '5px' : '12px')
   root.style.setProperty('--theme-sidebar-bg', preset.sidebarBg)
   root.style.setProperty('--theme-sidebar-submenu-bg', preset.sidebarSubmenuBg)
   root.style.setProperty('--theme-sidebar-active-start', preset.sidebarActiveStart || preset.primary)

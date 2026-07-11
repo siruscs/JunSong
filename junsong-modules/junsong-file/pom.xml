@@ -59,7 +59,13 @@
             <groupId>com.junsong</groupId>
             <artifactId>junsong-api-system</artifactId>
         </dependency>
-        
+
+        <!-- JunSong Security -->
+        <dependency>
+            <groupId>com.junsong</groupId>
+            <artifactId>junsong-common-security</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

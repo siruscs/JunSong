@@ -30,7 +30,7 @@ export function createThreeModuleRegressionSteps() {
       command: 'mvn',
       args: [
         '-pl', 'junsong-modules/junsong-member',
-        '-Dtest=MemPointsExchangeServiceTest,PiiMaskingTest,MemMemberControllerTest,MemberReportServiceImplTest,MemMpDashboardControllerTest,MemberLifecycleTaskTest,MemAuditTrailTest,MemberContributionReportServiceImplTest',
+        '-Dtest=MemPointsExchangeServiceTest,PiiMaskingTest,MemMemberControllerTest,MemberReportServiceImplTest,MemMpDashboardControllerTest,MemberLifecycleTaskTest,MemAuditTrailTest,MemberContributionReportServiceImplTest,MemDashboardControllerTest',
         'test',
         '-DskipTests=false',
       ],
@@ -40,7 +40,7 @@ export function createThreeModuleRegressionSteps() {
       command: 'mvn',
       args: [
         '-pl', 'junsong-modules/junsong-system',
-        '-Dtest=WebhookUrlValidatorTest,SysNotificationServiceImplTest,SysNoticeReadServiceImplTest,SysConfigMaskingTest,SysAuditTrailTest',
+        '-Dtest=WebhookUrlValidatorTest,SysNotificationServiceImplTest,SysNoticeReadServiceImplTest,SysConfigMaskingTest,SysAuditTrailTest,SysDashboardControllerTest',
         'test',
         '-DskipTests=false',
       ],
@@ -50,7 +50,7 @@ export function createThreeModuleRegressionSteps() {
       command: 'mvn',
       args: [
         '-pl', 'junsong-modules/junsong-finance',
-        '-Dtest=ExpenseOcrServiceImplTest,FinanceReportServiceImplTest,FinanceDrillDownServiceImplTest,StoreFinanceReportServiceImplTest,AuthorizedStoreFinanceReportServiceImplTest,CodeGeneratorTest,FinAttachmentMetadataTest,FinAuditTrailTest,FinanceOperationDashboardServiceImplTest,OperatingProfitReportServiceImplTest,ExpenseAnomalyReportServiceImplTest,SalesOperationReportServiceImplTest,ProfitShareSettlementDashboardServiceImplTest,AccountingPeriodLockGuardTest',
+        '-Dtest=ExpenseOcrServiceImplTest,FinanceReportServiceImplTest,FinanceDrillDownServiceImplTest,StoreFinanceReportServiceImplTest,AuthorizedStoreFinanceReportServiceImplTest,CodeGeneratorTest,FinAttachmentMetadataTest,FinAuditTrailTest,FinanceOperationDashboardServiceImplTest,OperatingProfitReportServiceImplTest,ExpenseAnomalyReportServiceImplTest,SalesOperationReportServiceImplTest,ProfitShareSettlementDashboardServiceImplTest,AccountingPeriodLockGuardTest,FinanceReviewKnowledgeServiceImplTest,DailyReviewBoardServiceImplTest,FinSaleRecordServiceImplTest,AccountingPeriodCheckServiceImplTest,FinanceReviewTaskServiceImplTest',
         'test',
         '-DskipTests=false',
       ],

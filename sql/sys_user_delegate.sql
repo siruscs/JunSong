@@ -1,6 +1,7 @@
 -- 用户委托代理表
 CREATE TABLE `sys_user_delegate` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '委托ID',
+  `tenant_id` bigint DEFAULT 1 COMMENT '租户ID',
   `user_id` bigint NOT NULL COMMENT '委托人用户ID',
   `delegate_user_id` bigint NOT NULL COMMENT '代理人用户ID',
   `delegate_type` varchar(20) DEFAULT 'all' COMMENT '委托类型（all=全部, workflow=工作流, system=系统）',
@@ -14,6 +15,7 @@ CREATE TABLE `sys_user_delegate` (
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `remark` varchar(500) DEFAULT '' COMMENT '备注',
   PRIMARY KEY (`id`),
+  KEY `idx_tenant_id` (`tenant_id`),
   KEY `idx_user_id` (`user_id`),
   KEY `idx_delegate_user_id` (`delegate_user_id`),
   KEY `idx_status` (`status`),

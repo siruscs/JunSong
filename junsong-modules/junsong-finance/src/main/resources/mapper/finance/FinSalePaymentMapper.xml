@@ -56,7 +56,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="countTodayPayments" resultType="int">
         select count(*) from fin_sale_payment
-        where del_flag = '0' and DATE(payment_date) = CURDATE()
+        where payment_no like concat('JK', date_format(curdate(), '%Y%m%d'), '%')
     </select>
 
     <select id="sumPaymentAmountBySaleId" resultType="java.math.BigDecimal">

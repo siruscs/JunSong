@@ -7,6 +7,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.junsong.member.mapper.MemMemberMapper;
 import com.junsong.member.mapper.MemPointsExchangeMapper;
 import com.junsong.member.mapper.MemPointsGoodsMapper;
 import com.junsong.member.domain.MemPointsExchange;
@@ -29,6 +30,9 @@ public class MemPointsExchangeServiceImpl implements IMemPointsExchangeService {
 
     @Autowired
     private IMemPointsRecordService memPointsRecordService;
+
+    @Autowired
+    private MemMemberMapper memMemberMapper;
 
     /**
      * 查询积分兑换
@@ -140,6 +144,9 @@ public class MemPointsExchangeServiceImpl implements IMemPointsExchangeService {
         pointsRecord.setRemark("兑换扣减-" + exchange.getExchangeNo());
         pointsRecord.setCreateBy(operator);
         memPointsRecordService.insertMemPointsRecord(pointsRecord);
+
+        // 8. 更新会员最后活跃时间（兑换不写成长流水，不触发等级检查）
+        memMemberMapper.updateLastActiveTime(exchange.getMemberId());
     }
 
     /**

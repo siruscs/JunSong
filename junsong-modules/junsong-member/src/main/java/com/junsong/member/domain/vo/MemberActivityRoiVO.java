@@ -33,6 +33,7 @@ public class MemberActivityRoiVO {
     private BigDecimal roi;                  // (sales - cost) / cost * 100 (may be UNAVAILABLE)
     private String roiStatus;               // "READY" or "UNAVAILABLE"
     private String unavailableReason;        // R5-D: MISSING_ACTIVITY_COST / NO_RELATED_SALES / MISSING_ACTIVITY_SALE_LINK
+    private String suggestion;                // R6-P0: 不可算时的操作建议文案
 
     public Long getActivityId() {
         return activityId;
@@ -200,5 +201,13 @@ public class MemberActivityRoiVO {
 
     public void setUnavailableReason(String unavailableReason) {
         this.unavailableReason = unavailableReason;
+    }
+
+    public String getSuggestion() {
+        return suggestion;
+    }
+
+    public void setSuggestion(String suggestion) {
+        this.suggestion = suggestion;
     }
 }

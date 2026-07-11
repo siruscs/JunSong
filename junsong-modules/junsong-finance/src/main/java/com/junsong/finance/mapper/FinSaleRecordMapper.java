@@ -31,6 +31,24 @@ public interface FinSaleRecordMapper
     public List<FinSaleRecord> selectFinSaleRecordList(FinSaleRecord finSaleRecord);
 
     /**
+     * 查询未缴清销售单（历史欠款）列表
+     *
+     * @param finSaleRecord 查询条件（门店/销售单号/商品名称/销售周期/状态）
+     * @return 未缴清销售记录集合
+     */
+    public List<FinSaleRecord> selectReceivableList(FinSaleRecord finSaleRecord);
+
+    /**
+     * 统计指定周期内未缴清销售单笔数（结转检查用）
+     */
+    public int countReceivableByPeriodId(@Param("deptId") Long deptId, @Param("periodId") Long periodId);
+
+    /**
+     * 统计指定周期内未缴清销售单剩余应收总额（结转检查用）
+     */
+    public BigDecimal sumReceivableByPeriodId(@Param("deptId") Long deptId, @Param("periodId") Long periodId);
+
+    /**
      * 新增销售记录
      * 
      * @param finSaleRecord 销售记录
@@ -45,6 +63,17 @@ public interface FinSaleRecordMapper
      * @return 结果
      */
     public int updateFinSaleRecord(FinSaleRecord finSaleRecord);
+
+    /**
+     * 仅更新销售单的已缴金额与缴款状态（跨周期补缴款场景）。
+     * 不修改销售业务字段，允许在原销售周期已结转后调用。
+     *
+     * @param saleId 销售记录主键
+     * @param paidAmount 累计已缴金额
+     * @param status 缴款状态
+     * @return 结果
+     */
+    public int updatePaidAmountAndStatus(@Param("saleId") Long saleId, @Param("paidAmount") BigDecimal paidAmount, @Param("status") String status);
 
     /**
      * 删除销售记录
@@ -84,10 +113,17 @@ public interface FinSaleRecordMapper
 
     /**
      * 统计今日销售单数量
-     * 
+     *
      * @return 结果
      */
     public int countTodaySales();
+
+    /**
+     * 查询今日销售单号最大序号（含已删除记录，防止单号碰撞）
+     *
+     * @return 今日最大序号，无记录返回0
+     */
+    public int maxTodaySaleSeq();
 
     BigDecimal selectTodayTotalSales(@Param("deptIds") List<Long> deptIds);
     BigDecimal selectMonthTotalSales(@Param("deptIds") List<Long> deptIds);
@@ -97,4 +133,27 @@ public interface FinSaleRecordMapper
     List<Map<String, Object>> selectProductSalesRank(@Param("deptIds") List<Long> deptIds, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
     BigDecimal selectMemberSales(@Param("deptIds") List<Long> deptIds, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
     BigDecimal selectSeckillSales(@Param("deptIds") List<Long> deptIds, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
+
+    /** 本期实收：fin_sale_payment 中 period_id = currentPeriodId 的缴款总额 */
+    BigDecimal selectCurrentPeriodPaymentTotal(@Param("deptIds") List<Long> deptIds, @Param("periodId") Long periodId);
+
+    /** 历史欠款回收：缴款 period_id = currentPeriodId 且对应销售 period_id <> currentPeriodId */
+    BigDecimal selectHistoricalReceivableCollected(@Param("deptIds") List<Long> deptIds, @Param("periodId") Long periodId);
+
+    /** 本期新增应收：sale.period_id = currentPeriodId 且 sale_amount > COALESCE(paid_amount,0) */
+    BigDecimal selectCurrentPeriodNewReceivable(@Param("deptIds") List<Long> deptIds, @Param("periodId") Long periodId);
+
+    /** 期末应收余额：所有未缴清销售单 sale_amount - COALESCE(paid_amount,0) 的总额 */
+    BigDecimal selectEndingReceivableBalance(@Param("deptIds") List<Long> deptIds);
+
+    /**
+     * 行锁读取销售单（缴款并发保护）
+     *
+     * @param saleId 销售记录主键
+     * @return 销售记录（带行锁）
+     */
+    public FinSaleRecord selectFinSaleRecordBySaleIdForUpdate(Long saleId);
+
+    /** 逾期应收笔数：账龄超30天的未缴清销售单数量 */
+    int countOverdueReceivable(@Param("deptIds") List<Long> deptIds);
 }

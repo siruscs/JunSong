@@ -12,6 +12,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="periodId" column="period_id" />
         <result property="taskDate" column="task_date" />
         <result property="status" column="status" />
+        <result property="archived" column="archived" />
+        <result property="archiveTime" column="archive_time" />
+        <result property="reopenCount" column="reopen_count" />
         <result property="severity" column="severity" />
         <result property="title" column="title" />
         <result property="reason" column="reason" />
@@ -32,7 +35,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <sql id="selectReviewTaskVo">
         select task_id, task_type, dept_id, dept_name, period_id, task_date,
-               status, severity, title, reason, suggestion, impact_amount,
+               status, archived, archive_time, reopen_count,
+               severity, title, reason, suggestion, impact_amount,
                handler_id, handler_name, handler_note, ignore_reason,
                alert_id, target_route, del_flag,
                create_by, create_time, update_by, update_time
@@ -73,6 +77,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="endTime != null and endTime != ''">
                 and task_date &lt;= #{endTime}
             </if>
+            <if test="includeArchived == null or includeArchived == false">
+                and COALESCE(archived, '0') = '0'
+            </if>
         </where>
         order by create_time desc
     </select>
@@ -99,6 +106,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="periodId != null">period_id,</if>
             <if test="taskDate != null">task_date,</if>
             <if test="status != null and status != ''">status,</if>
+            <if test="archived != null and archived != ''">archived,</if>
+            <if test="archiveTime != null">archive_time,</if>
+            <if test="reopenCount != null">reopen_count,</if>
             <if test="severity != null and severity != ''">severity,</if>
             <if test="title != null and title != ''">title,</if>
             <if test="reason != null">reason,</if>
@@ -123,6 +133,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="periodId != null">#{periodId},</if>
             <if test="taskDate != null">#{taskDate},</if>
             <if test="status != null and status != ''">#{status},</if>
+            <if test="archived != null and archived != ''">#{archived},</if>
+            <if test="archiveTime != null">#{archiveTime},</if>
+            <if test="reopenCount != null">#{reopenCount},</if>
             <if test="severity != null and severity != ''">#{severity},</if>
             <if test="title != null and title != ''">#{title},</if>
             <if test="reason != null">#{reason},</if>
@@ -151,6 +164,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="periodId != null">period_id = #{periodId},</if>
             <if test="taskDate != null">task_date = #{taskDate},</if>
             <if test="status != null and status != ''">status = #{status},</if>
+            <if test="archived != null">archived = #{archived},</if>
+            <if test="archiveTime != null">archive_time = #{archiveTime},</if>
+            <if test="reopenCount != null">reopen_count = #{reopenCount},</if>
             <if test="severity != null and severity != ''">severity = #{severity},</if>
             <if test="title != null and title != ''">title = #{title},</if>
             <if test="reason != null">reason = #{reason},</if>
@@ -183,6 +199,57 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 </foreach>
             </if>
         </where>
+    </select>
+
+    <select id="selectTaskEffectAmountWindow" resultType="java.util.HashMap">
+        SELECT
+            COALESCE((SELECT SUM(s.sale_amount) FROM fin_sale_record s
+                WHERE s.del_flag = '0' AND s.dept_id = #{deptId}
+                AND s.sale_time &gt;= #{startTime} AND s.sale_time &lt; #{endTime}), 0) AS salesAmount,
+            COALESCE((SELECT SUM(e.amount) FROM fin_expense e
+                WHERE e.del_flag = '0' AND e.dept_id = #{deptId}
+                AND e.expense_date &gt;= #{startTime} AND e.expense_date &lt; #{endTime}), 0) AS expenseAmount
+    </select>
+
+    <select id="countSimilarOpenTasks" resultType="int">
+        SELECT COUNT(1)
+        FROM finance_review_task t
+        WHERE t.del_flag = '0'
+            AND t.dept_id = #{deptId}
+            AND t.task_type = #{problemType}
+            AND t.status IN ('PENDING', 'IN_PROGRESS')
+            AND t.create_time &gt;= #{startTime}
+            AND t.create_time &lt; #{endTime}
+    </select>
+
+    <select id="selectRecentDoneTasks" resultMap="FinanceReviewTaskResult">
+        <include refid="selectReviewTaskVo"/>
+        where status = 'DONE' and COALESCE(archived, '0') = '1'
+        <if test="sinceDate != null">
+            and archive_time &gt;= #{sinceDate}
+        </if>
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in
+            <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+        order by archive_time desc
+        limit #{limit}
+    </select>
+
+    <select id="selectReopenCandidates" resultMap="FinanceReviewTaskResult">
+        <include refid="selectReviewTaskVo"/>
+        where status = 'DONE' and COALESCE(archived, '0') = '1'
+        and archive_time &lt;= #{cutoffDate}
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in
+            <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+        order by archive_time asc
+        limit #{limit}
     </select>
 
 </mapper>

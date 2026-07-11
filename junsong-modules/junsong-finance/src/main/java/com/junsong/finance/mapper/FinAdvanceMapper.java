@@ -1,6 +1,7 @@
 package com.junsong.finance.mapper;
 
 import java.util.List;
+import java.util.Date;
 import org.apache.ibatis.annotations.Param;
 import com.junsong.finance.domain.FinAdvance;
 
@@ -89,4 +90,13 @@ public interface FinAdvanceMapper
      * @return 借支记录集合
      */
     public List<FinAdvance> selectFinAdvanceByAdvanceIds(Long[] advanceIds);
+
+    public List<FinAdvance> selectFinAdvanceByAdvanceIdsScoped(@Param("advanceIds") List<Long> advanceIds,
+        @Param("tenantId") Long tenantId, @Param("deptId") Long deptId);
+
+    public int markAdvanceVerified(@Param("advanceId") Long advanceId, @Param("verifyBy") String verifyBy,
+        @Param("verifyTime") Date verifyTime, @Param("tenantId") Long tenantId, @Param("deptId") Long deptId);
+
+    public int restoreAdvanceStatus(@Param("advanceId") Long advanceId, @Param("status") String originalStatus,
+        @Param("verifyBy") String verifyBy, @Param("verifyTime") Date verifyTime);
 }

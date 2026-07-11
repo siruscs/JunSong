@@ -97,4 +97,271 @@
         ORDER BY d.dt
     </select>
 
+    <!-- ==================== MP 同步：多租户 + 多部门聚合查询 ==================== -->
+    <!-- 注意：deptIds 为空列表表示"无可见部门"（哨兵 [-1L] 已在 service 层处理），
+         deptIds 为 null 表示 admin 不限制（此处不会出现，service 层会传入非 null 列表） -->
+
+    <!-- 会员模块聚合：总会员/今日新增/活跃/沉默 -->
+    <select id="queryMemberOverview" resultType="java.util.Map">
+        SELECT
+            COUNT(1) AS totalMembers,
+            SUM(CASE WHEN m.create_time >= CURDATE() AND m.create_time &lt; DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+                THEN 1 ELSE 0 END) AS todayMembers,
+            SUM(CASE WHEN
+                EXISTS (SELECT 1 FROM mem_points_record pr
+                        WHERE pr.member_id = m.member_id AND pr.del_flag = '0'
+                        AND pr.create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY))
+                OR EXISTS (SELECT 1 FROM mem_points_exchange pe
+                        WHERE pe.member_id = m.member_id AND pe.del_flag = '0'
+                        AND pe.create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY))
+                OR EXISTS (SELECT 1 FROM mem_seckill_record sr
+                        WHERE sr.member_id = m.member_id AND sr.del_flag = '0'
+                        AND sr.create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY))
+                THEN 1 ELSE 0 END) AS activeMembers
+        FROM mem_member m
+        WHERE m.del_flag = '0'
+        <if test="tenantId != null">
+            AND m.tenant_id = #{tenantId}
+        </if>
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND m.dept_id IN
+            <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+        </if>
+    </select>
+
+    <!-- 成长体系聚合：今日签到/平均成长值/待执行动作/已完成动作/总动作 -->
+    <select id="queryGrowthOverview" resultType="java.util.Map">
+        SELECT
+            (SELECT COUNT(1) FROM mem_member_sign_in s
+                WHERE s.del_flag = '0'
+                <if test="tenantId != null">AND s.tenant_id = #{tenantId}</if>
+                <if test="deptIds != null and deptIds.size() > 0">
+                    AND s.dept_id IN
+                    <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+                </if>
+                AND s.sign_date = CURDATE()
+            ) AS todaySignInCount,
+            (SELECT COALESCE(AVG(m.growth_value), 0) FROM mem_member m
+                WHERE m.del_flag = '0'
+                <if test="tenantId != null">AND m.tenant_id = #{tenantId}</if>
+                <if test="deptIds != null and deptIds.size() > 0">
+                    AND m.dept_id IN
+                    <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+                </if>
+            ) AS avgGrowthValue,
+            (SELECT COUNT(1) FROM member_growth_action a
+                WHERE a.del_flag = '0'
+                <if test="tenantId != null">AND a.tenant_id = #{tenantId}</if>
+                <if test="deptIds != null and deptIds.size() > 0">
+                    AND a.dept_id IN
+                    <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+                </if>
+                AND a.status = '0'
+            ) AS pendingGrowthActions,
+            (SELECT COUNT(1) FROM member_growth_action a
+                WHERE a.del_flag = '0'
+                <if test="tenantId != null">AND a.tenant_id = #{tenantId}</if>
+                <if test="deptIds != null and deptIds.size() > 0">
+                    AND a.dept_id IN
+                    <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+                </if>
+                AND a.status = '1'
+            ) AS completedGrowthActions,
+            (SELECT COUNT(1) FROM member_growth_action a
+                WHERE a.del_flag = '0'
+                <if test="tenantId != null">AND a.tenant_id = #{tenantId}</if>
+                <if test="deptIds != null and deptIds.size() > 0">
+                    AND a.dept_id IN
+                    <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+                </if>
+            ) AS totalGrowthActions
+        FROM dual
+    </select>
+
+    <!-- 积分运营聚合：总可用积分/今日发放/今日消耗/待领取兑换 -->
+    <select id="queryPointsOverview" resultType="java.util.Map">
+        SELECT
+            (SELECT COALESCE(SUM(CASE WHEN m.available_points > 0 THEN m.available_points ELSE 0 END), 0)
+                FROM mem_member m
+                WHERE m.del_flag = '0'
+                <if test="tenantId != null">AND m.tenant_id = #{tenantId}</if>
+                <if test="deptIds != null and deptIds.size() > 0">
+                    AND m.dept_id IN
+                    <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+                </if>
+            ) AS totalAvailablePoints,
+            (SELECT COALESCE(SUM(pr.points), 0) FROM mem_points_record pr
+                WHERE pr.del_flag = '0' AND pr.points > 0
+                <if test="deptIds != null and deptIds.size() > 0">
+                    AND pr.dept_id IN
+                    <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+                </if>
+                AND pr.create_time >= CURDATE() AND pr.create_time &lt; DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+            ) AS todayPointsIssued,
+            (SELECT COALESCE(SUM(ABS(pr.points)), 0) FROM mem_points_record pr
+                WHERE pr.del_flag = '0' AND pr.points &lt; 0
+                <if test="deptIds != null and deptIds.size() > 0">
+                    AND pr.dept_id IN
+                    <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+                </if>
+                AND pr.create_time >= CURDATE() AND pr.create_time &lt; DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+            ) AS todayPointsConsumed,
+            (SELECT COUNT(1) FROM mem_points_exchange pe
+                WHERE pe.del_flag = '0' AND pe.status = '0'
+                <if test="deptIds != null and deptIds.size() > 0">
+                    AND pe.dept_id IN
+                    <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+                </if>
+            ) AS pendingExchangeCount
+        FROM dual
+    </select>
+
+    <!-- 会员等级分布（按 card_type 分组，关联 mem_member_card_type 取等级名） -->
+    <select id="queryLevelDistribution" resultType="java.util.Map">
+        SELECT
+            COALESCE(ct.type_name,
+                CASE m.card_type
+                    WHEN '0' THEN '普通会员'
+                    WHEN '1' THEN '银卡会员'
+                    WHEN '2' THEN '金卡会员'
+                    WHEN '3' THEN '钻石会员'
+                    ELSE COALESCE(m.card_type, '未分级')
+                END
+            ) AS levelName,
+            COUNT(1) AS count
+        FROM mem_member m
+        LEFT JOIN mem_member_card_type ct ON ct.type_code = m.card_type
+            AND ct.del_flag = '0'
+            <if test="tenantId != null">AND ct.tenant_id = #{tenantId}</if>
+        WHERE m.del_flag = '0'
+        <if test="tenantId != null">AND m.tenant_id = #{tenantId}</if>
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND m.dept_id IN
+            <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+        </if>
+        GROUP BY levelName
+        ORDER BY count DESC
+    </select>
+
+    <!-- 会员分层分布（即时计算：高价值/活跃/沉默） -->
+    <select id="querySegmentDistribution" resultType="java.util.Map">
+        SELECT segmentName, SUM(cnt) AS count FROM (
+            SELECT '高价值会员' AS segmentName, COUNT(1) AS cnt
+            FROM mem_member m
+            WHERE m.del_flag = '0' AND m.growth_value >= 1000
+            <if test="tenantId != null">AND m.tenant_id = #{tenantId}</if>
+            <if test="deptIds != null and deptIds.size() > 0">
+                AND m.dept_id IN
+                <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+            </if>
+            UNION ALL
+            SELECT '活跃会员' AS segmentName, COUNT(1) AS cnt
+            FROM mem_member m
+            WHERE m.del_flag = '0'
+            AND m.growth_value &lt; 1000
+            AND (
+                EXISTS (SELECT 1 FROM mem_points_record pr
+                        WHERE pr.member_id = m.member_id AND pr.del_flag = '0'
+                        AND pr.create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY))
+                OR EXISTS (SELECT 1 FROM mem_points_exchange pe
+                        WHERE pe.member_id = m.member_id AND pe.del_flag = '0'
+                        AND pe.create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY))
+                OR EXISTS (SELECT 1 FROM mem_seckill_record sr
+                        WHERE sr.member_id = m.member_id AND sr.del_flag = '0'
+                        AND sr.create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY))
+            )
+            <if test="tenantId != null">AND m.tenant_id = #{tenantId}</if>
+            <if test="deptIds != null and deptIds.size() > 0">
+                AND m.dept_id IN
+                <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+            </if>
+            UNION ALL
+            SELECT '沉默会员' AS segmentName, COUNT(1) AS cnt
+            FROM mem_member m
+            WHERE m.del_flag = '0'
+            AND m.growth_value &lt; 1000
+            AND NOT EXISTS (SELECT 1 FROM mem_points_record pr
+                    WHERE pr.member_id = m.member_id AND pr.del_flag = '0'
+                    AND pr.create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY))
+            AND NOT EXISTS (SELECT 1 FROM mem_points_exchange pe
+                    WHERE pe.member_id = m.member_id AND pe.del_flag = '0'
+                    AND pe.create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY))
+            AND NOT EXISTS (SELECT 1 FROM mem_seckill_record sr
+                    WHERE sr.member_id = m.member_id AND sr.del_flag = '0'
+                    AND sr.create_time >= DATE_SUB(CURDATE(), INTERVAL 30 DAY))
+            <if test="tenantId != null">AND m.tenant_id = #{tenantId}</if>
+            <if test="deptIds != null and deptIds.size() > 0">
+                AND m.dept_id IN
+                <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+            </if>
+        ) t
+        GROUP BY segmentName
+        ORDER BY count DESC
+    </select>
+
+    <!-- 活动表现聚合：进行中秒杀数/今日参与人数/今日活动金额 -->
+    <select id="queryActivityOverview" resultType="java.util.Map">
+        SELECT
+            (SELECT COUNT(1) FROM mem_seckill s
+                WHERE s.del_flag = '0' AND s.status = '0'
+                <if test="deptIds != null and deptIds.size() > 0">
+                    AND s.dept_id IN
+                    <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+                </if>
+            ) AS activeSeckillCount,
+            (SELECT COUNT(DISTINCT sr.member_id) FROM mem_seckill_record sr
+                WHERE sr.del_flag = '0'
+                <if test="deptIds != null and deptIds.size() > 0">
+                    AND sr.dept_id IN
+                    <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+                </if>
+                AND sr.create_time >= CURDATE() AND sr.create_time &lt; DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+            ) AS todayActivityMembers,
+            (SELECT COALESCE(SUM(sr.total_amount), 0) FROM mem_seckill_record sr
+                WHERE sr.del_flag = '0'
+                <if test="deptIds != null and deptIds.size() > 0">
+                    AND sr.dept_id IN
+                    <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+                </if>
+                AND sr.create_time >= CURDATE() AND sr.create_time &lt; DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+            ) AS todayActivityAmount
+        FROM dual
+    </select>
+
+    <!-- 财务今日聚合：今日销售/今日费用/未核销费用/未核销借支 -->
+    <select id="queryFinanceOverview" resultType="java.util.Map">
+        SELECT
+            (SELECT COALESCE(SUM(sale_amount), 0) FROM fin_sale_record
+                WHERE del_flag = '0'
+                <if test="deptIds != null and deptIds.size() > 0">
+                    AND dept_id IN
+                    <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+                </if>
+                AND sale_date >= CURDATE() AND sale_date &lt; DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+            ) AS todaySale,
+            (SELECT COALESCE(SUM(expense_amount), 0) FROM fin_expense
+                WHERE del_flag = '0'
+                <if test="deptIds != null and deptIds.size() > 0">
+                    AND dept_id IN
+                    <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+                </if>
+                AND expense_date >= CURDATE() AND expense_date &lt; DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+            ) AS todayExpense,
+            (SELECT COALESCE(SUM(expense_amount), 0) FROM fin_expense
+                WHERE del_flag = '0' AND status = '0'
+                <if test="deptIds != null and deptIds.size() > 0">
+                    AND dept_id IN
+                    <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+                </if>
+            ) AS unverifiedExpense,
+            (SELECT COALESCE(SUM(advance_amount), 0) FROM fin_advance
+                WHERE del_flag = '0' AND status = '0'
+                <if test="deptIds != null and deptIds.size() > 0">
+                    AND dept_id IN
+                    <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+                </if>
+            ) AS unverifiedAdvance
+        FROM dual
+    </select>
+
 </mapper>

@@ -64,9 +64,10 @@ public interface MemPointsGoodsMapper {
      * 校验物品编号唯一性
      *
      * @param goodsNo 物品编号
+     * @param goodsId 物品ID（修改时排除自身，新增时传null）
      * @return 物品数量
      */
-    int checkMemGoodsCodeUnique(@Param("goodsNo") String goodsNo);
+    int checkMemGoodsCodeUnique(@Param("goodsNo") String goodsNo, @Param("goodsId") Long goodsId);
 
     /**
      * 带条件的库存扣减：仅在 stock >= quantity 时扣减库存并增加已兑换数量。

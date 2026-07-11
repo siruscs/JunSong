@@ -83,6 +83,19 @@
             <artifactId>junsong-common-security</artifactId>
         </dependency>
 
+        <!-- JunSong API System (for RemoteOperationAuditService Feign) -->
+        <dependency>
+            <groupId>com.junsong</groupId>
+            <artifactId>junsong-api-system</artifactId>
+        </dependency>
+
+        <!-- Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>

@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.CashflowForecastMapper">
+
+    <resultMap type="com.junsong.finance.domain.vo.CashflowForecastDeviationVO" id="DeviationResult">
+        <id property="snapshotId" column="snapshot_id" />
+        <result property="deptId" column="dept_id" />
+        <result property="forecastDate" column="forecast_date" />
+        <result property="windowDays" column="window_days" />
+        <result property="forecastReceivableAmount" column="forecast_receivable_amount" />
+        <result property="actualReceivableAmount" column="actual_receivable_amount" />
+        <result property="deviationAmount" column="deviation_amount" />
+        <result property="deviationRate" column="deviation_rate" />
+        <result property="pressureLevel" column="pressure_level" />
+    </resultMap>
+
+    <sql id="deptScope">
+        <if test="deptId != null">and dept_id = #{deptId}</if>
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in
+            <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+    </sql>
+
+    <sql id="paramsDeptScope">
+        <if test="params.deptId != null">and dept_id = #{params.deptId}</if>
+        <if test="params.deptIds != null and params.deptIds.size() > 0">
+            and dept_id in
+            <foreach collection="params.deptIds" item="deptId" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+    </sql>
+
+    <select id="sumPromisedAmount" resultType="java.math.BigDecimal">
+        select coalesce(sum(promised_amount), 0)
+        from finance_receivable_collection
+        where del_flag = '0'
+          and collection_status = 'PROMISED'
+          and promised_pay_date &gt;= curdate()
+          and promised_pay_date &lt; date_add(curdate(), interval #{windowDays} day)
+          <include refid="paramsDeptScope"/>
+    </select>
+
+    <select id="sumActualPaymentAmount" resultType="java.math.BigDecimal">
+        select coalesce(sum(p.payment_amount), 0)
+        from fin_sale_payment p
+        join fin_sale_record r on p.sale_id = r.sale_id
+        where p.payment_date &gt;= curdate()
+          and p.payment_date &lt; date_add(curdate(), interval #{windowDays} day)
+          and p.del_flag = '0'
+          <if test="params.deptId != null">and r.dept_id = #{params.deptId}</if>
+          <if test="params.deptIds != null and params.deptIds.size() > 0">
+              and r.dept_id in
+              <foreach collection="params.deptIds" item="deptId" open="(" separator="," close=")">
+                  #{deptId}
+              </foreach>
+          </if>
+    </select>
+
+    <select id="sumTotalUnpaidAmount" parameterType="com.junsong.finance.domain.vo.CashflowForecastQueryParams" resultType="java.math.BigDecimal">
+        select coalesce(sum(unpaid_amount), 0)
+        from finance_receivable_collection
+        where del_flag = '0'
+          and collection_status != 'PAID'
+          <include refid="deptScope"/>
+    </select>
+
+    <select id="sumOverduePromiseAmount" parameterType="com.junsong.finance.domain.vo.CashflowForecastQueryParams" resultType="java.math.BigDecimal">
+        select coalesce(sum(promised_amount), 0)
+        from finance_receivable_collection
+        where del_flag = '0'
+          and collection_status = 'PROMISED'
+          and promised_pay_date &lt; curdate()
+          <include refid="deptScope"/>
+    </select>
+
+    <select id="sumAge30PlusAmount" parameterType="com.junsong.finance.domain.vo.CashflowForecastQueryParams" resultType="java.math.BigDecimal">
+        select coalesce(sum(unpaid_amount), 0)
+        from finance_receivable_collection
+        where del_flag = '0'
+          and age_bucket = 'AGE_30_PLUS'
+          and collection_status != 'PAID'
+          <include refid="deptScope"/>
+    </select>
+
+    <select id="sumRecentCashInAmount" parameterType="com.junsong.finance.domain.vo.CashflowForecastQueryParams" resultType="java.math.BigDecimal">
+        select coalesce(sum(p.payment_amount), 0)
+        from fin_sale_payment p
+        join fin_sale_record r on p.sale_id = r.sale_id
+        where p.del_flag = '0'
+          and p.payment_date &gt;= date_sub(curdate(), interval 7 day)
+          <if test="deptId != null">and r.dept_id = #{deptId}</if>
+          <if test="deptIds != null and deptIds.size() > 0">
+              and r.dept_id in
+              <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">
+                  #{deptId}
+              </foreach>
+          </if>
+    </select>
+
+    <select id="sumRecentExpenseAmount" parameterType="com.junsong.finance.domain.vo.CashflowForecastQueryParams" resultType="java.math.BigDecimal">
+        select coalesce(sum(e.expense_amount), 0)
+        from fin_expense e
+        where e.del_flag = '0'
+          and e.expense_date &gt;= date_sub(curdate(), interval 7 day)
+          <include refid="deptScope"/>
+    </select>
+
+    <select id="selectRecentDeviation" parameterType="com.junsong.finance.domain.vo.CashflowForecastQueryParams" resultMap="DeviationResult">
+        select snapshot_id, dept_id, forecast_date, window_days, forecast_receivable_amount,
+               actual_receivable_amount, deviation_amount, deviation_rate, pressure_level
+        from finance_cashflow_forecast_snapshot
+        <where>
+            <if test="deptId != null">and dept_id = #{deptId}</if>
+            <if test="deptIds != null and deptIds.size() > 0">
+                and dept_id in
+                <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">
+                    #{deptId}
+                </foreach>
+            </if>
+        </where>
+        order by forecast_date desc, window_days asc
+        limit 30
+    </select>
+
+    <insert id="insertSnapshot" parameterType="com.junsong.finance.domain.FinanceCashflowForecastSnapshot" useGeneratedKeys="true" keyProperty="snapshotId">
+        insert into finance_cashflow_forecast_snapshot
+        (dept_id, forecast_date, window_days, forecast_receivable_amount, actual_receivable_amount,
+         deviation_amount, deviation_rate, pressure_score, pressure_level, forecast_basis, tenant_id,
+         create_by, create_time)
+        values
+        (#{deptId}, #{forecastDate}, #{windowDays}, #{forecastReceivableAmount}, #{actualReceivableAmount},
+         #{deviationAmount}, #{deviationRate}, #{pressureScore}, #{pressureLevel}, #{forecastBasis}, #{tenantId},
+         #{createBy}, #{createTime})
+    </insert>
+</mapper>

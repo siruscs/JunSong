@@ -1,0 +1,294 @@
+html[data-theme-preset='jam-purple-lime'] {
+  --jam-radius: 4px;
+  --jam-border: var(--theme-app-border, #DDD9E5);
+  --jam-surface: var(--theme-app-surface, #FFFFFF);
+  --jam-purple-deep: var(--theme-primary-dark, #24104F);
+
+  body {
+    background: var(--theme-app-bg, #F7F7F8);
+  }
+
+  #app .sidebar-container {
+    background: var(--jam-purple-deep);
+    border-right: 1px solid color-mix(in srgb, var(--theme-primary) 70%, var(--jam-border));
+    box-shadow: none;
+
+    .el-menu,
+    .el-menu-item,
+    .el-sub-menu__title {
+      background: transparent;
+    }
+
+    .el-menu-item,
+    .el-sub-menu__title {
+      border-radius: 0;
+    }
+
+    .el-menu-item.is-active,
+    .el-sub-menu.is-active > .el-sub-menu__title {
+      position: relative;
+      color: var(--theme-action) !important;
+      background: color-mix(in srgb, var(--theme-action) 9%, transparent) !important;
+    }
+
+    .el-menu-item.is-active::before,
+    .el-sub-menu.is-active > .el-sub-menu__title::before {
+      display: block !important;
+      position: absolute;
+      inset: 8px auto 8px 0;
+      width: 3px;
+      background: var(--theme-action);
+      content: '';
+    }
+
+    .el-menu-item:not(.is-active):hover,
+    .el-sub-menu__title:hover {
+      background: color-mix(in srgb, var(--theme-action) 6%, transparent) !important;
+    }
+  }
+
+  .el-button {
+    border-radius: var(--jam-radius);
+    box-shadow: none;
+  }
+
+  .el-button--primary:not(.is-plain):not(.is-link) {
+    --el-button-bg-color: var(--theme-action);
+    --el-button-border-color: var(--theme-action);
+    --el-button-text-color: var(--theme-action-text);
+    --el-button-hover-bg-color: var(--theme-action-hover);
+    --el-button-hover-border-color: var(--theme-action-hover);
+    --el-button-hover-text-color: var(--theme-action-text);
+    --el-button-active-bg-color: color-mix(in srgb, var(--theme-action-hover) 82%, var(--jam-purple-deep));
+    --el-button-active-border-color: color-mix(in srgb, var(--theme-action-hover) 82%, var(--jam-purple-deep));
+    --el-button-active-text-color: var(--theme-action-text);
+
+    background: var(--theme-action) !important;
+    border-color: var(--theme-action) !important;
+    color: var(--theme-action-text) !important;
+    font-weight: 650;
+
+    &:hover,
+    &:focus {
+      background: var(--theme-action-hover) !important;
+      border-color: var(--theme-action-hover) !important;
+      color: var(--theme-action-text) !important;
+    }
+
+    &:focus-visible {
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-primary) 72%, transparent) !important;
+    }
+
+    &:active {
+      background: color-mix(in srgb, var(--theme-action-hover) 82%, var(--jam-purple-deep)) !important;
+      border-color: color-mix(in srgb, var(--theme-action-hover) 82%, var(--jam-purple-deep)) !important;
+      color: var(--theme-action-text) !important;
+    }
+
+    &.is-disabled,
+    &.is-disabled:hover {
+      background: color-mix(in srgb, var(--theme-action) 42%, var(--jam-surface)) !important;
+      border-color: color-mix(in srgb, var(--theme-action) 28%, var(--jam-border)) !important;
+      color: color-mix(in srgb, var(--theme-action-text) 48%, transparent) !important;
+    }
+
+    &.is-loading::before {
+      background: color-mix(in srgb, var(--theme-action) 75%, transparent);
+    }
+
+    .el-icon.is-loading {
+      color: var(--theme-action-text);
+    }
+  }
+
+  .mb8 .el-button--primary:not(.is-plain) {
+    background: var(--theme-action) !important;
+    border-color: var(--theme-action) !important;
+    color: var(--theme-action-text) !important;
+
+    &:hover,
+    &:focus {
+      background: var(--theme-action-hover) !important;
+      border-color: var(--theme-action-hover) !important;
+      color: var(--theme-action-text) !important;
+    }
+
+    &:focus-visible {
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-primary) 72%, transparent) !important;
+    }
+
+    &:active {
+      background: color-mix(in srgb, var(--theme-action-hover) 82%, var(--jam-purple-deep)) !important;
+      border-color: color-mix(in srgb, var(--theme-action-hover) 82%, var(--jam-purple-deep)) !important;
+      color: var(--theme-action-text) !important;
+    }
+  }
+
+  .table-toolbar .toolbar-left .el-button--primary:not(.is-plain) {
+    background: var(--theme-action) !important;
+    border-color: var(--theme-action) !important;
+    color: var(--theme-action-text) !important;
+
+    &:hover,
+    &:focus {
+      background: var(--theme-action-hover) !important;
+      border-color: var(--theme-action-hover) !important;
+      color: var(--theme-action-text) !important;
+    }
+
+    &:focus-visible {
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-primary) 72%, transparent) !important;
+    }
+
+    &:active {
+      background: color-mix(in srgb, var(--theme-action-hover) 82%, var(--jam-purple-deep)) !important;
+      border-color: color-mix(in srgb, var(--theme-action-hover) 82%, var(--jam-purple-deep)) !important;
+      color: var(--theme-action-text) !important;
+    }
+  }
+
+  .el-button--success:not(.is-plain):not(.is-link) {
+    --el-button-bg-color: var(--el-color-success);
+    --el-button-border-color: var(--el-color-success);
+    --el-button-hover-bg-color: var(--el-color-success-light-3);
+    --el-button-hover-border-color: var(--el-color-success-light-3);
+    --el-button-active-bg-color: var(--el-color-success-dark-2);
+    --el-button-active-border-color: var(--el-color-success-dark-2);
+
+    background: var(--el-button-bg-color) !important;
+    border-color: var(--el-button-border-color) !important;
+    color: var(--el-button-text-color) !important;
+  }
+
+  .el-button--warning:not(.is-plain):not(.is-link) {
+    --el-button-bg-color: var(--el-color-warning);
+    --el-button-border-color: var(--el-color-warning);
+    --el-button-hover-bg-color: var(--el-color-warning-light-3);
+    --el-button-hover-border-color: var(--el-color-warning-light-3);
+    --el-button-active-bg-color: var(--el-color-warning-dark-2);
+    --el-button-active-border-color: var(--el-color-warning-dark-2);
+
+    background: var(--el-button-bg-color) !important;
+    border-color: var(--el-button-border-color) !important;
+    color: var(--el-button-text-color) !important;
+  }
+
+  .el-button--danger:not(.is-plain):not(.is-link) {
+    --el-button-bg-color: var(--el-color-danger);
+    --el-button-border-color: var(--el-color-danger);
+    --el-button-hover-bg-color: var(--el-color-danger-light-3);
+    --el-button-hover-border-color: var(--el-color-danger-light-3);
+    --el-button-active-bg-color: var(--el-color-danger-dark-2);
+    --el-button-active-border-color: var(--el-color-danger-dark-2);
+
+    background: var(--el-button-bg-color) !important;
+    border-color: var(--el-button-border-color) !important;
+    color: var(--el-button-text-color) !important;
+  }
+
+  .mb8 .el-button--success,
+  .mb8 .el-button--warning,
+  .mb8 .el-button--danger,
+  .table-toolbar .toolbar-left .el-button--success,
+  .table-toolbar .toolbar-left .el-button--warning,
+  .table-toolbar .toolbar-left .el-button--danger {
+    background: var(--el-button-bg-color) !important;
+    border-color: var(--el-button-border-color) !important;
+    color: var(--el-button-text-color) !important;
+
+    &:hover,
+    &:focus {
+      background: var(--el-button-hover-bg-color) !important;
+      border-color: var(--el-button-hover-border-color) !important;
+      color: var(--el-button-hover-text-color) !important;
+    }
+  }
+
+  .el-input__wrapper,
+  .el-textarea__inner,
+  .el-select__wrapper,
+  .el-date-editor.el-input__wrapper,
+  .el-card,
+  .el-table,
+  .el-table__inner-wrapper,
+  .el-pagination button,
+  .el-pagination .el-pager li {
+    border-radius: var(--jam-radius);
+    box-shadow: none;
+  }
+
+  .el-input__wrapper,
+  .el-textarea__inner,
+  .el-select__wrapper,
+  .el-date-editor.el-input__wrapper {
+    border: 1px solid var(--jam-border);
+
+    &:hover {
+      border-color: color-mix(in srgb, var(--theme-primary) 55%, var(--jam-border));
+    }
+
+    &.is-focus,
+    &:focus,
+    &:focus-within {
+      border-color: var(--theme-primary);
+      box-shadow: 0 0 0 1px var(--theme-primary) inset;
+    }
+  }
+
+  .el-card {
+    border: 1px solid var(--jam-border);
+    background: var(--theme-app-surface, #FFFFFF);
+  }
+
+  .el-table {
+    --el-table-border-color: var(--jam-border);
+    --el-table-header-bg-color: color-mix(in srgb, var(--theme-primary) 5%, var(--jam-surface));
+    --el-table-row-hover-bg-color: color-mix(in srgb, var(--theme-primary) 4%, var(--jam-surface));
+
+    border: 1px solid var(--jam-border);
+
+    th.el-table__cell {
+      color: var(--jam-purple-deep);
+      font-weight: 650;
+    }
+
+    th.el-table__cell,
+    td.el-table__cell {
+      border-bottom-color: var(--jam-border);
+    }
+  }
+
+  .el-pagination {
+    button,
+    .el-pager li {
+      border: 1px solid var(--jam-border);
+      background: var(--theme-card-bg, #F7F7F8);
+      color: var(--theme-app-text);
+    }
+
+    button:hover,
+    .el-pager li:hover {
+      border-color: var(--theme-primary);
+      color: var(--theme-primary);
+    }
+
+    .el-pager li.is-active {
+      border-color: var(--theme-primary-dark);
+      background: var(--theme-primary);
+      color: var(--theme-app-surface, #FFFFFF);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme-preset='jam-purple-lime'] {
+    *,
+    *::before,
+    *::after {
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+    }
+  }
+}

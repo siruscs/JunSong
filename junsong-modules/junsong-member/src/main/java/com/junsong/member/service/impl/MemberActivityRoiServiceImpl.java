@@ -188,6 +188,7 @@ public class MemberActivityRoiServiceImpl implements IMemberActivityRoiService {
             vo.setRoi(null);
             vo.setRoiStatus("UNAVAILABLE");
             vo.setUnavailableReason("MISSING_ACTIVITY_COST");
+            vo.setSuggestion("当前活动未维护成本，暂不能计算 ROI，请先补充活动成本或在报表中按销售贡献查看。");
             vo.setGrossProfitAmount(null);
             return;
         }
@@ -195,6 +196,7 @@ public class MemberActivityRoiServiceImpl implements IMemberActivityRoiService {
             vo.setRoi(null);
             vo.setRoiStatus("UNAVAILABLE");
             vo.setUnavailableReason("NO_RELATED_SALES");
+            vo.setSuggestion("当前活动暂无关联销售，暂不能计算 ROI，请确认活动是否已产生成交或稍后再查看。");
             vo.setGrossProfitAmount(null);
             return;
         }
@@ -205,6 +207,7 @@ public class MemberActivityRoiServiceImpl implements IMemberActivityRoiService {
         vo.setRoi(roiValue);
         vo.setRoiStatus("READY");
         vo.setUnavailableReason(null);
+        vo.setSuggestion(null);
     }
 
     // ── Package-private query methods (overridable in tests) ──

@@ -26,6 +26,22 @@ public class AuthorizedStoreRowVO {
     private Integer alertCount;
     private Integer reviewTaskCount;
     private List<String> reviewReasons;
+    // R8-C: 可行动字段
+    private BigDecimal cashInAmount;
+    private BigDecimal netCashflowAmount;
+    private Integer highRiskCount;
+    private String primaryRisk;
+    private String nextAction;
+    // R11-B: 健康分 V2 字段
+    private String healthSummary;
+    private String healthScoreVersion;
+    private BigDecimal authorizedAverageSales;
+    private BigDecimal authorizedAverageProfitRate;
+    private BigDecimal salesVsAuthorizedAverageRate;
+    private BigDecimal profitRateVsAuthorizedAverage;
+    private List<StoreHealthFactorVO> healthFactors;
+    // R11-P1-fix: 复盘质量得分（完成率%）
+    private BigDecimal reviewScore;
 
     public Long getDeptId() { return deptId; }
     public void setDeptId(Long deptId) { this.deptId = deptId; }
@@ -89,4 +105,43 @@ public class AuthorizedStoreRowVO {
 
     public Integer getReviewTaskCount() { return reviewTaskCount; }
     public void setReviewTaskCount(Integer reviewTaskCount) { this.reviewTaskCount = reviewTaskCount; }
+
+    public BigDecimal getCashInAmount() { return cashInAmount; }
+    public void setCashInAmount(BigDecimal cashInAmount) { this.cashInAmount = cashInAmount; }
+
+    public BigDecimal getNetCashflowAmount() { return netCashflowAmount; }
+    public void setNetCashflowAmount(BigDecimal netCashflowAmount) { this.netCashflowAmount = netCashflowAmount; }
+
+    public Integer getHighRiskCount() { return highRiskCount; }
+    public void setHighRiskCount(Integer highRiskCount) { this.highRiskCount = highRiskCount; }
+
+    public String getPrimaryRisk() { return primaryRisk; }
+    public void setPrimaryRisk(String primaryRisk) { this.primaryRisk = primaryRisk; }
+
+    public String getNextAction() { return nextAction; }
+    public void setNextAction(String nextAction) { this.nextAction = nextAction; }
+
+    public String getHealthSummary() { return healthSummary; }
+    public void setHealthSummary(String healthSummary) { this.healthSummary = healthSummary; }
+
+    public String getHealthScoreVersion() { return healthScoreVersion; }
+    public void setHealthScoreVersion(String healthScoreVersion) { this.healthScoreVersion = healthScoreVersion; }
+
+    public BigDecimal getAuthorizedAverageSales() { return authorizedAverageSales; }
+    public void setAuthorizedAverageSales(BigDecimal authorizedAverageSales) { this.authorizedAverageSales = authorizedAverageSales; }
+
+    public BigDecimal getAuthorizedAverageProfitRate() { return authorizedAverageProfitRate; }
+    public void setAuthorizedAverageProfitRate(BigDecimal authorizedAverageProfitRate) { this.authorizedAverageProfitRate = authorizedAverageProfitRate; }
+
+    public BigDecimal getSalesVsAuthorizedAverageRate() { return salesVsAuthorizedAverageRate; }
+    public void setSalesVsAuthorizedAverageRate(BigDecimal salesVsAuthorizedAverageRate) { this.salesVsAuthorizedAverageRate = salesVsAuthorizedAverageRate; }
+
+    public BigDecimal getProfitRateVsAuthorizedAverage() { return profitRateVsAuthorizedAverage; }
+    public void setProfitRateVsAuthorizedAverage(BigDecimal profitRateVsAuthorizedAverage) { this.profitRateVsAuthorizedAverage = profitRateVsAuthorizedAverage; }
+
+    public List<StoreHealthFactorVO> getHealthFactors() { return healthFactors; }
+    public void setHealthFactors(List<StoreHealthFactorVO> healthFactors) { this.healthFactors = healthFactors; }
+
+    public BigDecimal getReviewScore() { return reviewScore; }
+    public void setReviewScore(BigDecimal reviewScore) { this.reviewScore = reviewScore; }
 }

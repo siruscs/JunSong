@@ -56,4 +56,31 @@ public interface StoreFinanceReportMapper {
     List<Map<String, Object>> selectMemberSalesByDepts(@Param("deptIds") List<Long> deptIds,
                                                        @Param("startTime") Date startTime,
                                                        @Param("endTime") Date endTime);
+
+    // R8-C: 多门店对比可行动字段
+
+    /** 查询各门店实收现金（按 payment_date） */
+    List<Map<String, Object>> selectCashInByDepts(@Param("deptIds") List<Long> deptIds,
+                                                   @Param("startTime") Date startTime,
+                                                   @Param("endTime") Date endTime);
+
+    /** 查询各门店已核销费用（按 expense_date, status='1'） */
+    List<Map<String, Object>> selectVerifiedExpenseByDepts(@Param("deptIds") List<Long> deptIds,
+                                                             @Param("startTime") Date startTime,
+                                                             @Param("endTime") Date endTime);
+
+    /** 查询各门店高优先级复盘任务数（severity=HIGH 且 PENDING/IN_PROGRESS） */
+    List<Map<String, Object>> selectHighRiskTaskCountByDepts(@Param("deptIds") List<Long> deptIds);
+
+    /** R11-FIX-C: 查询各门店按周期的高优先级复盘任务数（按 create_time 落入周期） */
+    List<Map<String, Object>> selectHighRiskTaskCountByDeptsAndPeriod(@Param("deptIds") List<Long> deptIds,
+                                                                       @Param("startTime") Date startTime,
+                                                                       @Param("endTime") Date endTime,
+                                                                       @Param("groupBy") String groupBy);
+
+    /** R11-C: 查询各门店按周期的销售额/费用/利润趋势（用于健康分计算） */
+    List<Map<String, Object>> selectHealthTrendByDepts(@Param("deptIds") List<Long> deptIds,
+                                                        @Param("startTime") Date startTime,
+                                                        @Param("endTime") Date endTime,
+                                                        @Param("groupBy") String groupBy);
 }

@@ -1,7 +1,7 @@
 # JunSong-Cloud 公共开放平台演进路线图
 
 > 本文档记录 JunSong-Cloud 面向"公共开放平台"的演进规划与进度，作为后续跟进的权威清单。
-> 最后更新：2026-06-27
+> 最后更新：2026-07-05
 
 ---
 
@@ -11,9 +11,34 @@
 阶段一（P0）开放平台地基    ████████████████████ 4/4 完成 100%
 阶段二（P1）平台能力深化    ████████████████████ 4/4 完成 100%
 阶段三（P2）生态与商业化    ████████████████████ 4/4 完成 100%
+R23 外部集成可信闭环       ████████████████████ 完成
+R25 企业级治理加固         ████████████████████ 完成
                                             ─────────────
-                                            总计 12/12  100%  🎉
+                                            当前开放平台能力已收口
 ```
+
+---
+
+## 当前状态补充（2026-07）
+
+R23 与 R25 完成后，开放平台从“能调用 API”升级为“可信外部集成入口”。当前能力重点如下：
+
+| 能力 | 当前状态 | 说明 |
+|:---|:---:|:---|
+| API Key + HMAC 鉴权 | ✅ 完成 | AppKey/AppSecret、timestamp、nonce、body 签名校验，防篡改与防重放 |
+| 可信上下文 | ✅ 完成 | 网关验签后注入 `X-Open-*`，包含应用、租户、请求 ID 和鉴权版本上下文 |
+| 下游权限边界 | ✅ 完成 | 移除固定 admin 冒用，开放 API 通过可信来源和租户上下文读取授权数据 |
+| 调用日志 | ✅ 完成 | 成功、拒绝、限流和异常请求均有真实写入链路 |
+| Webhook 持久化 | ✅ 完成 | 公开订阅端点真实落库，绑定 appId、tenantId、callbackUrl 和事件 |
+| 内部接口隔离 | ✅ 完成 | `/open/internal/**` 移出公网白名单，Controller 加 `@InnerAuth`，内部调用加 `X-Inner-Token` |
+| 部署边界 | ✅ 完成 | open 服务使用 Docker `expose`，不发布 9208 到宿主机；PROD 强制注入 `OPEN_INTERNAL_SECRET` |
+| 外部文档与 SDK | ✅ 完成 | OpenAPI 清单、多语言 SDK、快速入门和 drift check 保持同步 |
+
+高风险能力边界：
+
+- 财务写入、预测辅助、低代码模板发布等能力不默认开放。
+- 涉及写入、资金、审批、字段级敏感数据的接口必须先走场景审批、租户白名单、scope 评审和审计策略确认。
+- 内部管理接口不作为开放 API 暴露。
 
 ---
 
@@ -405,12 +430,12 @@ X-RateLimit-Remaining: 0      剩余次数
 | OAuth2 | Spring Authorization Server |
 | API Key | 自研 HMAC-SHA256 签名 |
 | 消息队列 | RabbitMQ |
-| API 文档聚合 | Knife4j Gateway Aggregation |
+| API 文档聚合 | SpringDoc 原生聚合 + 网关 RouterFunction |
 | 限流 | Sentinel + Nacos 数据源 |
 | SDK 生成 | OpenAPI Generator |
 | 监控 | Prometheus + Grafana |
 | 日志 | Loki + Promtail |
-| 追踪 | SkyWalking |
+| 追踪 | 调用日志 + requestId；分布式链路追踪按部署环境扩展 |
 
 ---
 
@@ -430,3 +455,5 @@ X-RateLimit-Remaining: 0      剩余次数
 | 2026-06-27 | #12 CI/CD+K8s | 完成，3个GitHub Actions流水线+36个K8s资源(含HPA/Ingress) |
 | 2026-06-27 | #9 多语言SDK | 完成，OpenAPI Generator生成4语言SDK+HMAC签名示例验证通过 |
 | 2026-06-27 | #10 差异化能力 | 完成，3个聚合Controller+30个开放API端点，链路验证通过。**全部12个任务完成！🎉** |
+| 2026-07-04 | R23 外部集成 | 完成可信上下文、调用日志、Webhook 持久化、内部接口隔离和 PROD compose 门禁 |
+| 2026-07-04 | R25 企业级硬化 | 完成开放平台敏感信息脱敏、高危操作审计、告警治理和性能基线接入 |

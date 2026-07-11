@@ -18,7 +18,7 @@
     </resultMap>
 
     <sql id="selectSysNotificationVo">
-        select id, user_id, title, content, type, link_url, biz_id, is_read, create_time, read_time
+        select id, user_id, title, content, type, link_url, dedup_key, biz_id, is_read, create_time, read_time
         from sys_notification
     </sql>
 
@@ -57,6 +57,7 @@
             <if test="content != null">content,</if>
             <if test="type != null and type != ''">type,</if>
             <if test="linkUrl != null">link_url,</if>
+            <if test="dedupKey != null and dedupKey != ''">dedup_key,</if>
             <if test="bizId != null">biz_id,</if>
             <if test="isRead != null and isRead != ''">is_read,</if>
         </trim>
@@ -66,6 +67,7 @@
             <if test="content != null">#{content},</if>
             <if test="type != null and type != ''">#{type},</if>
             <if test="linkUrl != null">#{linkUrl},</if>
+            <if test="dedupKey != null and dedupKey != ''">#{dedupKey},</if>
             <if test="bizId != null">#{bizId},</if>
             <if test="isRead != null and isRead != ''">#{isRead},</if>
         </trim>
@@ -99,6 +101,13 @@
         where user_id = #{userId}
           and type = #{type}
           and biz_id = #{bizId}
+    </select>
+
+    <select id="countByUserDedupKey" resultType="int">
+        select count(1)
+        from sys_notification
+        where user_id = #{userId}
+          and dedup_key = #{dedupKey}
     </select>
 
 </mapper>

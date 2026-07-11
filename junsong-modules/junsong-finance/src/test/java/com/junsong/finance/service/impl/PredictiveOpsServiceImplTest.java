@@ -13,6 +13,7 @@ import com.junsong.finance.mapper.PredictiveOpsMapper;
 import com.junsong.member.api.MemberActionPredictionQuery;
 import com.junsong.member.api.RemoteMemberPredictionService;
 import com.junsong.member.api.domain.MemberActionPredictionItem;
+import com.junsong.system.api.RemoteOperationAlertService;
 import com.junsong.system.api.RemoteUserService;
 import com.junsong.system.api.domain.SysDept;
 import com.junsong.system.api.domain.SysUser;
@@ -51,6 +52,8 @@ class PredictiveOpsServiceImplTest {
         // 数据权限收口需要 RemoteUserService；测试中不直接测授权门店内，
         // 所以塞一个空 stub（listActionPredictions 在 admin 路径下跳过授权）。
         inject(service, "remoteUserService", userService);
+        // R25: 注入 no-op alertService，避免 raiseCriticalAlertIfNeeded 触发 NPE
+        inject(service, "alertService", new NoOpAlertService());
     }
 
     @Test
@@ -338,6 +341,14 @@ class PredictiveOpsServiceImplTest {
         @Override
         public R<List<String>> listUsernamesByRoleKey(String roleKey, String source) {
             return R.ok(new ArrayList<>());
+        }
+    }
+
+    /** R25 no-op alertService stub，避免 Feign 依赖在单测中触发 NPE */
+    static class NoOpAlertService implements RemoteOperationAlertService {
+        @Override
+        public R<Boolean> raiseAlert(Map<String, Object> body, String source) {
+            return R.ok(true);
         }
     }
 }

@@ -141,10 +141,12 @@
       <el-form ref="form" :model="form" :rules="rules" label-width="100px">
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="会员编号" prop="memberCode">
-              <el-input v-model="form.memberCode" placeholder="请输入会员编号" @blur="handleMemberSearch" @keyup.enter="handleMemberSearch">
-                <template #append><el-button icon="Search" @click="handleMemberSearch"></el-button></template>
-              </el-input>
+            <el-form-item label="会员编号" prop="memberId">
+              <MemberSelect
+                v-model="form.memberId"
+                :default-label="form.memberNo ? `${form.memberNo} ${form.memberName || ''}`.trim() : ''"
+                @change="handleMemberChange"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -280,13 +282,14 @@ import { parseTime } from "@/utils/junsong"
 import { useDownload } from "@/composables/useDownload"
 import { useDict } from "@/composables/useDict"
 import { listPointsExchange, getPointsExchange, delPointsExchange, addPointsExchange, updatePointsExchange, receiveExchange, listPointsGoods } from "@/api/member/pointsExchange"
-import { getMemberByNo } from "@/api/member/member"
 import { listPointsRecord } from "@/api/member/pointsRecord"
+import MemberSelect from "@/components/MemberSelect/index.vue"
 const { download } = useDownload()
 const dict = useDict('finance_payment_method')
 
 export default {
   name: "PointsExchange",
+  components: { MemberSelect },
   data() {
     return {
       loading: true,
@@ -311,8 +314,8 @@ export default {
       form: {},
       viewForm: {},
       rules: {
-        memberCode: [
-          { required: true, message: "会员编号不能为空", trigger: "blur" }
+        memberId: [
+          { required: true, message: "请选择会员", trigger: "change" }
         ],
         goodsId: [
           { required: true, message: "兑换物品不能为空", trigger: "change" }
@@ -384,7 +387,7 @@ export default {
       this.form = {
         exchangeId: undefined,
         memberId: undefined,
-        memberCode: undefined,
+        memberNo: undefined,
         memberName: undefined,
         memberPoints: 0,
         goodsId: undefined,
@@ -443,26 +446,19 @@ export default {
         this.calculatePoints()
       }
     },
-    handleMemberSearch() {
-      if (this.form.memberCode) {
-        getMemberByNo(this.form.memberCode).then(response => {
-          if (response.data) {
-            this.form.memberId = response.data.memberId
-            this.form.memberName = response.data.memberName
-            // 从积分记录表获取该会员最新余额（而非会员表的静态积分值）
-            this.fetchMemberBalance(response.data.memberId)
-          } else {
-            ElMessage.warning("未找到该会员编号（仅限当前机构会员）")
-            this.form.memberId = undefined
-            this.form.memberName = ''
-            this.form.memberPoints = 0
-          }
-        }).catch(() => {
-          ElMessage.error("未找到该会员编号（仅限当前机构会员）")
-          this.form.memberId = undefined
-          this.form.memberName = ''
-          this.form.memberPoints = 0
-        })
+    handleMemberChange(member) {
+      if (member) {
+        this.form.memberId = member.memberId
+        this.form.memberNo = member.memberNo
+        this.form.memberName = member.memberName
+        // 从积分记录表获取该会员最新余额（而非会员表的静态积分值）
+        this.fetchMemberBalance(member.memberId)
+      } else {
+        this.form.memberId = undefined
+        this.form.memberNo = ''
+        this.form.memberName = ''
+        this.form.memberPoints = 0
+        this.calculatePoints()
       }
     },
     /** 获取会员当前总积分（从积分记录表取最新一条的balance） */
@@ -508,7 +504,7 @@ export default {
           const postData = {
             exchangeId: this.form.exchangeId,
             memberId: this.form.memberId,
-            memberNo: this.form.memberCode,
+            memberNo: this.form.memberNo,
             memberName: this.form.memberName,
             goodsId: this.form.goodsId,
             goodsName: this.form.goodsName,

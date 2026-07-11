@@ -34,7 +34,7 @@
         <template #default="scope">{{ getDeptName(scope.row.deptId) }}</template>
       </el-table-column>
       <el-table-column label="投资人" align="center" prop="investorName" min-width="140" />
-      <el-table-column label="投资来源金额" align="center" prop="investAmount" width="130">
+      <el-table-column label="投资金额" align="center" prop="investAmount" width="130">
         <template #default="scope">
           <span class="amount-text">¥{{ formatMoney(scope.row.investAmount) }}</span>
         </template>
@@ -66,8 +66,8 @@
             <el-option v-for="investor in filteredInvestors" :key="investor.investorId" :label="investor.investorName" :value="investor.investorId" />
           </el-select>
         </el-form-item>
-        <el-form-item label="投资来源金额" prop="investAmount">
-          <el-input-number v-model="form.investAmount" :precision="2" :step="1000" :min="0.01" style="width: 100%;" />
+        <el-form-item label="投资金额" prop="investAmount">
+          <el-input-number v-model="form.investAmount" :precision="2" :step="1000" :min="0" style="width: 100%;" />
         </el-form-item>
         <el-form-item label="投资时间" prop="investTime">
           <el-date-picker v-model="form.investTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" placeholder="请选择投资时间" style="width: 100%;" />
@@ -122,7 +122,7 @@ export default {
       rules: {
         deptId: [{ required: true, message: '机构不能为空', trigger: 'change' }],
         investorId: [{ required: true, message: '投资人不能为空', trigger: 'change' }],
-        investAmount: [{ required: true, message: '投资来源金额不能为空', trigger: 'blur' }],
+        investAmount: [{ required: true, message: '投资金额不能为空', trigger: 'blur' }],
         investTime: [{ required: true, message: '投资时间不能为空', trigger: 'change' }]
       }
     }
@@ -168,7 +168,7 @@ export default {
         periodId: undefined,
         investorId: undefined,
         investorName: undefined,
-        investAmount: 0.01,
+        investAmount: 0,
         investTime: this.parseTime(new Date(), '{y}-{m}-{d} {h}:{i}:{s}'),
         remark: undefined
       }
@@ -190,7 +190,7 @@ export default {
     handleAdd() {
       this.reset()
       this.open = true
-      this.title = '新增投资来源记录'
+      this.title = '新增投资记录'
     },
     handleUpdate(row) {
       this.reset()
@@ -198,7 +198,7 @@ export default {
       getInvestRecord(investId).then(response => {
         this.form = response.data
         this.open = true
-        this.title = '修改投资来源记录'
+        this.title = '修改投资记录'
       })
     },
     handleFormDeptChange() {

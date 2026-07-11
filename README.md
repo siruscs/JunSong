@@ -17,17 +17,20 @@
 
 ## 一、项目简介
 
-**JunSong-Cloud（峻松云）** 是一套基于 Spring Cloud Alibaba 微服务体系构建的连锁门店一体化运营管理平台。平台在通用 RBAC 权限治理之上，深度沉淀了 **会员营销、财务核算、门店地理分布、低代码工作流** 等连锁经营核心业务能力，并配套微信小程序作为移动端延伸。
+**JunSong-Cloud（峻松云）** 是一套基于 Spring Cloud Alibaba 微服务体系构建的连锁门店一体化运营管理平台。平台在通用 RBAC 权限治理之上，深度沉淀了 **经营决策、财务闭环、会员增长、系统治理、开放平台、低代码工作流** 等连锁经营核心业务能力，并配套微信小程序作为移动端延伸。
 
 平台具备以下特色：
 
 - **现代技术栈**：后端 Spring Boot 4.x + Spring Cloud 2025.x + JDK 17，前端 Vue 3.5 + Vite 8 + TypeScript + Element Plus。
 - **微服务架构**：以 Nacos 为注册/配置中心，Gateway 统一网关，Redis 鉴权，按业务域拆分独立服务。
-- **开放平台**：提供 HMAC-SHA256 签名鉴权、多版本路由（v1/v2/latest）、应用级限流、多语言 SDK（Java/Python/Go/JS）、Webhook 订阅等完整的开放 API 能力。
-- **业务驱动**：覆盖会员积分/秒杀/退款、进销存与投资人分润核算、门店地图选址与开业流程、Flowable 工作流。
+- **经营决策**：提供经营总览、财务概览、会员概览、系统概览、待办任务、异常预警和复盘动作入口。
+- **财务闭环**：覆盖进销存、费用、成本、投资分润、应收催收、现金流预测、经营复盘、质量评分和知识库。
+- **会员增长**：覆盖会员资料、积分、等级、签到、分层、增长动作、活动 ROI 和生命周期任务。
+- **开放平台**：提供 HMAC-SHA256 签名鉴权、可信 `X-Open-*` 上下文、应用级限流、多语言 SDK、Webhook 订阅、调用日志和内部接口隔离。
+- **业务驱动**：覆盖门店地图选址、门店开业流程、Flowable 工作流、低代码表单和移动端运营场景。
 - **低代码能力**：基于元数据可视化配置业务表单与审批流程，自动装配流程变量，加速业务交付。
 - **地理可视化**：集成高德地图，支持门店地图查询、门店密度热力分析、地图选点回填省市区街道。
-- **可观测性**：Prometheus + Grafana + Loki 全链路监控，9 个微服务 metrics 采集 + 容器日志聚合。
+- **可观测性与治理**：Prometheus + Grafana + Loki 全链路监控，叠加敏感数据脱敏、高危操作审计、数据归档、告警事件和性能基线。
 - **云原生就绪**：GitHub Actions CI/CD 流水线 + Kubernetes 部署清单（含 HPA 自动扩缩、Ingress 路由）。
 
 ---
@@ -96,11 +99,11 @@ flowchart TB
     end
 
     subgraph Business["业务服务层<br/>Spring Boot + Spring Cloud Alibaba<br/>服务间：OpenFeign + LoadBalancer"]
-        SYS["Spring Boot<br/>junsong-system :9201<br/>系统管理 / 门店地图 / 行政区域"]
-        MEM["Spring Boot<br/>junsong-member<br/>会员 / 积分 / 秒杀 / 退款"]
-        FIN["Spring Boot<br/>junsong-finance<br/>进销存 / 投资分润 / 财务报表"]
+        SYS["Spring Boot<br/>junsong-system :9201<br/>系统管理 / 门店地图 / 治理审计 / 归档告警"]
+        MEM["Spring Boot<br/>junsong-member<br/>会员 / 积分 / 增长动作 / 活动 ROI"]
+        FIN["Spring Boot<br/>junsong-finance<br/>进销存 / 应收催收 / 现金流 / 预测辅助"]
         WF["Spring Boot<br/>junsong-workflow<br/>Flowable 工作流 / 低代码引擎"]
-        OPEN["Spring Boot<br/>junsong-open :9208<br/>开放平台 / 应用管理<br/>差异化能力聚合"]
+        OPEN["Spring Boot<br/>junsong-open :9208<br/>开放平台 / 应用密钥<br/>可信上下文 / Webhook / 调用日志"]
         GEN["Spring Boot<br/>junsong-gen :9202<br/>代码生成"]
         JOB["Spring Boot<br/>junsong-job :9203<br/>定时任务调度"]
         FILE["Spring Boot<br/>junsong-file :9300<br/>文件服务 / MinIO 存储"]
@@ -201,11 +204,11 @@ com.junsong
 │   ├── junsong-common-sensitive     // 数据脱敏
 │   └── junsong-common-swagger       // 接口文档
 ├── junsong-modules          // 业务模块
-│   ├── junsong-system       // 系统管理 [9201]：RBAC、门店地图、行政区域、看板
-│   ├── junsong-member       // 会员营销：会员、积分、秒杀、退款、小程序权限
-│   ├── junsong-finance      // 财务核算：进销存、投资人分润、报表、票据 OCR
+│   ├── junsong-system       // 系统管理 [9201]：RBAC、门店地图、治理审计、归档告警
+│   ├── junsong-member       // 会员营销：会员、积分、等级、签到、增长动作、活动 ROI
+│   ├── junsong-finance      // 财务核算：进销存、应收催收、现金流、预测辅助、票据 OCR
 │   ├── junsong-workflow     // 工作流：Flowable 引擎 + 低代码配置引擎
-│   ├── junsong-open         // 开放平台 [9208]：应用管理、API Key、差异化能力聚合
+│   ├── junsong-open         // 开放平台 [9208]：应用管理、API Key、Webhook、调用日志、可信上下文
 │   ├── junsong-gen          // 代码生成 [9202]
 │   ├── junsong-job          // 定时任务 [9203]
 │   └── junsong-file         // 文件服务 [9300]
@@ -222,17 +225,20 @@ com.junsong
 
 ### 系统管理（junsong-system）
 - 通用后台：用户、角色、菜单、部门、岗位、字典、参数、通知公告、操作/登录日志、在线用户、个人中心。
-- 业务扩展：**行政区域管理**（全国省市区街道）、**门店地图查询**、**门店密度热力分析**、**门店开业流程**、用户-部门关系、统计看板。
+- 业务扩展：**行政区域管理**（全国省市区街道）、**门店地图查询**、**门店密度热力分析**、**门店开业流程**、用户-部门关系、统计看板、治理审计、数据归档和告警事件。
 
 ### 会员营销（junsong-member）
-- 会员信息管理与会员卡体系。
+- 会员信息管理、会员卡体系、等级、签到与会员分层。
 - 积分体系：积分规则、积分商品、积分记录、积分兑换。
+- 增长运营：增长动作生成、执行、效果回填、活动 ROI 和生命周期任务。
 - 营销活动：秒杀活动与秒杀记录、退款申请。
 - 小程序管理与权限、会员/秒杀运营报表。
 
 ### 财务核算（junsong-finance）
 - 进销存：商品、供应商、进货单、销售记录、费用记录、借支管理。
 - 投资分润：投资人管理、投资款记录、投资人返款、店面分润配置、分润结转。
+- 经营闭环：应收催收、承诺回款、现金流预测、复盘任务、复盘质量评分和复盘知识库。
+- 预测辅助：现金流、应收、会员动作和库存风险的可解释预测，以及只读 what-if 模拟。
 - 核算报表：核算周期、成本核算，及成本/费用/利润/分润/销售/库存多维报表。
 - 票据 OCR 识别。
 
@@ -251,6 +257,9 @@ com.junsong
 
 - **应用与密钥管理**：开发者注册应用，自动发放测试 Key（100 次/天），管理员审批后发放生产 Key（10000 次/天）。
 - **HMAC-SHA256 签名鉴权**：网关 `ApiKeyAuthFilter` 校验请求签名，防篡改 + 时间戳（5 分钟有效）+ Nonce 防重放（10 分钟）。
+- **可信上下文**：网关验签后注入 `X-Open-*` 上下文，开放服务按应用、租户和请求 ID 透传下游。
+- **调用日志与 Webhook**：成功、拒绝、限流和异常请求写入调用日志，Webhook 订阅持久化并绑定应用与租户。
+- **内部接口隔离**：内部端点使用 `@InnerAuth` 与 `X-Inner-Token`，open 服务端口仅在 Docker 内网暴露。
 - **多版本 API 路由**：`/openapi/v1/**`（已废弃）、`/openapi/v2/**`（稳定版）、`/openapi/latest/**`（别名），自动添加 `Deprecation` / `Sunset` 响应头。
 - **应用级限流**：`RateLimitFilter` 基于 Redis 计数器实现每日配额限流，响应头返回 `X-RateLimit-Limit` / `X-RateLimit-Remaining`。
 - **差异化能力即服务**：工作流即服务、会员能力即服务、门店选址即服务，共 30 个开放 API 端点。

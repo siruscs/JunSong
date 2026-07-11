@@ -30,10 +30,28 @@
     </resultMap>
 
     <select id="selectByRequestId" resultMap="BatchResult">
-        SELECT * FROM fin_expense_verify_batch WHERE tenant_id = #{tenantId} AND request_id = #{requestId}
+        SELECT * FROM fin_expense_verify_batch WHERE tenant_id = #{tenantId} AND dept_id = #{deptId} AND request_id = #{requestId}
+    </select>
+    <select id="selectByExpenseId" resultMap="BatchResult">
+        SELECT b.* FROM fin_expense_verify_batch b
+        JOIN fin_expense_verify_detail d ON d.batch_id=b.batch_id AND d.tenant_id=b.tenant_id AND d.dept_id=b.dept_id
+        WHERE d.expense_id=#{expenseId} AND b.tenant_id=#{tenantId} AND b.dept_id=#{deptId}
+        ORDER BY b.batch_id DESC LIMIT 1
     </select>
     <select id="selectBatchForUpdate" resultMap="BatchResult">
-        SELECT * FROM fin_expense_verify_batch WHERE batch_id = #{batchId} AND tenant_id = #{tenantId} FOR UPDATE
+        SELECT * FROM fin_expense_verify_batch WHERE batch_id = #{batchId} AND tenant_id = #{tenantId} AND dept_id = #{deptId} FOR UPDATE
+    </select>
+    <select id="selectCurrentExpensesForUpdate" resultType="com.junsong.finance.domain.FinExpense">
+        SELECT e.* FROM fin_expense e JOIN fin_expense_verify_detail d ON d.expense_id=e.expense_id
+        WHERE d.batch_id=#{batchId} AND d.tenant_id=#{tenantId} AND d.dept_id=#{deptId}
+          AND e.tenant_id=#{tenantId} AND e.dept_id=#{deptId} AND e.del_flag='0'
+        ORDER BY e.expense_id FOR UPDATE
+    </select>
+    <select id="selectCurrentAdvancesForUpdate" resultType="com.junsong.finance.domain.FinAdvance">
+        SELECT a.* FROM fin_advance a JOIN fin_advance_verify_detail d ON d.advance_id=a.advance_id
+        WHERE d.batch_id=#{batchId} AND d.tenant_id=#{tenantId} AND d.dept_id=#{deptId}
+          AND a.tenant_id=#{tenantId} AND a.dept_id=#{deptId} AND a.del_flag='0'
+        ORDER BY a.advance_id FOR UPDATE
     </select>
     <insert id="insertBatch" parameterType="com.junsong.finance.domain.FinExpenseVerifyBatch" useGeneratedKeys="true" keyProperty="batchId">
         INSERT INTO fin_expense_verify_batch
@@ -83,4 +101,29 @@
         WHERE batch_id = #{batchId} AND tenant_id = #{tenantId} AND dept_id = #{deptId}
           AND status = 'VERIFIED' AND version = #{version}
     </update>
+    <update id="restoreExpenseSnapshot">
+        UPDATE fin_expense SET status=#{originalStatus}, advance_id=#{originalAdvanceId}, verify_by=NULL,
+            verify_time=NULL, update_time=SYSDATE()
+        WHERE expense_id=#{expenseId} AND tenant_id=#{tenantId} AND dept_id=#{deptId} AND status='1' AND del_flag='0'
+          AND advance_id &lt;=> #{expectedAdvanceId} AND verify_by &lt;=> #{verifyBy} AND verify_time &lt;=> #{verifyTime}
+    </update>
+    <update id="restoreAdvanceSnapshot">
+        UPDATE fin_advance SET status=#{originalStatus}, verify_by=NULL, verify_time=NULL, update_time=SYSDATE()
+        WHERE advance_id=#{advanceId} AND tenant_id=#{tenantId} AND dept_id=#{deptId} AND status='1' AND del_flag='0'
+          AND verify_by &lt;=> #{verifyBy} AND verify_time &lt;=> #{verifyTime}
+    </update>
+    <update id="invalidateGeneratedAdvance">
+        UPDATE fin_advance SET status='0', verify_by=NULL, verify_time=NULL, del_flag='2', update_time=SYSDATE()
+        WHERE advance_id=#{advanceId} AND tenant_id=#{tenantId} AND dept_id=#{deptId}
+          AND status=#{expectedStatus} AND del_flag='0' AND verify_by &lt;=> #{verifyBy} AND verify_time &lt;=> #{verifyTime}
+    </update>
+    <select id="countGeneratedAdvanceDownstreamReferences" resultType="int">
+        SELECT
+          (SELECT COUNT(*) FROM fin_advance_verify_detail d JOIN fin_expense_verify_batch b
+             ON b.batch_id=d.batch_id AND b.tenant_id=d.tenant_id
+           WHERE d.advance_id=#{advanceId} AND d.batch_id&lt;&gt;#{batchId} AND d.tenant_id=#{tenantId}
+             AND d.dept_id=#{deptId} AND b.dept_id=#{deptId} AND b.status='VERIFIED')
+          + (SELECT COUNT(*) FROM fin_expense e WHERE e.advance_id=#{advanceId} AND e.tenant_id=#{tenantId}
+             AND e.dept_id=#{deptId} AND e.del_flag='0' AND e.status='1')
+    </select>
 </mapper>

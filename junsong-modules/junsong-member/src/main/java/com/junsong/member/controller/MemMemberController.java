@@ -90,7 +90,6 @@ public class MemMemberController extends BaseController {
     public TableDataInfo list(MemMember memMember) {
         startPage();
         List<MemMember> list = memMemberService.selectMemMemberList(memMember);
-        maskPiiIfNeeded(list);
         return getDataTable(list);
     }
 
@@ -122,9 +121,6 @@ public class MemMemberController extends BaseController {
     @GetMapping(value = "/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id) {
         MemMember member = memMemberService.selectMemMemberById(id);
-        if (!canViewPii()) {
-            maskMemberPii(member);
-        }
         return success(member);
     }
 
@@ -151,9 +147,6 @@ public class MemMemberController extends BaseController {
         int rows = memMemberService.insertMemMember(memMember);
         if (rows > 0) {
             AjaxResult ajax = AjaxResult.success("新增成功");
-            if (!canViewPii()) {
-                maskMemberPii(memMember);
-            }
             ajax.put("data", memMember);
             return ajax;
         }
@@ -185,9 +178,6 @@ public class MemMemberController extends BaseController {
         MemMember member = memMemberService.selectMemMemberByNo(memberNo, deptId);
         if (member == null) {
             return error("未找到该部门下的会员编号：" + memberNo);
-        }
-        if (!canViewPii()) {
-            maskMemberPii(member);
         }
         return success(member);
     }

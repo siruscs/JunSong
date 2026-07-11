@@ -23,6 +23,21 @@
             <if test="status != null and status != ''"> and c.status=#{status}</if>
         </where>
     </select>
+    <select id="selectFinDeptProfitConfigByConfigId" parameterType="Long" resultMap="FinDeptProfitConfigResult">
+        <include refid="selectVo"/>
+        where c.config_id=#{configId} and c.del_flag='0'
+    </select>
+    <select id="selectFinDeptProfitConfigByDeptId" parameterType="Long" resultMap="FinDeptProfitConfigResult">
+        <include refid="selectVo"/>
+        where c.dept_id=#{deptId} and c.del_flag='0'
+        limit 1
+    </select>
+    <select id="selectAnyFinDeptProfitConfigByDeptId" parameterType="Long" resultMap="FinDeptProfitConfigResult">
+        <include refid="selectVo"/>
+        where c.dept_id=#{deptId}
+        order by c.config_id desc
+        limit 1
+    </select>
     <insert id="insertFinDeptProfitConfig" parameterType="FinDeptProfitConfig" useGeneratedKeys="true" keyProperty="configId">
         insert into fin_dept_profit_config(dept_id, manager_profit_rate, auto_create_investor_payment, status, del_flag, create_by, create_time, remark)
         values(#{deptId}, #{managerProfitRate}, #{autoCreateInvestorPayment}, #{status}, '0', #{createBy}, sysdate(), #{remark})

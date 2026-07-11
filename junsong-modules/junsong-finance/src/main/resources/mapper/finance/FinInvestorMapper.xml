@@ -41,6 +41,10 @@
         </trim>
         where investor_id=#{investorId}
     </update>
+    <select id="selectFinInvestorByInvestorId" resultMap="FinInvestorResult">
+        <include refid="selectVo"/>
+        where i.investor_id = #{investorId} and i.del_flag = '0'
+    </select>
     <delete id="deleteFinInvestorByInvestorId">update fin_investor set del_flag='2' where investor_id=#{investorId}</delete>
     <delete id="deleteFinInvestorByInvestorIds">update fin_investor set del_flag='2' where investor_id in <foreach item="investorId" collection="array" open="(" separator="," close=")">#{investorId}</foreach></delete>
 </mapper>

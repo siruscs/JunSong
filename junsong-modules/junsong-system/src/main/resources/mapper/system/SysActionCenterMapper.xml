@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.system.mapper.SysActionCenterMapper">
+
+	<!--
+		R22 动作中心聚合在 service 层通过 Feign 完成，不直接查 DB。
+		动作来源（sourceType）：FINANCE_RECEIVABLE / MEMBER_GROWTH / STOCK_HEALTH / SYSTEM_GOVERNANCE
+		动作状态（status）：PENDING / IN_PROGRESS / DONE / IGNORED / EFFECT_PENDING
+		日历统计在内存中按 dueDate 分组计算，本 XML 仅作占位。
+	-->
+
+</mapper>

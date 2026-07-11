@@ -34,6 +34,7 @@
         <include refid="selectOpenAppVo"/>
         <where>
             del_flag = '0'
+            <if test="tenantId != null">and tenant_id = #{tenantId}</if>
             <if test="appName != null and appName != ''">and app_name like concat('%', #{appName}, '%')</if>
             <if test="appType != null and appType != ''">and app_type = #{appType}</if>
             <if test="status != null and status != ''">and status = #{status}</if>

@@ -1,5 +1,7 @@
 <template>
   <div class="app-container">
+    <el-tabs v-model="activeTab" @tab-change="handleTabChange">
+      <el-tab-pane label="销售记录" name="sale">
     <el-form :model="queryParams" ref="queryForm" :inline="true" v-show="showSearch" label-width="68px">
       <el-form-item label="销售单号" prop="saleNo">
         <el-input v-model="queryParams.saleNo" placeholder="请输入销售单号" clearable style="width: 180px;" />
@@ -27,6 +29,7 @@
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="销售单号" align="center" prop="saleNo" width="180" />
       <el-table-column label="商品名称" align="center" prop="productName" />
+      <el-table-column label="销售日期" align="center" prop="saleDate" width="120" />
       <el-table-column label="销售金额" align="center" prop="saleAmount">
         <template #default="scope">
           <span style="color: #F56C6C; font-weight: bold;">¥{{ scope.row.saleAmount }}</span>
@@ -37,6 +40,11 @@
           <span style="color: #67C23A; font-weight: bold;">¥{{ scope.row.paidAmount }}</span>
         </template>
       </el-table-column>
+      <el-table-column label="欠缴金额" align="center">
+        <template #default="scope">
+          <span style="color: #E6A23C; font-weight: bold;">¥{{ ((scope.row.saleAmount || 0) - (scope.row.paidAmount || 0)).toFixed(2) }}</span>
+        </template>
+      </el-table-column>
       <el-table-column label="销售数量" align="center" prop="saleQuantity" />
       <el-table-column label="赠品数量" align="center" prop="giftQuantity" />
       <el-table-column label="状态" align="center" prop="status">
@@ -44,17 +52,81 @@
           <el-tag :type="getStatusType(scope.row.status)">{{ getStatusText(scope.row.status) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
+      <el-table-column label="操作" align="center" width="220" class-name="small-padding fixed-width">
         <template #default="scope">
           <el-button size="small" type="text" @click="handleView(scope.row)">查看</el-button>
-          <el-button size="small" type="text" @click="handleUpdate(scope.row)" v-hasPermi="['finance:sale:edit']">修改</el-button>
-          <el-button size="small" type="text" @click="handlePayment(scope.row)" v-hasPermi="['finance:sale:edit']">缴款</el-button>
-          <el-button size="small" type="text" @click="handleDelete(scope.row)" v-hasPermi="['finance:sale:remove']">删除</el-button>
+          <el-button v-if="!isCarried(scope.row)" size="small" type="text" @click="handleUpdate(scope.row)" v-hasPermi="['finance:sale:edit']">修改</el-button>
+          <el-button v-if="!isPaidOff(scope.row)" size="small" type="text" @click="handlePayment(scope.row)" v-hasPermi="['finance:sale:edit']">缴款</el-button>
+          <el-button v-if="!isCarried(scope.row)" size="small" type="text" @click="handleDelete(scope.row)" v-hasPermi="['finance:sale:remove']">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
 
     <pagination v-show="total>0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
+      </el-tab-pane>
+
+      <el-tab-pane label="历史欠款" name="receivable">
+        <el-form :model="receivableQuery" ref="receivableForm" :inline="true" v-show="showSearch" label-width="68px">
+          <el-form-item label="销售单号" prop="saleNo">
+            <el-input v-model="receivableQuery.saleNo" placeholder="请输入销售单号" clearable style="width: 180px;" />
+          </el-form-item>
+          <el-form-item label="商品名称" prop="productName">
+            <el-input v-model="receivableQuery.productName" placeholder="请输入商品名称" clearable style="width: 180px;" />
+          </el-form-item>
+          <el-form-item label="缴款状态" prop="status">
+            <el-select v-model="receivableQuery.status" placeholder="全部" clearable style="width: 140px;">
+              <el-option label="待缴款" value="0" />
+              <el-option label="部分缴款" value="1" />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" size="small" @click="handleReceivableQuery">搜索</el-button>
+            <el-button size="small" @click="resetReceivableQuery">重置</el-button>
+          </el-form-item>
+        </el-form>
+
+        <el-alert type="info" :closable="false" show-icon style="margin-bottom: 12px;"
+          title="历史欠款仅显示未缴清销售单，按账龄降序排列。对历史销售单缴款只新增缴款记录，销售业务仍归属原销售周期；本次缴款计入当前进行中核算周期。" />
+
+        <el-table v-loading="receivableLoading" :data="receivableList" border>
+          <el-table-column label="销售单号" align="center" prop="saleNo" width="170" />
+          <el-table-column label="商品名称" align="center" prop="productName" show-overflow-tooltip />
+          <el-table-column label="会员" align="center" prop="memberName" show-overflow-tooltip width="120" />
+          <el-table-column label="销售周期" align="center" prop="periodNo" width="140" show-overflow-tooltip />
+          <el-table-column label="销售日期" align="center" prop="saleDate" width="110">
+            <template #default="scope">{{ parseTime(scope.row.saleDate, '{y}-{m}-{d}') }}</template>
+          </el-table-column>
+          <el-table-column label="账龄(天)" align="center" width="90">
+            <template #default="scope">
+              <span :style="{ color: getAgeColor(scope.row) }">{{ computeAgeDays(scope.row.saleDate) }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="销售金额" align="right" width="110">
+            <template #default="scope"><span style="color: #F56C6C; font-weight: bold;">¥{{ scope.row.saleAmount }}</span></template>
+          </el-table-column>
+          <el-table-column label="已缴金额" align="right" width="110">
+            <template #default="scope"><span style="color: #67C23A; font-weight: bold;">¥{{ scope.row.paidAmount }}</span></template>
+          </el-table-column>
+          <el-table-column label="剩余应收" align="right" width="110">
+            <template #default="scope"><span style="color: #E6A23C; font-weight: bold;">¥{{ ((scope.row.saleAmount || 0) - (scope.row.paidAmount || 0)).toFixed(2) }}</span></template>
+          </el-table-column>
+          <el-table-column label="状态" align="center" width="90">
+            <template #default="scope"><el-tag :type="getStatusType(scope.row.status)">{{ getStatusText(scope.row.status) }}</el-tag></template>
+          </el-table-column>
+          <el-table-column label="最近缴款时间" align="center" width="160">
+            <template #default="scope">{{ scope.row.latestPaymentDate ? parseTime(scope.row.latestPaymentDate, '{y}-{m}-{d} {h}:{i}:{s}') : '-' }}</template>
+          </el-table-column>
+          <el-table-column label="操作" align="center" width="140" fixed="right">
+            <template #default="scope">
+              <el-button size="small" type="text" @click="handleView(scope.row)">查看</el-button>
+              <el-button size="small" type="text" @click="handlePayment(scope.row)" v-hasPermi="['finance:sale:edit']">缴款</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <pagination v-show="receivableTotal>0" :total="receivableTotal" v-model:page="receivableQuery.pageNum" v-model:limit="receivableQuery.pageSize" @pagination="getReceivableList" />
+      </el-tab-pane>
+    </el-tabs>
 
     <el-dialog :title="title" v-model="open" width="600px" append-to-body>
       <el-form ref="form" :model="form" :rules="rules" label-width="100px">
@@ -67,7 +139,7 @@
           <el-date-picker v-model="form.saleDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 100%;" />
         </el-form-item>
         <el-form-item label="销售金额" prop="saleAmount">
-          <el-input-number v-model="form.saleAmount" :precision="2" :step="0.1" :min="0" style="width: 100%;" @change="calculateUnitPrice" />
+          <el-input-number v-model="form.saleAmount" :precision="2" :step="0.1" style="width: 100%;" @change="calculateUnitPrice" />
         </el-form-item>
         <el-form-item label="销售数量" prop="saleQuantity">
           <el-input-number v-model="form.saleQuantity" :min="1" :step="1" style="width: 100%;" @change="calculateUnitPrice" />
@@ -92,17 +164,23 @@
         <el-form-item label="销售单号">
           <el-input v-model="paymentForm.saleNo" disabled />
         </el-form-item>
+        <el-form-item label="销售周期" v-if="paymentForm.periodNo">
+          <el-input v-model="paymentForm.periodNo" disabled />
+        </el-form-item>
         <el-form-item label="销售金额">
           <el-input :model-value="'¥' + paymentForm.saleAmount" disabled />
         </el-form-item>
-        <el-form-item label="已缴金额">
+        <el-form-item label="累计已缴">
           <el-input :model-value="'¥' + paymentForm.paidAmount" disabled />
+        </el-form-item>
+        <el-form-item label="剩余应收">
+          <el-input :model-value="'¥' + ((paymentForm.saleAmount || 0) - (paymentForm.paidAmount || 0)).toFixed(2)" disabled />
         </el-form-item>
         <el-form-item label="缴款日期" prop="paymentDate">
           <el-date-picker v-model="paymentForm.paymentDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 100%;" />
         </el-form-item>
         <el-form-item label="缴款金额" prop="paymentAmount">
-          <el-input-number v-model="paymentForm.paymentAmount" :precision="2" :step="0.1" :min="0" style="width: 100%;" />
+          <el-input-number v-model="paymentForm.paymentAmount" :precision="2" :step="0.1" style="width: 100%;" />
         </el-form-item>
         <el-form-item label="付款方式" prop="paymentMethod">
           <el-select v-model="paymentForm.paymentMethod" placeholder="请选择付款方式" style="width: 100%;">
@@ -112,6 +190,8 @@
         <el-form-item label="备注" prop="remark">
           <el-input v-model="paymentForm.remark" type="textarea" placeholder="请输入备注" :rows="3" />
         </el-form-item>
+        <el-alert v-if="!paymentForm.isEdit" type="warning" :closable="false" show-icon
+          title="本次缴款计入当前进行中核算周期，不影响销售单原周期归属。" />
       </el-form>
       <template #footer>
         <div class="dialog-footer">
@@ -161,7 +241,7 @@
           </el-table-column>
           <el-table-column label="付款方式" prop="paymentMethod" align="center">
             <template #default="scope">
-              <dict-tag :options="dict.type.finance_payment_method" :value="scope.paymentMethod" />
+              <dict-tag :options="dict.type.finance_payment_method" :value="scope.row.paymentMethod" />
             </template>
           </el-table-column>
           <el-table-column label="备注" prop="remark" />
@@ -186,7 +266,7 @@
 <script>
 import { useDict } from '@/composables/useDict'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listSale, getSale, delSale, addSale, updateSale, addPayment, updatePayment, delPayment } from '@/api/finance/sale'
+import { listSale, listReceivable, getSale, delSale, addSale, updateSale, addPayment, updatePayment, delPayment } from '@/api/finance/sale'
 import { listProduct } from '@/api/finance/product'
 import { useUserStore } from '@/stores/user'
 
@@ -208,6 +288,17 @@ export default {
       total: 0,
       saleList: [],
       productOptions: [],
+      activeTab: "sale",
+      receivableLoading: false,
+      receivableList: [],
+      receivableTotal: 0,
+      receivableQuery: {
+        pageNum: 1,
+        pageSize: 10,
+        saleNo: undefined,
+        productName: undefined,
+        status: undefined
+      },
       title: "",
       open: false,
       paymentOpen: false,
@@ -245,6 +336,49 @@ export default {
         this.total = response.total
         this.loading = false
       })
+    },
+    getReceivableList() {
+      this.receivableLoading = true
+      listReceivable({ ...this.receivableQuery, deptId: userStore.currentDeptId }).then(response => {
+        this.receivableList = response.rows
+        this.receivableTotal = response.total
+        this.receivableLoading = false
+      }).catch(() => {
+        this.receivableLoading = false
+      })
+    },
+    handleTabChange(name) {
+      if (name === 'receivable') {
+        this.getReceivableList()
+      } else {
+        this.getList()
+      }
+    },
+    handleReceivableQuery() {
+      this.receivableQuery.pageNum = 1
+      this.getReceivableList()
+    },
+    resetReceivableQuery() {
+      this.resetForm("receivableForm")
+      this.receivableQuery.status = undefined
+      this.handleReceivableQuery()
+    },
+    computeAgeDays(saleDate) {
+      if (!saleDate) return 0
+      const diff = Date.now() - new Date(saleDate).getTime()
+      return Math.floor(diff / (1000 * 60 * 60 * 24))
+    },
+    getAgeColor(row) {
+      const days = this.computeAgeDays(row.saleDate)
+      if (days > 60) return '#F56C6C'
+      if (days > 30) return '#E6A23C'
+      return '#67C23A'
+    },
+    isCarried(row) {
+      return row && row.periodStatus === '2'
+    },
+    isPaidOff(row) {
+      return row && row.status === '2'
     },
     getProductList() {
       listProduct({ pageNum: 1, pageSize: 1000, deptId: userStore.currentDeptId }).then(response => {
@@ -318,10 +452,11 @@ export default {
       this.paymentForm = {
         saleId: row.saleId,
         saleNo: row.saleNo,
+        periodNo: row.periodNo,
         saleAmount: row.saleAmount,
         paidAmount: row.paidAmount,
         paymentDate: new Date().toISOString().split('T')[0],
-        paymentAmount: Math.max(0, row.saleAmount - row.paidAmount),
+        paymentAmount: row.saleAmount - row.paidAmount,
         paymentMethod: undefined,
         remark: undefined
       }
@@ -380,7 +515,11 @@ export default {
             addPayment(this.paymentForm.saleId, data).then(() => {
               ElMessage.success("缴款成功")
               this.paymentOpen = false
-              this.getList()
+              if (this.activeTab === 'receivable') {
+                this.getReceivableList()
+              } else {
+                this.getList()
+              }
             })
           }
         }

@@ -14,9 +14,23 @@ class FinExpenseVerifyBatchMapperContractTest
     void mapperDefinesRequiredBatchOperations() throws Exception
     {
         String xml = Files.readString(Path.of("src/main/resources/mapper/finance/FinExpenseVerifyBatchMapper.xml"));
+        String periodXml = Files.readString(Path.of("src/main/resources/mapper/finance/FinAccountingPeriodMapper.xml"));
+        assertTrue(periodXml.contains("id=\"selectPeriodForUpdate\""));
+        assertTrue(periodXml.contains("p.period_id=#{periodId}"));
+        assertTrue(periodXml.contains("p.tenant_id=#{tenantId}"));
+        assertTrue(periodXml.contains("p.dept_id=#{deptId}"));
+        assertTrue(periodXml.contains("FOR UPDATE"));
+        String periodService = Files.readString(Path.of("src/main/java/com/junsong/finance/service/impl/FinAccountingPeriodServiceImpl.java"));
+        assertTrue(periodService.contains("selectPeriodForUpdate(period.getPeriodId(), TenantContext.getTenantId(), deptId)"));
 
         assertTrue(xml.contains("id=\"selectByRequestId\""));
+        assertTrue(xml.matches("(?s).*id=\"selectByRequestId\".*?dept_id = #\\{deptId}.*?</select>.*"));
         assertTrue(xml.contains("id=\"selectBatchForUpdate\""));
+        assertScoped(xml, "selectBatchForUpdate");
+        assertTrue(xml.contains("id=\"selectCurrentExpensesForUpdate\""));
+        assertTrue(xml.contains("id=\"selectCurrentAdvancesForUpdate\""));
+        assertTrue(xml.contains("ORDER BY e.expense_id FOR UPDATE"));
+        assertTrue(xml.contains("ORDER BY a.advance_id FOR UPDATE"));
         assertTrue(xml.contains("FOR UPDATE"));
         assertTrue(xml.contains("id=\"markBatchReversed\""));
         assertTrue(xml.contains("status = 'VERIFIED'"));
@@ -31,6 +45,9 @@ class FinExpenseVerifyBatchMapperContractTest
         assertTrue(xml.contains("reverse_request_id = #{requestId}"));
         assertMapperParams("selectExpenseDetails", "batchId", "tenantId", "deptId");
         assertMapperParams("selectAdvanceDetails", "batchId", "tenantId", "deptId");
+        assertMapperParams("selectBatchForUpdate", "batchId", "tenantId", "deptId");
+        assertMapperParams("selectCurrentExpensesForUpdate", "batchId", "tenantId", "deptId");
+        assertMapperParams("selectCurrentAdvancesForUpdate", "batchId", "tenantId", "deptId");
         assertMapperParams("markBatchReversed", "batchId", "tenantId", "deptId", "version",
             "reverseBy", "reverseTime", "reason", "requestId");
     }

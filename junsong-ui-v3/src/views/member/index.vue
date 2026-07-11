@@ -28,10 +28,10 @@
       <el-form-item label="会员卡类型" prop="cardType">
         <el-select v-model="queryParams.cardType" placeholder="请选择会员卡类型" clearable style="width: 150px;">
           <el-option
-            v-for="dict in dict.type.mem_card_type"
-            :key="dict.value"
-            :label="dict.label"
-            :value="dict.value"
+            v-for="item in cardTypeOptions"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
           />
         </el-select>
       </el-form-item>
@@ -113,6 +113,16 @@
           <span style="color: #E6A23C;">{{ scope.row.availablePoints || 0 }}</span>
         </template>
       </el-table-column>
+      <el-table-column label="成长值" align="center" prop="growthValue" width="100">
+        <template #default="scope">
+          <span style="color: #67C23A;">{{ scope.row.growthValue || 0 }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="等级" align="center" prop="levelName" width="100">
+        <template #default="scope">
+          <el-tag type="primary">{{ scope.row.levelName || '-' }}</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="有效期至" align="center" prop="expireDate" width="120">
         <template #default="scope">
           <span :style="{ color: isExpiringSoon(scope.row.expireDate) ? '#F56C6C' : '' }">
@@ -130,7 +140,7 @@
           <span>{{ parseTime(scope.row.joinDate, '{y}-{m}-{d}') }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" align="center" class-name="small-padding fixed-width" width="280">
+      <el-table-column label="操作" align="center" class-name="small-padding fixed-width" width="340">
         <template #default="scope">
           <el-button
             size="small"
@@ -166,6 +176,13 @@
             @click="handleInvalid(scope.row)"
             v-hasPermi="['member:member:invalid']"
           >设置无效</el-button>
+          <el-button
+            size="small"
+            link type="primary"
+            icon="Edit"
+            @click="handleAdjust(scope.row)"
+            v-hasPermi="['member:growth:adjust']"
+          >调整</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -216,10 +233,10 @@
             <el-form-item label="会员卡类型" prop="cardType">
               <el-select v-model="form.cardType" placeholder="请选择" style="width: 100%;">
                 <el-option
-                  v-for="dict in dict.type.mem_card_type"
-                  :key="dict.value"
-                  :label="dict.label"
-                  :value="dict.value"
+                  v-for="item in cardTypeOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
                 />
               </el-select>
             </el-form-item>
@@ -276,6 +293,12 @@
         <el-descriptions-item label="积分">
           <span style="color: #E6A23C;">{{ viewForm.availablePoints || 0 }}</span>
         </el-descriptions-item>
+        <el-descriptions-item label="成长值">
+          <span style="color: #67C23A;">{{ viewForm.growthValue || 0 }}</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="等级">
+          <el-tag type="primary">{{ viewForm.levelName || '-' }}</el-tag>
+        </el-descriptions-item>
         <el-descriptions-item label="入会日期">{{ parseTime(viewForm.joinDate, '{y}-{m}-{d}') }}</el-descriptions-item>
         <el-descriptions-item label="有效期至">
           <span :style="{ color: isExpiringSoon(viewForm.expireDate) ? '#F56C6C' : '' }">
@@ -330,6 +353,40 @@
       </template>
     </el-dialog>
 
+    <el-dialog title="调整积分/成长值" v-model="adjustOpen" width="500px" append-to-body>
+      <el-form ref="adjustForm" :model="adjustForm" :rules="adjustRules" label-width="100px">
+        <el-form-item label="会员编号">
+          <el-input v-model="adjustForm.memberNo" disabled />
+        </el-form-item>
+        <el-form-item label="会员姓名">
+          <el-input v-model="adjustForm.memberName" disabled />
+        </el-form-item>
+        <el-form-item label="当前积分">
+          <el-input v-model="adjustForm.currentPoints" disabled />
+        </el-form-item>
+        <el-form-item label="当前成长值">
+          <el-input v-model="adjustForm.currentGrowth" disabled />
+        </el-form-item>
+        <el-form-item label="积分调整值" prop="pointsChange">
+          <el-input-number v-model="adjustForm.pointsChange" :step="1" :precision="0" style="width: 100%;" />
+          <span style="font-size: 12px; color: #909399; margin-left: 10px;">正数增加，负数扣减</span>
+        </el-form-item>
+        <el-form-item label="成长值调整值" prop="growthChange">
+          <el-input-number v-model="adjustForm.growthChange" :step="1" :precision="0" style="width: 100%;" />
+          <span style="font-size: 12px; color: #909399; margin-left: 10px;">正数增加，负数扣减</span>
+        </el-form-item>
+        <el-form-item label="备注" prop="remark">
+          <el-input v-model="adjustForm.remark" type="textarea" placeholder="请输入备注" :rows="3" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+        <el-button type="primary" @click="submitAdjust">确 定</el-button>
+        <el-button @click="adjustOpen = false">取 消</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
     <ExcelImportDialog
       ref="importMemberRef"
       title="会员信息导入"
@@ -348,6 +405,8 @@ import { parseTime } from "@/utils/junsong"
 import { useDownload } from "@/composables/useDownload"
 import { useDict, getDictDefaultValue } from "@/composables/useDict"
 import { listMember, getMember, delMember, addMember, updateMember, renewMember, cancelMember, invalidMember, getNextMemberNo } from "@/api/member/member"
+import { adjustGrowth } from "@/api/member/growth"
+import { listLevel } from "@/api/member/level"
 import ExcelImportDialog from '@/components/ExcelImportDialog/index.vue'
 const { download } = useDownload()
 
@@ -357,7 +416,7 @@ export default {
     ExcelImportDialog
   },
   setup() {
-    const dict = useDict('mem_card_type')
+    const dict = useDict()
     return { dict }
   },
   data() {
@@ -373,6 +432,7 @@ export default {
       open: false,
       viewOpen: false,
       renewOpen: false,
+      adjustOpen: false,
       queryParams: {
         pageNum: 1,
         pageSize: 10,
@@ -410,7 +470,13 @@ export default {
           { required: true, message: "续卡时长不能为空", trigger: "change" }
         ]
       },
-      cardTypeOptions: {},
+      adjustRules: {
+        remark: [
+          { required: true, message: "备注不能为空", trigger: "blur" }
+        ]
+      },
+      cardTypeOptions: [],
+      levelMap: {},
       statusOptions: {
         '0': '正常',
         '1': '已无效',
@@ -419,23 +485,10 @@ export default {
     }
   },
   created() {
+    this.loadLevelOptions()
     this.getList()
   },
-  mounted() {
-    // 初始化cardTypeOptions
-    this.initCardTypeOptions()
-  },
   watch: {
-    // 监听字典数据变化
-    'dict.type.mem_card_type': {
-      handler() {
-        this.initCardTypeOptions()
-        if (this.open && this.title === "添加会员" && !this.form.cardType) {
-          this.form.cardType = getDictDefaultValue(this.dict.type.mem_card_type, undefined)
-        }
-      },
-      immediate: true
-    }
   },
   methods: {
     parseTime,
@@ -450,14 +503,20 @@ export default {
       const day = String(today.getDate()).padStart(2, '0')
       return `${year}-${month}-${day}`
     },
-    // 初始化会员卡类型选项
-    initCardTypeOptions() {
-      if (this.dict && this.dict.type && this.dict.type.mem_card_type) {
-        this.cardTypeOptions = {}
-        this.dict.type.mem_card_type.forEach(dict => {
-          this.cardTypeOptions[dict.value] = dict.label
+    // 加载等级配置选项
+    loadLevelOptions() {
+      listLevel({}).then(response => {
+        const list = response.data || []
+        this.cardTypeOptions = list.map(item => ({
+          value: item.typeCode,
+          label: item.typeName
+        }))
+        const map = {}
+        list.forEach(item => {
+          map[item.typeCode] = item.typeName
         })
-      }
+        this.levelMap = map
+      })
     },
     getList() {
       this.loading = true
@@ -505,7 +564,9 @@ export default {
     },
     handleAdd() {
       this.reset()
-      this.form.cardType = getDictDefaultValue(this.dict.type.mem_card_type, undefined)
+      if (this.cardTypeOptions.length > 0) {
+        this.form.cardType = this.cardTypeOptions[0].value
+      }
       this.form.joinDate = this.getTodayDate()
       this.title = "添加会员"
       // 自动获取下一个会员编号
@@ -627,8 +688,38 @@ export default {
         ElMessage.success("设置无效成功")
       }).catch(() => {})
     },
+    handleAdjust(row) {
+      this.adjustForm = {
+        memberId: row.memberId,
+        memberNo: row.memberNo,
+        memberName: row.memberName,
+        currentPoints: row.availablePoints || 0,
+        currentGrowth: row.growthValue || 0,
+        pointsChange: 0,
+        growthChange: 0,
+        remark: ''
+      }
+      this.adjustOpen = true
+    },
+    submitAdjust() {
+      this.$refs["adjustForm"].validate(valid => {
+        if (valid) {
+          const postData = {
+            memberId: this.adjustForm.memberId,
+            pointsChange: this.adjustForm.pointsChange,
+            growthChange: this.adjustForm.growthChange,
+            remark: this.adjustForm.remark
+          }
+          adjustGrowth(postData).then(() => {
+            ElMessage.success("调整成功")
+            this.adjustOpen = false
+            this.getList()
+          })
+        }
+      })
+    },
     getCardTypeName(cardType) {
-      return this.cardTypeOptions[cardType] || '-'
+      return this.levelMap[cardType] || cardType || '-'
     },
     getStatusName(status) {
       return this.statusOptions[status] || '-'

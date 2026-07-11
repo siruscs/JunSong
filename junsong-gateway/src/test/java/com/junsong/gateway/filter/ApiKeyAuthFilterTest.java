@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
@@ -217,6 +218,101 @@ class ApiKeyAuthFilterTest
         assertTrue(redisService.setKeys.stream().anyMatch(key -> key.contains("openapi:nonce:")));
     }
 
+    // ── 场景 8：签名通过后注入 X-Open-* 上下文头 ───────
+
+    @Test
+    @DisplayName("签名通过后下游请求应包含 X-Open-* 可信上下文头")
+    void shouldInjectOpenContextHeadersAfterSignaturePass()
+    {
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        String nonce = "valid-nonce-headers";
+        String signature = computeSignature(TEST_APP_SECRET, "GET", TEST_PATH, timestamp, nonce, "");
+
+        redisService.authContext = buildAuthContext();
+
+        MockServerWebExchange exchange = buildExchange(
+                MockServerHttpRequest.get(TEST_PATH)
+                        .header("X-App-Key", TEST_APP_KEY)
+                        .header("X-App-Timestamp", timestamp)
+                        .header("X-App-Nonce", nonce)
+                        .header("X-App-Signature", signature).build());
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        assertTrue(chain.wasCalled());
+        assertNotNull(chain.capturedExchange(), "downstream exchange must be captured");
+        HttpHeaders downstreamHeaders = chain.capturedExchange().getRequest().getHeaders();
+        assertEquals("1", downstreamHeaders.getFirst("X-Open-App-Id"));
+        assertEquals(TEST_APP_KEY, downstreamHeaders.getFirst("X-Open-App-Key"));
+        assertEquals("100", downstreamHeaders.getFirst("X-Open-Tenant-Id"));
+        assertEquals("production", downstreamHeaders.getFirst("X-Open-Key-Type"));
+        assertNotNull(downstreamHeaders.getFirst("X-Open-Request-Id"), "X-Open-Request-Id must be injected");
+        assertEquals("R23", downstreamHeaders.getFirst("X-Open-Auth-Version"));
+    }
+
+    // ── 场景 8b：外部请求携带的内部头被剥离 ─────────────
+
+    @Test
+    @DisplayName("外部请求携带的 from-source / user_id 等内部头必须被剥离")
+    void shouldStripSpoofableInternalHeadersFromExternalRequests()
+    {
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        String nonce = "valid-nonce-strip";
+        String signature = computeSignature(TEST_APP_SECRET, "GET", TEST_PATH, timestamp, nonce, "");
+
+        redisService.authContext = buildAuthContext();
+
+        MockServerWebExchange exchange = buildExchange(
+                MockServerHttpRequest.get(TEST_PATH)
+                        .header("X-App-Key", TEST_APP_KEY)
+                        .header("X-App-Timestamp", timestamp)
+                        .header("X-App-Nonce", nonce)
+                        .header("X-App-Signature", signature)
+                        .header("from-source", "inner")
+                        .header("user_id", "999")
+                        .header("username", "attacker")
+                        .build());
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        assertTrue(chain.wasCalled());
+        HttpHeaders downstreamHeaders = chain.capturedExchange().getRequest().getHeaders();
+        assertNull(downstreamHeaders.getFirst("from-source"), "from-source must be stripped from external requests");
+        assertNull(downstreamHeaders.getFirst("user_id"), "user_id must be stripped from external requests");
+        assertNull(downstreamHeaders.getFirst("username"), "username must be stripped from external requests");
+    }
+
+    // ── 场景 9：日额度超限返回 429 ─────────────────────
+
+    @Test
+    @DisplayName("日额度超限应返回 429 和 OPEN_QUOTA_EXCEEDED")
+    void shouldReturn429WhenDailyQuotaExceeded()
+    {
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        String nonce = "valid-nonce-quota";
+        String signature = computeSignature(TEST_APP_SECRET, "GET", TEST_PATH, timestamp, nonce, "");
+
+        ApiKeyAuthFilter.AuthContext ctx = buildAuthContext();
+        ctx.setDailyQuota(1);
+        redisService.authContext = ctx;
+        redisService.incrementReturn = 2L;
+
+        MockServerWebExchange exchange = buildExchange(
+                MockServerHttpRequest.get(TEST_PATH)
+                        .header("X-App-Key", TEST_APP_KEY)
+                        .header("X-App-Timestamp", timestamp)
+                        .header("X-App-Nonce", nonce)
+                        .header("X-App-Signature", signature).build());
+
+        StepVerifier.create(filter.filter(exchange, chain))
+                .verifyComplete();
+
+        assertFalse(chain.wasCalled(), "downstream must not be called when quota exceeded");
+        assertEquals(HttpStatus.TOO_MANY_REQUESTS, exchange.getResponse().getStatusCode());
+    }
+
     // ── 辅助方法 ───────────────────────────────────────
 
     private MockServerWebExchange buildExchange(MockServerHttpRequest request)
@@ -232,6 +328,7 @@ class ApiKeyAuthFilterTest
         cachedCtx.setTenantId(100L);
         cachedCtx.setDailyQuota(1000);
         cachedCtx.setStatus("0");
+        cachedCtx.setKeyType("production");
         return cachedCtx;
     }
 
@@ -265,17 +362,24 @@ class ApiKeyAuthFilterTest
     private static class RecordingGatewayFilterChain implements GatewayFilterChain
     {
         private boolean called;
+        private ServerWebExchange exchange;
 
         @Override
         public Mono<Void> filter(ServerWebExchange exchange)
         {
             called = true;
+            this.exchange = exchange;
             return Mono.empty();
         }
 
         boolean wasCalled()
         {
             return called;
+        }
+
+        ServerWebExchange capturedExchange()
+        {
+            return exchange;
         }
     }
 
@@ -284,6 +388,7 @@ class ApiKeyAuthFilterTest
         private ApiKeyAuthFilter.AuthContext authContext;
         private String replayedNonceKeyPart;
         private final List<String> setKeys = new ArrayList<>();
+        private Long incrementReturn = 1L;
 
         @Override
         @SuppressWarnings("unchecked")
@@ -306,6 +411,18 @@ class ApiKeyAuthFilterTest
         public <T> void setCacheObject(String key, T value, Long timeout, TimeUnit timeUnit)
         {
             setKeys.add(key);
+        }
+
+        @Override
+        public Long increment(String key)
+        {
+            return incrementReturn;
+        }
+
+        @Override
+        public boolean expire(String key, long timeout, TimeUnit unit)
+        {
+            return true;
         }
     }
 

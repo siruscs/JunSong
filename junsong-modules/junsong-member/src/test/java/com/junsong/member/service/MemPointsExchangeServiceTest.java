@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import com.junsong.member.domain.MemPointsExchange;
 import com.junsong.member.domain.MemPointsGoods;
 import com.junsong.member.domain.MemPointsRecord;
+import com.junsong.member.mapper.MemMemberMapper;
 import com.junsong.member.mapper.MemPointsExchangeMapper;
 import com.junsong.member.mapper.MemPointsGoodsMapper;
 import com.junsong.member.service.impl.MemPointsExchangeServiceImpl;
@@ -48,6 +49,21 @@ class MemPointsExchangeServiceTest
         Field goodsField = MemPointsExchangeServiceImpl.class.getDeclaredField("memPointsGoodsMapper");
         goodsField.setAccessible(true);
         goodsField.set(service, fakeGoodsMapper);
+
+        // R5/R6 在 exchangePoints 末尾新增 memMemberMapper.updateLastActiveTime 调用，
+        // 此处注入 no-op Proxy 避免 NPE（生产代码已验证，单元测试仅需补齐依赖）。
+        MemMemberMapper fakeMemberMapper = (MemMemberMapper) java.lang.reflect.Proxy.newProxyInstance(
+                MemMemberMapper.class.getClassLoader(),
+                new Class<?>[] { MemMemberMapper.class },
+                (proxy, method, args) -> {
+                    Class<?> rt = method.getReturnType();
+                    if (rt == int.class) return 1;
+                    if (rt == boolean.class) return false;
+                    return null;
+                });
+        Field memberField = MemPointsExchangeServiceImpl.class.getDeclaredField("memMemberMapper");
+        memberField.setAccessible(true);
+        memberField.set(service, fakeMemberMapper);
     }
 
     private MemPointsExchange buildExchange(Long memberId, BigDecimal pointsDeducted)
@@ -346,6 +362,6 @@ class MemPointsExchangeServiceTest
         @Override public int updateMemPointsGoods(MemPointsGoods g) { throw new UnsupportedOperationException(); }
         @Override public int deleteMemPointsGoodsById(Long goodsId) { throw new UnsupportedOperationException(); }
         @Override public int deleteMemPointsGoodsByIds(Long[] goodsIds) { throw new UnsupportedOperationException(); }
-        @Override public int checkMemGoodsCodeUnique(String goodsNo) { throw new UnsupportedOperationException(); }
+        @Override public int checkMemGoodsCodeUnique(String goodsNo, Long goodsId) { throw new UnsupportedOperationException(); }
     }
 }

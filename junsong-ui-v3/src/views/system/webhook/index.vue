@@ -130,11 +130,15 @@
 </template>
 
 <script setup name="Webhook">
+import { ref, reactive, toRefs, getCurrentInstance } from 'vue'
 import { listSubscription, getSubscription, addSubscription, updateSubscription, delSubscription, changeStatus, generateToken, listDelivery, testEvent } from '@/api/system/webhook'
+import { useDict } from '@/composables/useDict'
 import { Plus, Edit, Delete, Promotion } from '@element-plus/icons-vue'
+import RightToolbar from '@/components/RightToolbar/index.vue'
+import Pagination from '@/components/Pagination/index.vue'
 
 const { proxy } = getCurrentInstance()
-const { sys_normal_disable } = proxy.useDict('sys_normal_disable')
+const dict = useDict('sys_normal_disable')
 
 const subscriptionList = ref([])
 const open = ref(false)

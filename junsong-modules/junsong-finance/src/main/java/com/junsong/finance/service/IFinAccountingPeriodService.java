@@ -1,5 +1,6 @@
 package com.junsong.finance.service;
 
+import java.util.Date;
 import java.util.List;
 import com.junsong.finance.domain.FinAccountingPeriod;
 
@@ -21,4 +22,6 @@ public interface IFinAccountingPeriodService
     public int insertFinAccountingPeriod(FinAccountingPeriod finAccountingPeriod);
     public int updateFinAccountingPeriod(FinAccountingPeriod finAccountingPeriod);
     public int deleteFinAccountingPeriodByPeriodIds(Long[] periodIds);
+    /** 运维调整：调整历史核算周期起始/结束时间，不重新核算金额，不重新计算分润 */
+    public FinAccountingPeriod opsAdjustStartTime(Long periodId, Date startTime, Date endTime, String reason);
 }

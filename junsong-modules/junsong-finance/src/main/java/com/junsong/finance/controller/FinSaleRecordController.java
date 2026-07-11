@@ -48,6 +48,18 @@ public class FinSaleRecordController extends BaseController
     }
 
     /**
+     * 查询未缴清销售单（历史欠款）列表
+     */
+    @RequiresPermissions("finance:sale:list")
+    @GetMapping("/receivable/list")
+    public TableDataInfo receivableList(FinSaleRecord finSaleRecord)
+    {
+        startPage();
+        List<FinSaleRecord> list = finSaleRecordService.selectReceivableList(finSaleRecord);
+        return getDataTable(list);
+    }
+
+    /**
      * 导出销售记录列表
      */
     @RequiresPermissions("finance:sale:export")

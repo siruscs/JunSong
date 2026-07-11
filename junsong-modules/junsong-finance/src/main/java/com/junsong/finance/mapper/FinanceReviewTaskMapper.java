@@ -3,6 +3,7 @@ package com.junsong.finance.mapper;
 import com.junsong.finance.domain.FinanceReviewTask;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -62,4 +63,43 @@ public interface FinanceReviewTaskMapper {
      * @return 数量
      */
     int countByStatus(@Param("status") String status, @Param("deptIds") List<Long> deptIds);
+
+    /**
+     * 查询指定门店、时间窗口内的销售总额和费用总额
+     */
+    Map<String, Object> selectTaskEffectAmountWindow(@Param("deptId") Long deptId,
+                                                     @Param("startTime") Date startTime,
+                                                     @Param("endTime") Date endTime);
+
+    /**
+     * 统计指定门店、问题类型、时间窗口内的未完成同类任务数
+     */
+    int countSimilarOpenTasks(@Param("deptId") Long deptId,
+                              @Param("problemType") String problemType,
+                              @Param("startTime") Date startTime,
+                              @Param("endTime") Date endTime);
+
+    /**
+     * 查询最近归档的已完成任务（用于效果汇总）
+     *
+     * @param deptIds   门店ID列表
+     * @param sinceDate 最早归档时间
+     * @param limit     最大返回数量
+     * @return 已完成任务列表
+     */
+    List<FinanceReviewTask> selectRecentDoneTasks(@Param("deptIds") List<Long> deptIds,
+                                                   @Param("sinceDate") Date sinceDate,
+                                                   @Param("limit") int limit);
+
+    /**
+     * 查询可重开的候选任务（归档超过指定天数的已完成任务）
+     *
+     * @param deptIds    门店ID列表
+     * @param cutoffDate 归档时间截止日
+     * @param limit      最大返回数量
+     * @return 重开候选任务列表
+     */
+    List<FinanceReviewTask> selectReopenCandidates(@Param("deptIds") List<Long> deptIds,
+                                                    @Param("cutoffDate") Date cutoffDate,
+                                                    @Param("limit") int limit);
 }

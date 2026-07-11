@@ -69,51 +69,125 @@
       </div>
     </div>
 
-    <!-- Cash Health Section -->
+    <!-- 现金流速览 Section (R7-D) -->
     <el-card class="section-card">
       <template #header>
         <div style="display:flex;justify-content:space-between;align-items:center;">
-          <span>现金流健康</span>
-          <el-tag v-if="cashflowData.cashPressureItems === 0" type="success" size="small">健康</el-tag>
-          <el-tag v-else :type="cashflowData.cashPressureItems > 5 ? 'danger' : 'warning'" size="small">{{ cashflowData.cashPressureItems }} 项压力</el-tag>
+          <span>现金流速览</span>
+          <el-tag :type="cashflowData.netCashflowAmount >= 0 ? 'success' : 'danger'" size="small">
+            {{ cashflowData.netCashflowAmount >= 0 ? '正流入' : '净流出' }}
+          </el-tag>
         </div>
       </template>
       <div class="report-metrics">
-        <div class="metric-card" :class="cashflowData.netCashInflow >= 0 ? 'success' : 'danger'">
-          <div class="metric-label">净现金流入</div>
-          <div class="metric-value" :style="{ color: cashflowData.netCashInflow >= 0 ? '#67C23A' : '#F56C6C' }">&yen;{{ cashflowData.netCashInflow || 0 }}</div>
-        </div>
-        <div class="metric-card" :class="cashflowData.totalUnverifiedExpense > 5000 ? 'warning' : 'info'">
-          <div class="metric-label">未核销费用</div>
-          <div class="metric-value">&yen;{{ cashflowData.totalUnverifiedExpense || 0 }}</div>
-          <div v-if="cashflowData.totalUnverifiedExpense > 5000" class="metric-hint" style="color:#E6A23C;font-size:12px;margin-top:4px;">金额偏高，建议及时核销</div>
-        </div>
-        <div class="metric-card info">
-          <div class="metric-label">借支余额</div>
-          <div class="metric-value">&yen;{{ cashflowData.totalAdvanceBalance || 0 }}</div>
-        </div>
         <div class="metric-card success">
-          <div class="metric-label">已付投资人返款</div>
-          <div class="metric-value">&yen;{{ cashflowData.totalPaidInvestorPayment || 0 }}</div>
+          <div class="metric-label">现金流入</div>
+          <div class="metric-value" style="color:#67C23A">&yen;{{ cashflowData.cashInAmount || 0 }}</div>
         </div>
         <div class="metric-card warning">
-          <div class="metric-label">未付投资人返款</div>
-          <div class="metric-value">&yen;{{ cashflowData.totalUnpaidInvestorPayment || 0 }}</div>
+          <div class="metric-label">现金流出</div>
+          <div class="metric-value" style="color:#E6A23C">&yen;{{ cashflowData.cashOutAmount || 0 }}</div>
         </div>
-        <div class="metric-card" :class="cashflowData.cashPressureItems > 5 ? 'danger' : 'info'">
-          <div class="metric-label">现金压力项</div>
-          <div class="metric-value">{{ cashflowData.cashPressureItems || 0 }}</div>
+        <div class="metric-card" :class="cashflowData.netCashflowAmount >= 0 ? 'success' : 'danger'">
+          <div class="metric-label">净现金流</div>
+          <div class="metric-value" :style="{ color: cashflowData.netCashflowAmount >= 0 ? '#67C23A' : '#F56C6C' }">&yen;{{ cashflowData.netCashflowAmount || 0 }}</div>
+        </div>
+        <div class="metric-card info">
+          <div class="metric-label">未核销费用</div>
+          <div class="metric-value">&yen;{{ cashflowData.pendingExpenseAmount || 0 }}</div>
+          <div class="metric-hint" style="color:#909399;font-size:12px;margin-top:4px;">{{ cashflowData.pendingExpenseCount || 0 }} 笔待核销</div>
+        </div>
+        <div class="metric-card info">
+          <div class="metric-label">未核销借支</div>
+          <div class="metric-value">&yen;{{ cashflowData.pendingAdvanceAmount || 0 }}</div>
+          <div class="metric-hint" style="color:#909399;font-size:12px;margin-top:4px;">{{ cashflowData.pendingAdvanceCount || 0 }} 笔待核销</div>
+        </div>
+        <div class="metric-card info">
+          <div class="metric-label">待分润</div>
+          <div class="metric-value">&yen;{{ cashflowData.pendingProfitShareAmount || 0 }}</div>
+          <div class="metric-hint" style="color:#909399;font-size:12px;margin-top:4px;">{{ cashflowData.pendingProfitShareCount || 0 }} 笔待分润</div>
+        </div>
+      </div>
+      <!-- 待结算明细列表 -->
+      <div v-if="cashflowData.pendingItems && cashflowData.pendingItems.length > 0" style="margin-top:14px;">
+        <div style="font-weight:600;color:#606266;margin-bottom:8px;font-size:13px;">待结算明细</div>
+        <el-table :data="cashflowData.pendingItems" stripe border style="width:100%" empty-text="暂无待结算" max-height="280">
+          <el-table-column prop="type" label="类型" width="120">
+            <template #default="scope">
+              <el-tag :type="scope.row.type === 'EXPENSE' ? 'warning' : scope.row.type === 'ADVANCE' ? 'info' : 'success'" size="small">
+                {{ scope.row.type === 'EXPENSE' ? '待核销费用' : scope.row.type === 'ADVANCE' ? '待核销借支' : '待分润' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="deptName" label="门店" min-width="120" />
+          <el-table-column prop="amount" label="金额" min-width="100">
+            <template #default="scope">&yen;{{ scope.row.amount || 0 }}</template>
+          </el-table-column>
+          <el-table-column prop="createDate" label="创建时间" min-width="160" />
+          <el-table-column label="操作" width="90" fixed="right">
+            <template #default="scope">
+              <el-button type="primary" link size="small" @click="goPendingRoute(scope.row)">查看</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </el-card>
+
+    <!-- R14-A: 应收速览 Section -->
+    <el-card class="section-card receivable-section">
+      <template #header>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span>应收速览</span>
+          <el-tag :type="Number(dashboardData.overdueReceivableCount || 0) > 0 ? 'warning' : 'success'" size="small">
+            {{ Number(dashboardData.overdueReceivableCount || 0) > 0 ? '需要跟进' : '暂无逾期' }}
+          </el-tag>
+        </div>
+      </template>
+      <div class="report-metrics">
+        <div class="metric-card success">
+          <div class="metric-label">本期实收</div>
+          <div class="metric-value">&yen;{{ dashboardData.currentPeriodPaymentAmount || 0 }}</div>
+        </div>
+        <div class="metric-card success">
+          <div class="metric-label">历史欠款回收</div>
+          <div class="metric-value">&yen;{{ dashboardData.historicalReceivableCollectedAmount || 0 }}</div>
+        </div>
+        <div class="metric-card warning">
+          <div class="metric-label">本期新增应收</div>
+          <div class="metric-value">&yen;{{ dashboardData.currentPeriodNewReceivableAmount || 0 }}</div>
+        </div>
+        <div class="metric-card danger">
+          <div class="metric-label">期末应收余额</div>
+          <div class="metric-value">&yen;{{ dashboardData.endingReceivableAmount || 0 }}</div>
+        </div>
+        <div class="metric-card info">
+          <div class="metric-label">逾期应收</div>
+          <div class="metric-value">{{ dashboardData.overdueReceivableCount || 0 }} 笔</div>
         </div>
       </div>
     </el-card>
 
-    <!-- Quick Links -->
+    <!-- R16: 现金流预测 Section -->
     <el-card class="section-card">
-      <template #header><span>快捷入口</span></template>
-      <div class="quick-links">
-        <router-link to="/finance/expense" class="quick-link">费用管理</router-link>
-        <router-link to="/finance/costAccounting" class="quick-link">成本核算</router-link>
-        <router-link to="/finance/profitShare" class="quick-link">分润结算</router-link>
+      <template #header>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span>现金流预测</span>
+          <el-button type="primary" link size="small" @click="$router.push('/finance/cashflowForecast')">查看预测</el-button>
+        </div>
+      </template>
+      <div class="report-metrics">
+        <div class="metric-card primary">
+          <div class="metric-label">未来7天预计回款</div>
+          <div class="metric-value">&yen;{{ cashflowForecastData.forecast7dAmount || 0 }}</div>
+        </div>
+        <div class="metric-card" :class="pressureMetricClass(cashflowForecastData.pressureLevel)">
+          <div class="metric-label">现金压力指数</div>
+          <div class="metric-value">{{ cashflowForecastData.pressureScore || 0 }}分 ({{ pressureLevelLabel(cashflowForecastData.pressureLevel) }})</div>
+        </div>
+        <div class="metric-card info">
+          <div class="metric-label">本周逾期承诺</div>
+          <div class="metric-value">&yen;{{ cashflowForecastData.weeklyOverduePromiseAmount || 0 }}</div>
+        </div>
       </div>
     </el-card>
 
@@ -189,6 +263,56 @@
       </div>
     </el-card>
 
+    <!-- R12-G: 动作成效面板 -->
+    <el-card class="section-card">
+      <template #header>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span>动作成效</span>
+          <el-tag v-if="effectSummary.evaluatedTaskCount > 0"
+                  :type="effectSummary.averageEffectScore >= 60 ? 'success' : effectSummary.averageEffectScore >= 40 ? 'warning' : 'danger'"
+                  size="small">
+            均分 {{ effectSummary.averageEffectScore }}
+          </el-tag>
+          <el-tag v-else type="info" size="small">暂无评估</el-tag>
+        </div>
+      </template>
+      <div v-if="effectSummary.evaluatedTaskCount > 0">
+        <div class="report-metrics">
+          <div class="metric-card primary">
+            <div class="metric-label">已评估动作</div>
+            <div class="metric-value">{{ effectSummary.evaluatedTaskCount }}</div>
+          </div>
+          <div class="metric-card" style="border-left-color:#67C23A;">
+            <div class="metric-label">改善明显</div>
+            <div class="metric-value" style="color:#67C23A;">{{ effectSummary.goodEffectCount }}</div>
+          </div>
+          <div class="metric-card" style="border-left-color:#E6A23C;">
+            <div class="metric-label">观察中</div>
+            <div class="metric-value" style="color:#E6A23C;">{{ effectSummary.watchEffectCount }}</div>
+          </div>
+          <div class="metric-card" style="border-left-color:#F56C6C;">
+            <div class="metric-label">未改善</div>
+            <div class="metric-value" style="color:#F56C6C;">{{ effectSummary.noImprovementCount }}</div>
+          </div>
+        </div>
+        <div v-if="effectSummary.reopenCandidates && effectSummary.reopenCandidates.length > 0" style="margin-top:14px;">
+          <div style="font-weight:600;color:#606266;margin-bottom:8px;font-size:13px;">待重开任务</div>
+          <div v-for="rc in effectSummary.reopenCandidates" :key="rc.taskId" class="task-item" style="padding:8px 12px;border:1px solid #ebeef5;border-radius:6px;margin-bottom:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <el-tag size="small" effect="plain">{{ rc.taskType }}</el-tag>
+                <span style="margin-left:6px;font-weight:600;">{{ rc.title }}</span>
+              </div>
+              <span style="color:#909399;font-size:12px;">{{ rc.deptName }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div v-else class="healthy-state">
+        <p style="color:#909399;">暂无已评估的动作成效数据</p>
+      </div>
+    </el-card>
+
     <!-- Pending Items -->
     <el-card class="section-card">
       <template #header><span>待办事项</span></template>
@@ -250,6 +374,17 @@
         </el-table>
       </el-card>
     </div>
+
+    <!-- Quick Links (R8-G: 常用入口区置于最后) -->
+    <el-card class="section-card">
+      <template #header><span>快捷入口</span></template>
+      <div class="quick-links">
+        <router-link to="/finance/expense" class="quick-link">费用管理</router-link>
+        <router-link to="/finance/costAccounting" class="quick-link">成本核算</router-link>
+        <router-link to="/finance/accountingPeriod" class="quick-link">核算周期</router-link>
+        <router-link to="/finance/profitShare" class="quick-link">分润结算</router-link>
+      </div>
+    </el-card>
     </template>
   </div>
 </template>
@@ -294,15 +429,31 @@ export default {
         profitTopStores: []
       },
       cashflowData: {
-        netCashInflow: 0,
-        totalReceivedSalePayment: 0,
-        totalVerifiedExpense: 0,
-        totalUnverifiedExpense: 0,
-        totalAdvanceBalance: 0,
-        totalPaidInvestorPayment: 0,
-        totalUnpaidInvestorPayment: 0,
-        cashPressureItems: 0,
-        deptIds: []
+        cashInAmount: 0,
+        cashOutAmount: 0,
+        netCashflowAmount: 0,
+        pendingExpenseAmount: 0,
+        pendingAdvanceAmount: 0,
+        pendingProfitShareAmount: 0,
+        pendingExpenseCount: 0,
+        pendingAdvanceCount: 0,
+        pendingProfitShareCount: 0,
+        trendRows: [],
+        pendingItems: []
+      },
+      effectSummary: {
+        evaluatedTaskCount: 0,
+        goodEffectCount: 0,
+        watchEffectCount: 0,
+        noImprovementCount: 0,
+        averageEffectScore: 0,
+        reopenCandidates: []
+      },
+      cashflowForecastData: {
+        forecast7dAmount: 0,
+        pressureScore: 0,
+        pressureLevel: 'LOW',
+        weeklyOverduePromiseAmount: 0
       }
     };
   },
@@ -324,16 +475,20 @@ export default {
       this.loadError = '';
       this.permissionDenied = false;
       try {
-        const [dashRes, alertsRes, tasksRes, cashflowRes] = await Promise.all([
+        const [dashRes, alertsRes, tasksRes, cashflowRes, effectRes, forecastRes] = await Promise.all([
           request({ url: "/finance/dashboard/operation", method: "post", data: this.queryParams }),
           request({ url: "/finance/dashboard/alerts", method: "post", data: this.queryParams }),
           request({ url: "/finance/dashboard/review-tasks", method: "post", data: this.queryParams }),
-          request({ url: "/finance/dashboard/cashflow", method: "post", data: this.queryParams })
+          request({ url: "/finance/cashflow/dashboard", method: "post", data: this.queryParams }),
+          request({ url: "/finance/review-task/effect-summary", method: "get", params: { windowDays: 7 } }),
+          request({ url: "/finance/cashflow-forecast/dashboard", method: "post", data: this.queryParams })
         ]);
         this.dashboardData = dashRes.data || this.dashboardData;
         this.alerts = alertsRes.data || [];
         this.reviewTasks = tasksRes.data || [];
         this.cashflowData = cashflowRes.data || this.cashflowData;
+        this.effectSummary = effectRes.data || this.effectSummary;
+        this.cashflowForecastData = this.mapCashflowForecast(forecastRes.data);
       } catch (e) {
         if (e?.response?.status === 403 || e?.message?.includes('403')) {
           this.permissionDenied = true;
@@ -357,12 +512,45 @@ export default {
         this.$router.push({ path: task.targetRoute, query: task.targetParams ? JSON.parse(task.targetParams) : {} });
       }
     },
+    goPendingRoute(item) {
+      const routeMap = {
+        EXPENSE: '/finance/expense',
+        ADVANCE: '/finance/advance',
+        PROFIT_SHARE: '/finance/profitShare'
+      };
+      const path = routeMap[item.type];
+      if (path) {
+        this.$router.push({ path, query: { id: item.bizId } });
+      }
+    },
     resetQuery() {
       this.queryParams = {
         deptIds: [],
         timeType: "day"
       };
       this.loadData();
+    },
+    mapCashflowForecast(data) {
+      if (!data) return this.cashflowForecastData;
+      const windows = data.windows || [];
+      const window7d = windows.find((w) => w.windowDays === 7) || {};
+      const pressure = data.pressure || {};
+      const rhythm = data.weeklyRhythm || {};
+      return {
+        forecast7dAmount: window7d.forecastReceivableAmount || 0,
+        pressureScore: pressure.pressureScore || 0,
+        pressureLevel: pressure.pressureLevel || 'LOW',
+        weeklyOverduePromiseAmount: rhythm.weeklyOverduePromiseAmount || 0
+      };
+    },
+    pressureLevelLabel(level) {
+      const labels = { LOW: '低', MEDIUM: '中', HIGH: '高', CRITICAL: '严重' };
+      return labels[level] || '低';
+    },
+    pressureMetricClass(level) {
+      if (level === 'CRITICAL' || level === 'HIGH') return 'danger';
+      if (level === 'MEDIUM') return 'warning';
+      return 'success';
     }
   }
 };
@@ -374,7 +562,8 @@ export default {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 16px;
+  padding: 12px 20px 4px;
+  margin-bottom: 0;
 }
 
 .page-title {

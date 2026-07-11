@@ -78,7 +78,7 @@ class FinanceDiagnosisRuleEngineTest {
         assertEquals("销售下滑预警", results.get(0).getTitle());
         assertNotNull(results.get(0).getSuggestedAction());
         assertNotNull(results.get(0).getTargetRoute());
-        assertEquals("/finance/report/sale", results.get(0).getTargetRoute());
+        assertEquals("/finance/salesOperation", results.get(0).getTargetRoute());
         assertNotNull(results.get(0).getRuleName(), "ruleName should be set");
         assertNotNull(results.get(0).getMetricName(), "metricName should be set");
         assertNotNull(results.get(0).getThreshold(), "threshold should be set");

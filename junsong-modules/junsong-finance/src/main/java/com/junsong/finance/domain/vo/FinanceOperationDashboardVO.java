@@ -20,6 +20,16 @@ public class FinanceOperationDashboardVO {
     private int unverifiedAdvanceCount;
     private BigDecimal unverifiedAdvanceAmount = BigDecimal.ZERO;
     private int unsettledProfitShareCount;
+    /** 本期实收（当前周期内的缴款总额） */
+    private BigDecimal currentPeriodPaymentAmount = BigDecimal.ZERO;
+    /** 历史欠款回收（当前周期缴款中来自历史销售单的部分） */
+    private BigDecimal historicalReceivableCollectedAmount = BigDecimal.ZERO;
+    /** 本期新增应收（当前周期新增销售中未缴清的部分） */
+    private BigDecimal currentPeriodNewReceivableAmount = BigDecimal.ZERO;
+    /** 期末应收余额（所有未缴清销售单的剩余应收总额） */
+    private BigDecimal endingReceivableAmount = BigDecimal.ZERO;
+    /** 逾期应收笔数 */
+    private int overdueReceivableCount = 0;
     private String currentPeriodStatus;
     private List<FinanceWarningVO> warnings;
 
@@ -56,6 +66,16 @@ public class FinanceOperationDashboardVO {
     public void setUnverifiedAdvanceAmount(BigDecimal unverifiedAdvanceAmount) { this.unverifiedAdvanceAmount = unverifiedAdvanceAmount; }
     public int getUnsettledProfitShareCount() { return unsettledProfitShareCount; }
     public void setUnsettledProfitShareCount(int unsettledProfitShareCount) { this.unsettledProfitShareCount = unsettledProfitShareCount; }
+    public BigDecimal getCurrentPeriodPaymentAmount() { return currentPeriodPaymentAmount; }
+    public void setCurrentPeriodPaymentAmount(BigDecimal currentPeriodPaymentAmount) { this.currentPeriodPaymentAmount = currentPeriodPaymentAmount; }
+    public BigDecimal getHistoricalReceivableCollectedAmount() { return historicalReceivableCollectedAmount; }
+    public void setHistoricalReceivableCollectedAmount(BigDecimal historicalReceivableCollectedAmount) { this.historicalReceivableCollectedAmount = historicalReceivableCollectedAmount; }
+    public BigDecimal getCurrentPeriodNewReceivableAmount() { return currentPeriodNewReceivableAmount; }
+    public void setCurrentPeriodNewReceivableAmount(BigDecimal currentPeriodNewReceivableAmount) { this.currentPeriodNewReceivableAmount = currentPeriodNewReceivableAmount; }
+    public BigDecimal getEndingReceivableAmount() { return endingReceivableAmount; }
+    public void setEndingReceivableAmount(BigDecimal endingReceivableAmount) { this.endingReceivableAmount = endingReceivableAmount; }
+    public int getOverdueReceivableCount() { return overdueReceivableCount; }
+    public void setOverdueReceivableCount(int overdueReceivableCount) { this.overdueReceivableCount = overdueReceivableCount; }
     public String getCurrentPeriodStatus() { return currentPeriodStatus; }
     public void setCurrentPeriodStatus(String currentPeriodStatus) { this.currentPeriodStatus = currentPeriodStatus; }
     public List<FinanceWarningVO> getWarnings() { return warnings; }

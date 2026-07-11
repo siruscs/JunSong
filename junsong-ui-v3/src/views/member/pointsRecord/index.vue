@@ -15,6 +15,7 @@
           <el-option label="兑换扣积分" value="2" />
           <el-option label="过期清零" value="3" />
           <el-option label="手动调整" value="4" />
+          <el-option label="签到得积分" value="5" />
         </el-select>
       </el-form-item>
       <el-form-item label="日期">
@@ -132,14 +133,16 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="会员编号" prop="memberNo">
-              <el-input v-model="form.memberNo" placeholder="请输入会员编号" @blur="handleMemberSearch" @keyup.enter="handleMemberSearch">
-                <template #append><el-button icon="Search" @click="handleMemberSearch"></el-button></template>
-              </el-input>
+              <MemberSelect
+                v-model="form.memberId"
+                :default-label="form.memberNo ? `${form.memberNo} ${form.memberName || ''}`.trim() : ''"
+                @change="handleMemberChange"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="会员姓名">
-              <el-input v-model="form.memberName" placeholder="自动获取" disabled />
+              <el-input v-model="form.memberName" placeholder="选择会员后自动填充" disabled />
             </el-form-item>
           </el-col>
         </el-row>
@@ -158,6 +161,7 @@
                 <el-option label="兑换扣积分" value="2" />
                 <el-option label="过期清零" value="3" />
                 <el-option label="手动调整" value="4" />
+                <el-option label="签到得积分" value="5" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -239,10 +243,12 @@ import { useDownload } from "@/composables/useDownload"
 import { listPointsRecord, getPointsRecord, addPointsRecord, updatePointsRecord, delPointsRecord } from "@/api/member/pointsRecord"
 import { getMemberByNo } from "@/api/member/member"
 import { getEffectiveRule } from "@/api/member/pointsRule"
+import MemberSelect from "@/components/MemberSelect/index.vue"
 const { download } = useDownload()
 
 export default {
   name: "PointsRecord",
+  components: { MemberSelect },
   data() {
     return {
       loading: true,
@@ -282,7 +288,8 @@ export default {
         '1': '消费得积分',
         '2': '兑换扣积分',
         '3': '过期清零',
-        '4': '手动调整'
+        '4': '手动调整',
+        '5': '签到得积分'
       }
     }
   },
@@ -429,26 +436,17 @@ export default {
         this.viewOpen = true
       })
     },
-    handleMemberSearch() {
-      if (this.form.memberNo) {
-        getMemberByNo(this.form.memberNo).then(response => {
-          if (response.data) {
-            this.form.memberId = response.data.memberId
-            this.form.memberName = response.data.memberName
-            // 获取该会员最新一条记录的余额作为当前积分（保证累计正确）
-            this.fetchLatestBalance(response.data.memberId)
-          } else {
-            ElMessage.warning("未找到该会员编号（仅限当前机构会员）")
-            this.form.memberId = undefined
-            this.form.memberName = ''
-            this.form.currentPoints = 0
-          }
-        }).catch(() => {
-          ElMessage.error("未找到该会员编号（仅限当前机构会员）")
-          this.form.memberId = undefined
-          this.form.memberName = ''
-          this.form.currentPoints = 0
-        })
+    handleMemberChange(member) {
+      if (member) {
+        this.form.memberId = member.memberId
+        this.form.memberNo = member.memberNo
+        this.form.memberName = member.memberName
+        this.fetchLatestBalance(member.memberId)
+      } else {
+        this.form.memberId = undefined
+        this.form.memberNo = ''
+        this.form.memberName = ''
+        this.form.currentPoints = 0
       }
     },
     /** 获取会员最新积分余额 */
@@ -505,7 +503,8 @@ export default {
         '1': 'success',
         '2': 'warning',
         '3': 'info',
-        '4': 'primary'
+        '4': 'primary',
+        '5': 'success'
       }
       return types[type] || 'info'
     },

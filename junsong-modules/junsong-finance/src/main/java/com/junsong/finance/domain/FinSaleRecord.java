@@ -39,6 +39,18 @@ public class FinSaleRecord extends BaseEntity
     @Excel(name = "商品ID", cellType = ColumnType.NUMERIC)
     private Long productId;
 
+    /** 会员ID */
+    @Excel(name = "会员ID", cellType = ColumnType.NUMERIC)
+    private Long memberId;
+
+    /** 会员编号 */
+    @Excel(name = "会员编号")
+    private String memberNo;
+
+    /** 会员姓名 */
+    @Excel(name = "会员姓名")
+    private String memberName;
+
     /** 商品名称 */
     @Excel(name = "商品名称")
     private String productName;
@@ -84,6 +96,54 @@ public class FinSaleRecord extends BaseEntity
 
     /** 缴款记录列表 */
     private List<FinSalePayment> payments;
+
+    /** 核算周期编号（历史欠款查询用，来自关联表） */
+    private String periodNo;
+
+    /** 核算周期状态（0进行中 1已回本待结转 2已结转，来自关联表） */
+    private String periodStatus;
+
+    /** 最近缴款时间（历史欠款查询用，来自缴款子查询） */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private Date latestPaymentDate;
+
+    /** 剩余应收金额（销售金额-已缴金额，前端展示用） */
+    public BigDecimal getUnpaidAmount()
+    {
+        BigDecimal sale = saleAmount != null ? saleAmount : BigDecimal.ZERO;
+        BigDecimal paid = paidAmount != null ? paidAmount : BigDecimal.ZERO;
+        return sale.subtract(paid);
+    }
+
+    public String getPeriodNo()
+    {
+        return periodNo;
+    }
+
+    public void setPeriodNo(String periodNo)
+    {
+        this.periodNo = periodNo;
+    }
+
+    public String getPeriodStatus()
+    {
+        return periodStatus;
+    }
+
+    public void setPeriodStatus(String periodStatus)
+    {
+        this.periodStatus = periodStatus;
+    }
+
+    public Date getLatestPaymentDate()
+    {
+        return latestPaymentDate;
+    }
+
+    public void setLatestPaymentDate(Date latestPaymentDate)
+    {
+        this.latestPaymentDate = latestPaymentDate;
+    }
 
     public Long getSaleId()
     {
@@ -135,6 +195,38 @@ public class FinSaleRecord extends BaseEntity
     public void setProductId(Long productId)
     {
         this.productId = productId;
+    }
+
+    public Long getMemberId()
+    {
+        return memberId;
+    }
+
+    public void setMemberId(Long memberId)
+    {
+        this.memberId = memberId;
+    }
+
+    @Size(min = 0, max = 64, message = "会员编号长度不能超过64个字符")
+    public String getMemberNo()
+    {
+        return memberNo;
+    }
+
+    public void setMemberNo(String memberNo)
+    {
+        this.memberNo = memberNo;
+    }
+
+    @Size(min = 0, max = 100, message = "会员姓名长度不能超过100个字符")
+    public String getMemberName()
+    {
+        return memberName;
+    }
+
+    public void setMemberName(String memberName)
+    {
+        this.memberName = memberName;
     }
 
     @Size(min = 0, max = 128, message = "商品名称长度不能超过128个字符")
@@ -256,6 +348,9 @@ public class FinSaleRecord extends BaseEntity
             .append("periodId", getPeriodId())
             .append("saleNo", getSaleNo())
             .append("productId", getProductId())
+            .append("memberId", getMemberId())
+            .append("memberNo", getMemberNo())
+            .append("memberName", getMemberName())
             .append("productName", getProductName())
             .append("saleQuantity", getSaleQuantity())
             .append("giftQuantity", getGiftQuantity())

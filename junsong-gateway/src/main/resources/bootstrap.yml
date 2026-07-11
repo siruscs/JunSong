@@ -117,7 +117,7 @@ spring:
 
 security:
   captcha:
-    enabled: true
+    enabled: false
     type: math
   xss:
     enabled: true
@@ -141,7 +141,6 @@ security:
       - /workflow/health/**
       - /open/v3/api-docs
       - /open/swagger-ui/**
-      - /open/internal/**
       - /openapi/v1/**/**
       - /openapi/v2/**/**
       - /openapi/latest/**/**

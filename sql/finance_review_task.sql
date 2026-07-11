@@ -32,22 +32,24 @@ CREATE TABLE IF NOT EXISTS finance_review_task (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='财务复盘任务表';
 
 -- Menu entries for review task management (perms-based, idempotent)
-SET @financeRootId := (
-  SELECT menu_id FROM sys_menu
-  WHERE parent_id = 0
-    AND path = 'finance'
-    AND menu_type = 'M'
-  LIMIT 1
-);
+-- 复盘任务管理页面必须存在，默认只授权 role_id=1。
+-- parent_id 使用财务根菜单，不存在时 fallback 到 108。
+-- component 必须是 finance/reviewTask/index。
+-- path 必须是 reviewTask，对应访问 /finance/reviewTask。
+-- 权限包含 finance:reviewTask:list、finance:reviewTask:add、finance:reviewTask:edit。
 
-SET @operationMenuId := (SELECT menu_id FROM sys_menu WHERE perms = 'finance:dashboard:operation' AND menu_type = 'C' LIMIT 1);
+SET @financeRootId := (SELECT menu_id FROM sys_menu WHERE path = 'finance' AND menu_type = 'M' LIMIT 1);
+SET @financeRootId := COALESCE(@financeRootId, 108);
 
 -- 复盘任务管理页面 (type=C menu)
 INSERT INTO sys_menu (menu_name, parent_id, order_num, path, component, is_frame, is_cache, menu_type, visible, status, perms, icon, create_by, create_time, remark)
 SELECT '复盘任务管理', @financeRootId, 10, 'reviewTask', 'finance/reviewTask/index', 1, 0, 'C', '0', '0', 'finance:reviewTask:list', 'list', 'admin', sysdate(), '财务复盘任务管理页面'
 FROM DUAL
-WHERE @operationMenuId IS NOT NULL
-  AND NOT EXISTS (SELECT 1 FROM sys_menu WHERE perms = 'finance:reviewTask:list' AND menu_type = 'C');
+WHERE NOT EXISTS (SELECT 1 FROM sys_menu WHERE perms = 'finance:reviewTask:list' AND menu_type = 'C');
+
+-- Fix: if reviewTask menu exists but parent_id is NULL, correct it to finance root
+UPDATE sys_menu SET parent_id = @financeRootId
+WHERE perms = 'finance:reviewTask:list' AND menu_type = 'C' AND parent_id IS NULL;
 
 SET @reviewTaskMenuId := (SELECT menu_id FROM sys_menu WHERE perms = 'finance:reviewTask:list' AND menu_type = 'C' LIMIT 1);
 

@@ -1,784 +1,1291 @@
 <template>
   <div class="store-dashboard">
-    <div class="bg-grid"></div>
-
-    <header class="dashboard-header">
+    <section class="workbench-header">
       <div class="header-copy">
-        <span class="dashboard-kicker">WEB DATA VISUALIZATION</span>
-        <h2 class="dashboard-title">门店运营数据中心</h2>
-        <span class="dashboard-date">{{ currentDate }}</span>
+        <span class="eyebrow">STORE REVIEW WORKBENCH</span>
+        <h2>门店经营复盘工作台</h2>
+        <p>{{ scopeText }} · {{ todayLabel }}</p>
       </div>
-      <el-button class="refresh-btn" circle :loading="loading" @click="loadData">
-        <el-icon><Refresh /></el-icon>
-      </el-button>
-    </header>
-
-    <section class="hero-panel">
-      <div class="hero-main">
-        <span class="panel-label">核算总览</span>
-        <div class="hero-value">¥{{ money(currentPeriod.netProfit) }}</div>
-        <div class="hero-meta">
-          <span v-if="currentPeriod.status !== undefined">{{ periodStatusText }}</span>
-          <strong v-if="currentPeriod.status !== undefined">盈亏平衡 {{ returnRate }}%</strong>
-        </div>
-        <div class="hero-line"></div>
-      </div>
-      <div class="hero-kpis">
-        <div v-for="item in primaryCards" :key="item.key" class="stat-card">
-          <span class="stat-label">{{ item.label }}</span>
-          <strong class="stat-value" :style="{ color: item.color }">{{ item.value }}</strong>
-        </div>
+      <div class="header-actions">
+        <el-select
+          v-if="deptOptions.length > 1"
+          v-model="selectedDeptId"
+          class="dept-select"
+          placeholder="选择门店"
+          filterable
+          @change="handleDeptChange"
+        >
+          <el-option
+            v-for="dept in deptOptions"
+            :key="dept.deptId"
+            :label="dept.deptName"
+            :value="dept.deptId"
+          />
+        </el-select>
+        <el-button :icon="Refresh" :loading="loading" @click="loadData">刷新</el-button>
       </div>
     </section>
 
-    <div class="visual-grid">
-      <section class="chart-card trend-panel">
-        <div class="chart-header">
-          <div>
-            <span class="panel-label">近7日趋势</span>
-            <h3>会员增长与收支走势</h3>
-          </div>
+    <section class="period-finance-grid" v-loading="loading">
+      <article class="period-hero">
+        <div>
+          <span class="panel-kicker">ACCOUNTING OVERVIEW</span>
+          <h3>核算总览</h3>
+          <strong :class="amountClass(currentPeriod.netProfit)">
+            {{ money(currentPeriod.netProfit) }}
+          </strong>
+          <p>
+            {{ periodStatusText }}
+            <span v-if="currentPeriod.periodNo || currentPeriod.periodName">
+              · {{ currentPeriod.periodNo || currentPeriod.periodName }}
+            </span>
+          </p>
         </div>
-        <div ref="trendChartRef" class="chart-body trend-chart"></div>
-      </section>
+        <div class="break-even-ring" :class="scoreClass(periodReturnRate)">
+          <span>{{ periodReturnRate }}%</span>
+          <small>盈亏平衡</small>
+        </div>
+      </article>
 
-      <section class="chart-card side-panel">
-        <div class="chart-header">
-          <div>
-            <span class="panel-label">运营健康度</span>
-            <h3>盈亏平衡度</h3>
-          </div>
+      <article class="period-kpi-strip">
+        <div v-for="item in periodFinanceCards" :key="item.key" class="period-kpi-item">
+          <span>{{ item.label }}</span>
+          <strong :class="item.className">{{ item.value }}</strong>
+          <em>{{ item.hint }}</em>
         </div>
-        <div ref="healthChartRef" class="health-chart"></div>
-        <div class="health-summary">
-          <strong>{{ returnRate }}%</strong>
-          <span>缴款 / 成本</span>
-        </div>
-      </section>
+      </article>
+    </section>
 
-      <section class="chart-card rank-panel">
-        <div class="chart-header">
-          <div>
-            <span class="panel-label">TOP10</span>
-            <h3>会员积分排行</h3>
-          </div>
+    <section class="top-grid" v-loading="loading">
+      <article class="status-panel">
+        <div class="status-main">
+          <span class="panel-kicker">今日状态</span>
+          <strong>{{ mainStatusTitle }}</strong>
+          <p>{{ mainStatusDesc }}</p>
         </div>
-        <div ref="rankChartRef" class="chart-body rank-chart"></div>
-      </section>
+        <div class="status-score" :class="scoreClass(portfolioHealthScore)">
+          <span>{{ portfolioHealthScore }}</span>
+          <small>健康分</small>
+        </div>
+      </article>
 
-      <section class="chart-card matrix-panel">
-        <div class="chart-header">
-          <div>
-            <span class="panel-label">关键指标</span>
-            <h3>运营数据矩阵</h3>
-          </div>
+      <article class="metric-strip">
+        <div class="metric-item">
+          <span>今日销售</span>
+          <strong>{{ money(dailyReview.salesAmount) }}</strong>
         </div>
-        <div class="metric-matrix">
-          <div v-for="item in matrixCards" :key="item.key" class="matrix-card">
-            <div class="stat-icon" :style="{ '--glow': item.glow }">
-              <el-icon :size="20"><component :is="item.icon" /></el-icon>
+        <div class="metric-item">
+          <span>今日费用</span>
+          <strong>{{ money(dailyReview.expenseAmount) }}</strong>
+        </div>
+        <div class="metric-item">
+          <span>净现金流</span>
+          <strong :class="amountClass(dailyReview.netCashflowAmount)">
+            {{ money(dailyReview.netCashflowAmount) }}
+          </strong>
+        </div>
+        <div class="metric-item">
+          <span>待处理复盘</span>
+          <strong>{{ pendingTaskCount }}</strong>
+        </div>
+      </article>
+    </section>
+
+    <section class="action-grid">
+      <article class="panel priority-panel">
+        <div class="panel-head">
+          <div>
+            <span class="panel-kicker">NEXT ACTION</span>
+            <h3>今日待办与优先处理</h3>
+          </div>
+          <el-button text type="primary" @click="goReviewTask">查看复盘任务</el-button>
+        </div>
+        <div v-if="priorityItems.length" class="priority-list">
+          <div v-for="item in priorityItems" :key="item.key" class="priority-row" :class="item.level">
+            <div class="priority-marker">{{ item.badge }}</div>
+            <div class="priority-content">
+              <strong>{{ item.title }}</strong>
+              <p>{{ item.desc }}</p>
             </div>
+            <span class="priority-tag">{{ item.label }}</span>
+          </div>
+        </div>
+        <el-empty v-else description="暂无待办，今日经营状态平稳" :image-size="76" />
+      </article>
+
+      <!-- R13-F: 应收待跟进 -->
+      <div class="card" v-if="receivableFollowUp.length > 0" style="margin-bottom: 20px;">
+        <div class="card-header">
+          <span style="font-weight: 600; font-size: 15px;">应收待跟进</span>
+          <el-tag type="warning" size="small">{{ receivableFollowUp.length }} 笔</el-tag>
+        </div>
+        <div style="display: flex; gap: 12px; margin-top: 12px;">
+          <div class="mini-metric">
+            <span>待跟进应收</span>
+            <strong>&yen;{{ receivablePressure.endingReceivableAmount.toFixed(2) }}</strong>
+          </div>
+          <div class="mini-metric">
+            <span>逾期应收</span>
+            <strong>{{ receivablePressure.overdueReceivableCount }} 笔</strong>
+          </div>
+          <div class="mini-metric">
+            <span>今日催收</span>
+            <strong>承诺回款 / 逾期承诺</strong>
+          </div>
+        </div>
+        <div style="margin-top: 12px;">
+          <div v-for="item in receivableFollowUp" :key="item.saleId"
+               style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
             <div>
-              <strong :style="{ color: item.color }">{{ item.value }}</strong>
-              <span>{{ item.label }}</span>
+              <span style="font-weight: 500; color: #303133;">{{ item.saleNo }}</span>
+              <span style="margin-left: 12px; color: #909399; font-size: 13px;">
+                ¥{{ ((item.saleAmount || 0) - (item.paidAmount || 0)).toFixed(2) }}
+              </span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 12px; color: #E6A23C;">{{ computeAgeDays(item.saleDate) }}天</span>
+              <el-button type="primary" link size="small" @click="$router.push('/finance/sale?tab=receivable')">去缴款</el-button>
             </div>
           </div>
         </div>
-      </section>
-    </div>
+      </div>
+
+      <article class="panel health-panel">
+        <div class="panel-head">
+          <div>
+            <span class="panel-kicker">STORE HEALTH</span>
+            <h3>门店健康矩阵</h3>
+          </div>
+          <div class="health-summary">
+            <span><b>{{ riskStoreCount }}</b> 风险门店</span>
+            <span><b>{{ watchStoreCount }}</b> 观察门店</span>
+          </div>
+        </div>
+        <div v-if="healthRows.length" class="health-list">
+          <div v-for="store in healthRows" :key="store.deptId || store.deptName" class="health-row">
+            <div class="store-name">
+              <strong>{{ store.deptName || '未命名门店' }}</strong>
+              <span>{{ healthLevelText(store.healthLevel) }}</span>
+            </div>
+            <div class="health-meter">
+              <i :style="{ width: `${clampScore(store.healthScore)}%` }" :class="scoreClass(store.healthScore)" />
+            </div>
+            <div class="health-score">{{ number(store.healthScore, 0) }}</div>
+          </div>
+        </div>
+        <el-empty v-else description="暂无授权门店健康数据" :image-size="76" />
+      </article>
+    </section>
+
+    <section class="review-grid">
+      <article class="panel weekly-panel">
+        <div class="panel-head">
+          <div>
+            <span class="panel-kicker">WEEK REVIEW</span>
+            <h3>本周复盘</h3>
+          </div>
+          <span class="period-text">{{ weeklyBoard.weekStart || '-' }} 至 {{ weeklyBoard.weekEnd || '-' }}</span>
+        </div>
+        <div class="weekly-stats">
+          <div>
+            <span>本周销售</span>
+            <strong>{{ money(weeklyBoard.salesAmount) }}</strong>
+            <em :class="rateClass(weeklyBoard.salesChangeRate)">环比 {{ rate(weeklyBoard.salesChangeRate) }}</em>
+          </div>
+          <div>
+            <span>本周费用</span>
+            <strong>{{ money(weeklyBoard.expenseAmount) }}</strong>
+            <em :class="rateClass(-Number(weeklyBoard.expenseChangeRate || 0))">
+              环比 {{ rate(weeklyBoard.expenseChangeRate) }}
+            </em>
+          </div>
+          <div>
+            <span>净现金流</span>
+            <strong :class="amountClass(weeklyBoard.netCashflowAmount)">
+              {{ money(weeklyBoard.netCashflowAmount) }}
+            </strong>
+            <em :class="rateClass(weeklyBoard.cashflowChangeRate)">环比 {{ rate(weeklyBoard.cashflowChangeRate) }}</em>
+          </div>
+        </div>
+        <div class="weekly-note">
+          <strong>下周重点</strong>
+          <p>{{ weeklyBoard.nextWeekFocus || '保持复盘节奏，优先处理高风险门店与未闭环任务。' }}</p>
+        </div>
+      </article>
+
+      <article class="panel memo-panel">
+        <div class="panel-head">
+          <div>
+            <span class="panel-kicker">WEEKLY MEMO</span>
+            <h3>周经营纪要</h3>
+          </div>
+          <span class="memo-score" :class="scoreClass(weeklyMemo.reviewQualityScore)">
+            {{ number(weeklyMemo.reviewQualityScore, 0) }}
+          </span>
+        </div>
+        <div class="memo-content">
+          <p>{{ weeklyMemo.headline || weeklyMemo.summary || weeklyBoard.weeklySummary || '本周纪要待生成，先从每日复盘任务闭环开始。' }}</p>
+          <div v-if="memoHighlights.length" class="memo-tags">
+            <span v-for="item in memoHighlights" :key="item">{{ item }}</span>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="lower-grid">
+      <article class="panel trend-panel">
+        <div class="panel-head">
+          <div>
+            <span class="panel-kicker">7 DAYS</span>
+            <h3>近 7 日经营趋势</h3>
+          </div>
+        </div>
+        <div v-if="trendRows.length" class="trend-list">
+          <div v-for="row in trendRows" :key="row.label" class="trend-row">
+            <span>{{ row.label }}</span>
+            <div class="trend-bars">
+              <i class="sales" :style="{ width: `${row.salesWidth}%` }" />
+              <i class="expense" :style="{ width: `${row.expenseWidth}%` }" />
+            </div>
+            <strong>{{ money(row.sales) }}</strong>
+          </div>
+        </div>
+        <el-empty v-else description="暂无趋势数据" :image-size="70" />
+      </article>
+
+      <article class="panel member-panel">
+        <div class="panel-head">
+          <div>
+            <span class="panel-kicker">MEMBER ACTION</span>
+            <h3>会员经营动作</h3>
+          </div>
+        </div>
+        <div v-if="memberActions.length" class="member-actions">
+          <div v-for="action in memberActions" :key="action.title || action.name" class="member-action">
+            <strong>{{ action.title || action.name }}</strong>
+            <p>{{ action.description || action.desc || action.suggestion || '关注会员活跃、复购与积分成本变化。' }}</p>
+          </div>
+        </div>
+        <div v-else class="quiet-tip">暂无会员动作建议，建议持续关注新会员首购与复购会员变化。</div>
+      </article>
+
+      <article class="panel period-panel">
+        <div class="panel-head">
+          <div>
+            <span class="panel-kicker">ACCOUNTING</span>
+            <h3>当前核算周期</h3>
+          </div>
+        </div>
+        <div class="period-body">
+          <strong>{{ currentPeriod.periodNo || currentPeriod.periodName || '未初始化' }}</strong>
+          <p>{{ currentPeriod.startTime || '-' }} 至 {{ currentPeriod.endTime || '-' }}</p>
+          <span :class="periodStatusClass">{{ periodStatusText }}</span>
+        </div>
+      </article>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
-import * as echarts from 'echarts'
-import {
-  Coin,
-  DocumentChecked,
-  DocumentDelete,
-  GoodsFilled,
-  Refresh,
-  User,
-  UserFilled,
-  Van,
-  Wallet,
-} from '@element-plus/icons-vue'
-import { getDashboardRanking, getDashboardStats, getDashboardTrend } from '@/api/member/dashboard'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { Refresh } from '@element-plus/icons-vue'
+import { getDailyReviewBoard, getWeeklyMemo, getWeeklyReviewBoard } from '@/api/finance/dailyReview'
+import { getAuthorizedStorePortfolio } from '@/api/finance/storeReport'
+import { listReviewTasks } from '@/api/finance/reviewTask'
 import { getCurrentAccountingPeriod } from '@/api/finance/accountingPeriod'
+import { getDashboardOperation, getDashboardTrend } from '@/api/member/dashboard'
+import { listReceivable } from '@/api/finance/sale'
 import { useUserStore } from '@/stores/user'
 
-const loading = ref(false)
+const router = useRouter()
 const userStore = useUserStore()
-const trendChartRef = ref<HTMLElement>()
-const rankChartRef = ref<HTMLElement>()
-const healthChartRef = ref<HTMLElement>()
-let trendChart: echarts.ECharts | null = null
-let rankChart: echarts.ECharts | null = null
-let healthChart: echarts.ECharts | null = null
+const loading = ref(false)
+const selectedDeptId = ref<number | null>(userStore.currentDeptId)
+const reviewTasks = ref<any[]>([])
+const portfolio = ref<any>({})
+const memberOperation = ref<any>({})
+const memberTrend = ref<any>({})
+const currentPeriod = ref<any>({})
+const receivableFollowUp = ref<any[]>([])
 
-const stats = reactive<Record<string, any>>({})
-const currentPeriod = reactive<Record<string, any>>({})
-const trend = reactive<Record<string, any[]>>({
-  dates: [],
-  newMembers: [],
-  consumeAmounts: [],
-  pointsChanges: [],
-  dailyExpense: [],
-  dailySale: [],
-})
-const ranking = ref<any[]>([])
-
-const palette = {
-  blue: '#2563eb',
-  green: '#0ea573',
-  gold: '#d4940a',
-  red: '#d4456a',
-  cyan: '#0891b2',
-  slate: '#475569',
-}
-
-const currentDate = computed(() => {
-  const d = new Date()
-  const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${weekdays[d.getDay()]}`
+const dailyReview = reactive<any>({
+  salesAmount: 0,
+  expenseAmount: 0,
+  cashInAmount: 0,
+  netCashflowAmount: 0,
+  pendingTaskCount: 0,
+  highPriorityTaskCount: 0,
+  focusItems: [],
+  suggestions: [],
 })
 
-const returnRate = computed(() => {
-  const salePayment = Number.parseFloat(currentPeriod.totalSalePayment) || 0
-  const costTotal = (Number.parseFloat(currentPeriod.totalVerifiedExpense) || 0)
-    + (Number.parseFloat(currentPeriod.totalPurchase) || 0)
-    + (Number.parseFloat(currentPeriod.totalUnverifiedAdvance) || 0)
+const weeklyBoard = reactive<any>({
+  weekStart: '',
+  weekEnd: '',
+  salesAmount: 0,
+  expenseAmount: 0,
+  netCashflowAmount: 0,
+  salesChangeRate: 0,
+  expenseChangeRate: 0,
+  cashflowChangeRate: 0,
+  weeklySummary: '',
+  nextWeekFocus: '',
+})
+
+const weeklyMemo = reactive<any>({
+  reviewQualityScore: null,
+  headline: '',
+  summary: '',
+  keyChanges: [],
+  completedActions: [],
+  unresolvedRisks: [],
+  highlights: [],
+  nextActions: [],
+  nextWeekFocus: [],
+})
+
+const deptOptions = computed<any[]>(() => userStore.depts || [])
+const todayLabel = computed(() => new Date().toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit', weekday: 'long' }))
+const scopeText = computed(() => {
+  if (deptOptions.value.length > 1) {
+    return `授权 ${deptOptions.value.length} 家门店，当前查看 ${currentDeptName.value}`
+  }
+  return currentDeptName.value || '当前门店'
+})
+const currentDeptName = computed(() => {
+  const dept = deptOptions.value.find((item) => Number(item.deptId) === Number(selectedDeptId.value))
+  return dept?.deptName || userStore.currentDeptName || '未选择门店'
+})
+const selectedDeptIds = computed(() => selectedDeptId.value ? [Number(selectedDeptId.value)] : [])
+
+const healthRows = computed<any[]>(() => {
+  const rows = portfolio.value?.storeRows || portfolio.value?.stores || portfolio.value?.rows || []
+  return [...rows]
+    .sort((a, b) => Number(a.healthScore || 0) - Number(b.healthScore || 0))
+    .slice(0, 6)
+})
+const riskStoreCount = computed(() => Number(portfolio.value?.riskStoreCount ?? healthRows.value.filter((row) => Number(row.healthScore || 0) < 60).length))
+const watchStoreCount = computed(() => Number(portfolio.value?.watchStoreCount ?? healthRows.value.filter((row) => Number(row.healthScore || 0) >= 60 && Number(row.healthScore || 0) < 80).length))
+const pendingTaskCount = computed(() => {
+  const fromList = reviewTasks.value.filter((task) => !['DONE', 'IGNORED'].includes(String(task.status || '').toUpperCase())).length
+  return Math.max(fromList, Number(dailyReview.pendingTaskCount || 0))
+})
+const portfolioHealthScore = computed(() => {
+  if (portfolio.value?.averageHealthScore !== undefined) return number(portfolio.value.averageHealthScore, 0)
+  if (!healthRows.value.length) return 0
+  return number(healthRows.value.reduce((sum, row) => sum + Number(row.healthScore || 0), 0) / healthRows.value.length, 0)
+})
+const mainStatusTitle = computed(() => {
+  if (riskStoreCount.value > 0) return '存在风险门店，需要优先复盘'
+  if (pendingTaskCount.value > 0) return '经营平稳，复盘任务待闭环'
+  return '经营状态健康，保持节奏'
+})
+const mainStatusDesc = computed(() => {
+  if (riskStoreCount.value > 0) return `当前有 ${riskStoreCount.value} 家门店健康分偏低，建议先处理费用、销售下滑或复盘超时问题。`
+  if (pendingTaskCount.value > 0) return `当前还有 ${pendingTaskCount.value} 个复盘任务未完成，建议今天闭环。`
+  return '暂无高风险事项，继续观察销售、费用和会员活跃变化。'
+})
+const periodReturnRate = computed(() => {
+  const salePayment = Number(currentPeriod.value?.totalSalePayment || 0)
+  const costTotal = Number(currentPeriod.value?.totalVerifiedExpense || 0)
+    + Number(currentPeriod.value?.totalPurchase || 0)
+    + Number(currentPeriod.value?.totalUnverifiedAdvance || 0)
   if (!costTotal) return 0
   return Math.min(100, Math.max(0, Math.round((salePayment / costTotal) * 100)))
 })
-
-const periodStatusText = computed(() => {
-  const status = currentPeriod.status
-  if (status === 0) return '进行中'
-  if (status === 2) return '已结转'
-  return '未初始化'
-})
-
-const primaryCards = computed(() => {
-  const period = currentPeriod
+const periodFinanceCards = computed(() => {
+  const period = currentPeriod.value || {}
   const netProfit = Number(period.netProfit || 0)
   return [
-    panelCard('salePayment', '销售缴款', `¥${money(period.totalSalePayment)}`, '当前周期累计', palette.blue),
-    panelCard('expense', '已核销费用', `¥${money(period.totalVerifiedExpense)}`, '当前周期累计', palette.gold),
-    panelCard('purchase', '进货款', `¥${money(period.totalPurchase)}`, '当前周期累计', palette.cyan),
-    panelCard('advance', '借支未核销', `¥${money(period.totalUnverifiedAdvance)}`, '当前周期累计', palette.red),
-    panelCard('profit', '净利润', `¥${money(period.netProfit)}`, netProfit >= 0 ? '盈利' : '亏损', netProfit >= 0 ? palette.green : palette.red),
+    {
+      key: 'salePayment',
+      label: '销售缴款',
+      value: money(period.totalSalePayment),
+      hint: '当前周期累计',
+      className: 'amount-blue',
+    },
+    {
+      key: 'expense',
+      label: '已核销费用',
+      value: money(period.totalVerifiedExpense),
+      hint: '当前周期累计',
+      className: 'amount-gold',
+    },
+    {
+      key: 'purchase',
+      label: '进货款',
+      value: money(period.totalPurchase),
+      hint: '当前周期累计',
+      className: 'amount-cyan',
+    },
+    {
+      key: 'advance',
+      label: '借支未核销',
+      value: money(period.totalUnverifiedAdvance),
+      hint: '当前周期累计',
+      className: 'amount-negative',
+    },
+    {
+      key: 'profit',
+      label: '净利润',
+      value: money(period.netProfit),
+      hint: netProfit >= 0 ? '盈利' : '亏损',
+      className: amountClass(netProfit),
+    },
   ]
 })
 
-const matrixCards = computed(() => [
-  card('todayMembers', '今日新增会员', number(stats.todayMembers), UserFilled, palette.green, 'rgba(14,165,115,0.18)'),
-  card('activeMembers', '近30日活跃会员', number(stats.activeMembers), User, palette.blue, 'rgba(37,99,235,0.18)'),
-  card('totalPurchase', '累计进货', `¥${money(stats.totalPurchase)}`, Van, palette.cyan, 'rgba(8,145,178,0.18)'),
-  card('totalExpense', '累计费用', `¥${money(stats.totalExpense)}`, DocumentDelete, palette.gold, 'rgba(212,148,10,0.2)'),
-  card('unverifiedExpense', '未核销费用', `¥${money(stats.unverifiedExpense)}`, DocumentChecked, palette.red, 'rgba(212,69,106,0.18)'),
-  card('unverifiedAdvance', '未核销预支', `¥${money(stats.unverifiedAdvance)}`, Wallet, palette.red, 'rgba(212,69,106,0.18)'),
-  card('pointsIssued', '累计发放积分', number(stats.totalPointsIssued), Coin, palette.green, 'rgba(14,165,115,0.18)'),
-  card('pointsUsed', '累计使用积分', number(stats.totalPointsUsed), GoodsFilled, palette.slate, 'rgba(71,85,105,0.16)'),
-])
+const priorityItems = computed(() => {
+  const tasks = reviewTasks.value
+    .filter((task) => !['DONE', 'IGNORED'].includes(String(task.status || '').toUpperCase()))
+    .map((task, index) => ({
+      key: `task-${task.taskId || index}`,
+      title: task.taskTitle || task.title || '复盘任务待处理',
+      desc: task.reason || task.taskReason || task.description || '请进入复盘任务查看处理依据。',
+      label: task.priority || task.level || '待处理',
+      badge: '复',
+      level: priorityLevel(task.priority || task.level),
+    }))
 
-function card(key: string, label: string, value: string, icon: any, color: string, glow: string) {
-  return { key, label, value, icon, color, glow }
-}
+  const focus = (dailyReview.focusItems || []).map((item: any, index: number) => ({
+    key: `focus-${index}`,
+    title: item.title || item.name || '今日经营关注项',
+    desc: item.description || item.desc || item.suggestion || String(item),
+    label: item.level || '关注',
+    badge: '今',
+    level: priorityLevel(item.level),
+  }))
 
-function panelCard(key: string, label: string, value: string, hint: string, color: string) {
-  return { key, label, value, hint, color }
-}
+  return [...tasks, ...focus].slice(0, 6)
+})
 
-function number(value: any) {
-  return Number(value || 0).toLocaleString('zh-CN')
-}
+const memoHighlights = computed(() => {
+  const source = weeklyMemo.keyChanges?.length
+    ? weeklyMemo.keyChanges
+    : weeklyMemo.unresolvedRisks?.length
+      ? weeklyMemo.unresolvedRisks
+      : weeklyMemo.nextWeekFocus?.length
+        ? weeklyMemo.nextWeekFocus
+        : weeklyMemo.highlights?.length
+          ? weeklyMemo.highlights
+          : weeklyMemo.nextActions
+  return (source || []).map((item: any) => item.title || item.name || item).slice(0, 4)
+})
 
-function money(value: any) {
-  const parsed = Number.parseFloat(value)
-  return Number.isFinite(parsed) ? parsed.toFixed(2) : '0.00'
-}
+const memberActions = computed<any[]>(() => {
+  const actions = memberOperation.value?.actionItems || memberOperation.value?.memberActionItems || memberOperation.value?.suggestions || []
+  return actions.slice(0, 3)
+})
 
-function assignReactive(target: Record<string, any>, source: Record<string, any>) {
-  Object.keys(target).forEach((key) => {
-    delete target[key]
-  })
-  Object.assign(target, source || {})
+const trendRows = computed(() => {
+  const labels = memberTrend.value?.dates || memberTrend.value?.dateList || []
+  const sales = memberTrend.value?.dailySale || memberTrend.value?.salesAmounts || memberTrend.value?.salesAmountList || memberTrend.value?.sales || memberTrend.value?.consumeAmounts || []
+  const expenses = memberTrend.value?.dailyExpense || memberTrend.value?.expenseAmounts || memberTrend.value?.expenseAmountList || memberTrend.value?.expenses || []
+  const rows = labels.slice(-7).map((label: string, index: number) => ({
+    label,
+    sales: Number(sales[sales.length - labels.slice(-7).length + index] || 0),
+    expense: Number(expenses[expenses.length - labels.slice(-7).length + index] || 0),
+  }))
+  const maxValue = Math.max(1, ...rows.flatMap((row: any) => [row.sales, row.expense]))
+  return rows.map((row: any) => ({
+    ...row,
+    salesWidth: Math.max(4, Math.round((row.sales / maxValue) * 100)),
+    expenseWidth: Math.max(4, Math.round((row.expense / maxValue) * 100)),
+  }))
+})
+
+const periodStatusText = computed(() => {
+  const status = String(currentPeriod.value?.status ?? '')
+  if (status === '2' || status === 'LOCKED') return '已锁账'
+  if (status === '1' || status === 'CLOSED') return '已结转'
+  if (currentPeriod.value?.periodNo || currentPeriod.value?.periodName) return '进行中'
+  return '待初始化'
+})
+const periodStatusClass = computed(() => {
+  if (periodStatusText.value === '已锁账') return 'period-locked'
+  if (periodStatusText.value === '已结转') return 'period-closed'
+  if (periodStatusText.value === '进行中') return 'period-active'
+  return 'period-empty'
+})
+
+const receivablePressure = computed(() => {
+  const rows = receivableFollowUp.value || []
+  const endingReceivableAmount = rows.reduce((sum, item) => {
+    const unpaid = Number(item.unpaidAmount ?? (Number(item.saleAmount || 0) - Number(item.paidAmount || 0)))
+    return sum + Math.max(0, unpaid)
+  }, 0)
+  const overdueReceivableCount = rows.filter((item) => computeAgeDays(item.saleDate) > 30).length
+  return { endingReceivableAmount, overdueReceivableCount }
+})
+
+onMounted(() => {
+  loadData()
+})
+
+async function handleDeptChange(value: number) {
+  selectedDeptId.value = value
+  await userStore.switchDept(value).catch(() => undefined)
+  loadData()
 }
 
 async function loadData() {
   loading.value = true
+  const deptId = selectedDeptId.value
+  const deptPayload = deptId ? { deptId } : {}
+  const deptIds = selectedDeptIds.value
+
   try {
-    const [statsRes, trendRes, rankRes, periodRes]: any[] = await Promise.all([
-      getDashboardStats(),
-      getDashboardTrend(),
-      getDashboardRanking(),
-      getCurrentAccountingPeriod(userStore.currentDeptId).catch(() => ({ code: 0, data: {} })),
+    const results = await Promise.allSettled([
+      getDailyReviewBoard(deptPayload),
+      getWeeklyReviewBoard(deptPayload),
+      getWeeklyMemo(deptPayload),
+      getAuthorizedStorePortfolio({ deptIds, timeType: 'day' }),
+      listReviewTasks({ pageNum: 1, pageSize: 8, deptId }),
+      getDashboardOperation(deptIds),
+      getDashboardTrend(deptIds),
+      deptId ? getCurrentAccountingPeriod(deptId) : Promise.resolve({ data: {} }),
     ])
-    if (statsRes.code === 200) assignReactive(stats, statsRes.data || {})
-    if (trendRes.code === 200) assignReactive(trend, trendRes.data || {})
-    if (rankRes.code === 200) ranking.value = rankRes.data || []
-    if (periodRes.code === 200) assignReactive(currentPeriod, periodRes.data || {})
+
+    assignReactive(dailyReview, dataOf(results[0]))
+    assignReactive(weeklyBoard, dataOf(results[1]))
+    assignReactive(weeklyMemo, dataOf(results[2]))
+    portfolio.value = dataOf(results[3])
+    reviewTasks.value = rowsOf(results[4])
+    memberOperation.value = dataOf(results[5])
+    memberTrend.value = dataOf(results[6])
+    currentPeriod.value = dataOf(results[7])
+
+    listReceivable({ pageNum: 1, pageSize: 5, deptId, minAgeDays: 7 }).then((r: any) => {
+      receivableFollowUp.value = r.data?.rows || r.rows || []
+    }).catch(() => { receivableFollowUp.value = [] })
+  } catch (error) {
+    ElMessage.error('加载店长首页失败，请稍后重试')
   } finally {
     loading.value = false
-    await nextTick()
-    renderTrendChart()
-    renderRankChart()
-    renderHealthChart()
   }
 }
 
-function renderTrendChart() {
-  if (!trendChartRef.value) return
-  if (!trendChart) trendChart = echarts.init(trendChartRef.value)
-  trendChart.setOption({
-    tooltip: {
-      trigger: 'axis',
-      backgroundColor: 'rgba(255,255,255,0.96)',
-      borderColor: 'rgba(37,99,235,0.16)',
-      textStyle: { color: '#303133', fontSize: 12 },
-    },
-    legend: {
-      data: ['新增会员', '销售金额', '支出金额'],
-      top: 4,
-      right: 16,
-      icon: 'roundRect',
-      itemWidth: 10,
-      itemHeight: 6,
-      textStyle: { fontSize: 12, color: '#64748b' },
-    },
-    grid: { left: 42, right: 42, top: 48, bottom: 28 },
-    xAxis: {
-      type: 'category',
-      data: trend.dates || [],
-      axisLine: { lineStyle: { color: 'rgba(37,99,235,0.12)' } },
-      axisLabel: { fontSize: 11, color: '#64748b' },
-      axisTick: { show: false },
-    },
-    yAxis: [
-      {
-        type: 'value',
-        name: '人数',
-        nameTextStyle: { color: '#64748b', fontSize: 11 },
-        axisLabel: { fontSize: 11, color: '#64748b' },
-        splitLine: { lineStyle: { color: 'rgba(37,99,235,0.07)', type: 'dashed' } },
-      },
-      {
-        type: 'value',
-        name: '金额(元)',
-        nameTextStyle: { color: '#64748b', fontSize: 11 },
-        axisLabel: { fontSize: 11, color: '#64748b' },
-        splitLine: { show: false },
-      },
-    ],
-    series: [
-      {
-        name: '新增会员',
-        type: 'bar',
-        data: trend.newMembers || [],
-        barWidth: 18,
-        itemStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: palette.blue },
-            { offset: 1, color: 'rgba(37,99,235,0.16)' },
-          ]),
-          borderRadius: [4, 4, 0, 0],
-        },
-      },
-      {
-        name: '销售金额',
-        type: 'line',
-        yAxisIndex: 1,
-        data: trend.dailySale || [],
-        smooth: true,
-        showSymbol: true,
-        symbolSize: 5,
-        lineStyle: { color: palette.green, width: 3 },
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(14,165,115,0.22)' },
-            { offset: 1, color: 'rgba(14,165,115,0.01)' },
-          ]),
-        },
-      },
-      {
-        name: '支出金额',
-        type: 'line',
-        yAxisIndex: 1,
-        data: trend.dailyExpense || [],
-        smooth: true,
-        showSymbol: true,
-        symbolSize: 5,
-        lineStyle: { color: palette.red, width: 3 },
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(212,69,106,0.18)' },
-            { offset: 1, color: 'rgba(212,69,106,0.01)' },
-          ]),
-        },
-      },
-    ],
+function dataOf(result: PromiseSettledResult<any>) {
+  if (result.status !== 'fulfilled') return {}
+  return result.value?.data || {}
+}
+
+function rowsOf(result: PromiseSettledResult<any>) {
+  if (result.status !== 'fulfilled') return []
+  return result.value?.rows || result.value?.data?.rows || result.value?.data || []
+}
+
+function assignReactive(target: any, source: any) {
+  Object.keys(target).forEach((key) => {
+    if (source[key] !== undefined) target[key] = source[key]
   })
 }
 
-function renderRankChart() {
-  if (!rankChartRef.value) return
-  if (!rankChart) rankChart = echarts.init(rankChartRef.value)
-  const list = [...(ranking.value || [])].reverse()
-  rankChart.setOption({
-    tooltip: {
-      trigger: 'axis',
-      backgroundColor: 'rgba(255,255,255,0.96)',
-      borderColor: 'rgba(15,23,42,0.08)',
-      textStyle: { color: '#303133', fontSize: 12 },
-    },
-    grid: { left: 86, right: 24, top: 12, bottom: 18 },
-    xAxis: {
-      type: 'value',
-      axisLabel: { fontSize: 11, color: '#64748b' },
-      splitLine: { lineStyle: { color: 'rgba(37,99,235,0.07)', type: 'dashed' } },
-    },
-    yAxis: {
-      type: 'category',
-      data: list.map((item) => item.memberName || item.memberNo || '-'),
-      axisLabel: { fontSize: 11, width: 64, overflow: 'truncate', color: '#475569' },
-      axisTick: { show: false },
-    },
-    series: [{
-      type: 'bar',
-      data: list.map((item) => item.balance || 0),
-      barWidth: 14,
-      itemStyle: {
-        color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-          { offset: 0, color: 'rgba(37,99,235,0.45)' },
-          { offset: 1, color: palette.blue },
-        ]),
-        borderRadius: [0, 4, 4, 0],
-      },
-      showBackground: true,
-      backgroundStyle: {
-        color: 'rgba(15,23,42,0.04)',
-        borderRadius: [0, 4, 4, 0],
-      },
-    }],
-  })
+function goReviewTask() {
+  router.push('/finance/reviewTask')
 }
 
-function renderHealthChart() {
-  if (!healthChartRef.value) return
-  if (!healthChart) healthChart = echarts.init(healthChartRef.value)
-  healthChart.setOption({
-    series: [
-      {
-        type: 'gauge',
-        startAngle: 205,
-        endAngle: -25,
-        min: 0,
-        max: 100,
-        radius: '96%',
-        center: ['50%', '58%'],
-        progress: {
-          show: true,
-          roundCap: true,
-          width: 14,
-          itemStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
-              { offset: 0, color: palette.green },
-              { offset: 1, color: palette.blue },
-            ]),
-          },
-        },
-        axisLine: {
-          roundCap: true,
-          lineStyle: {
-            width: 14,
-            color: [[1, 'rgba(37,99,235,0.1)']],
-          },
-        },
-        axisTick: { show: false },
-        splitLine: { show: false },
-        axisLabel: { show: false },
-        pointer: { show: false },
-        detail: { show: false },
-        data: [{ value: returnRate.value }],
-      },
-    ],
-  })
+function number(value: any, digits = 2) {
+  const n = Number(value || 0)
+  return Number(n.toFixed(digits))
 }
 
-function handleResize() {
-  trendChart?.resize()
-  rankChart?.resize()
-  healthChart?.resize()
+function money(value: any) {
+  return `¥${Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-onMounted(() => {
-  loadData()
-  window.addEventListener('resize', handleResize)
-})
+function rate(value: any) {
+  const n = Number(value || 0)
+  return `${n > 0 ? '+' : ''}${n.toFixed(1)}%`
+}
 
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
-  trendChart?.dispose()
-  rankChart?.dispose()
-  healthChart?.dispose()
-})
+function clampScore(value: any) {
+  return Math.min(100, Math.max(0, Number(value || 0)))
+}
+
+function scoreClass(value: any) {
+  const score = Number(value || 0)
+  if (score >= 80) return 'score-good'
+  if (score >= 60) return 'score-watch'
+  return 'score-risk'
+}
+
+function amountClass(value: any) {
+  return Number(value || 0) >= 0 ? 'amount-positive' : 'amount-negative'
+}
+
+function rateClass(value: any) {
+  return Number(value || 0) >= 0 ? 'rate-up' : 'rate-down'
+}
+
+function healthLevelText(level: any) {
+  const value = String(level || '').toUpperCase()
+  if (value === 'RISK') return '风险'
+  if (value === 'WATCH') return '观察'
+  if (value === 'GOOD') return '健康'
+  return '待评估'
+}
+
+function priorityLevel(level: any) {
+  const value = String(level || '').toUpperCase()
+  if (['HIGH', 'URGENT', 'P0', 'P1'].includes(value)) return 'high'
+  if (['MEDIUM', 'P2'].includes(value)) return 'medium'
+  return 'normal'
+}
+
+function computeAgeDays(saleDate: string) {
+  if (!saleDate) return 0
+  const diff = Date.now() - new Date(saleDate).getTime()
+  return Math.floor(diff / (1000 * 60 * 60 * 24))
+}
 </script>
 
 <style scoped>
 .store-dashboard {
-  position: relative;
-  min-height: calc(100vh - 84px);
-  padding: 18px;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 12% 10%, rgba(var(--theme-primary-rgb, 37, 99, 235), 0.12), transparent 28%),
-    radial-gradient(circle at 90% 6%, rgba(14, 165, 115, 0.12), transparent 24%),
-    linear-gradient(135deg, #f8fafc 0%, #eef4fb 48%, #f6f9fc 100%);
-  color: #0f172a;
+  min-height: 100%;
+  padding: 22px;
+  background: #f5f7fb;
+  color: #172033;
 }
 
-.bg-grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(37, 99, 235, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(37, 99, 235, 0.045) 1px, transparent 1px);
-  background-size: 32px 32px;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.75), transparent 78%);
-  pointer-events: none;
+.workbench-header,
+.panel,
+.period-hero,
+.period-kpi-strip,
+.status-panel,
+.metric-strip {
+  border: 1px solid #dfe6f1;
+  border-radius: 8px;
+  background: #fff;
 }
 
-.dashboard-header,
-.hero-panel,
-.visual-grid {
-  position: relative;
-}
-
-.dashboard-header {
+.workbench-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  gap: 18px;
+  padding: 22px 24px;
 }
 
-.header-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.header-copy h2 {
+  margin: 6px 0 8px;
+  font-size: 26px;
+  line-height: 1.2;
+  letter-spacing: 0;
 }
 
-.dashboard-kicker,
-.panel-label {
-  color: var(--theme-primary, #2563eb);
-  font-size: 11px;
+.header-copy p {
+  margin: 0;
+  color: #637083;
+}
+
+.eyebrow,
+.panel-kicker {
+  color: #2667c9;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0;
 }
 
-.dashboard-title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 700;
-  color: #0f172a;
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.dashboard-date {
-  font-size: 13px;
-  color: #64748b;
+.dept-select {
+  width: 220px;
 }
 
-.refresh-btn {
-  width: 38px;
-  height: 38px;
-  border-color: rgba(var(--theme-primary-rgb, 37, 99, 235), 0.22);
-  color: var(--theme-primary, #2563eb);
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
-}
-
-.hero-panel {
+.period-finance-grid {
   display: grid;
-  grid-template-columns: 1.05fr 2fr;
+  grid-template-columns: minmax(300px, 0.78fr) minmax(560px, 1.4fr);
   gap: 14px;
-  margin-bottom: 14px;
+  margin-top: 14px;
 }
 
-.hero-main,
-.stat-card,
-.chart-card {
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.8);
-  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.07);
-  backdrop-filter: blur(14px);
+.period-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding: 20px 22px;
+  background: #fff;
 }
 
-.hero-main {
-  position: relative;
-  min-height: 154px;
-  padding: 22px;
-  overflow: hidden;
+.period-hero h3 {
+  margin: 6px 0 8px;
+  font-size: 18px;
+  letter-spacing: 0;
 }
 
-.hero-main::after {
-  position: absolute;
-  right: -40px;
-  bottom: -58px;
-  width: 180px;
-  height: 180px;
-  content: '';
+.period-hero strong {
+  display: block;
+  font-size: 30px;
+  line-height: 1.1;
+  word-break: break-word;
+}
+
+.period-hero p {
+  margin: 10px 0 0;
+  color: #637083;
+  line-height: 1.5;
+}
+
+.break-even-ring {
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 92px;
+  flex: 0 0 auto;
+  border: 1px solid currentColor;
   border-radius: 50%;
-  border: 28px solid rgba(var(--theme-primary-rgb, 37, 99, 235), 0.08);
 }
 
-.hero-value {
-  margin-top: 12px;
-  color: #0f172a;
-  font-size: 34px;
+.break-even-ring span {
+  font-size: 24px;
   font-weight: 800;
   line-height: 1;
 }
 
-.hero-meta {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 16px;
-  color: #64748b;
-  font-size: 13px;
-}
-
-.hero-meta strong {
-  color: #0ea573;
-  font-weight: 700;
-}
-
-.hero-line {
-  position: absolute;
-  left: 22px;
-  right: 22px;
-  bottom: 20px;
-  height: 3px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: rgba(37, 99, 235, 0.1);
-}
-
-.hero-line::before {
-  display: block;
-  width: 64%;
-  height: 100%;
-  content: '';
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--theme-primary, #2563eb), #0ea573);
-}
-
-.hero-kpis {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.stat-card {
-  min-width: 0;
-  padding: 18px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.1);
-}
-
-.stat-label {
-  display: block;
-  color: #64748b;
+.break-even-ring small {
+  margin-top: 4px;
   font-size: 12px;
 }
 
-.stat-value {
-  display: block;
-  margin-top: 8px;
-  font-size: 22px;
-  font-weight: 800;
-  line-height: 1.2;
-  white-space: nowrap;
+.period-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.stat-card em {
+.period-kpi-item {
+  min-width: 0;
+  padding: 19px 16px;
+  border-right: 1px solid #edf1f7;
+  background: #fff;
+}
+
+.period-kpi-item:last-child {
+  border-right: 0;
+}
+
+.period-kpi-item span {
+  display: block;
+  color: #637083;
+  font-size: 13px;
+}
+
+.period-kpi-item strong {
   display: block;
   margin-top: 10px;
-  color: #94a3b8;
+  font-size: 20px;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.period-kpi-item em {
+  display: block;
+  margin-top: 8px;
+  color: #8a96a8;
   font-size: 12px;
   font-style: normal;
 }
 
-.visual-grid {
+.top-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.9fr);
-  grid-auto-rows: minmax(294px, auto);
+  grid-template-columns: minmax(260px, 0.95fr) minmax(420px, 1.4fr);
   gap: 14px;
+  margin-top: 14px;
 }
 
-.trend-panel {
-  min-width: 0;
-}
-
-.side-panel,
-.rank-panel,
-.matrix-panel {
-  min-width: 0;
-}
-
-.matrix-panel {
-  grid-column: span 2;
-}
-
-.chart-header {
+.status-panel {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 20px 0;
+  gap: 18px;
+  padding: 22px;
 }
 
-.chart-header h3 {
-  margin: 4px 0 0;
-  color: #1e293b;
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.chart-body {
-  height: 296px;
-  padding: 8px 10px 14px;
-}
-
-.trend-chart {
-  height: 326px;
-}
-
-.rank-chart {
-  height: 300px;
-}
-
-.health-chart {
-  height: 172px;
-  margin: 8px 8px 0;
-}
-
-.health-summary {
-  padding: 0 20px 20px;
-  text-align: center;
-}
-
-.health-summary strong {
+.status-main strong {
   display: block;
-  color: var(--theme-primary, #2563eb);
-  font-size: 32px;
+  margin: 8px 0;
+  font-size: 20px;
+}
+
+.status-main p {
+  margin: 0;
+  color: #637083;
+  line-height: 1.6;
+}
+
+.status-score {
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 92px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.status-score span {
+  font-size: 28px;
   font-weight: 800;
   line-height: 1;
 }
 
-.health-summary span {
-  display: block;
-  margin-top: 8px;
-  color: #64748b;
+.status-score small {
+  margin-top: 4px;
   font-size: 12px;
 }
 
-.metric-matrix {
+.metric-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  padding: 18px 20px 20px;
+  gap: 1px;
+  overflow: hidden;
 }
 
-.matrix-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.metric-item {
   min-width: 0;
-  padding: 14px;
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  border-radius: 8px;
-  background: linear-gradient(135deg, rgba(248, 250, 252, 0.95), rgba(255, 255, 255, 0.78));
+  padding: 22px 18px;
+  background: #fff;
 }
 
-.stat-icon {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border-radius: 8px;
-  color: var(--theme-primary, #2563eb);
-  background: rgba(var(--theme-primary-rgb, 37, 99, 235), 0.08);
-  border: 1px solid rgba(148, 163, 184, 0.1);
-  box-shadow: 0 0 14px var(--glow, rgba(37, 99, 235, 0.18));
-}
-
-.matrix-card strong {
+.metric-item span {
   display: block;
-  font-size: 18px;
-  font-weight: 800;
+  color: #637083;
+  font-size: 13px;
+}
+
+.metric-item strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 22px;
   line-height: 1.2;
-  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
-.matrix-card span {
+.action-grid,
+.review-grid,
+.lower-grid {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.action-grid {
+  grid-template-columns: minmax(420px, 1.1fr) minmax(360px, 0.9fr);
+}
+
+.review-grid {
+  grid-template-columns: minmax(420px, 1.15fr) minmax(340px, 0.85fr);
+}
+
+.lower-grid {
+  grid-template-columns: minmax(380px, 1.1fr) minmax(300px, 0.9fr) minmax(260px, 0.7fr);
+}
+
+.panel {
+  padding: 18px;
+}
+
+.panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.panel-head h3 {
+  margin: 4px 0 0;
+  font-size: 17px;
+  letter-spacing: 0;
+}
+
+.priority-list,
+.health-list,
+.trend-list,
+.member-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.priority-row {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e4eaf3;
+  border-left: 4px solid #2d6cdf;
+  border-radius: 8px;
+  background: #fbfcff;
+}
+
+.priority-row.high {
+  border-left-color: #d9534f;
+}
+
+.priority-row.medium {
+  border-left-color: #d99118;
+}
+
+.priority-marker {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: #eaf2ff;
+  color: #2667c9;
+  font-weight: 800;
+}
+
+.priority-content {
+  min-width: 0;
+}
+
+.priority-content strong,
+.store-name strong,
+.member-action strong {
   display: block;
-  margin-top: 4px;
-  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.priority-content p,
+.member-action p,
+.weekly-note p,
+.memo-content p,
+.period-body p {
+  margin: 4px 0 0;
+  color: #667386;
+  line-height: 1.55;
+}
+
+.priority-tag {
+  color: #4a5a70;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.health-summary {
+  display: flex;
+  gap: 12px;
+  color: #647286;
   font-size: 12px;
 }
 
-@media (max-width: 1200px) {
-  .hero-panel,
-  .visual-grid {
+.health-summary b {
+  color: #172033;
+}
+
+.health-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(120px, 1.1fr) 42px;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid #edf1f7;
+}
+
+.health-row:last-child {
+  border-bottom: 0;
+}
+
+.store-name span {
+  color: #7a8798;
+  font-size: 12px;
+}
+
+.health-meter {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e8edf5;
+}
+
+.health-meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.health-score {
+  text-align: right;
+  font-weight: 800;
+}
+
+.weekly-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.weekly-stats div {
+  min-width: 0;
+  padding: 14px;
+  border-radius: 8px;
+  background: #f7f9fd;
+}
+
+.weekly-stats span,
+.period-text {
+  color: #687589;
+  font-size: 12px;
+}
+
+.weekly-stats strong {
+  display: block;
+  margin: 8px 0 6px;
+  font-size: 18px;
+  word-break: break-word;
+}
+
+.weekly-stats em {
+  font-style: normal;
+  font-size: 12px;
+}
+
+.weekly-note {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #edf1f7;
+}
+
+.memo-score {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 46px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+.memo-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.memo-tags span {
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: #eef4ff;
+  color: #2667c9;
+  font-size: 12px;
+}
+
+.trend-row {
+  display: grid;
+  grid-template-columns: 74px minmax(120px, 1fr) 92px;
+  align-items: center;
+  gap: 10px;
+  color: #59677a;
+  font-size: 13px;
+}
+
+.trend-bars {
+  display: grid;
+  gap: 4px;
+}
+
+.trend-bars i {
+  display: block;
+  height: 7px;
+  border-radius: 999px;
+}
+
+.trend-bars .sales {
+  background: #2d6cdf;
+}
+
+.trend-bars .expense {
+  background: #d99118;
+}
+
+.trend-row strong {
+  text-align: right;
+  color: #172033;
+  font-size: 13px;
+}
+
+.member-action,
+.quiet-tip {
+  padding: 12px;
+  border-radius: 8px;
+  background: #f7f9fd;
+}
+
+.period-body strong {
+  display: block;
+  font-size: 22px;
+  word-break: break-word;
+}
+
+.period-body span {
+  display: inline-flex;
+  margin-top: 14px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.score-good,
+.amount-positive,
+.rate-up {
+  color: #138a5b;
+}
+
+.amount-blue {
+  color: #2667c9;
+}
+
+.amount-gold {
+  color: #b7791f;
+}
+
+.amount-cyan {
+  color: #087f95;
+}
+
+.score-watch {
+  color: #b7791f;
+}
+
+.score-risk,
+.amount-negative,
+.rate-down {
+  color: #c43d3d;
+}
+
+.health-meter .score-good {
+  background: #22a06b;
+}
+
+.health-meter .score-watch {
+  background: #d99118;
+}
+
+.health-meter .score-risk {
+  background: #d9534f;
+}
+
+.period-active {
+  background: #e8f7ef;
+  color: #138a5b;
+}
+
+.period-closed {
+  background: #eef4ff;
+  color: #2667c9;
+}
+
+.period-locked {
+  background: #fff4e5;
+  color: #b7791f;
+}
+
+.period-empty {
+  background: #f0f3f8;
+  color: #69788c;
+}
+
+.card {
+  border: 1px solid #dfe6f1;
+  border-radius: 8px;
+  background: #fff;
+  padding: 18px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.mini-metric {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #f7f9fd;
+}
+
+.mini-metric span {
+  display: block;
+  color: #637083;
+  font-size: 12px;
+}
+
+.mini-metric strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 16px;
+  color: #172033;
+}
+
+@media (max-width: 1180px) {
+  .period-finance-grid,
+  .top-grid,
+  .action-grid,
+  .review-grid,
+  .lower-grid {
     grid-template-columns: 1fr;
-  }
-
-  .hero-kpis,
-  .metric-matrix {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .matrix-panel {
-    grid-column: span 1;
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 760px) {
   .store-dashboard {
     padding: 12px;
   }
 
-  .dashboard-title {
-    font-size: 20px;
+  .workbench-header,
+  .status-panel,
+  .panel-head {
+    flex-direction: column;
+    align-items: stretch;
   }
 
-  .hero-main {
-    min-height: 140px;
-    padding: 18px;
+  .header-actions {
+    align-items: stretch;
   }
 
-  .hero-value {
-    font-size: 28px;
+  .dept-select {
+    width: 100%;
   }
 
-  .hero-kpis,
-  .metric-matrix {
+  .metric-strip,
+  .period-kpi-strip,
+  .weekly-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .period-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .priority-row,
+  .health-row,
+  .trend-row {
     grid-template-columns: 1fr;
   }
 
-  .chart-body,
-  .trend-chart,
-  .rank-chart {
-    height: 260px;
+  .trend-row strong,
+  .health-score {
+    text-align: left;
   }
 }
 </style>

@@ -20,6 +20,7 @@ import com.junsong.member.api.MemberActionPredictionQuery;
 import com.junsong.member.api.RemoteMemberPredictionService;
 import com.junsong.member.api.domain.MemberActionPredictionItem;
 import com.junsong.system.api.RemoteUserService;
+import com.junsong.system.api.RemoteOperationAlertService;
 import com.junsong.system.api.domain.SysDept;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -78,6 +80,9 @@ public class PredictiveOpsServiceImpl implements IPredictiveOpsService {
     @Autowired
     private RemoteUserService remoteUserService;
 
+    @Autowired
+    private RemoteOperationAlertService alertService;
+
     @Override
     public PredictiveOpsDashboardVO getDashboard(PredictiveOpsQueryParams params) {
         if (params == null) {
@@ -119,7 +124,47 @@ public class PredictiveOpsServiceImpl implements IPredictiveOpsService {
         if (receivable.getForecastAmount() != null) total = total.add(receivable.getForecastAmount());
         dashboard.setTotalForecastAmount(total);
 
+        // R25 告警：CRITICAL 级别经 Feign 上报到系统模块
+        raiseCriticalAlertIfNeeded(cashflow, receivable, params);
+
         return dashboard;
+    }
+
+    /**
+     * R25 告警：当现金流或应收预测达到 CRITICAL 时，经 Feign 上报到系统模块告警中心。
+     * 告警失败不影响仪表盘返回，仅记录日志。
+     */
+    private void raiseCriticalAlertIfNeeded(PredictionRiskVO cashflow, PredictionRiskVO receivable, PredictiveOpsQueryParams params) {
+        if (cashflow != null && "CRITICAL".equals(cashflow.getLevel())) {
+            try {
+                Map<String, Object> body = new HashMap<>();
+                body.put("ruleKey", "R24_CASHFLOW_CRITICAL");
+                body.put("dedupKey", "predictive:cashflow:" + (params.getDeptId() == null ? "all" : params.getDeptId()));
+                body.put("sourceType", "PREDICTIVE_OPS");
+                body.put("sourceId", String.valueOf(params.getDeptId()));
+                body.put("severity", "CRITICAL");
+                body.put("title", "R24现金流预测CRITICAL");
+                body.put("content", cashflow.getBasis() == null ? "" : cashflow.getBasis());
+                alertService.raiseAlert(body, SecurityConstants.INNER);
+            } catch (Exception ex) {
+                log.warn("R25 raiseAlert failed (cashflow CRITICAL): {}", ex.getMessage());
+            }
+        }
+        if (receivable != null && "CRITICAL".equals(receivable.getLevel())) {
+            try {
+                Map<String, Object> body = new HashMap<>();
+                body.put("ruleKey", "R24_RECEIVABLE_CRITICAL");
+                body.put("dedupKey", "predictive:receivable:" + (params.getDeptId() == null ? "all" : params.getDeptId()));
+                body.put("sourceType", "PREDICTIVE_OPS");
+                body.put("sourceId", String.valueOf(params.getDeptId()));
+                body.put("severity", "CRITICAL");
+                body.put("title", "R24应收兑现风险CRITICAL");
+                body.put("content", receivable.getBasis() == null ? "" : receivable.getBasis());
+                alertService.raiseAlert(body, SecurityConstants.INNER);
+            } catch (Exception ex) {
+                log.warn("R25 raiseAlert failed (receivable CRITICAL): {}", ex.getMessage());
+            }
+        }
     }
 
     @Override

@@ -1,5 +1,16 @@
 import request from '../request'
 
+export interface ExpenseVerifyRequest {
+  expenseIds: number[]
+  advanceIds: number[]
+  requestId: string
+}
+
+export interface ExpenseUnverifyRequest {
+  reason: string
+  requestId: string
+}
+
 // 查询费用记录列表
 export function listExpense(query: any) {
   return request({
@@ -43,14 +54,6 @@ export function delExpense(expenseId: any) {
   })
 }
 
-// 核销费用
-export function verifyExpense(expenseId: any) {
-  return request({
-    url: '/finance/expense/verify/' + expenseId,
-    method: 'put'
-  })
-}
-
 // 获取统计数据
 export function getExpenseSummary(deptId: any) {
   return request({
@@ -61,11 +64,26 @@ export function getExpenseSummary(deptId: any) {
 }
 
 // 批量核销费用
-export function batchVerifyExpense(data: any) {
+export function batchVerifyExpense(data: ExpenseVerifyRequest) {
   return request({
     url: '/finance/expense/batchVerify',
     method: 'put',
     data: data
+  })
+}
+
+export function getExpenseCapability(expenseId: number) {
+  return request({
+    url: `/finance/expense/${expenseId}/capability`,
+    method: 'get'
+  })
+}
+
+export function unverifyExpense(batchId: number, data: ExpenseUnverifyRequest) {
+  return request({
+    url: `/finance/expense/unverify/${batchId}`,
+    method: 'put',
+    data
   })
 }
 

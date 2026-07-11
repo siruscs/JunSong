@@ -16,6 +16,7 @@ import com.junsong.finance.mapper.FinAdvanceMapper;
 import com.junsong.finance.mapper.FinExpenseMapper;
 import com.junsong.finance.mapper.FinInvestorPaymentMapper;
 import com.junsong.finance.mapper.FinProfitShareRecordMapper;
+import com.junsong.finance.mapper.FinSaleRecordMapper;
 import com.junsong.finance.service.IAccountingPeriodCheckService;
 
 /**
@@ -40,6 +41,9 @@ public class AccountingPeriodCheckServiceImpl implements IAccountingPeriodCheckS
 
     @Autowired
     private FinAccountingPeriodMapper finAccountingPeriodMapper;
+
+    @Autowired
+    private FinSaleRecordMapper finSaleRecordMapper;
 
     @Override
     public AccountingPeriodCheckResultVO checkBeforeLock(Long deptId)
@@ -134,6 +138,25 @@ public class AccountingPeriodCheckServiceImpl implements IAccountingPeriodCheckS
                 "存在" + paymentCount + "笔未返款记录，总金额¥" + paymentAmount.setScale(2, java.math.RoundingMode.HALF_UP),
                 paymentCount,
                 paymentAmount
+        ));
+
+        // 5. 未缴清销售单 → WARNING（跨周期补缴款：不阻断结转，可结转后在历史欠款中继续收款）
+        int receivableCount = 0;
+        BigDecimal receivableAmount = BigDecimal.ZERO;
+        if (currentPeriodId != null)
+        {
+            receivableCount = finSaleRecordMapper.countReceivableByPeriodId(deptId, currentPeriodId);
+            BigDecimal sum = finSaleRecordMapper.sumReceivableByPeriodId(deptId, currentPeriodId);
+            receivableAmount = sum != null ? sum : BigDecimal.ZERO;
+        }
+        items.add(new AccountingPeriodCheckItemVO(
+                "UNSETTLED_RECEIVABLE",
+                "WARNING",
+                "未缴清销售单",
+                "存在" + receivableCount + "笔未缴清销售单，剩余应收¥" + receivableAmount.setScale(2, java.math.RoundingMode.HALF_UP)
+                        + "，可结转后在历史欠款中继续收款",
+                receivableCount,
+                receivableAmount
         ));
 
         // 判断 canLock / hasWarning

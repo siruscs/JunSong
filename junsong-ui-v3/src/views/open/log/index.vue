@@ -26,6 +26,18 @@
           <el-option label="异常 (5xx)" :value="500" />
         </el-select>
       </el-form-item>
+      <el-form-item label="调用状态" prop="status">
+        <el-select v-model="queryParams.status" placeholder="全部" clearable style="width: 120px">
+          <el-option label="成功" value="success" />
+          <el-option label="失败" value="fail" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="Key类型" prop="keyType">
+        <el-select v-model="queryParams.keyType" placeholder="全部" clearable style="width: 120px">
+          <el-option label="生产" value="production" />
+          <el-option label="测试" value="sandbox" />
+        </el-select>
+      </el-form-item>
       <el-form-item>
         <el-button type="primary" icon="Search" @click="handleQuery">搜索</el-button>
         <el-button icon="Refresh" @click="resetQuery">重置</el-button>
@@ -53,11 +65,23 @@
       </el-table-column>
       <el-table-column label="请求路径" align="left" prop="requestPath" min-width="260" show-overflow-tooltip />
       <el-table-column label="请求IP" align="center" prop="requestIp" width="140" />
+      <el-table-column label="请求ID" align="center" prop="requestId" width="160" show-overflow-tooltip />
       <el-table-column label="状态码" align="center" prop="responseCode" width="90">
         <template #default="{ row }">
           <el-tag :type="statusTagType(row.responseCode)" size="small">{{ row.responseCode }}</el-tag>
         </template>
       </el-table-column>
+      <el-table-column label="调用状态" align="center" prop="status" width="100">
+        <template #default="{ row }">
+          <el-tag :type="row.status === 'success' ? 'success' : 'danger'" size="small">{{ row.status || '-' }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="Key类型" align="center" prop="keyType" width="90">
+        <template #default="{ row }">
+          <el-tag :type="row.keyType === 'production' ? 'success' : 'warning'" size="small">{{ row.keyType === 'production' ? '生产' : '测试' }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="错误码" align="center" prop="errorCode" width="160" show-overflow-tooltip />
       <el-table-column label="耗时" align="center" prop="responseTime" width="90" sortable="custom">
         <template #default="{ row }">{{ row.responseTime }}ms</template>
       </el-table-column>
@@ -94,6 +118,8 @@ const queryParams = reactive({
   appKey: undefined as string | undefined,
   requestMethod: undefined as string | undefined,
   responseCode: undefined as number | undefined,
+  status: undefined as string | undefined,
+  keyType: undefined as string | undefined,
 })
 
 function methodTagType(method: string) {
@@ -127,6 +153,8 @@ function resetQuery() {
   queryParams.appKey = undefined
   queryParams.requestMethod = undefined
   queryParams.responseCode = undefined
+  queryParams.status = undefined
+  queryParams.keyType = undefined
   handleQuery()
 }
 

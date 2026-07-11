@@ -25,4 +25,21 @@ public interface FinAccountingPeriodMapper
 
     String selectCurrentPeriodStatusByDeptIds(@Param("deptIds") List<Long> deptIds);
     FinAccountingPeriod selectPeriodById(@Param("periodId") Long periodId);
+    FinAccountingPeriod selectPeriodForUpdate(@Param("periodId") Long periodId,
+        @Param("tenantId") Long tenantId, @Param("deptId") Long deptId);
+
+    /**
+     * 查询上一周期（同店面、未删除、结束时间小于等于当前周期起始时间，排除当前周期）
+     */
+    public FinAccountingPeriod selectPreviousPeriod(@Param("deptId") Long deptId, @Param("startTime") Date startTime, @Param("periodId") Long periodId);
+
+    /**
+     * 查询下一周期（同店面、未删除、起始时间大于等于当前周期起始时间，排除当前周期）
+     */
+    public FinAccountingPeriod selectNextPeriod(@Param("deptId") Long deptId, @Param("startTime") Date startTime, @Param("periodId") Long periodId);
+
+    /**
+     * 运维调整：只更新起始时间、更新人、备注（不触碰金额和其他字段）
+     */
+    public int updateStartTimeOnly(@Param("periodId") Long periodId, @Param("startTime") Date startTime, @Param("endTime") Date endTime, @Param("updateBy") String updateBy, @Param("remark") String remark);
 }

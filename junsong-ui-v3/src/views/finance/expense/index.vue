@@ -68,7 +68,7 @@
         <el-button type="danger" plain size="small" :disabled="deleteDisabled" @click="handleDelete" v-hasPermi="['finance:expense:remove']">删除</el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button type="success" plain size="small" :disabled="multiple" @click="handleBatchVerify" v-hasPermi="['finance:expense:edit']">批量核销</el-button>
+        <el-button type="success" plain size="small" :disabled="multiple" @click="handleBatchVerify" v-hasPermi="['finance:expense:verify']">批量核销</el-button>
       </el-col>
       <right-toolbar v-model:showSearch="showSearch" @query="getList"></right-toolbar>
     </el-row>
@@ -107,8 +107,9 @@
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
         <template #default="scope">
           <el-button size="small" type="text" @click="handleView(scope.row)">查看</el-button>
-          <el-button size="small" type="text" @click="handleUpdate(scope.row)" v-hasPermi="['finance:expense:edit']">修改</el-button>
-          <el-button size="small" type="text" @click="handleVerify(scope.row)" v-if="scope.row.status !== '1'" v-hasPermi="['finance:expense:edit']">核销</el-button>
+          <el-button size="small" type="text" @click="handleUpdate(scope.row)" v-if="canEditExpense(scope.row) && scope.row.status !== '1'" v-hasPermi="['finance:expense:edit']">修改</el-button>
+          <el-button size="small" type="text" @click="handleVerify(scope.row)" v-if="scope.row.status !== '1'" v-hasPermi="['finance:expense:verify']">核销</el-button>
+          <el-button size="small" type="text" @click="handleUnverify(scope.row)" v-if="scope.row.status === '1'" v-hasPermi="['finance:expense:unverify']">反核销</el-button>
           <el-button size="small" type="text" @click="handleDelete(scope.row)" v-if="scope.row.status !== '1'" v-hasPermi="['finance:expense:remove']">删除</el-button>
         </template>
       </el-table-column>
@@ -147,6 +148,25 @@
         <el-button type="primary" @click="submitForm">确 定</el-button>
         <el-button @click="cancel">取 消</el-button>
       </div>
+      </template>
+    </el-dialog>
+
+    <el-dialog title="反核销" v-model="unverifyOpen" width="500px" append-to-body @closed="resetUnverifyDialog">
+      <el-alert v-if="unverifyCapability.operationDisabledReason" :title="unverifyCapability.operationDisabledReason" type="warning" :closable="false" class="mb20" />
+      <el-descriptions :column="1" border class="mb20">
+        <el-descriptions-item label="费用单号">{{ unverifyExpenseNo || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="核销批次">{{ unverifyCapability.batchId || '-' }}</el-descriptions-item>
+      </el-descriptions>
+      <el-form v-if="unverifyCapability.canUnverify" label-width="100px">
+        <el-form-item label="反核销原因" required>
+          <el-input v-model="unverifyForm.reason" type="textarea" :rows="3" placeholder="请输入反核销原因" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button v-if="unverifyCapability.canUnverify" type="primary" @click="submitUnverify">确 认</el-button>
+          <el-button @click="unverifyOpen = false">取 消</el-button>
+        </div>
       </template>
     </el-dialog>
 
@@ -230,7 +250,7 @@
 import { useDict } from '@/composables/useDict'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { parseTime, selectDictLabel } from '@/utils/junsong'
-import { listExpense, getExpense, delExpense, addExpense, updateExpense, verifyExpense, getExpenseSummary, batchVerifyExpense, listUnverifiedAdvances } from '@/api/finance/expense'
+import { listExpense, getExpense, delExpense, addExpense, updateExpense, getExpenseSummary, batchVerifyExpense, listUnverifiedAdvances, getExpenseCapability, unverifyExpense } from '@/api/finance/expense'
 import ExcelImportDialog from '@/components/ExcelImportDialog/index.vue'
 import { useUserStore } from '@/stores/user'
 
@@ -259,6 +279,13 @@ export default {
       viewOpen: false,
       viewForm: {},
       batchVerifyOpen: false,
+      unverifyOpen: false,
+      unverifyCapability: {},
+      unverifyExpenseNo: '',
+      unverifyForm: {
+        reason: '',
+        requestId: ''
+      },
       verifyDialogTitle: "批量核销",
       selectedExpenses: [],
       queryParams: {
@@ -273,7 +300,8 @@ export default {
       form: {},
       batchVerifyForm: {
         expenseIds: [],
-        advanceIds: []
+        advanceIds: [],
+        requestId: ''
       },
       rules: {
         expenseDate: [{ required: true, message: "费用日期不能为空", trigger: "change" }],
@@ -295,7 +323,7 @@ export default {
       return this.selectedAdvances.reduce((sum, item) => sum + Number(item.advanceAmount || 0), 0).toFixed(2)
     },
     verifyDiff() {
-      if (!this.selectedAdvances.length === 0) return 0
+      if (this.selectedAdvances.length === 0) return '0.00'
       return (Number(this.totalVerifyAmount) - Number(this.totalAdvanceAmount)).toFixed(2)
     },
     selectedAdvances() {
@@ -314,7 +342,8 @@ export default {
   methods: {
     getList() {
       this.loading = true
-      const params = { ...this.queryParams, deptId: userStore.currentDeptId }
+      const deptId = userStore.currentDeptId
+      const params = { ...this.queryParams, deptId }
       if (this.queryParams.expenseDate) {
         params.params = params.params || {}
         params.params.beginTime = this.queryParams.expenseDate
@@ -399,7 +428,14 @@ export default {
         ...this.queryParams
       }, `expense_${new Date().getTime()}.xlsx`)
     },
+    canEditExpense(row) {
+      return row && row.status !== '1'
+    },
     handleUpdate(row) {
+      if (row && row.status === '1') {
+        ElMessage.warning('已核销费用不能修改')
+        return
+      }
       this.reset()
       const expenseId = row.expenseId || this.ids
       getExpense(expenseId).then(response => {
@@ -420,7 +456,8 @@ export default {
       this.selectedExpenses = [row]
       this.batchVerifyForm = {
         expenseIds: [row.expenseId],
-        advanceIds: []
+        advanceIds: [],
+        requestId: this.createRequestId()
       }
       this.verifyDialogTitle = "费用核销"
       this.batchVerifyOpen = true
@@ -486,7 +523,8 @@ export default {
       this.getUnverifiedAdvances()
       this.batchVerifyForm = {
         expenseIds: this.ids,
-        advanceIds: []
+        advanceIds: [],
+        requestId: this.createRequestId()
       }
       this.verifyDialogTitle = "批量核销"
       this.batchVerifyOpen = true
@@ -518,14 +556,67 @@ export default {
       }
     },
     submitBatchVerify() {
-      ElMessageBox.confirm('是否确认批量核销选中的费用记录？').then(() => {
+      const isSingle = this.selectedExpenses.length === 1
+      const actionLabel = isSingle ? '核销当前费用记录' : '批量核销选中的费用记录'
+      const successMessage = isSingle ? '费用核销成功' : '批量核销成功'
+      ElMessageBox.confirm(`是否确认${actionLabel}？`).then(() => {
         return batchVerifyExpense(this.batchVerifyForm)
       }).then(() => {
         this.batchVerifyOpen = false
         this.getList()
         this.getSummary()
-        ElMessage.success("批量核销成功")
+        ElMessage.success(successMessage)
       }).catch(() => {})
+    },
+    createRequestId() {
+      if (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function') {
+        return globalThis.crypto.randomUUID()
+      }
+      return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    },
+    handleUnverify(row) {
+      this.unverifyForm = {
+        reason: '',
+        requestId: this.createRequestId()
+      }
+      this.unverifyExpenseNo = row.expenseNo || ''
+      getExpenseCapability(row.expenseId).then(response => {
+        const capability = response.data || {}
+        this.unverifyCapability = capability
+        this.unverifyOpen = true
+        if (!capability.canUnverify) {
+          if (!capability.operationDisabledReason) {
+            this.unverifyCapability.operationDisabledReason = '当前费用不可反核销'
+          }
+          return
+        }
+      })
+    },
+    submitUnverify() {
+      const reason = this.unverifyForm.reason.trim()
+      if (!reason) {
+        ElMessage.warning('请输入反核销原因')
+        return
+      }
+      ElMessageBox.confirm('反核销后将恢复本批次全部费用和借支状态，是否继续？').then(() => {
+        return unverifyExpense(this.unverifyCapability.batchId, {
+          reason,
+          requestId: this.unverifyForm.requestId
+        })
+      }).then(() => {
+        this.unverifyOpen = false
+        this.getList()
+        this.getSummary()
+        ElMessage.success('反核销成功')
+      }).catch(() => {})
+    },
+    resetUnverifyDialog() {
+      this.unverifyCapability = {}
+      this.unverifyExpenseNo = ''
+      this.unverifyForm = {
+        reason: '',
+        requestId: ''
+      }
     }
   }
 }

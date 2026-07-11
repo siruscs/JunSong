@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.system.mapper.SysActionCenterTouchLogMapper">
+
+	<resultMap type="SysActionCenterTouchLog" id="SysActionCenterTouchLogResult">
+		<id     property="logId"           column="log_id"           />
+		<result property="actionId"        column="action_id"        />
+		<result property="sourceType"      column="source_type"      />
+		<result property="sourceId"        column="source_id"        />
+		<result property="channel"         column="channel"          />
+		<result property="targetType"      column="target_type"      />
+		<result property="targetRef"       column="target_ref"       />
+		<result property="touchStatus"     column="touch_status"     />
+		<result property="requestDigest"   column="request_digest"   />
+		<result property="messageSummary"  column="message_summary"  />
+		<result property="providerResponse" column="provider_response" />
+		<result property="errorMessage"    column="error_message"    />
+		<result property="operatorId"      column="operator_id"      />
+		<result property="operatorName"    column="operator_name"    />
+		<result property="createTime"      column="create_time"      />
+	</resultMap>
+
+	<sql id="selectLogVo">
+		select log_id, action_id, source_type, source_id, channel, target_type, target_ref,
+		       touch_status, request_digest, message_summary, provider_response, error_message,
+		       operator_id, operator_name, create_time
+		from sys_action_center_touch_log
+	</sql>
+
+	<insert id="insertLog" parameterType="SysActionCenterTouchLog" useGeneratedKeys="true" keyProperty="logId">
+		insert into sys_action_center_touch_log (
+			action_id, source_type, source_id, channel, target_type, target_ref,
+			touch_status, request_digest, message_summary, provider_response, error_message,
+			operator_id, operator_name, create_time
+		) values (
+			#{actionId}, #{sourceType}, #{sourceId}, #{channel}, #{targetType}, #{targetRef},
+			#{touchStatus}, #{requestDigest}, #{messageSummary}, #{providerResponse}, #{errorMessage},
+			#{operatorId}, #{operatorName}, sysdate()
+		)
+	</insert>
+
+	<select id="selectLatestByActionId" resultMap="SysActionCenterTouchLogResult">
+		<include refid="selectLogVo"/>
+		where action_id = #{actionId}
+		order by create_time desc
+		limit 1
+	</select>
+
+	<select id="countByDigestSince" resultType="int">
+		select count(*)
+		from sys_action_center_touch_log
+		where request_digest = #{requestDigest}
+		  and create_time &gt;= #{since}
+	</select>
+
+	<select id="countByTargetSince" resultType="int">
+		select count(*)
+		from sys_action_center_touch_log
+		where channel = #{channel}
+		  and target_ref = #{targetRef}
+		  and create_time &gt;= #{since}
+		  and touch_status in ('SUCCESS', 'DRY_RUN', 'FAILED')
+	</select>
+
+	<select id="selectRecentByActionId" resultMap="SysActionCenterTouchLogResult">
+		<include refid="selectLogVo"/>
+		where action_id = #{actionId}
+		order by create_time desc
+		limit #{limit}
+	</select>
+
+</mapper>

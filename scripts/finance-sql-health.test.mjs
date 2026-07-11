@@ -24,8 +24,9 @@ test('operation dashboard unverified expense amount uses the same net amount口�
 })
 
 test('cashflow dashboard uses existing finance amount columns', () => {
+  // SQL 列引用实际位于 Mapper XML（而非 ServiceImpl Java 代码）
   const source = readFileSync(
-    'junsong-modules/junsong-finance/src/main/java/com/junsong/finance/service/impl/FinanceCashflowReportServiceImpl.java',
+    'junsong-modules/junsong-finance/src/main/resources/mapper/finance/CashflowDashboardMapper.xml',
     'utf8',
   )
   // fin_expense uses expense_amount, not current_amount
@@ -36,6 +37,11 @@ test('cashflow dashboard uses existing finance amount columns', () => {
   assert.match(source, /expense_amount/i)
   // Must use amount for investor payment
   assert.match(source, /SUM\(amount\).*FROM fin_investor_payment/is)
+  // R7 回修：现金流日期必须按业务日期统计，不能用 create_time 做日期过滤
+  assert.doesNotMatch(source, /create_time\s+BETWEEN/is,
+    '现金流不得用 create_time 做日期过滤，应使用业务日期字段')
+  assert.match(source, /payment_date\s+BETWEEN/is, 'fin_sale_payment 应按 payment_date 过滤')
+  assert.match(source, /expense_date\s+BETWEEN/is, 'fin_expense 应按 expense_date 过滤')
 })
 
 test('finance review task menu sql defines parent variables and avoids all-role grants', () => {

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import com.junsong.system.domain.SysHealthRuleConfig;
 import com.junsong.system.mapper.SysHealthRuleConfigMapper;
 import com.junsong.system.service.ISysHealthRuleConfigService;
+import com.junsong.system.service.ISysOperationAuditService;
 
 /**
  * 自检规则配置 服务实现
@@ -20,9 +21,11 @@ public class SysHealthRuleConfigServiceImpl implements ISysHealthRuleConfigServi
     private static final Set<String> VALID_SEVERITIES = Set.of("HIGH", "MEDIUM", "LOW");
 
     private final SysHealthRuleConfigMapper mapper;
+    private final ISysOperationAuditService auditService;
 
-    public SysHealthRuleConfigServiceImpl(SysHealthRuleConfigMapper mapper) {
+    public SysHealthRuleConfigServiceImpl(SysHealthRuleConfigMapper mapper, ISysOperationAuditService auditService) {
         this.mapper = mapper;
+        this.auditService = auditService;
     }
 
     @Override
@@ -46,7 +49,15 @@ public class SysHealthRuleConfigServiceImpl implements ISysHealthRuleConfigServi
         if (config.getRuleCode() != null && !config.getRuleCode().equals(existing.getRuleCode())) {
             throw new IllegalArgumentException("规则编码不可修改");
         }
-        return mapper.updateHealthRule(config);
+        int rows = mapper.updateHealthRule(config);
+        // R25 审计：记录更新前后快照
+        try {
+            SysHealthRuleConfig after = mapper.selectById(config.getRuleId());
+            auditService.recordSnapshot("HEALTH_RULE", String.valueOf(config.getRuleId()), "UPDATE", "HIGH", existing, after);
+        } catch (Exception e) {
+            log.warn("R25 审计记录失败 HEALTH_RULE UPDATE ruleId={}: {}", config.getRuleId(), e.getMessage());
+        }
+        return rows;
     }
 
     @Override
@@ -54,10 +65,19 @@ public class SysHealthRuleConfigServiceImpl implements ISysHealthRuleConfigServi
         if (!"1".equals(enabled) && !"0".equals(enabled)) {
             throw new IllegalArgumentException("enabled 只能为 1 或 0");
         }
+        SysHealthRuleConfig before = mapper.selectById(ruleId);
         SysHealthRuleConfig update = new SysHealthRuleConfig();
         update.setRuleId(ruleId);
         update.setEnabled(enabled);
-        return mapper.updateHealthRule(update);
+        int rows = mapper.updateHealthRule(update);
+        // R25 审计：记录启停前后快照
+        try {
+            SysHealthRuleConfig after = mapper.selectById(ruleId);
+            auditService.recordSnapshot("HEALTH_RULE", String.valueOf(ruleId), "TOGGLE", "MEDIUM", before, after);
+        } catch (Exception e) {
+            log.warn("R25 审计记录失败 HEALTH_RULE TOGGLE ruleId={}: {}", ruleId, e.getMessage());
+        }
+        return rows;
     }
 
     static void validate(SysHealthRuleConfig config) {

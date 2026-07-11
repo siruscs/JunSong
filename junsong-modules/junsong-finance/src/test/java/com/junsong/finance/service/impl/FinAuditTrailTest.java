@@ -296,6 +296,7 @@ class FinAuditTrailTest {
     // ── Fake mappers ──
 
     static class FakeAccountingPeriodMapperForAudit implements FinAccountingPeriodMapper {
+        public FinAccountingPeriod selectPeriodForUpdate(Long id, Long tenantId, Long deptId) { return selectFinAccountingPeriodByPeriodId(id); }
         Map<Long, FinAccountingPeriod> periods = new HashMap<>();
         Map<Long, FinAccountingPeriod> currentDeptPeriod = new HashMap<>();
         Map<Long, FinAccountingPeriod> latestCarriedPeriod = new HashMap<>();
@@ -323,6 +324,9 @@ class FinAuditTrailTest {
         @Override public BigDecimal selectTotalUnverifiedAdvance(Long p, Long d, Date s, Date e) { return BigDecimal.ZERO; }
         @Override public String selectCurrentPeriodStatusByDeptIds(List<Long> deptIds) { return null; }
         @Override public FinAccountingPeriod selectPeriodById(Long id) { return periods.get(id); }
+        @Override public FinAccountingPeriod selectPreviousPeriod(Long deptId, Date startTime, Long periodId) { return null; }
+        @Override public FinAccountingPeriod selectNextPeriod(Long deptId, Date startTime, Long periodId) { return null; }
+        @Override public int updateStartTimeOnly(Long periodId, Date startTime, Date endTime, String updateBy, String remark) { return 0; }
     }
 
     static class FakeProfitShareServiceForAudit implements com.junsong.finance.service.IFinProfitShareRecordService {
@@ -332,6 +336,7 @@ class FinAuditTrailTest {
         @Override public int updateFinProfitShareRecord(com.junsong.finance.domain.FinProfitShareRecord r) { return 0; }
         @Override public int deleteFinProfitShareRecordByShareIds(Long[] ids) { return 0; }
         @Override public com.junsong.finance.domain.FinProfitShareRecord carryForwardPeriod(Long periodId) { return null; }
+        @Override public void checkProfitConfigReady(Long deptId) { }
     }
 
     static class FakeAccountingPeriodCheckServiceForAudit implements IAccountingPeriodCheckService {

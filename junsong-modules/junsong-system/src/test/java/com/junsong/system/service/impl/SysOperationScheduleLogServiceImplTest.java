@@ -1,6 +1,7 @@
 package com.junsong.system.service.impl;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -8,10 +9,13 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.junsong.system.domain.SysOperationAlertEvent;
 import com.junsong.system.domain.SysOperationScheduleLog;
+import com.junsong.system.domain.vo.AlertEventQueryParams;
 import com.junsong.system.domain.vo.OperationScheduleDashboardVO;
 import com.junsong.system.domain.vo.OperationScheduleLogVO;
 import com.junsong.system.mapper.SysOperationScheduleLogMapper;
+import com.junsong.system.service.ISysOperationAlertService;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -22,13 +26,15 @@ import static org.junit.jupiter.api.Assertions.*;
 class SysOperationScheduleLogServiceImplTest
 {
     private FakeMapper mapper;
+    private NoOpAlertService alertService;
     private SysOperationScheduleLogServiceImpl service;
 
     @BeforeEach
     void setUp()
     {
         mapper = new FakeMapper();
-        service = new SysOperationScheduleLogServiceImpl(mapper);
+        alertService = new NoOpAlertService();
+        service = new SysOperationScheduleLogServiceImpl(mapper, alertService);
     }
 
     // ==================== start 测试 ====================
@@ -338,6 +344,36 @@ class SysOperationScheduleLogServiceImplTest
         {
             selectRecentFailuresCalled = true;
             return recentFailures;
+        }
+    }
+
+    /**
+     * R25 告警服务 no-op fake：构造签名变化后需要注入，但不参与断言。
+     */
+    static class NoOpAlertService implements ISysOperationAlertService
+    {
+        @Override
+        public void raiseAlert(String ruleKey, String dedupKey, String sourceType, String sourceId, String severity, String title, String content)
+        {
+            // no-op
+        }
+
+        @Override
+        public List<SysOperationAlertEvent> listEvents(AlertEventQueryParams params)
+        {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public int ackEvent(Long eventId)
+        {
+            return 0;
+        }
+
+        @Override
+        public int resolveEvent(Long eventId)
+        {
+            return 0;
         }
     }
 }

@@ -10,6 +10,7 @@ import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.member.service.IMemMpRoleModuleService;
+import com.junsong.member.service.IMemMpDashboardService;
 import com.junsong.member.mapper.MemMpDashboardMapper;
 import com.junsong.system.api.domain.SysRole;
 import com.junsong.system.api.model.LoginUser;
@@ -33,6 +34,9 @@ public class MemMpController extends BaseController {
     @Autowired
     private MemMpDashboardMapper dashboardMapper;
 
+    @Autowired
+    private IMemMpDashboardService mpDashboardService;
+
     @GetMapping("/userinfo")
     public AjaxResult getUserInfo() {
         LoginUser loginUser = SecurityUtils.getLoginUser();
@@ -45,6 +49,8 @@ public class MemMpController extends BaseController {
         result.put("username", SecurityUtils.getUsername());
         result.put("deptId", SecurityUtils.getDeptId());
         result.put("roles", loginUser.getRoles());
+        result.put("permissions", loginUser.getPermissions() == null
+                ? Collections.emptySet() : loginUser.getPermissions());
 
         String nickName = loginUser.getSysUser() != null ? loginUser.getSysUser().getNickName() : SecurityUtils.getUsername();
         result.put("nickName", nickName);
@@ -170,5 +176,26 @@ public class MemMpController extends BaseController {
         trend.put("dailyExpense", dailyExpense);
         trend.put("dailySale", dailySale);
         return AjaxResult.success(trend);
+    }
+
+    /**
+     * 移动端首页聚合看板接口（R1-R25 同步）。
+     *
+     * 按当前登录用户的租户 + 授权门店范围聚合：
+     * - member / growth / points / level / segment / activity / finance 分组
+     * - 未授权模块不返回对应分组，避免小程序端误展示
+     * - 保留 /dashboard/stats 与 /dashboard/trend 兼容旧版本
+     *
+     * @return AjaxResult 包含聚合看板数据
+     */
+    @GetMapping("/dashboard/overview")
+    public AjaxResult getDashboardOverview() {
+        LoginUser loginUser = SecurityUtils.getLoginUser();
+        if (loginUser == null) {
+            return AjaxResult.error("未登录");
+        }
+        List<String> modules = getAccessibleModules(loginUser);
+        Map<String, Object> overview = mpDashboardService.getOverview(modules);
+        return AjaxResult.success(overview);
     }
 }

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.member.mapper.MemGrowthRecordMapper">
+
+    <resultMap type="com.junsong.member.domain.MemGrowthRecord" id="MemGrowthRecordResult">
+        <id property="recordId" column="record_id"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="memberId" column="member_id"/>
+        <result property="memberNo" column="member_no"/>
+        <result property="memberName" column="member_name"/>
+        <result property="sourceType" column="source_type"/>
+        <result property="sourceId" column="source_id"/>
+        <result property="dedupKey" column="dedup_key"/>
+        <result property="growthChange" column="growth_change"/>
+        <result property="balance" column="balance"/>
+        <result property="beforeLevel" column="before_level"/>
+        <result property="afterLevel" column="after_level"/>
+        <result property="remark" column="remark"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <sql id="selectGrowthRecordVo">
+        select record_id, tenant_id, dept_id, member_id, member_no, member_name,
+               source_type, source_id, dedup_key, growth_change, balance,
+               before_level, after_level, remark, create_by, create_time
+        from mem_growth_record
+    </sql>
+
+    <select id="selectGrowthRecordList" parameterType="com.junsong.member.domain.MemGrowthRecord" resultMap="MemGrowthRecordResult">
+        <include refid="selectGrowthRecordVo"/>
+        <where>
+            <if test="memberId != null">
+                AND member_id = #{memberId}
+            </if>
+            <if test="memberNo != null and memberNo != ''">
+                AND member_no like concat('%', #{memberNo}, '%')
+            </if>
+            <if test="memberName != null and memberName != ''">
+                AND member_name like concat('%', #{memberName}, '%')
+            </if>
+            <if test="sourceType != null and sourceType != ''">
+                AND source_type = #{sourceType}
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                AND create_time &gt;= #{params.beginTime}
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                AND create_time &lt; DATE_ADD(#{params.endTime}, INTERVAL 1 DAY)
+            </if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <insert id="insertGrowthRecord" parameterType="com.junsong.member.domain.MemGrowthRecord" useGeneratedKeys="true" keyProperty="recordId">
+        insert into mem_growth_record (
+            tenant_id, dept_id, member_id, member_no, member_name,
+            source_type, source_id, dedup_key, growth_change, balance,
+            before_level, after_level, remark, create_by, create_time
+        ) values (
+            #{tenantId}, #{deptId}, #{memberId}, #{memberNo}, #{memberName},
+            #{sourceType}, #{sourceId}, #{dedupKey}, #{growthChange}, #{balance},
+            #{beforeLevel}, #{afterLevel}, #{remark}, #{createBy}, sysdate()
+        )
+    </insert>
+
+    <select id="selectByDedupKey" parameterType="String" resultMap="MemGrowthRecordResult">
+        <include refid="selectGrowthRecordVo"/>
+        where dedup_key = #{dedupKey}
+        limit 1
+    </select>
+
+    <select id="selectLatestBalanceByMemberId" parameterType="Long" resultType="Long">
+        select balance from mem_growth_record
+        where member_id = #{memberId}
+        order by create_time desc, record_id desc
+        limit 1
+    </select>
+
+</mapper>

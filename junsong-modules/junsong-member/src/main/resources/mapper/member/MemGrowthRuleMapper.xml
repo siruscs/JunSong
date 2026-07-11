@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.member.mapper.MemGrowthRuleMapper">
+
+    <resultMap type="com.junsong.member.domain.MemGrowthRule" id="MemGrowthRuleResult">
+        <id property="ruleId" column="rule_id"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="signInPoints" column="sign_in_points"/>
+        <result property="signInGrowth" column="sign_in_growth"/>
+        <result property="saleGrowthRatio" column="sale_growth_ratio"/>
+        <result property="decayEnabled" column="decay_enabled"/>
+        <result property="inactiveDays" column="inactive_days"/>
+        <result property="decayRatio" column="decay_ratio"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="selectGrowthRuleVo">
+        select rule_id, tenant_id, sign_in_points, sign_in_growth, sale_growth_ratio,
+               decay_enabled, inactive_days, decay_ratio, create_by, create_time, update_by, update_time
+        from mem_growth_rule
+    </sql>
+
+    <select id="selectGrowthRuleByTenantId" parameterType="Long" resultMap="MemGrowthRuleResult">
+        <include refid="selectGrowthRuleVo"/>
+        where tenant_id = #{tenantId}
+        limit 1
+    </select>
+
+    <select id="selectDecayEnabledRules" resultMap="MemGrowthRuleResult">
+        <include refid="selectGrowthRuleVo"/>
+        where decay_enabled = '1'
+    </select>
+
+    <insert id="insertGrowthRule" parameterType="com.junsong.member.domain.MemGrowthRule" useGeneratedKeys="true" keyProperty="ruleId">
+        insert into mem_growth_rule (
+            tenant_id, sign_in_points, sign_in_growth, sale_growth_ratio,
+            decay_enabled, inactive_days, decay_ratio, create_by, create_time
+        ) values (
+            #{tenantId}, #{signInPoints}, #{signInGrowth}, #{saleGrowthRatio},
+            #{decayEnabled}, #{inactiveDays}, #{decayRatio}, #{createBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateGrowthRule" parameterType="com.junsong.member.domain.MemGrowthRule">
+        update mem_growth_rule
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="signInPoints != null">sign_in_points = #{signInPoints},</if>
+            <if test="signInGrowth != null">sign_in_growth = #{signInGrowth},</if>
+            <if test="saleGrowthRatio != null">sale_growth_ratio = #{saleGrowthRatio},</if>
+            <if test="decayEnabled != null">decay_enabled = #{decayEnabled},</if>
+            <if test="inactiveDays != null">inactive_days = #{inactiveDays},</if>
+            <if test="decayRatio != null">decay_ratio = #{decayRatio},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where rule_id = #{ruleId}
+    </update>
+
+</mapper>

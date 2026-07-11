@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.FinanceReceivableCollectionMapper">
+
+    <resultMap type="com.junsong.finance.domain.FinanceReceivableCollection" id="CollectionResult">
+        <id property="collectionId" column="collection_id" />
+        <result property="saleId" column="sale_id" />
+        <result property="saleNo" column="sale_no" />
+        <result property="deptId" column="dept_id" />
+        <result property="memberId" column="member_id" />
+        <result property="customerName" column="customer_name" />
+        <result property="saleAmount" column="sale_amount" />
+        <result property="paidAmount" column="paid_amount" />
+        <result property="unpaidAmount" column="unpaid_amount" />
+        <result property="ageDays" column="age_days" />
+        <result property="ageBucket" column="age_bucket" />
+        <result property="collectionStatus" column="collection_status" />
+        <result property="priorityLevel" column="priority_level" />
+        <result property="ownerId" column="owner_id" />
+        <result property="ownerName" column="owner_name" />
+        <result property="promisedPayDate" column="promised_pay_date" />
+        <result property="promisedAmount" column="promised_amount" />
+        <result property="nextFollowTime" column="next_follow_time" />
+        <result property="lastFollowTime" column="last_follow_time" />
+        <result property="followCount" column="follow_count" />
+        <result property="sourceTaskId" column="source_task_id" />
+        <result property="tenantId" column="tenant_id" />
+        <result property="delFlag" column="del_flag" />
+        <result property="createBy" column="create_by" />
+        <result property="createTime" column="create_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="updateTime" column="update_time" />
+        <result property="remark" column="remark" />
+    </resultMap>
+
+    <resultMap type="com.junsong.finance.domain.vo.ReceivableCollectionRowVO" id="CollectionRowResult">
+        <id property="collectionId" column="collection_id" />
+        <result property="saleId" column="sale_id" />
+        <result property="saleNo" column="sale_no" />
+        <result property="deptId" column="dept_id" />
+        <result property="deptName" column="dept_name" />
+        <result property="memberId" column="member_id" />
+        <result property="customerName" column="customer_name" />
+        <result property="saleAmount" column="sale_amount" />
+        <result property="paidAmount" column="paid_amount" />
+        <result property="unpaidAmount" column="unpaid_amount" />
+        <result property="ageDays" column="age_days" />
+        <result property="ageBucket" column="age_bucket" />
+        <result property="collectionStatus" column="collection_status" />
+        <result property="priorityLevel" column="priority_level" />
+        <result property="ownerId" column="owner_id" />
+        <result property="ownerName" column="owner_name" />
+        <result property="promisedPayDate" column="promised_pay_date" />
+        <result property="promisedAmount" column="promised_amount" />
+        <result property="nextFollowTime" column="next_follow_time" />
+        <result property="lastFollowTime" column="last_follow_time" />
+        <result property="followCount" column="follow_count" />
+    </resultMap>
+
+    <sql id="collectionColumns">
+        c.collection_id, c.sale_id, c.sale_no, c.dept_id, d.dept_name, c.member_id, c.customer_name,
+        c.sale_amount, c.paid_amount, c.unpaid_amount, c.age_days, c.age_bucket, c.collection_status,
+        c.priority_level, c.owner_id, c.owner_name, c.promised_pay_date, c.promised_amount,
+        c.next_follow_time, c.last_follow_time, c.follow_count
+    </sql>
+
+    <select id="selectById" parameterType="Long" resultMap="CollectionResult">
+        select *
+        from finance_receivable_collection
+        where collection_id = #{collectionId}
+          and del_flag = '0'
+    </select>
+
+    <select id="selectBySaleId" parameterType="Long" resultMap="CollectionResult">
+        select *
+        from finance_receivable_collection
+        where sale_id = #{saleId}
+          and del_flag = '0'
+        limit 1
+    </select>
+
+    <select id="selectDashboardRows" parameterType="com.junsong.finance.domain.vo.ReceivableCollectionSyncParams" resultMap="CollectionRowResult">
+        select <include refid="collectionColumns"/>
+        from finance_receivable_collection c
+        left join sys_dept d on c.dept_id = d.dept_id
+        <where>
+            c.del_flag = '0'
+            <if test="deptId != null">and c.dept_id = #{deptId}</if>
+            <if test="deptIds != null and deptIds.size() > 0">
+                and c.dept_id in
+                <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">
+                    #{deptId}
+                </foreach>
+            </if>
+        </where>
+        order by c.priority_level desc, c.age_days desc, c.unpaid_amount desc
+    </select>
+
+    <select id="selectList" parameterType="com.junsong.finance.domain.vo.ReceivableCollectionSyncParams" resultMap="CollectionRowResult">
+        select <include refid="collectionColumns"/>
+        from finance_receivable_collection c
+        left join sys_dept d on c.dept_id = d.dept_id
+        <where>
+            c.del_flag = '0'
+            <if test="deptId != null">and c.dept_id = #{deptId}</if>
+            <if test="deptIds != null and deptIds.size() > 0">
+                and c.dept_id in
+                <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">
+                    #{deptId}
+                </foreach>
+            </if>
+            <if test="collectionStatus != null and collectionStatus != ''">and c.collection_status = #{collectionStatus}</if>
+            <if test="ageBucket != null and ageBucket != ''">and c.age_bucket = #{ageBucket}</if>
+            <if test="priorityLevel != null and priorityLevel != ''">and c.priority_level = #{priorityLevel}</if>
+            <if test="keyword != null and keyword != ''">
+                and (c.sale_no like concat('%', #{keyword}, '%') or c.customer_name like concat('%', #{keyword}, '%'))
+            </if>
+        </where>
+        order by c.next_follow_time is null, c.next_follow_time asc, c.age_days desc
+    </select>
+
+    <select id="selectUnpaidSalesForSync" parameterType="com.junsong.finance.domain.vo.ReceivableCollectionSyncParams" resultMap="CollectionRowResult">
+        select null as collection_id,
+               r.sale_id,
+               r.sale_no,
+               r.dept_id,
+               d.dept_name,
+               r.member_id,
+               coalesce(r.member_name, r.member_no, r.sale_no) as customer_name,
+               r.sale_amount,
+               coalesce(r.paid_amount, 0) as paid_amount,
+               r.sale_amount - coalesce(r.paid_amount, 0) as unpaid_amount,
+               datediff(curdate(), date(r.sale_date)) as age_days,
+               case
+                 when datediff(curdate(), date(r.sale_date)) &lt;= 7 then 'AGE_0_7'
+                 when datediff(curdate(), date(r.sale_date)) &lt;= 14 then 'AGE_8_14'
+                 when datediff(curdate(), date(r.sale_date)) &lt;= 30 then 'AGE_15_30'
+                 else 'AGE_30_PLUS'
+               end as age_bucket,
+               'PENDING' as collection_status,
+               case
+                 when datediff(curdate(), date(r.sale_date)) &gt; 30 or (r.sale_amount - coalesce(r.paid_amount, 0)) &gt;= 5000 then 'CRITICAL'
+                 when datediff(curdate(), date(r.sale_date)) &gt; 14 or (r.sale_amount - coalesce(r.paid_amount, 0)) &gt;= 2000 then 'HIGH'
+                 when datediff(curdate(), date(r.sale_date)) &gt; 7 or (r.sale_amount - coalesce(r.paid_amount, 0)) &gt;= 500 then 'MEDIUM'
+                 else 'LOW'
+               end as priority_level,
+               null as owner_id,
+               null as owner_name,
+               null as promised_pay_date,
+               null as promised_amount,
+               null as next_follow_time,
+               null as last_follow_time,
+               0 as follow_count
+        from fin_sale_record r
+        left join sys_dept d on r.dept_id = d.dept_id
+        <where>
+            r.del_flag = '0'
+            and r.sale_amount &gt; coalesce(r.paid_amount, 0)
+            <if test="deptId != null">and r.dept_id = #{deptId}</if>
+            <if test="deptIds != null and deptIds.size() > 0">
+                and r.dept_id in
+                <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">
+                    #{deptId}
+                </foreach>
+            </if>
+            <if test="minAgeDays != null">and datediff(curdate(), date(r.sale_date)) &gt;= #{minAgeDays}</if>
+        </where>
+        order by age_days desc, unpaid_amount desc
+    </select>
+
+    <insert id="insertCollection" parameterType="com.junsong.finance.domain.FinanceReceivableCollection" useGeneratedKeys="true" keyProperty="collectionId">
+        insert into finance_receivable_collection
+        (sale_id, sale_no, dept_id, member_id, customer_name, sale_amount, paid_amount, unpaid_amount,
+         age_days, age_bucket, collection_status, priority_level, owner_id, owner_name, promised_pay_date,
+         promised_amount, next_follow_time, last_follow_time, follow_count, source_task_id, tenant_id,
+         del_flag, create_by, create_time, remark)
+        values
+        (#{saleId}, #{saleNo}, #{deptId}, #{memberId}, #{customerName}, #{saleAmount}, #{paidAmount}, #{unpaidAmount},
+         #{ageDays}, #{ageBucket}, #{collectionStatus}, #{priorityLevel}, #{ownerId}, #{ownerName}, #{promisedPayDate},
+         #{promisedAmount}, #{nextFollowTime}, #{lastFollowTime}, #{followCount}, #{sourceTaskId}, #{tenantId},
+         coalesce(#{delFlag}, '0'), #{createBy}, #{createTime}, #{remark})
+    </insert>
+
+    <update id="updateCollection" parameterType="com.junsong.finance.domain.FinanceReceivableCollection">
+        update finance_receivable_collection
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="collectionStatus != null and collectionStatus != ''">collection_status = #{collectionStatus},</if>
+            <if test="promisedPayDate != null">promised_pay_date = #{promisedPayDate},</if>
+            <if test="promisedAmount != null">promised_amount = #{promisedAmount},</if>
+            <if test="nextFollowTime != null">next_follow_time = #{nextFollowTime},</if>
+            <if test="lastFollowTime != null">last_follow_time = #{lastFollowTime},</if>
+            <if test="followCount != null">follow_count = #{followCount},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where collection_id = #{collectionId}
+    </update>
+
+    <insert id="insertLog" parameterType="com.junsong.finance.domain.FinanceReceivableCollectionLog" useGeneratedKeys="true" keyProperty="logId">
+        insert into finance_receivable_collection_log
+        (collection_id, old_status, new_status, follow_note, promised_pay_date, promised_amount,
+         next_follow_time, operator_id, operator_name, tenant_id, create_time)
+        values
+        (#{collectionId}, #{oldStatus}, #{newStatus}, #{followNote}, #{promisedPayDate}, #{promisedAmount},
+         #{nextFollowTime}, #{operatorId}, #{operatorName}, #{tenantId}, #{createTime})
+    </insert>
+
+    <update id="refreshCollectionAmounts">
+        update finance_receivable_collection c
+        join fin_sale_record r on c.sale_id = r.sale_id
+        set c.paid_amount = coalesce(r.paid_amount, 0),
+            c.unpaid_amount = r.sale_amount - coalesce(r.paid_amount, 0),
+            c.collection_status = case
+                when r.sale_amount - coalesce(r.paid_amount, 0) &lt;= 0 then 'PAID'
+                else c.collection_status
+            end
+        where c.collection_id = #{collectionId}
+    </update>
+</mapper>

@@ -120,7 +120,6 @@ security:
       - /workflow/health/**
       - /open/v3/api-docs
       - /open/swagger-ui/**
-      - /open/internal/**
       - /openapi/v1/**/**
       - /openapi/v2/**/**
       - /openapi/latest/**/**

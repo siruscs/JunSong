@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.system.mapper.SysDataQualityMapper">
+
+	<!-- 销售记录缺少门店/部门 -->
+	<select id="countFinanceSaleWithoutDept" resultType="java.lang.Long">
+		SELECT COUNT(*) FROM fin_sale_record WHERE dept_id IS NULL
+	</select>
+
+	<!-- 缴款记录缺销售单 -->
+	<select id="countFinancePaymentWithoutSale" resultType="java.lang.Long">
+		SELECT COUNT(*) FROM fin_sale_payment WHERE sale_id IS NULL
+	</select>
+
+	<!-- 逾期应收缺负责人/跟进人：非初始账龄且未分配负责人 -->
+	<select id="countFinanceReceivableOverdueWithoutOwner" resultType="java.lang.Long">
+		SELECT COUNT(*) FROM finance_receivable_collection
+		WHERE age_bucket != 'AGE_0_7'
+		  AND (owner_id IS NULL OR owner_id = 0)
+	</select>
+
+	<!-- 会员缺可识别联系方式（手机号为空） -->
+	<select id="countMemberWithoutPhoneAndOpenid" resultType="java.lang.Long">
+		SELECT COUNT(*) FROM mem_member
+		WHERE phone IS NULL OR phone = ''
+	</select>
+
+	<!-- 已执行增长动作缺效果统计：已执行但三项效果指标均为 0 -->
+	<select id="countMemberGrowthActionWithoutEffect" resultType="java.lang.Long">
+		SELECT COUNT(*) FROM mem_growth_action_member
+		WHERE execute_time IS NOT NULL
+		  AND repurchased = '0'
+		  AND signed_in = '0'
+		  AND growth_increased = '0'
+	</select>
+
+	<!-- 库存当前结存为负 -->
+	<select id="countNegativeStockPosition" resultType="java.lang.Long">
+		SELECT COUNT(*) FROM fin_stock_position WHERE quantity &lt; 0
+	</select>
+
+	<!-- 菜单组件为空 -->
+	<select id="countSystemMenuComponentEmpty" resultType="java.lang.Long">
+		SELECT COUNT(*) FROM sys_menu WHERE menu_type = 'C' AND (component IS NULL OR component = '')
+	</select>
+
+</mapper>

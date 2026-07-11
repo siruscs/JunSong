@@ -28,8 +28,14 @@ public final class OpenApiErrorCodes
     /** AppKey 不存在或已停用 */
     public static final String AUTH_KEY_DISABLED = "OPEN_AUTH_KEY_DISABLED";
 
+    /** 认证上下文缺失必要字段（appId/tenantId/keyType） */
+    public static final String AUTH_CONTEXT_INVALID = "OPEN_AUTH_CONTEXT_INVALID";
+
     // ── 限流类（429） ──────────────────────────────────
 
     /** 日调用配额已用尽 */
     public static final String RATE_LIMIT_EXCEEDED = "OPEN_RATE_LIMIT_EXCEEDED";
+
+    /** 开放API日额度已用尽 */
+    public static final String QUOTA_EXCEEDED = "OPEN_QUOTA_EXCEEDED";
 }

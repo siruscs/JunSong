@@ -153,11 +153,7 @@
         <el-table-column label="AppKey" prop="appKey" :show-overflow-tooltip="true" />
         <el-table-column label="AppSecret" width="200">
           <template #default="scope">
-            <span v-if="scope.row._showSecret">{{ scope.row.appSecret }}</span>
-            <span v-else>••••••••••••</span>
-            <el-button link type="primary" @click="scope.row._showSecret = !scope.row._showSecret">
-              {{ scope.row._showSecret ? '隐藏' : '显示' }}
-            </el-button>
+            <span>{{ scope.row.appSecret }}</span>
           </template>
         </el-table-column>
         <el-table-column label="类型" width="100" align="center">
@@ -299,7 +295,7 @@ function handleKeys(row: any) {
   keysDialog.visible = true
   keysDialog.loading = true
   listAppKeys(row.id).then(res => {
-    keysDialog.keys = (res.data || []).map((k: any) => ({ ...k, _showSecret: false }))
+    keysDialog.keys = res.data || []
   }).finally(() => { keysDialog.loading = false })
 }
 

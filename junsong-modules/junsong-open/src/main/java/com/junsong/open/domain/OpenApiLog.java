@@ -37,6 +37,21 @@ public class OpenApiLog extends BaseEntity
     @Excel(name = "响应耗时(ms)")
     private Integer responseTime;
 
+    @Excel(name = "请求ID")
+    private String requestId;
+
+    @Excel(name = "错误码")
+    private String errorCode;
+
+    @Excel(name = "调用状态")
+    private String status;
+
+    @Excel(name = "Key类型")
+    private String keyType;
+
+    @Excel(name = "响应摘要")
+    private String responseMessage;
+
     public Long getId()
     {
         return id;
@@ -125,5 +140,55 @@ public class OpenApiLog extends BaseEntity
     public void setResponseTime(Integer responseTime)
     {
         this.responseTime = responseTime;
+    }
+
+    public String getRequestId()
+    {
+        return requestId;
+    }
+
+    public void setRequestId(String requestId)
+    {
+        this.requestId = requestId;
+    }
+
+    public String getErrorCode()
+    {
+        return errorCode;
+    }
+
+    public void setErrorCode(String errorCode)
+    {
+        this.errorCode = errorCode;
+    }
+
+    public String getStatus()
+    {
+        return status;
+    }
+
+    public void setStatus(String status)
+    {
+        this.status = status;
+    }
+
+    public String getKeyType()
+    {
+        return keyType;
+    }
+
+    public void setKeyType(String keyType)
+    {
+        this.keyType = keyType;
+    }
+
+    public String getResponseMessage()
+    {
+        return responseMessage;
+    }
+
+    public void setResponseMessage(String responseMessage)
+    {
+        this.responseMessage = responseMessage;
     }
 }

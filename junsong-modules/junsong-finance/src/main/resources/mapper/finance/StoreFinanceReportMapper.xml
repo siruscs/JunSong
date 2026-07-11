@@ -299,4 +299,152 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         group by r.dept_id
     </select>
 
+    <!-- R8-C: 各门店实收现金（按 payment_date） -->
+    <select id="selectCashInByDepts" resultType="java.util.HashMap">
+        select p.dept_id as deptId, ifnull(sum(p.payment_amount), 0) as cashInAmount
+        from fin_sale_payment p
+        <where>
+            p.del_flag = '0'
+            and p.dept_id in
+            <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">#{deptId}</foreach>
+            <if test="startTime != null"> and p.payment_date &gt;= #{startTime} </if>
+            <if test="endTime != null"> and p.payment_date &lt;= #{endTime} </if>
+        </where>
+        group by p.dept_id
+    </select>
+
+    <!-- R8-C: 各门店已核销费用（按 expense_date, status='1'） -->
+    <select id="selectVerifiedExpenseByDepts" resultType="java.util.HashMap">
+        select e.dept_id as deptId, ifnull(sum(e.expense_amount), 0) as verifiedExpenseAmount
+        from fin_expense e
+        <where>
+            e.del_flag = '0'
+            and e.status = '1'
+            and e.dept_id in
+            <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">#{deptId}</foreach>
+            <if test="startTime != null"> and e.expense_date &gt;= #{startTime} </if>
+            <if test="endTime != null"> and e.expense_date &lt;= #{endTime} </if>
+        </where>
+        group by e.dept_id
+    </select>
+
+    <!-- R8-C: 各门店高优先级复盘任务数及主要原因（severity=HIGH 且 PENDING/IN_PROGRESS） -->
+    <select id="selectHighRiskTaskCountByDepts" resultType="java.util.HashMap">
+        select t.dept_id as deptId,
+               count(1) as highRiskCount,
+               max(t.reason) as primaryReason
+        from finance_review_task t
+        <where>
+            t.del_flag = '0'
+            and t.status in ('PENDING', 'IN_PROGRESS')
+            and t.severity = 'HIGH'
+            and t.dept_id in
+            <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">#{deptId}</foreach>
+        </where>
+        group by t.dept_id
+    </select>
+
+    <!-- R11-FIX-C: 各门店按周期的高优先级复盘任务数（按 create_time 落入周期） -->
+    <select id="selectHighRiskTaskCountByDeptsAndPeriod" resultType="java.util.Map">
+        select
+            t.dept_id as deptId,
+            <choose>
+                <when test="groupBy == 'month'">
+                    DATE_FORMAT(t.create_time, '%Y-%m') as periodLabel
+                </when>
+                <otherwise>
+                    CONCAT(YEARWEEK(t.create_time, 1) DIV 100, '-W', LPAD(YEARWEEK(t.create_time, 1) MOD 100, 2, '0')) as periodLabel
+                </otherwise>
+            </choose>,
+            count(1) as highRiskCount
+        from finance_review_task t
+        <where>
+            t.del_flag = '0'
+            and t.status in ('PENDING', 'IN_PROGRESS')
+            and t.severity = 'HIGH'
+            and t.dept_id in
+            <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">#{deptId}</foreach>
+            <if test="startTime != null">
+                and t.create_time &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                and t.create_time &lt;= #{endTime}
+            </if>
+        </where>
+        group by t.dept_id, periodLabel
+    </select>
+
+    <!--
+        R11-C + R11-FIX-B: 各门店按周期健康趋势数据
+        改为 UNION ALL 全外连接销售周期与费用周期，确保只有费用没有销售的周期也会出现。
+        外层按 deptId+periodLabel 汇总，避免漏掉"没卖货但花钱"的周期。
+    -->
+    <select id="selectHealthTrendByDepts" resultType="java.util.Map">
+        select
+            t.deptId as deptId,
+            t.deptName as deptName,
+            t.periodLabel as periodLabel,
+            COALESCE(SUM(t.totalSales), 0) as totalSales,
+            COALESCE(SUM(t.totalExpense), 0) as totalExpense
+        from (
+            -- 销售周期
+            select
+                sr.dept_id as deptId,
+                d.dept_name as deptName,
+                <choose>
+                    <when test="groupBy == 'month'">
+                        DATE_FORMAT(sr.sale_date, '%Y-%m') as periodLabel
+                    </when>
+                    <otherwise>
+                        CONCAT(YEARWEEK(sr.sale_date, 1) DIV 100, '-W', LPAD(YEARWEEK(sr.sale_date, 1) MOD 100, 2, '0')) as periodLabel
+                    </otherwise>
+                </choose>,
+                SUM(sr.total_amount) as totalSales,
+                0 as totalExpense
+            from fin_sale_record sr
+            join sys_dept d on d.dept_id = sr.dept_id
+            where sr.del_flag = '0'
+                and sr.dept_id in
+                <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">#{deptId}</foreach>
+                <if test="startTime != null">
+                    and sr.sale_date &gt;= #{startTime}
+                </if>
+                <if test="endTime != null">
+                    and sr.sale_date &lt;= #{endTime}
+                </if>
+            group by sr.dept_id, d.dept_name, periodLabel
+
+            union all
+
+            -- 费用周期（补齐只有费用没有销售的周期）
+            select
+                e.dept_id as deptId,
+                d2.dept_name as deptName,
+                <choose>
+                    <when test="groupBy == 'month'">
+                        DATE_FORMAT(e.expense_date, '%Y-%m') as periodLabel
+                    </when>
+                    <otherwise>
+                        CONCAT(YEARWEEK(e.expense_date, 1) DIV 100, '-W', LPAD(YEARWEEK(e.expense_date, 1) MOD 100, 2, '0')) as periodLabel
+                    </otherwise>
+                </choose>,
+                0 as totalSales,
+                SUM(e.expense_amount) as totalExpense
+            from fin_expense e
+            join sys_dept d2 on d2.dept_id = e.dept_id
+            where e.del_flag = '0'
+                and e.dept_id in
+                <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">#{deptId}</foreach>
+                <if test="startTime != null">
+                    and e.expense_date &gt;= #{startTime}
+                </if>
+                <if test="endTime != null">
+                    and e.expense_date &lt;= #{endTime}
+                </if>
+            group by e.dept_id, d2.dept_name, periodLabel
+        ) t
+        group by t.deptId, t.deptName, t.periodLabel
+        order by t.deptId, t.periodLabel
+    </select>
+
 </mapper>

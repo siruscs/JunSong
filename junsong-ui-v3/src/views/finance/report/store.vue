@@ -113,25 +113,74 @@
           <ul class="suggestions-list"><li v-for="(s, idx) in portfolioData.suggestions" :key="idx">{{ s }}</li></ul>
         </div>
 
+        <!-- R11: 健康分分布 -->
+        <div v-if="portfolioData.storeCount > 0" class="health-distribution">
+          <span class="health-dist-item good">良好 {{ healthDistCount.GOOD || 0 }}</span>
+          <span class="health-dist-item watch">关注 {{ healthDistCount.WATCH || 0 }}</span>
+          <span class="health-dist-item risk">风险 {{ healthDistCount.RISK || 0 }}</span>
+          <el-button type="primary" size="small" :loading="generateTaskLoading" @click="handleGenerateHealthTasks" style="margin-left:auto">生成复盘任务</el-button>
+        </div>
+
         <!-- 门店健康矩阵 -->
         <el-card v-if="portfolioData.stores && portfolioData.stores.length > 0" class="chart-card" style="margin-bottom:16px">
-          <template #header><span>门店健康矩阵</span></template>
+          <template #header><span>门店健康矩阵（点击门店行可切换到单店复盘）</span></template>
           <div style="overflow-x:auto">
-            <el-table :data="portfolioData.stores" size="small" stripe>
+            <el-table :data="portfolioData.stores" size="small" stripe
+                      :row-class-name="storeRowClassName"
+                      @row-click="handleStoreRowClick">
               <el-table-column prop="deptName" label="门店" min-width="120" />
-              <el-table-column label="健康度" width="100" align="center">
+              <el-table-column label="健康分" width="90" align="center">
+                <template #default="{ row }">
+                  <span :class="'score-' + (row.healthLevel || '').toLowerCase()">{{ row.healthScore }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="等级" width="80" align="center">
                 <template #default="{ row }">
                   <el-tag :type="healthTagType(row.healthLevel)" size="small">{{ row.healthLevel }}</el-tag>
                 </template>
               </el-table-column>
               <el-table-column prop="totalSales" label="销售额" width="120" align="right"><template #default="{ row }">&yen;{{ formatNum(row.totalSales) }}</template></el-table-column>
-              <el-table-column prop="totalExpense" label="费用" width="120" align="right"><template #default="{ row }">&yen;{{ formatNum(row.totalExpense) }}</template></el-table-column>
-              <el-table-column prop="operatingProfit" label="利润" width="120" align="right"><template #default="{ row }">&yen;{{ formatNum(row.operatingProfit) }}</template></el-table-column>
               <el-table-column prop="operatingProfitRate" label="利润率" width="90" align="right"><template #default="{ row }">{{ formatNum(row.operatingProfitRate) }}%</template></el-table-column>
               <el-table-column prop="unverifiedAmount" label="未核销" width="120" align="right"><template #default="{ row }">&yen;{{ formatNum(row.unverifiedAmount) }}</template></el-table-column>
+              <el-table-column label="扣分原因" min-width="180">
+                <template #default="{ row }">
+                  <template v-if="row.healthFactors && row.healthFactors.length">
+                    <el-tag v-for="f in row.healthFactors.slice(0, 2)" :key="f.factorCode" :type="severityTagType(f.severity)" size="small" style="margin-right:4px">{{ f.factorName }}</el-tag>
+                    <el-button v-if="row.healthFactors.length > 2" link size="small" @click.stop="showFactorDrawer(row)">+{{ row.healthFactors.length - 2 }}</el-button>
+                  </template>
+                  <span v-else class="text-muted">无</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="100" align="center">
+                <template #default="{ row }">
+                  <el-button v-if="row.healthFactors && row.healthFactors.length" link type="primary" size="small" @click.stop="showFactorDrawer(row)">明细</el-button>
+                </template>
+              </el-table-column>
             </el-table>
           </div>
         </el-card>
+
+        <!-- R11: 扣分因子明细抽屉 -->
+        <el-drawer v-model="factorDrawerVisible" title="健康分扣分明细" size="480px">
+          <div v-if="factorDrawerRow" class="factor-drawer-content">
+            <div class="factor-drawer-header">
+              <strong>{{ factorDrawerRow.deptName }}</strong>
+              <span :class="'score-' + (factorDrawerRow.healthLevel || '').toLowerCase()">
+                健康分 {{ factorDrawerRow.healthScore }}（{{ factorDrawerRow.healthLevel }}）
+              </span>
+            </div>
+            <p v-if="factorDrawerRow.healthSummary" class="factor-summary">{{ factorDrawerRow.healthSummary }}</p>
+            <div v-for="f in factorDrawerRow.healthFactors" :key="f.factorCode" class="factor-item">
+              <div class="factor-item-head">
+                <el-tag :type="severityTagType(f.severity)" size="small">{{ f.severity }}</el-tag>
+                <span class="factor-name">{{ f.factorName }}</span>
+                <span class="factor-deduct">-{{ f.deductedScore }}分</span>
+              </div>
+              <p class="factor-reason">{{ f.reason }}</p>
+              <p class="factor-suggestion">建议：{{ f.suggestion }}</p>
+            </div>
+          </div>
+        </el-drawer>
 
         <!-- 复盘任务清单 -->
         <el-card v-if="portfolioData.reviewTasks && portfolioData.reviewTasks.length > 0" class="chart-card">
@@ -158,7 +207,7 @@
 </template>
 
 <script>
-import { getStoreOperationSummary, getAuthorizedStorePortfolio } from "@/api/finance/storeReport";
+import { getStoreOperationSummary, getAuthorizedStorePortfolio, generateStoreHealthReviewTasks } from "@/api/finance/storeReport";
 import { useUserStore } from "@/stores/user";
 import { useSettingsStore } from "@/stores/settings";
 
@@ -178,12 +227,21 @@ export default {
       // 多店
       multiQuery: { deptIds: [], startTime: null, endTime: null, timeType: "day" },
       portfolioData: { storeCount: 0, totalSales: 0, totalExpense: 0, operatingProfit: 0, operatingProfitRate: 0, stores: [], reviewTasks: [], suggestions: [] },
-      multiQueried: false
+      multiQueried: false,
+      // R11: drawer and task generation
+      factorDrawerVisible: false,
+      factorDrawerRow: null,
+      generateTaskLoading: false
     };
   },
   computed: {
     riskStoreCount() {
       return (this.portfolioData.stores || []).filter(s => s.healthLevel === "RISK").length;
+    },
+    healthDistCount() {
+      const counts = { GOOD: 0, WATCH: 0, RISK: 0 };
+      (this.portfolioData.stores || []).forEach(s => { if (counts[s.healthLevel] !== undefined) counts[s.healthLevel]++; });
+      return counts;
     }
   },
   created() {
@@ -246,6 +304,37 @@ export default {
       if (sev === "HIGH") return "danger";
       if (sev === "MEDIUM") return "warning";
       return "info";
+    },
+    storeRowClassName({ row }) {
+      if (row.highRiskCount > 0) return "high-risk-row";
+      if (row.healthLevel === "RISK") return "risk-row";
+      return "";
+    },
+    handleStoreRowClick(row) {
+      if (!row.deptId) return;
+      this.queryParams.deptId = row.deptId;
+      this.hasDept = true;
+      this.activeTab = "single";
+      this.handleQuery();
+    },
+    showFactorDrawer(row) {
+      this.factorDrawerRow = row;
+      this.factorDrawerVisible = true;
+    },
+    handleGenerateHealthTasks() {
+      this.generateTaskLoading = true;
+      generateStoreHealthReviewTasks({
+        deptIds: this.multiQuery.deptIds,
+        startTime: this.multiQuery.startTime,
+        endTime: this.multiQuery.endTime
+      }).then(res => {
+        const d = res.data || {};
+        this.$message.success(`生成复盘任务 ${d.insertedCount || 0} 条，跳过 ${d.skippedCount || 0} 条（已存在）`);
+      }).catch(() => {
+        this.$message.error("生成复盘任务失败");
+      }).finally(() => {
+        this.generateTaskLoading = false;
+      });
     },
     getEmptyData() {
       return { totalSales: 0, totalExpense: 0, operatingProfit: 0, operatingProfitRate: 0, unverifiedExpense: 0, unverifiedAdvance: 0, saleCount: 0, saleQuantity: 0, avgOrderAmount: 0, previousTotalSales: 0, previousTotalExpense: 0, previousOperatingProfit: 0, salesChangeRate: null, expenseChangeRate: null, profitChangeRate: null, suggestions: [], alerts: [], trendRows: [], expenseCategories: [], pendingItems: [] };
@@ -338,5 +427,28 @@ export default {
 .chart-card :deep(.el-card__body) { padding: 14px 16px 18px; }
 .chart-canvas { width: 100%; height: 360px; } .chart-card.wide .chart-canvas { height: 380px; }
 .pending-list-wrap { min-height: 200px; }
+/* R8-C: 多门店对比行样式 */
+:deep(.high-risk-row) { background: rgba(245, 108, 108, 0.08) !important; }
+:deep(.high-risk-row:hover) { background: rgba(245, 108, 108, 0.14) !important; }
+:deep(.risk-row) { background: rgba(230, 162, 60, 0.06) !important; }
+.negative-cashflow { color: #F56C6C; font-weight: 700; }
+.risk-text { color: #E6A23C; font-weight: 600; }
+.action-urgent { color: #F56C6C; font-weight: 600; }
+.text-muted { color: #C0C4CC; }
+/* R11: 健康分分布 */
+.health-distribution { display: flex; align-items: center; gap: 16px; padding: 10px 16px; margin-bottom: 12px; background: #fff; border: 1px solid #ebeef5; border-radius: 8px; }
+.health-dist-item { font-weight: 700; font-size: 14px; }
+.health-dist-item.good { color: #67C23A; } .health-dist-item.watch { color: #E6A23C; } .health-dist-item.risk { color: #F56C6C; }
+.score-good { color: #67C23A; font-weight: 700; } .score-watch { color: #E6A23C; font-weight: 700; } .score-risk { color: #F56C6C; font-weight: 700; }
+/* R11: 因子抽屉 */
+.factor-drawer-content { padding: 0 4px; }
+.factor-drawer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.factor-summary { color: #606266; font-size: 13px; margin-bottom: 16px; padding: 8px 12px; background: #f5f7fa; border-radius: 6px; }
+.factor-item { padding: 12px; margin-bottom: 8px; border: 1px solid #ebeef5; border-radius: 6px; }
+.factor-item-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.factor-name { font-weight: 600; color: #303133; }
+.factor-deduct { margin-left: auto; color: #F56C6C; font-weight: 700; font-size: 13px; }
+.factor-reason { color: #606266; font-size: 13px; margin: 4px 0; }
+.factor-suggestion { color: #909399; font-size: 12px; margin: 0; }
 @media (max-width: 768px) { .chart-grid { grid-template-columns: 1fr; } .chart-card.wide { grid-column: auto; } .chart-canvas, .chart-card.wide .chart-canvas { height: 320px; } }
 </style>

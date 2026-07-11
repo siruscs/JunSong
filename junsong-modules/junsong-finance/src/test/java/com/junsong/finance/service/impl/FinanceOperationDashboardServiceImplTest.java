@@ -293,6 +293,33 @@ class FinanceOperationDashboardServiceImplTest {
         assertEquals(100L, vo.getSalesTopStores().get(0).getDeptId());
     }
 
+    @Test
+    void getOperationDashboard_receivableIndicators() throws Exception {
+        setupAdmin();
+        FakeFinSaleRecordMapper saleMapper = new FakeFinSaleRecordMapper();
+        saleMapper.currentPeriodPayment = new BigDecimal("5000.00");
+        saleMapper.historicalCollected = new BigDecimal("500.00");
+        saleMapper.currentNewReceivable = new BigDecimal("800.00");
+        saleMapper.endingBalance = new BigDecimal("1300.00");
+        saleMapper.overdueCount = 2;
+        FakeFinExpenseMapper expenseMapper = new FakeFinExpenseMapper();
+        FakeFinProfitShareRecordMapper profitMapper = new FakeFinProfitShareRecordMapper();
+        FakeFinAccountingPeriodMapper periodMapper = new FakeFinAccountingPeriodMapper();
+        periodMapper.currentPeriod = new com.junsong.finance.domain.FinAccountingPeriod();
+        periodMapper.currentPeriod.setPeriodId(42L);
+        FakeRemoteUserService remoteUserService = new FakeRemoteUserService(Collections.emptyList());
+
+        FinanceReportServiceImpl svc = createService(saleMapper, expenseMapper, profitMapper, periodMapper, remoteUserService);
+
+        FinanceOperationDashboardVO vo = svc.getOperationDashboard(makeParams(List.of(100L)));
+
+        assertEquals(new BigDecimal("5000.00"), vo.getCurrentPeriodPaymentAmount());
+        assertEquals(new BigDecimal("500.00"), vo.getHistoricalReceivableCollectedAmount());
+        assertEquals(new BigDecimal("800.00"), vo.getCurrentPeriodNewReceivableAmount());
+        assertEquals(new BigDecimal("1300.00"), vo.getEndingReceivableAmount());
+        assertEquals(2, vo.getOverdueReceivableCount());
+    }
+
     // ── Fakes ──
 
     static class FakeRemoteUserService implements RemoteUserService {
@@ -319,11 +346,21 @@ class FinanceOperationDashboardServiceImplTest {
         List<Map<String, Object>> productRank = Collections.emptyList();
         BigDecimal memberSales = BigDecimal.ZERO;
         BigDecimal seckillSales = BigDecimal.ZERO;
+        BigDecimal currentPeriodPayment = BigDecimal.ZERO;
+        BigDecimal historicalCollected = BigDecimal.ZERO;
+        BigDecimal currentNewReceivable = BigDecimal.ZERO;
+        BigDecimal endingBalance = BigDecimal.ZERO;
+        int overdueCount = 0;
 
         @Override public FinSaleRecord selectFinSaleRecordBySaleId(Long saleId) { return null; }
+        @Override public FinSaleRecord selectFinSaleRecordBySaleIdForUpdate(Long saleId) { return selectFinSaleRecordBySaleId(saleId); }
         @Override public List<FinSaleRecord> selectFinSaleRecordList(FinSaleRecord r) { return Collections.emptyList(); }
         @Override public int insertFinSaleRecord(FinSaleRecord r) { return 0; }
         @Override public int updateFinSaleRecord(FinSaleRecord r) { return 0; }
+        @Override public int updatePaidAmountAndStatus(Long saleId, java.math.BigDecimal paidAmount, String status) { return 0; }
+        @Override public java.util.List<FinSaleRecord> selectReceivableList(FinSaleRecord r) { return java.util.Collections.emptyList(); }
+        @Override public int countReceivableByPeriodId(Long deptId, Long periodId) { return 0; }
+        @Override public java.math.BigDecimal sumReceivableByPeriodId(Long deptId, Long periodId) { return java.math.BigDecimal.ZERO; }
         @Override public int deleteFinSaleRecordBySaleId(Long saleId) { return 0; }
         @Override public int deleteFinSaleRecordBySaleIds(Long[] saleIds) { return 0; }
         @Override public List<Map<String, Object>> selectSaleTrendStats(List<Long> deptIds, Date s, Date e) { return saleTrendStats; }
@@ -331,6 +368,7 @@ class FinanceOperationDashboardServiceImplTest {
         @Override public int sumSaleQuantity(List<Long> deptIds, Date s, Date e) { return 0; }
         @Override public FinSaleRecord checkSaleNoUnique(String saleNo) { return null; }
         @Override public int countTodaySales() { return 0; }
+        @Override public int maxTodaySaleSeq() { return 0; }
         @Override public BigDecimal selectTodayTotalSales(List<Long> deptIds) { return todayTotalSales; }
         @Override public BigDecimal selectMonthTotalSales(List<Long> deptIds) { return monthTotalSales; }
         @Override public BigDecimal selectTodayTotalSalesForPrev(List<Long> deptIds) { return BigDecimal.ZERO; }
@@ -339,9 +377,17 @@ class FinanceOperationDashboardServiceImplTest {
         @Override public List<Map<String, Object>> selectProductSalesRank(List<Long> deptIds, Date s, Date e) { return productRank; }
         @Override public BigDecimal selectMemberSales(List<Long> deptIds, Date s, Date e) { return memberSales; }
         @Override public BigDecimal selectSeckillSales(List<Long> deptIds, Date s, Date e) { return seckillSales; }
+        @Override public BigDecimal selectCurrentPeriodPaymentTotal(List<Long> deptIds, Long periodId) { return currentPeriodPayment; }
+        @Override public BigDecimal selectHistoricalReceivableCollected(List<Long> deptIds, Long periodId) { return historicalCollected; }
+        @Override public BigDecimal selectCurrentPeriodNewReceivable(List<Long> deptIds, Long periodId) { return currentNewReceivable; }
+        @Override public BigDecimal selectEndingReceivableBalance(List<Long> deptIds) { return endingBalance; }
+        @Override public int countOverdueReceivable(List<Long> deptIds) { return overdueCount; }
     }
 
     static class FakeFinExpenseMapper implements FinExpenseMapper {
+        @Override public List<FinExpense> selectFinExpenseByExpenseIdsScoped(List<Long> ids, Long tenantId, Long deptId) { return Collections.emptyList(); }
+        @Override public int markExpenseVerified(Long id, Long advanceId, String by, Date time, Long tenantId, Long deptId) { return 1; }
+        @Override public int restoreExpenseUnverified(Long id) { return 1; }
         BigDecimal todayTotalExpense = BigDecimal.ZERO;
         BigDecimal monthTotalExpense = BigDecimal.ZERO;
         BigDecimal expenseTotal = BigDecimal.ZERO;
@@ -361,6 +407,7 @@ class FinanceOperationDashboardServiceImplTest {
         @Override public int deleteFinExpenseByExpenseIds(Long[] ids) { return 0; }
         @Override public FinExpense checkExpenseNoUnique(String no) { return null; }
         @Override public int countTodayExpenses() { return 0; }
+        @Override public int maxTodayExpenseSeq() { return 0; }
         @Override public BigDecimal sumUnverifiedExpenses() { return BigDecimal.ZERO; }
         @Override public BigDecimal sumUnverifiedExpensesByDeptId(Long deptId) { return BigDecimal.ZERO; }
         @Override public BigDecimal sumAllExpenses() { return BigDecimal.ZERO; }
@@ -407,13 +454,16 @@ class FinanceOperationDashboardServiceImplTest {
         @Override public int countUnsettledRecordsByPeriodId(List<Long> deptIds, Long periodId) { return unsettledCount; }
         @Override public List<Map<String, Object>> selectSettlementByDept(List<Long> d, Date s, Date e) { return settlementRows; }
         @Override public BigDecimal selectPaidAmount(List<Long> d, Date s, Date e) { return BigDecimal.ZERO; }
+        @Override public int updateShareTimeByPeriodId(Long periodId, Date shareTime, String updateBy, String remark) { return 0; }
     }
 
     static class FakeFinAccountingPeriodMapper implements FinAccountingPeriodMapper {
+        public FinAccountingPeriod selectPeriodForUpdate(Long id, Long tenantId, Long deptId) { return selectFinAccountingPeriodByPeriodId(id); }
         String periodStatus = null;
+        FinAccountingPeriod currentPeriod = null;
 
         @Override public FinAccountingPeriod selectFinAccountingPeriodByPeriodId(Long id) { return null; }
-        @Override public FinAccountingPeriod selectCurrentPeriodByDeptId(Long deptId) { return null; }
+        @Override public FinAccountingPeriod selectCurrentPeriodByDeptId(Long deptId) { return currentPeriod; }
         @Override public FinAccountingPeriod selectLatestCarriedPeriodByDeptId(Long deptId) { return null; }
         @Override public List<FinAccountingPeriod> selectFinAccountingPeriodList(FinAccountingPeriod p) { return Collections.emptyList(); }
         @Override public int insertFinAccountingPeriod(FinAccountingPeriod p) { return 0; }
@@ -428,6 +478,9 @@ class FinanceOperationDashboardServiceImplTest {
         @Override public BigDecimal selectTotalUnverifiedAdvance(Long p, Long d, Date s, Date e) { return BigDecimal.ZERO; }
         @Override public String selectCurrentPeriodStatusByDeptIds(List<Long> deptIds) { return periodStatus; }
         @Override public FinAccountingPeriod selectPeriodById(Long id) { return null; }
+        @Override public FinAccountingPeriod selectPreviousPeriod(Long deptId, Date startTime, Long periodId) { return null; }
+        @Override public FinAccountingPeriod selectNextPeriod(Long deptId, Date startTime, Long periodId) { return null; }
+        @Override public int updateStartTimeOnly(Long periodId, Date startTime, Date endTime, String updateBy, String remark) { return 0; }
     }
 
     static class FakeFinProfitShareDetailMapper implements FinProfitShareDetailMapper {

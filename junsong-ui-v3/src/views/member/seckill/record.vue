@@ -221,14 +221,16 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="会员编号" prop="memberNo">
-              <el-input v-model="form.memberNo" placeholder="请输入会员编号" @blur="handleMemberSearch" @keyup.enter="handleMemberSearch">
-                <template #append><el-button icon="Search" @click="handleMemberSearch"></el-button></template>
-              </el-input>
+              <MemberSelect
+                v-model="form.memberId"
+                :default-label="form.memberNo ? `${form.memberNo} ${form.memberName || ''}`.trim() : ''"
+                @change="handleMemberChange"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="会员姓名" prop="memberName">
-              <el-input v-model="form.memberName" placeholder="自动获取" disabled />
+              <el-input v-model="form.memberName" placeholder="选择会员后自动填充" disabled />
             </el-form-item>
           </el-col>
         </el-row>
@@ -481,11 +483,13 @@ import { useDict } from "@/composables/useDict"
 import { getDictDefaultValue } from "@/composables/useDict"
 import { listSeckillRecord, getSeckillRecord, delSeckillRecord, addSeckillRecord, updateSeckillRecord, receiveRecord, listSeckill, listActiveSeckill, getSeckillRecordStatistics, listSeckillClaimRecord, batchSeckillForAll } from "@/api/member/seckillRecord"
 import { getMemberByNo } from "@/api/member/member"
+import MemberSelect from "@/components/MemberSelect/index.vue"
 const { download } = useDownload()
 const dict = useDict('finance_payment_method')
 
 export default {
   name: "SeckillRecord",
+  components: { MemberSelect },
   data() {
     return {
       loading: true,
@@ -748,21 +752,15 @@ export default {
         this.calculateAmount()
       }
     },
-    handleMemberSearch() {
-      if (this.form.memberNo) {
-        getMemberByNo(this.form.memberNo).then(response => {
-          if (response.data) {
-            this.form.memberName = response.data.memberName
-          } else {
-            ElMessage.warning("未找到该会员编号（仅限当前机构会员）")
-            this.form.memberId = undefined
-            this.form.memberName = ''
-          }
-        }).catch(() => {
-          ElMessage.error("未找到该会员编号（仅限当前机构会员）")
-          this.form.memberId = undefined
-          this.form.memberName = ''
-        })
+    handleMemberChange(member) {
+      if (member) {
+        this.form.memberId = member.memberId
+        this.form.memberNo = member.memberNo
+        this.form.memberName = member.memberName
+      } else {
+        this.form.memberId = undefined
+        this.form.memberNo = ''
+        this.form.memberName = ''
       }
     },
     calculateAmount() {

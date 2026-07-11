@@ -69,6 +69,30 @@ spring:
                 - Path=/workflow/**
               filters:
                 - StripPrefix=1
+            - id: junsong-open
+              uri: lb://junsong-open
+              predicates:
+                - Path=/open/**
+              filters:
+                - StripPrefix=1
+            - id: junsong-openapi-v1
+              uri: lb://junsong-open
+              predicates:
+                - Path=/openapi/v1/**
+              filters:
+                - StripPrefix=2
+            - id: junsong-openapi-v2
+              uri: lb://junsong-open
+              predicates:
+                - Path=/openapi/v2/**
+              filters:
+                - StripPrefix=2
+            - id: junsong-openapi-latest
+              uri: lb://junsong-open
+              predicates:
+                - Path=/openapi/latest/**
+              filters:
+                - StripPrefix=2
 
 security:
   captcha:

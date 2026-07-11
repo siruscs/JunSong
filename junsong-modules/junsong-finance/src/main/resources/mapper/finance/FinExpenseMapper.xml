@@ -69,6 +69,22 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </where>
     </select>
 
+    <select id="selectFinExpenseByExpenseIdsScoped" resultMap="FinExpenseResult">
+        <include refid="selectFinExpenseVo"/>
+        where e.tenant_id = #{tenantId} and e.dept_id = #{deptId} and e.del_flag = '0' and e.expense_id in
+        <foreach item="id" collection="expenseIds" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <update id="markExpenseVerified">
+        update fin_expense set status='1', advance_id=#{advanceId}, verify_by=#{verifyBy}, verify_time=#{verifyTime}, update_time=sysdate()
+        where expense_id=#{expenseId} and tenant_id=#{tenantId} and dept_id=#{deptId} and status='0' and del_flag='0'
+    </update>
+
+    <update id="restoreExpenseUnverified">
+        update fin_expense set status='0', advance_id=null, verify_by=null, verify_time=null, update_time=sysdate()
+        where expense_id=#{expenseId} and status='1' and del_flag='0'
+    </update>
+
     <select id="checkExpenseNoUnique" parameterType="String" resultMap="FinExpenseResult">
         <include refid="selectFinExpenseVo"/>
         where e.expense_no = #{expenseNo} and e.del_flag = '0'
@@ -80,6 +96,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <where> date(create_time) = curdate()
         and del_flag = '0'
         </where>
+    </select>
+
+    <select id="maxTodayExpenseSeq" resultType="int">
+        select ifnull(max(cast(substring(expense_no, -4) as unsigned)), 0)
+        from fin_expense
+        where expense_no like concat('FY', date_format(now(), '%Y%m%d'), '%')
+        and del_flag = '0'
     </select>
         
     <select id="sumUnverifiedExpenses" resultType="java.math.BigDecimal">

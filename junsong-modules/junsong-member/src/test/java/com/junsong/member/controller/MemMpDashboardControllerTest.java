@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.member.mapper.MemMpDashboardMapper;
+import com.junsong.member.service.IMemMpDashboardService;
 import com.junsong.member.service.IMemMpRoleModuleService;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -17,20 +18,24 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * 验证趋势数据使用批量查询（一次 SQL 返回 7 天结果），
  * 替代原来的 21 次逐日查询。同时验证部门过滤和响应格式不变。
+ * 同时覆盖 /dashboard/overview 端点的权限隐藏与字段归一化。
  * 使用手写 fake 替代 Mockito，避免 JDK 26+ 兼容性问题。
  */
 class MemMpDashboardControllerTest
 {
     private MemMpController controller;
     private FakeMpDashboardMapper mapper;
+    private FakeMpDashboardService dashboardService;
 
     @BeforeEach
     void setUp() throws Exception
     {
         controller = new MemMpController();
         mapper = new FakeMpDashboardMapper();
+        dashboardService = new FakeMpDashboardService();
         setField(controller, "dashboardMapper", mapper);
         setField(controller, "mpRoleModuleService", new NoOpMpRoleModuleService());
+        setField(controller, "mpDashboardService", dashboardService);
     }
 
     // ── 趋势查询收敛：21 → 1 ──
@@ -141,6 +146,78 @@ class MemMpDashboardControllerTest
         assertEquals(42L, mapper.lastBatchDeptId, "应按部门过滤");
     }
 
+    // ── /dashboard/overview 端点测试 ──
+
+    @Test
+    void userInfoShouldExposePcMenuPermissions()
+    {
+        com.junsong.system.api.model.LoginUser loginUser = new com.junsong.system.api.model.LoginUser();
+        loginUser.setUserid(88L);
+        loginUser.setUsername("store-manager");
+        loginUser.setDeptId(10L);
+        loginUser.setRoles(Set.of("store_manager"));
+        loginUser.setPermissions(Set.of("finance:sale:list", "finance:sale:query"));
+        com.junsong.system.api.domain.SysUser user = new com.junsong.system.api.domain.SysUser(88L);
+        user.setNickName("店长");
+        loginUser.setSysUser(user);
+        com.junsong.common.core.context.SecurityContextHolder.set(
+            com.junsong.common.core.constant.SecurityConstants.LOGIN_USER, loginUser);
+
+        AjaxResult result = controller.getUserInfo();
+
+        assertEquals(200, result.get(AjaxResult.CODE_TAG));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) result.get(AjaxResult.DATA_TAG);
+        assertEquals(Set.of("finance:sale:list", "finance:sale:query"), data.get("permissions"));
+    }
+
+    @Test
+    void overviewShouldReturnErrorWhenNotLoggedIn()
+    {
+        // 不设置 LoginUser
+        SecurityContextHolderClear();
+
+        AjaxResult result = controller.getDashboardOverview();
+
+        assertEquals(500, result.get(AjaxResult.CODE_TAG), "未登录应返回错误");
+        assertEquals(0, dashboardService.callCount, "未登录不应调用 service");
+    }
+
+    @Test
+    void overviewShouldInvokeServiceWithAccessibleModules()
+    {
+        setDeptId(10L);
+        // NoOpMpRoleModuleService.getAccessibleModules 返回空列表；
+        // isAdmin=true 时返回 ALL_MODULES
+        setAdmin(true);
+
+        controller.getDashboardOverview();
+
+        assertEquals(1, dashboardService.callCount, "应调用一次 service.getOverview");
+        assertNotNull(dashboardService.lastModules, "应传入模块列表");
+        assertFalse(dashboardService.lastModules.isEmpty(), "admin 应有模块列表");
+    }
+
+    @Test
+    void overviewShouldReturnServiceResult()
+    {
+        setDeptId(10L);
+        setAdmin(true);
+        dashboardService.result = new HashMap<>();
+        dashboardService.result.put("tenantId", 1L);
+        dashboardService.result.put("deptId", 10L);
+        dashboardService.result.put("deptName", "门店A");
+
+        AjaxResult result = controller.getDashboardOverview();
+
+        assertEquals(200, result.get(AjaxResult.CODE_TAG));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) result.get(AjaxResult.DATA_TAG);
+        assertEquals(1L, data.get("tenantId"));
+        assertEquals(10L, data.get("deptId"));
+        assertEquals("门店A", data.get("deptName"));
+    }
+
     // ── 辅助方法 ──
 
     private void prepareBatchData()
@@ -167,6 +244,22 @@ class MemMpDashboardControllerTest
             com.junsong.common.core.constant.SecurityConstants.LOGIN_USER, loginUser);
     }
 
+    private static void setAdmin(boolean isAdmin)
+    {
+        // 直接操作 SecurityContextHolder，模拟 admin 用户
+        // SecurityUtils.isAdmin() 通过 SecurityContextHolder.getUserId() 判断 userId==1
+        com.junsong.system.api.model.LoginUser loginUser = new com.junsong.system.api.model.LoginUser();
+        loginUser.setDeptId(1L);
+        com.junsong.common.core.context.SecurityContextHolder.set(
+            com.junsong.common.core.constant.SecurityConstants.LOGIN_USER, loginUser);
+        com.junsong.common.core.context.SecurityContextHolder.setUserId("1");
+    }
+
+    private static void SecurityContextHolderClear()
+    {
+        com.junsong.common.core.context.SecurityContextHolder.remove();
+    }
+
     private static void setField(Object target, String name, Object value) throws Exception
     {
         Field field = target.getClass().getDeclaredField(name);
@@ -178,6 +271,7 @@ class MemMpDashboardControllerTest
 
     /**
      * 录制型 Dashboard Mapper：记录 batch/per-date 调用次数，返回可配置趋势数据。
+     * 新增的多租户聚合方法返回空数据，不影响趋势测试。
      */
     static class FakeMpDashboardMapper implements MemMpDashboardMapper
     {
@@ -215,6 +309,66 @@ class MemMpDashboardControllerTest
             lastBatchStartDate = startDate;
             lastBatchEndDate = endDate;
             return batchResult;
+        }
+
+        @Override
+        public Map<String, Object> queryMemberOverview(Long tenantId, List<Long> deptIds)
+        {
+            return Collections.emptyMap();
+        }
+
+        @Override
+        public Map<String, Object> queryGrowthOverview(Long tenantId, List<Long> deptIds)
+        {
+            return Collections.emptyMap();
+        }
+
+        @Override
+        public Map<String, Object> queryPointsOverview(Long tenantId, List<Long> deptIds)
+        {
+            return Collections.emptyMap();
+        }
+
+        @Override
+        public List<Map<String, Object>> queryLevelDistribution(Long tenantId, List<Long> deptIds)
+        {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public List<Map<String, Object>> querySegmentDistribution(Long tenantId, List<Long> deptIds)
+        {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public Map<String, Object> queryActivityOverview(Long tenantId, List<Long> deptIds)
+        {
+            return Collections.emptyMap();
+        }
+
+        @Override
+        public Map<String, Object> queryFinanceOverview(Long tenantId, List<Long> deptIds)
+        {
+            return Collections.emptyMap();
+        }
+    }
+
+    /**
+     * 录制型 Dashboard Service：记录调用次数与最后传入的模块列表。
+     */
+    static class FakeMpDashboardService implements IMemMpDashboardService
+    {
+        int callCount = 0;
+        List<String> lastModules = null;
+        Map<String, Object> result = new HashMap<>();
+
+        @Override
+        public Map<String, Object> getOverview(List<String> accessibleModules)
+        {
+            callCount++;
+            lastModules = accessibleModules;
+            return result;
         }
     }
 

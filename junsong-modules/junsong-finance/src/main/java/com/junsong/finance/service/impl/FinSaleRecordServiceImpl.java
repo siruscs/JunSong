@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.transaction.annotation.Transactional;
+import com.junsong.common.core.constant.SecurityConstants;
+import com.junsong.common.core.domain.R;
 import com.junsong.common.core.utils.StringUtils;
 import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.finance.domain.FinAccountingPeriod;
@@ -15,10 +17,14 @@ import com.junsong.finance.domain.FinSaleRecord;
 import com.junsong.finance.domain.FinSalePayment;
 import com.junsong.finance.mapper.FinSaleRecordMapper;
 import com.junsong.finance.mapper.FinSalePaymentMapper;
+import com.junsong.finance.mapper.FinStockLedgerMapper;
 import com.junsong.finance.service.IFinAccountingPeriodService;
 import com.junsong.finance.service.IFinSaleRecordService;
+import com.junsong.finance.service.IFinStockLedgerService;
 import com.junsong.finance.constant.PaymentStatus;
 import com.junsong.finance.util.CodeGenerator;
+import com.junsong.member.api.RemoteMemberGrowthService;
+import com.junsong.member.api.domain.SaleGrowthAwardReq;
 
 /**
  * 销售记录Service业务层处理
@@ -39,6 +45,15 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
 
     @Autowired
     private FinAuditTrailRecorder auditTrailRecorder;
+
+    @Autowired
+    private IFinStockLedgerService finStockLedgerService;
+
+    @Autowired
+    private FinStockLedgerMapper finStockLedgerMapper;
+
+    @Autowired
+    private RemoteMemberGrowthService remoteMemberGrowthService;
 
     /**
      * 查询销售记录
@@ -71,6 +86,18 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
     }
 
     /**
+     * 查询未缴清销售单（历史欠款）列表
+     *
+     * @param finSaleRecord 查询条件
+     * @return 未缴清销售记录集合
+     */
+    @Override
+    public List<FinSaleRecord> selectReceivableList(FinSaleRecord finSaleRecord)
+    {
+        return finSaleRecordMapper.selectReceivableList(finSaleRecord);
+    }
+
+    /**
      * 新增销售记录
      * 
      * @param finSaleRecord 销售记录
@@ -99,9 +126,12 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
             int maxRetries = 3;
             while (retryCount < maxRetries) {
                 try {
-                    int todayCount = finSaleRecordMapper.countTodaySales();
-                    finSaleRecord.setSaleNo(CodeGenerator.generateSaleNo(todayCount + retryCount));
-                    return finSaleRecordMapper.insertFinSaleRecord(finSaleRecord);
+                    int maxSeq = finSaleRecordMapper.maxTodaySaleSeq();
+                    finSaleRecord.setSaleNo(CodeGenerator.generateSaleNo(maxSeq + 1 + retryCount));
+                    int rows = finSaleRecordMapper.insertFinSaleRecord(finSaleRecord);
+                    applySaleStockOut(finSaleRecord);
+                    awardSaleGrowthIfNeeded(finSaleRecord);
+                    return rows;
                 } catch (DuplicateKeyException e) {
                     retryCount++;
                     if (retryCount >= maxRetries) {
@@ -111,7 +141,112 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
             }
         }
 
-        return finSaleRecordMapper.insertFinSaleRecord(finSaleRecord);
+        int rows = finSaleRecordMapper.insertFinSaleRecord(finSaleRecord);
+        applySaleStockOut(finSaleRecord);
+        awardSaleGrowthIfNeeded(finSaleRecord);
+        return rows;
+    }
+
+    /**
+     * 销售单创建成功后调用会员成长入账（仅 memberId != null 时调用）。
+     * 通过 SALE:{saleId} 幂等键防止重复发放。
+     * 调用失败抛出异常以触发事务回滚（设计文档 5.1 节推荐策略）。
+     */
+    private void awardSaleGrowthIfNeeded(FinSaleRecord finSaleRecord)
+    {
+        if (finSaleRecord.getMemberId() == null)
+        {
+            return;
+        }
+        SaleGrowthAwardReq req = new SaleGrowthAwardReq();
+        req.setMemberId(finSaleRecord.getMemberId());
+        req.setMemberNo(finSaleRecord.getMemberNo());
+        req.setMemberName(finSaleRecord.getMemberName());
+        req.setDeptId(finSaleRecord.getDeptId());
+        req.setSaleId(finSaleRecord.getSaleId());
+        req.setSaleAmount(finSaleRecord.getSaleAmount());
+        req.setOperator(finSaleRecord.getCreateBy() != null ? finSaleRecord.getCreateBy() : "finance");
+
+        R<Boolean> result = remoteMemberGrowthService.awardSaleGrowth(req, SecurityConstants.FROM_SOURCE);
+        if (result == null || !R.isSuccess(result))
+        {
+            String msg = result != null ? result.getMsg() : "远程调用返回空";
+            throw new ServiceException("会员成长值入账失败，销售单已回滚: " + msg);
+        }
+    }
+
+    /**
+     * 销售出库对账生成库存流水（支持新增/修改数量/删除）。
+     * 出库总量 = 销售数量 + 赠品数量（赠品同样消耗实物库存）。
+     * 关键约束：缺少商品或有效销售数量时必须阻断并抛出异常，不允许造假扣减。
+     * 对账天然幂等：内部按 reference_id + product_id 计算与已记录净额的差额。
+     */
+    void applySaleStockOut(FinSaleRecord finSaleRecord)
+    {
+        if (finSaleRecord.getSaleId() == null)
+        {
+            return;
+        }
+        if (finSaleRecord.getProductId() == null)
+        {
+            throw new ServiceException("销售出库失败：销售记录缺少商品，无法扣减库存");
+        }
+        if (finSaleRecord.getSaleQuantity() == null || finSaleRecord.getSaleQuantity() <= 0)
+        {
+            throw new ServiceException("销售出库失败：销售记录缺少有效数量，无法扣减库存");
+        }
+        int giftQuantity = finSaleRecord.getGiftQuantity() != null ? finSaleRecord.getGiftQuantity() : 0;
+        if (giftQuantity < 0)
+        {
+            throw new ServiceException("销售出库失败：赠品数量不能为负数");
+        }
+        int outQuantity = finSaleRecord.getSaleQuantity() + giftQuantity;
+
+        // 并集：本次目标商品 + 该单历史已记录商品（换商品时旧商品历史 SALE_OUT 需目标 0 反向回补）
+        Long currentProductId = finSaleRecord.getProductId();
+        java.util.Set<Long> productIds = new java.util.HashSet<>();
+        productIds.add(currentProductId);
+        List<Long> recordedProductIds = finStockLedgerMapper.selectRecordedProductIds("SALE", finSaleRecord.getSaleId());
+        if (recordedProductIds != null)
+        {
+            productIds.addAll(recordedProductIds);
+        }
+
+        for (Long productId : productIds)
+        {
+            boolean isCurrent = productId.equals(currentProductId);
+            int target = isCurrent ? outQuantity : 0;
+            String productName = isCurrent ? finSaleRecord.getProductName() : null;
+            finStockLedgerService.reconcileSaleStock(
+                    finSaleRecord.getDeptId(),
+                    productId,
+                    productName,
+                    finSaleRecord.getSaleId(),
+                    finSaleRecord.getSaleNo(),
+                    target,
+                    finSaleRecord.getCreateBy()
+            );
+        }
+    }
+
+    /**
+     * 删除销售记录前反向回补库存（对齐目标 0）。
+     */
+    void reverseSaleStock(FinSaleRecord old)
+    {
+        if (old == null || old.getSaleId() == null || old.getProductId() == null)
+        {
+            return;
+        }
+        finStockLedgerService.reconcileSaleStock(
+                old.getDeptId(),
+                old.getProductId(),
+                old.getProductName(),
+                old.getSaleId(),
+                old.getSaleNo(),
+                0,
+                old.getUpdateBy()
+        );
     }
 
     private void fillCurrentPeriod(FinSaleRecord finSaleRecord)
@@ -162,7 +297,14 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
         finAccountingPeriodService.assertPeriodEditable(finSaleRecord.getPeriodId());
         // 重新计算总数量和单价
         calculateSaleQuantityAndUnitPrice(finSaleRecord);
-        return finSaleRecordMapper.updateFinSaleRecord(finSaleRecord);
+        int rows = finSaleRecordMapper.updateFinSaleRecord(finSaleRecord);
+        // 补齐对账所需上下文后按新数量对账（差额或反向）
+        FinSaleRecord current = finSaleRecordMapper.selectFinSaleRecordBySaleId(finSaleRecord.getSaleId());
+        if (current != null)
+        {
+            applySaleStockOut(current);
+        }
+        return rows;
     }
 
     /**
@@ -180,6 +322,7 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
                 assertSaleEditable(saleId);
                 FinSaleRecord old = finSaleRecordMapper.selectFinSaleRecordBySaleId(saleId);
                 if (old != null) {
+                    reverseSaleStock(old);
                     auditTrailRecorder.record("delete_sale", "fin_sale_record", String.valueOf(saleId),
                             "{\"saleNo\":\"" + old.getSaleNo() + "\",\"amount\":" + old.getSaleAmount() + "}", null);
                 }
@@ -203,6 +346,7 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
         assertSaleEditable(saleId);
         FinSaleRecord old = finSaleRecordMapper.selectFinSaleRecordBySaleId(saleId);
         if (old != null) {
+            reverseSaleStock(old);
             auditTrailRecorder.record("delete_sale", "fin_sale_record", String.valueOf(saleId),
                     "{\"saleNo\":\"" + old.getSaleNo() + "\",\"amount\":" + old.getSaleAmount() + "}", null);
         }
@@ -260,23 +404,51 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
     @Override
     public int addPayment(Long saleId, BigDecimal paymentAmount, String paymentMethod, String remark, Date paymentDate)
     {
-        // 查询销售记录
-        FinSaleRecord sale = finSaleRecordMapper.selectFinSaleRecordBySaleId(saleId);
+        // 查询销售记录（行锁保护，防止并发缴款超额）
+        FinSaleRecord sale = finSaleRecordMapper.selectFinSaleRecordBySaleIdForUpdate(saleId);
         if (sale == null)
         {
             throw new ServiceException("销售记录不存在");
         }
 
-        // 期间锁：已结转期间不允许新增缴款
-        if (sale.getPeriodId() != null) {
-            finAccountingPeriodService.assertPeriodEditable(sale.getPeriodId());
+        // 跨周期补缴款改造：缴款归属"实际缴款周期"，不再校验销售单原周期是否可编辑。
+        // 允许对历史（原周期已结转）未缴清销售单继续新增缴款。
+        // 缴款周期 = 缴款发生时门店当前进行中周期；若无进行中周期则自动初始化。
+        Long currentPeriodId = getCurrentPeriodId(sale.getDeptId());
+        // 校验的是"当前缴款周期"可编辑（正常进行中周期恒可编辑，此处防御性拦截异常状态周期）
+        finAccountingPeriodService.assertPeriodEditable(currentPeriodId);
+
+        // 超额缴款保护：缴款后累计已缴不能超出销售金额范围
+        BigDecimal totalPaid = finSalePaymentMapper.sumPaymentAmountBySaleId(saleId);
+        if (totalPaid == null) totalPaid = BigDecimal.ZERO;
+        BigDecimal saleAmount = sale.getSaleAmount();
+        BigDecimal afterPaid = totalPaid.add(paymentAmount);
+        if (paymentAmount == null || paymentAmount.compareTo(BigDecimal.ZERO) == 0) {
+            throw new ServiceException("缴款金额不能为0");
+        }
+        if (saleAmount.compareTo(BigDecimal.ZERO) > 0) {
+            // 正向销售：0 <= afterPaid <= saleAmount
+            if (afterPaid.compareTo(BigDecimal.ZERO) < 0) {
+                throw new ServiceException("退货缴款金额不能超过已缴金额");
+            }
+            if (afterPaid.compareTo(saleAmount) > 0) {
+                throw new ServiceException("缴款金额不能大于剩余应收金额");
+            }
+        } else if (saleAmount.compareTo(BigDecimal.ZERO) < 0) {
+            // 退货销售：saleAmount <= afterPaid <= 0
+            if (afterPaid.compareTo(BigDecimal.ZERO) > 0) {
+                throw new ServiceException("退款后累计已缴不能为正数");
+            }
+            if (afterPaid.compareTo(saleAmount) < 0) {
+                throw new ServiceException("退货缴款金额不能超过应退金额");
+            }
         }
 
         // 创建缴款记录
         FinSalePayment payment = new FinSalePayment();
         payment.setSaleId(saleId);
         payment.setDeptId(sale.getDeptId());
-        payment.setPeriodId(getCurrentPeriodId(sale.getDeptId()));
+        payment.setPeriodId(currentPeriodId);
         payment.setPaymentAmount(paymentAmount);
         payment.setPaymentMethod(paymentMethod);
         payment.setPaymentDate(paymentDate != null ? paymentDate : new Date());
@@ -392,37 +564,45 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
 
     /**
      * 更新销售记录的已缴金额和状态
+     *
+     * 跨周期补缴款改造：仅更新 paid_amount / status 两个累计字段，
+     * 不修改任何销售业务字段，也不校验销售单原周期是否可编辑，
+     * 允许在原销售周期已结转后随新周期缴款而更新累计缴款状态。
      */
     private void updateSalePaidAmountAndStatus(Long saleId)
     {
         BigDecimal totalPaid = finSalePaymentMapper.sumPaymentAmountBySaleId(saleId);
+        if (totalPaid == null)
+        {
+            totalPaid = BigDecimal.ZERO;
+        }
         FinSaleRecord sale = finSaleRecordMapper.selectFinSaleRecordBySaleId(saleId);
         if (sale == null)
         {
             return;
         }
 
-        sale.setPaidAmount(totalPaid);
-
-        // 状态判断逻辑保持不变
+        // 状态判断逻辑：已缴金额绝对值达到销售金额绝对值即为已缴清
+        String status;
         BigDecimal saleAmount = sale.getSaleAmount();
         if (saleAmount == null || saleAmount.compareTo(BigDecimal.ZERO) == 0)
         {
-            sale.setStatus(PaymentStatus.PAID); // 已缴清（金额为0的情况）
+            status = PaymentStatus.PAID; // 已缴清（金额为0的情况）
         }
         else if (totalPaid.compareTo(BigDecimal.ZERO) == 0)
         {
-            sale.setStatus(PaymentStatus.PENDING); // 待缴款
+            status = PaymentStatus.PENDING; // 待缴款
         }
-        else if (totalPaid.compareTo(saleAmount) >= 0)
+        else if (totalPaid.abs().compareTo(saleAmount.abs()) >= 0)
         {
-            sale.setStatus(PaymentStatus.PAID); // 已缴清
+            status = PaymentStatus.PAID; // 已缴清
         }
         else
         {
-            sale.setStatus(PaymentStatus.PARTIAL); // 部分缴款
+            status = PaymentStatus.PARTIAL; // 部分缴款
         }
 
-        finSaleRecordMapper.updateFinSaleRecord(sale);
+        // 仅更新累计缴款字段，绕开全字段更新与期间锁校验
+        finSaleRecordMapper.updatePaidAmountAndStatus(saleId, totalPaid, status);
     }
 }

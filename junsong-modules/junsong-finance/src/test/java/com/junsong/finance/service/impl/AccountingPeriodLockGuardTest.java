@@ -494,17 +494,168 @@ class AccountingPeriodLockGuardTest {
                 "carryForward should proceed when check is clean");
     }
 
+    // ── Cross-period payment tests ──
+
+    @Test
+    void addPayment_allowsHistoricalSaleWhenSalePeriodCarriedAndCurrentPeriodActive() throws Exception {
+        setupAdmin();
+        FinSaleRecordServiceImpl saleService = new FinSaleRecordServiceImpl();
+        FakeSaleMapperForLock saleMapper = new FakeSaleMapperForLock();
+        FakeSalePaymentMapperForLock paymentMapper = new FakeSalePaymentMapperForLock();
+        FakeAccountingPeriodMapperForLock periodMapper = new FakeAccountingPeriodMapperForLock();
+
+        FinAccountingPeriod oldPeriod = new FinAccountingPeriod();
+        oldPeriod.setPeriodId(10L);
+        oldPeriod.setDeptId(100L);
+        oldPeriod.setStatus("2"); // CARRIED
+        periodMapper.periods.put(10L, oldPeriod);
+
+        FinAccountingPeriod currentPeriod = new FinAccountingPeriod();
+        currentPeriod.setPeriodId(11L);
+        currentPeriod.setDeptId(100L);
+        currentPeriod.setStatus("0"); // ACTIVE
+        periodMapper.currentByDept.put(100L, currentPeriod);
+        periodMapper.periods.put(11L, currentPeriod);
+
+        FinSaleRecord sale = new FinSaleRecord();
+        sale.setSaleId(1L);
+        sale.setDeptId(100L);
+        sale.setPeriodId(10L);
+        sale.setSaleNo("XS202607020001");
+        sale.setSaleAmount(new BigDecimal("1000.00"));
+        sale.setPaidAmount(new BigDecimal("400.00"));
+        sale.setStatus("1");
+        saleMapper.sales.put(1L, sale);
+
+        // Configure sum to reflect existing 400 paid
+        paymentMapper.sumBySaleId.put(1L, new BigDecimal("400.00"));
+
+        FinAccountingPeriodServiceImpl periodService = new FinAccountingPeriodServiceImpl();
+        setFieldInClass(periodService, FinAccountingPeriodServiceImpl.class, "finAccountingPeriodMapper", periodMapper);
+        setFieldInClass(saleService, FinSaleRecordServiceImpl.class, "finSaleRecordMapper", saleMapper);
+        setFieldInClass(saleService, FinSaleRecordServiceImpl.class, "finSalePaymentMapper", paymentMapper);
+        setFieldInClass(saleService, FinSaleRecordServiceImpl.class, "finAccountingPeriodService", periodService);
+
+        int rows = saleService.addPayment(1L, new BigDecimal("600.00"), "现金", "跨周期补缴", new Date());
+
+        assertEquals(1, rows);
+        assertNotNull(paymentMapper.inserted, "Payment should have been inserted");
+        assertEquals(11L, paymentMapper.inserted.getPeriodId(), "缴款必须落入当前周期");
+        assertEquals(10L, saleMapper.sales.get(1L).getPeriodId(), "销售业务周期不能被改到新周期");
+    }
+
+    @Test
+    void updatePayment_checksPaymentPeriodOnlyNotSalePeriod() throws Exception {
+        setupAdmin();
+        FinSaleRecordServiceImpl saleService = new FinSaleRecordServiceImpl();
+        FakeSaleMapperForLock saleMapper = new FakeSaleMapperForLock();
+        FakeSalePaymentMapperForLock paymentMapper = new FakeSalePaymentMapperForLock();
+        FakeAccountingPeriodMapperForLock periodMapper = new FakeAccountingPeriodMapperForLock();
+
+        // Old sale period is CARRIED
+        FinAccountingPeriod oldPeriod = new FinAccountingPeriod();
+        oldPeriod.setPeriodId(10L);
+        oldPeriod.setDeptId(100L);
+        oldPeriod.setStatus("2");
+        periodMapper.periods.put(10L, oldPeriod);
+
+        // Payment period is ACTIVE
+        FinAccountingPeriod activePeriod = new FinAccountingPeriod();
+        activePeriod.setPeriodId(11L);
+        activePeriod.setDeptId(100L);
+        activePeriod.setStatus("0");
+        periodMapper.periods.put(11L, activePeriod);
+
+        // Existing payment in active period
+        com.junsong.finance.domain.FinSalePayment existingPayment = new com.junsong.finance.domain.FinSalePayment();
+        existingPayment.setPaymentId(1L);
+        existingPayment.setSaleId(1L);
+        existingPayment.setDeptId(100L);
+        existingPayment.setPeriodId(11L);
+        existingPayment.setPaymentAmount(new BigDecimal("200.00"));
+        paymentMapper.payments.put(1L, existingPayment);
+
+        FinSaleRecord sale = new FinSaleRecord();
+        sale.setSaleId(1L);
+        sale.setDeptId(100L);
+        sale.setPeriodId(10L); // old carried period
+        sale.setSaleAmount(new BigDecimal("1000.00"));
+        saleMapper.sales.put(1L, sale);
+
+        paymentMapper.sumBySaleId.put(1L, new BigDecimal("200.00"));
+
+        FinAccountingPeriodServiceImpl periodService = new FinAccountingPeriodServiceImpl();
+        setFieldInClass(periodService, FinAccountingPeriodServiceImpl.class, "finAccountingPeriodMapper", periodMapper);
+        setFieldInClass(saleService, FinSaleRecordServiceImpl.class, "finSaleRecordMapper", saleMapper);
+        setFieldInClass(saleService, FinSaleRecordServiceImpl.class, "finSalePaymentMapper", paymentMapper);
+        setFieldInClass(saleService, FinSaleRecordServiceImpl.class, "finAccountingPeriodService", periodService);
+
+        // Should NOT throw — payment period (11L) is active, sale period (10L) is carried but irrelevant
+        assertDoesNotThrow(() -> saleService.updatePayment(1L, new BigDecimal("300.00"), "微信", "调整", new Date()),
+                "updatePayment should check payment period only, not sale period");
+    }
+
+    @Test
+    void deletePayment_checksPaymentPeriodOnlyNotSalePeriod() throws Exception {
+        setupAdmin();
+        FinSaleRecordServiceImpl saleService = new FinSaleRecordServiceImpl();
+        FakeSaleMapperForLock saleMapper = new FakeSaleMapperForLock();
+        FakeSalePaymentMapperForLock paymentMapper = new FakeSalePaymentMapperForLock();
+        FakeAccountingPeriodMapperForLock periodMapper = new FakeAccountingPeriodMapperForLock();
+
+        FinAccountingPeriod oldPeriod = new FinAccountingPeriod();
+        oldPeriod.setPeriodId(10L);
+        oldPeriod.setDeptId(100L);
+        oldPeriod.setStatus("2");
+        periodMapper.periods.put(10L, oldPeriod);
+
+        FinAccountingPeriod activePeriod = new FinAccountingPeriod();
+        activePeriod.setPeriodId(11L);
+        activePeriod.setDeptId(100L);
+        activePeriod.setStatus("0");
+        periodMapper.periods.put(11L, activePeriod);
+
+        com.junsong.finance.domain.FinSalePayment existingPayment = new com.junsong.finance.domain.FinSalePayment();
+        existingPayment.setPaymentId(1L);
+        existingPayment.setSaleId(1L);
+        existingPayment.setDeptId(100L);
+        existingPayment.setPeriodId(11L);
+        existingPayment.setPaymentAmount(new BigDecimal("200.00"));
+        paymentMapper.payments.put(1L, existingPayment);
+
+        FinSaleRecord sale = new FinSaleRecord();
+        sale.setSaleId(1L);
+        sale.setDeptId(100L);
+        sale.setPeriodId(10L);
+        sale.setSaleAmount(new BigDecimal("1000.00"));
+        saleMapper.sales.put(1L, sale);
+
+        FinAccountingPeriodServiceImpl periodService = new FinAccountingPeriodServiceImpl();
+        setFieldInClass(periodService, FinAccountingPeriodServiceImpl.class, "finAccountingPeriodMapper", periodMapper);
+        setFieldInClass(saleService, FinSaleRecordServiceImpl.class, "finSaleRecordMapper", saleMapper);
+        setFieldInClass(saleService, FinSaleRecordServiceImpl.class, "finSalePaymentMapper", paymentMapper);
+        setFieldInClass(saleService, FinSaleRecordServiceImpl.class, "finAccountingPeriodService", periodService);
+
+        assertDoesNotThrow(() -> saleService.deletePayment(1L),
+                "deletePayment should check payment period only, not sale period");
+    }
+
     // ── Fake mappers ──
 
     static class FakeAccountingPeriodMapperForLock implements FinAccountingPeriodMapper {
+        public FinAccountingPeriod selectPeriodForUpdate(Long id, Long tenantId, Long deptId) { return selectFinAccountingPeriodByPeriodId(id); }
         Map<Long, FinAccountingPeriod> periods = new HashMap<>();
+        Map<Long, FinAccountingPeriod> currentByDept = new HashMap<>();
         FinAccountingPeriod currentPeriod = null;
 
         @Override public FinAccountingPeriod selectFinAccountingPeriodByPeriodId(Long id) {
             FinAccountingPeriod p = periods.get(id);
             return p != null ? p : (currentPeriod != null && currentPeriod.getPeriodId() != null && currentPeriod.getPeriodId().equals(id) ? currentPeriod : null);
         }
-        @Override public FinAccountingPeriod selectCurrentPeriodByDeptId(Long deptId) { return currentPeriod; }
+        @Override public FinAccountingPeriod selectCurrentPeriodByDeptId(Long deptId) {
+            FinAccountingPeriod p = currentByDept.get(deptId);
+            return p != null ? p : currentPeriod;
+        }
         @Override public FinAccountingPeriod selectLatestCarriedPeriodByDeptId(Long deptId) { return null; }
         @Override public List<FinAccountingPeriod> selectFinAccountingPeriodList(FinAccountingPeriod p) { return Collections.emptyList(); }
         @Override public int insertFinAccountingPeriod(FinAccountingPeriod p) {
@@ -525,9 +676,15 @@ class AccountingPeriodLockGuardTest {
         @Override public BigDecimal selectTotalUnverifiedAdvance(Long p, Long d, Date s, Date e) { return BigDecimal.ZERO; }
         @Override public String selectCurrentPeriodStatusByDeptIds(List<Long> deptIds) { return null; }
         @Override public FinAccountingPeriod selectPeriodById(Long id) { return periods.get(id); }
+        @Override public FinAccountingPeriod selectPreviousPeriod(Long deptId, Date startTime, Long periodId) { return null; }
+        @Override public FinAccountingPeriod selectNextPeriod(Long deptId, Date startTime, Long periodId) { return null; }
+        @Override public int updateStartTimeOnly(Long periodId, Date startTime, Date endTime, String updateBy, String remark) { return 0; }
     }
 
     static class FakeExpenseMapperForLock implements FinExpenseMapper {
+        @Override public List<FinExpense> selectFinExpenseByExpenseIdsScoped(List<Long> ids, Long tenantId, Long deptId) { return Collections.emptyList(); }
+        @Override public int markExpenseVerified(Long id, Long advanceId, String by, Date time, Long tenantId, Long deptId) { return 1; }
+        @Override public int restoreExpenseUnverified(Long id) { return 1; }
         Map<Long, FinExpense> expenses = new HashMap<>();
 
         @Override public FinExpense selectFinExpenseByExpenseId(Long id) { return expenses.get(id); }
@@ -538,6 +695,7 @@ class AccountingPeriodLockGuardTest {
         @Override public int deleteFinExpenseByExpenseIds(Long[] ids) { return ids.length; }
         @Override public FinExpense checkExpenseNoUnique(String no) { return null; }
         @Override public int countTodayExpenses() { return 0; }
+        @Override public int maxTodayExpenseSeq() { return 0; }
         @Override public BigDecimal sumUnverifiedExpenses() { return BigDecimal.ZERO; }
         @Override public BigDecimal sumUnverifiedExpensesByDeptId(Long deptId) { return BigDecimal.ZERO; }
         @Override public BigDecimal sumAllExpenses() { return BigDecimal.ZERO; }
@@ -565,11 +723,23 @@ class AccountingPeriodLockGuardTest {
 
     static class FakeSaleMapperForLock implements FinSaleRecordMapper {
         Map<Long, FinSaleRecord> sales = new HashMap<>();
+        FinSaleRecord updated = null;
+        Map<Long, BigDecimal> paidAmountUpdates = new HashMap<>();
 
         @Override public FinSaleRecord selectFinSaleRecordBySaleId(Long id) { return sales.get(id); }
+        @Override public FinSaleRecord selectFinSaleRecordBySaleIdForUpdate(Long id) { return selectFinSaleRecordBySaleId(id); }
         @Override public List<FinSaleRecord> selectFinSaleRecordList(FinSaleRecord r) { return Collections.emptyList(); }
         @Override public int insertFinSaleRecord(FinSaleRecord r) { return 0; }
-        @Override public int updateFinSaleRecord(FinSaleRecord r) { return 1; }
+        @Override public int updateFinSaleRecord(FinSaleRecord r) { updated = r; return 1; }
+        @Override public int updatePaidAmountAndStatus(Long saleId, java.math.BigDecimal paidAmount, String status) {
+            paidAmountUpdates.put(saleId, paidAmount);
+            FinSaleRecord s = sales.get(saleId);
+            if (s != null) { s.setPaidAmount(paidAmount); s.setStatus(status); }
+            return 1;
+        }
+        @Override public java.util.List<FinSaleRecord> selectReceivableList(FinSaleRecord r) { return java.util.Collections.emptyList(); }
+        @Override public int countReceivableByPeriodId(Long deptId, Long periodId) { return 0; }
+        @Override public java.math.BigDecimal sumReceivableByPeriodId(Long deptId, Long periodId) { return java.math.BigDecimal.ZERO; }
         @Override public int deleteFinSaleRecordBySaleId(Long id) { return 1; }
         @Override public int deleteFinSaleRecordBySaleIds(Long[] ids) { return ids.length; }
         @Override public List<Map<String, Object>> selectSaleTrendStats(List<Long> d, Date s, Date e) { return Collections.emptyList(); }
@@ -577,6 +747,7 @@ class AccountingPeriodLockGuardTest {
         @Override public int sumSaleQuantity(List<Long> d, Date s, Date e) { return 0; }
         @Override public FinSaleRecord checkSaleNoUnique(String no) { return null; }
         @Override public int countTodaySales() { return 0; }
+        @Override public int maxTodaySaleSeq() { return 0; }
         @Override public BigDecimal selectTodayTotalSales(List<Long> d) { return BigDecimal.ZERO; }
         @Override public BigDecimal selectMonthTotalSales(List<Long> d) { return BigDecimal.ZERO; }
         @Override public BigDecimal selectTodayTotalSalesForPrev(List<Long> d) { return BigDecimal.ZERO; }
@@ -585,21 +756,44 @@ class AccountingPeriodLockGuardTest {
         @Override public List<Map<String, Object>> selectProductSalesRank(List<Long> d, Date s, Date e) { return Collections.emptyList(); }
         @Override public BigDecimal selectMemberSales(List<Long> d, Date s, Date e) { return BigDecimal.ZERO; }
         @Override public BigDecimal selectSeckillSales(List<Long> d, Date s, Date e) { return BigDecimal.ZERO; }
+        @Override public BigDecimal selectCurrentPeriodPaymentTotal(List<Long> deptIds, Long periodId) { return BigDecimal.ZERO; }
+        @Override public BigDecimal selectHistoricalReceivableCollected(List<Long> deptIds, Long periodId) { return BigDecimal.ZERO; }
+        @Override public BigDecimal selectCurrentPeriodNewReceivable(List<Long> deptIds, Long periodId) { return BigDecimal.ZERO; }
+        @Override public BigDecimal selectEndingReceivableBalance(List<Long> deptIds) { return BigDecimal.ZERO; }
+        @Override public int countOverdueReceivable(List<Long> deptIds) { return 0; }
     }
 
     static class FakeSalePaymentMapperForLock implements FinSalePaymentMapper {
-        @Override public com.junsong.finance.domain.FinSalePayment selectFinSalePaymentByPaymentId(Long id) { return null; }
+        com.junsong.finance.domain.FinSalePayment inserted = null;
+        com.junsong.finance.domain.FinSalePayment updated = null;
+        Map<Long, com.junsong.finance.domain.FinSalePayment> payments = new HashMap<>();
+        Map<Long, BigDecimal> sumBySaleId = new HashMap<>();
+        java.util.concurrent.atomic.AtomicLong idSeq = new java.util.concurrent.atomic.AtomicLong(1);
+
+        @Override public com.junsong.finance.domain.FinSalePayment selectFinSalePaymentByPaymentId(Long id) { return payments.get(id); }
         @Override public List<com.junsong.finance.domain.FinSalePayment> selectFinSalePaymentBySaleId(Long saleId) { return Collections.emptyList(); }
         @Override public List<com.junsong.finance.domain.FinSalePayment> selectFinSalePaymentList(com.junsong.finance.domain.FinSalePayment p) { return Collections.emptyList(); }
-        @Override public int insertFinSalePayment(com.junsong.finance.domain.FinSalePayment p) { return 0; }
+        @Override public int insertFinSalePayment(com.junsong.finance.domain.FinSalePayment p) {
+            inserted = p;
+            p.setPaymentId(idSeq.getAndIncrement());
+            payments.put(p.getPaymentId(), p);
+            return 1;
+        }
         @Override public int batchFinSalePayment(List<com.junsong.finance.domain.FinSalePayment> list) { return 0; }
-        @Override public int updateFinSalePayment(com.junsong.finance.domain.FinSalePayment p) { return 0; }
-        @Override public int deleteFinSalePaymentByPaymentId(Long id) { return 0; }
-        @Override public int deleteFinSalePaymentByPaymentIds(Long[] ids) { return 0; }
+        @Override public int updateFinSalePayment(com.junsong.finance.domain.FinSalePayment p) {
+            updated = p;
+            if (p.getPaymentId() != null) { payments.put(p.getPaymentId(), p); }
+            return 1;
+        }
+        @Override public int deleteFinSalePaymentByPaymentId(Long id) { payments.remove(id); return 1; }
+        @Override public int deleteFinSalePaymentByPaymentIds(Long[] ids) { for (Long id : ids) payments.remove(id); return ids.length; }
         @Override public int deleteFinSalePaymentBySaleId(Long saleId) { return 0; }
         @Override public int deleteFinSalePaymentBySaleIds(Long[] saleIds) { return 0; }
         @Override public com.junsong.finance.domain.FinSalePayment checkPaymentNoUnique(String no) { return null; }
-        @Override public BigDecimal sumPaymentAmountBySaleId(Long saleId) { return BigDecimal.ZERO; }
+        @Override public BigDecimal sumPaymentAmountBySaleId(Long saleId) {
+            BigDecimal v = sumBySaleId.get(saleId);
+            return v != null ? v : BigDecimal.ZERO;
+        }
         @Override public int countTodayPayments() { return 0; }
     }
 
@@ -615,6 +809,7 @@ class AccountingPeriodLockGuardTest {
     static class FakeProfitShareRecordServiceForLock implements IFinProfitShareRecordService {
         @Override public FinProfitShareRecord selectFinProfitShareRecordByShareId(Long shareId) { return null; }
         @Override public FinProfitShareRecord carryForwardPeriod(Long periodId) { return null; }
+        @Override public void checkProfitConfigReady(Long deptId) { }
         @Override public List<FinProfitShareRecord> selectFinProfitShareRecordList(FinProfitShareRecord r) { return Collections.emptyList(); }
         @Override public int insertFinProfitShareRecord(FinProfitShareRecord r) { return 0; }
         @Override public int updateFinProfitShareRecord(FinProfitShareRecord r) { return 0; }

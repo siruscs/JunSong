@@ -53,6 +53,22 @@
 signature = HMAC_SHA256(appSecret, signStr)</code></pre>
     </section>
 
+    <section class="context-section">
+      <div class="section-copy">
+        <h2>可信上下文与限流</h2>
+        <p>网关验签通过后，会向下游服务注入以下可信上下文头。开放服务内部调用下游时只透传这些头，不再冒用固定 admin 身份。</p>
+      </div>
+      <div class="code-card">
+        <div v-for="header in downstreamHeaders" :key="header.name" class="header-row">
+          <code>{{ header.name }}</code>
+          <span>{{ header.desc }}</span>
+        </div>
+      </div>
+      <div class="quota-note">
+        <strong>日额度：</strong>每个 AppKey 按日累计调用次数，超限返回 <code>429 OPEN_QUOTA_EXCEEDED</code>。测试 Key 默认 100 次/天，生产 Key 默认 10000 次/天。
+      </div>
+    </section>
+
     <section id="apis" class="api-section">
       <div class="section-copy">
         <h2>接口目录</h2>
@@ -140,6 +156,15 @@ const authHeaders = [
   { name: 'X-App-Timestamp', desc: '毫秒时间戳，和服务端时间差不能超过 5 分钟。' },
   { name: 'X-App-Nonce', desc: '随机字符串，同一个 AppKey 下 10 分钟内不可重复。' },
   { name: 'X-App-Signature', desc: 'HMAC-SHA256 签名结果，使用 AppSecret 计算。' },
+]
+
+const downstreamHeaders = [
+  { name: 'X-Open-App-Id', desc: '应用 ID，由网关从密钥查询结果注入。' },
+  { name: 'X-Open-App-Key', desc: '调用方 AppKey。' },
+  { name: 'X-Open-Tenant-Id', desc: '租户 ID，用于多租户数据隔离。' },
+  { name: 'X-Open-Key-Type', desc: 'Key 类型（production / sandbox）。' },
+  { name: 'X-Open-Request-Id', desc: '请求追踪 ID，贯穿网关到下游服务。' },
+  { name: 'X-Open-Auth-Version', desc: '鉴权版本（R23）。' },
 ]
 
 const capabilityIcons: Record<OpenCapabilityKey, any> = {

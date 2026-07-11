@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.member.mapper.MemMemberCardTypeMapper">
+
+    <resultMap type="com.junsong.member.domain.MemMemberCardType" id="MemMemberCardTypeResult">
+        <id property="typeId" column="type_id"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="typeName" column="type_name"/>
+        <result property="typeCode" column="type_code"/>
+        <result property="cardFee" column="card_fee"/>
+        <result property="discountRate" column="discount_rate"/>
+        <result property="pointsRate" column="points_rate"/>
+        <result property="minGrowth" column="min_growth"/>
+        <result property="signInPoints" column="sign_in_points"/>
+        <result property="status" column="status"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="selectCardTypeVo">
+        select type_id, tenant_id, type_name, type_code, card_fee, discount_rate, points_rate,
+               min_growth, sign_in_points, status, del_flag, create_by, create_time, update_by, update_time
+        from mem_member_card_type
+    </sql>
+
+    <select id="selectCardTypeList" parameterType="com.junsong.member.domain.MemMemberCardType" resultMap="MemMemberCardTypeResult">
+        <include refid="selectCardTypeVo"/>
+        <where>
+            del_flag = '0'
+            <if test="typeCode != null and typeCode != ''">
+                AND type_code = #{typeCode}
+            </if>
+            <if test="typeName != null and typeName != ''">
+                AND type_name like concat('%', #{typeName}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+        order by min_growth asc
+    </select>
+
+    <select id="selectCardTypeByTypeCode" parameterType="String" resultMap="MemMemberCardTypeResult">
+        <include refid="selectCardTypeVo"/>
+        where type_code = #{typeCode} and del_flag = '0'
+    </select>
+
+    <select id="selectEnabledCardTypes" resultMap="MemMemberCardTypeResult">
+        <include refid="selectCardTypeVo"/>
+        where status = '0' and del_flag = '0'
+        order by min_growth asc
+    </select>
+
+    <select id="selectLevelByGrowth" resultMap="MemMemberCardTypeResult">
+        <include refid="selectCardTypeVo"/>
+        where status = '0' and del_flag = '0' and min_growth &lt;= #{growthValue}
+        order by min_growth desc, type_id desc
+        limit 1
+    </select>
+
+    <update id="updateCardType" parameterType="com.junsong.member.domain.MemMemberCardType">
+        update mem_member_card_type
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="typeName != null and typeName != ''">type_name = #{typeName},</if>
+            <if test="cardFee != null">card_fee = #{cardFee},</if>
+            <if test="discountRate != null">discount_rate = #{discountRate},</if>
+            <if test="pointsRate != null">points_rate = #{pointsRate},</if>
+            <if test="minGrowth != null">min_growth = #{minGrowth},</if>
+            <if test="signInPoints != null">sign_in_points = #{signInPoints},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where type_id = #{typeId}
+    </update>
+
+    <insert id="insertCardType" parameterType="com.junsong.member.domain.MemMemberCardType" useGeneratedKeys="true" keyProperty="typeId">
+        insert into mem_member_card_type
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            tenant_id,
+            <if test="typeName != null and typeName != ''">type_name,</if>
+            <if test="typeCode != null and typeCode != ''">type_code,</if>
+            <if test="cardFee != null">card_fee,</if>
+            <if test="discountRate != null">discount_rate,</if>
+            <if test="pointsRate != null">points_rate,</if>
+            <if test="minGrowth != null">min_growth,</if>
+            <if test="signInPoints != null">sign_in_points,</if>
+            <if test="status != null">status,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            1,
+            <if test="typeName != null and typeName != ''">#{typeName},</if>
+            <if test="typeCode != null and typeCode != ''">#{typeCode},</if>
+            <if test="cardFee != null">#{cardFee},</if>
+            <if test="discountRate != null">#{discountRate},</if>
+            <if test="pointsRate != null">#{pointsRate},</if>
+            <if test="minGrowth != null">#{minGrowth},</if>
+            <if test="signInPoints != null">#{signInPoints},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <select id="checkTypeCodeUnique" parameterType="String" resultMap="MemMemberCardTypeResult">
+        <include refid="selectCardTypeVo"/>
+        where type_code = #{typeCode} and del_flag = '0' limit 1
+    </select>
+
+</mapper>

@@ -4,6 +4,7 @@ package com.junsong.finance.service.impl;
 import com.junsong.common.core.constant.SecurityConstants;
 import com.junsong.common.core.domain.R;
 import com.junsong.common.security.utils.SecurityUtils;
+import com.junsong.finance.domain.FinAccountingPeriod;
 import com.junsong.finance.domain.vo.*;
 import com.junsong.system.api.RemoteUserService;
 import com.junsong.system.api.domain.SysDept;
@@ -201,6 +202,18 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
 
         String periodStatus = finAccountingPeriodMapper.selectCurrentPeriodStatusByDeptIds(deptIds);
         vo.setCurrentPeriodStatus(periodStatus != null ? periodStatus : "ACTIVE");
+
+        // R13-D: 应收指标
+        Long currentPeriodId = null;
+        if (deptIds != null && !deptIds.isEmpty()) {
+            FinAccountingPeriod cp = finAccountingPeriodMapper.selectCurrentPeriodByDeptId(deptIds.get(0));
+            if (cp != null) { currentPeriodId = cp.getPeriodId(); }
+        }
+        vo.setCurrentPeriodPaymentAmount(nullSafe(finSaleRecordMapper.selectCurrentPeriodPaymentTotal(deptIds, currentPeriodId)));
+        vo.setHistoricalReceivableCollectedAmount(nullSafe(finSaleRecordMapper.selectHistoricalReceivableCollected(deptIds, currentPeriodId)));
+        vo.setCurrentPeriodNewReceivableAmount(nullSafe(finSaleRecordMapper.selectCurrentPeriodNewReceivable(deptIds, currentPeriodId)));
+        vo.setEndingReceivableAmount(nullSafe(finSaleRecordMapper.selectEndingReceivableBalance(deptIds)));
+        vo.setOverdueReceivableCount(finSaleRecordMapper.countOverdueReceivable(deptIds));
 
         List<FinanceWarningVO> warnings = new ArrayList<>();
         BigDecimal prevMonthSales = nullSafe(finSaleRecordMapper.selectMonthTotalSalesForPrev(deptIds));

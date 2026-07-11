@@ -600,6 +600,9 @@ class FinanceReportServiceImplTest
 
     static class RecordingFinExpenseMapper implements FinExpenseMapper
     {
+        @Override public List<FinExpense> selectFinExpenseByExpenseIdsScoped(List<Long> ids, Long tenantId, Long deptId) { return Collections.emptyList(); }
+        @Override public int markExpenseVerified(Long id, Long advanceId, String by, Date time, Long tenantId, Long deptId) { return 1; }
+        @Override public int restoreExpenseUnverified(Long id) { return 1; }
         Map<String, Object> lastParams;
         BigDecimal expenseTotal = BigDecimal.ZERO;
         List<Map<String, Object>> categoryStats = Collections.emptyList();
@@ -629,6 +632,9 @@ class FinanceReportServiceImplTest
 
         @Override
         public int countTodayExpenses() { return 0; }
+
+        @Override
+        public int maxTodayExpenseSeq() { return 0; }
 
         @Override
         public BigDecimal sumUnverifiedExpenses() { return BigDecimal.ZERO; }
@@ -712,13 +718,28 @@ class FinanceReportServiceImplTest
         public FinSaleRecord selectFinSaleRecordBySaleId(Long saleId) { return null; }
 
         @Override
+        public FinSaleRecord selectFinSaleRecordBySaleIdForUpdate(Long saleId) { return selectFinSaleRecordBySaleId(saleId); }
+
+        @Override
         public List<FinSaleRecord> selectFinSaleRecordList(FinSaleRecord finSaleRecord) { return Collections.emptyList(); }
+
+        @Override
+        public List<FinSaleRecord> selectReceivableList(FinSaleRecord finSaleRecord) { return Collections.emptyList(); }
+
+        @Override
+        public int countReceivableByPeriodId(Long deptId, Long periodId) { return 0; }
+
+        @Override
+        public java.math.BigDecimal sumReceivableByPeriodId(Long deptId, Long periodId) { return java.math.BigDecimal.ZERO; }
 
         @Override
         public int insertFinSaleRecord(FinSaleRecord finSaleRecord) { return 0; }
 
         @Override
         public int updateFinSaleRecord(FinSaleRecord finSaleRecord) { return 0; }
+
+        @Override
+        public int updatePaidAmountAndStatus(Long saleId, java.math.BigDecimal paidAmount, String status) { return 0; }
 
         @Override
         public int deleteFinSaleRecordBySaleId(Long saleId) { return 0; }
@@ -754,6 +775,7 @@ class FinanceReportServiceImplTest
 
         @Override
         public int countTodaySales() { return 0; }
+        public int maxTodaySaleSeq() { return 0; }
 
         @Override public BigDecimal selectTodayTotalSales(List<Long> deptIds) { return BigDecimal.ZERO; }
 
@@ -768,6 +790,11 @@ class FinanceReportServiceImplTest
         @Override public List<Map<String, Object>> selectProductSalesRank(List<Long> d, Date s, Date e) { return Collections.emptyList(); }
         @Override public BigDecimal selectMemberSales(List<Long> d, Date s, Date e) { return memberSalesAmount; }
         @Override public BigDecimal selectSeckillSales(List<Long> d, Date s, Date e) { return BigDecimal.ZERO; }
+        @Override public BigDecimal selectCurrentPeriodPaymentTotal(List<Long> deptIds, Long periodId) { return BigDecimal.ZERO; }
+        @Override public BigDecimal selectHistoricalReceivableCollected(List<Long> deptIds, Long periodId) { return BigDecimal.ZERO; }
+        @Override public BigDecimal selectCurrentPeriodNewReceivable(List<Long> deptIds, Long periodId) { return BigDecimal.ZERO; }
+        @Override public BigDecimal selectEndingReceivableBalance(List<Long> deptIds) { return BigDecimal.ZERO; }
+        @Override public int countOverdueReceivable(List<Long> deptIds) { return 0; }
     }
 
     static class NoOpSaleRecordMapper implements FinSaleRecordMapper
@@ -776,13 +803,28 @@ class FinanceReportServiceImplTest
         public FinSaleRecord selectFinSaleRecordBySaleId(Long saleId) { return null; }
 
         @Override
+        public FinSaleRecord selectFinSaleRecordBySaleIdForUpdate(Long saleId) { return selectFinSaleRecordBySaleId(saleId); }
+
+        @Override
         public List<FinSaleRecord> selectFinSaleRecordList(FinSaleRecord r) { return Collections.emptyList(); }
+
+        @Override
+        public List<FinSaleRecord> selectReceivableList(FinSaleRecord r) { return Collections.emptyList(); }
+
+        @Override
+        public int countReceivableByPeriodId(Long deptId, Long periodId) { return 0; }
+
+        @Override
+        public java.math.BigDecimal sumReceivableByPeriodId(Long deptId, Long periodId) { return java.math.BigDecimal.ZERO; }
 
         @Override
         public int insertFinSaleRecord(FinSaleRecord r) { return 0; }
 
         @Override
         public int updateFinSaleRecord(FinSaleRecord r) { return 0; }
+
+        @Override
+        public int updatePaidAmountAndStatus(Long saleId, java.math.BigDecimal paidAmount, String status) { return 0; }
 
         @Override
         public int deleteFinSaleRecordBySaleId(Long saleId) { return 0; }
@@ -807,6 +849,7 @@ class FinanceReportServiceImplTest
 
         @Override
         public int countTodaySales() { return 0; }
+        public int maxTodaySaleSeq() { return 0; }
 
         @Override public BigDecimal selectTodayTotalSales(List<Long> deptIds) { return BigDecimal.ZERO; }
         @Override public BigDecimal selectMonthTotalSales(List<Long> deptIds) { return BigDecimal.ZERO; }
@@ -816,6 +859,11 @@ class FinanceReportServiceImplTest
         @Override public List<Map<String, Object>> selectProductSalesRank(List<Long> d, Date s, Date e) { return Collections.emptyList(); }
         @Override public BigDecimal selectMemberSales(List<Long> d, Date s, Date e) { return BigDecimal.ZERO; }
         @Override public BigDecimal selectSeckillSales(List<Long> d, Date s, Date e) { return BigDecimal.ZERO; }
+        @Override public BigDecimal selectCurrentPeriodPaymentTotal(List<Long> deptIds, Long periodId) { return BigDecimal.ZERO; }
+        @Override public BigDecimal selectHistoricalReceivableCollected(List<Long> deptIds, Long periodId) { return BigDecimal.ZERO; }
+        @Override public BigDecimal selectCurrentPeriodNewReceivable(List<Long> deptIds, Long periodId) { return BigDecimal.ZERO; }
+        @Override public BigDecimal selectEndingReceivableBalance(List<Long> deptIds) { return BigDecimal.ZERO; }
+        @Override public int countOverdueReceivable(List<Long> deptIds) { return 0; }
     }
 
     // ── 新增 Fake：FinProfitShareRecordMapper ──
@@ -896,6 +944,7 @@ class FinanceReportServiceImplTest
         @Override public int countUnsettledRecordsByPeriodId(List<Long> deptIds, Long periodId) { return unsettledCount; }
         @Override public List<Map<String, Object>> selectSettlementByDept(List<Long> d, Date s, Date e) { return Collections.emptyList(); }
         @Override public BigDecimal selectPaidAmount(List<Long> d, Date s, Date e) { return BigDecimal.ZERO; }
+        @Override public int updateShareTimeByPeriodId(Long periodId, Date shareTime, String updateBy, String remark) { return 0; }
     }
 
     static class NoOpProfitShareRecordMapper implements FinProfitShareRecordMapper
@@ -943,6 +992,7 @@ class FinanceReportServiceImplTest
         @Override public int countUnsettledRecordsByPeriodId(List<Long> deptIds, Long periodId) { return 0; }
         @Override public List<Map<String, Object>> selectSettlementByDept(List<Long> d, Date s, Date e) { return Collections.emptyList(); }
         @Override public BigDecimal selectPaidAmount(List<Long> d, Date s, Date e) { return BigDecimal.ZERO; }
+        @Override public int updateShareTimeByPeriodId(Long periodId, Date shareTime, String updateBy, String remark) { return 0; }
     }
 
     // ── NoOp Fake：FinProfitShareDetailMapper ──

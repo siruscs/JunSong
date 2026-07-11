@@ -14,11 +14,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="address" column="address"/>
         <result property="idCard" column="id_card"/>
         <result property="cardType" column="card_type"/>
+        <result property="cardTypeName" column="type_name"/>
         <result property="cardId" column="card_id"/>
         <result property="joinDate" column="join_date"/>
         <result property="expireDate" column="expire_date"/>
         <result property="totalPoints" column="total_points"/>
         <result property="availablePoints" column="available_points"/>
+        <result property="growthValue" column="growth_value"/>
+        <result property="lastActiveTime" column="last_active_time"/>
         <result property="seckillCount" column="seckill_count"/>
         <result property="status" column="status"/>
         <result property="remark" column="remark"/>
@@ -31,11 +34,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <sql id="selectMemMemberVo">
         select m.member_id, m.dept_id, m.member_no, m.member_name, m.phone, m.age, m.address, m.id_card,
-               m.card_type, m.card_id, m.join_date, m.expire_date, m.total_points,
+               m.card_type, c.type_name, m.card_id, m.join_date, m.expire_date, m.total_points,
                COALESCE(pr.balance, 0) as available_points,
+               m.growth_value,
+               m.last_active_time,
                COALESCE(sr.cnt, 0) as seckill_count,
                m.status, m.remark, m.del_flag, m.create_by, m.create_time, m.update_by, m.update_time
         from mem_member m
+        left join mem_member_card_type c on m.card_type = c.type_code
         left join (
             select r1.member_id, r1.balance from mem_points_record r1
             where r1.del_flag = '0' and r1.create_time = (
@@ -150,6 +156,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="expireDate != null">expire_date,</if>
             <if test="totalPoints != null">total_points,</if>
             <if test="availablePoints != null">available_points,</if>
+            <if test="growthValue != null">growth_value,</if>
+            <if test="lastActiveTime != null">last_active_time,</if>
             <if test="status != null">status,</if>
             <if test="createBy != null">create_by,</if>
             <if test="remark != null">remark,</if>
@@ -169,6 +177,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="expireDate != null">#{expireDate},</if>
             <if test="totalPoints != null">#{totalPoints},</if>
             <if test="availablePoints != null">#{availablePoints},</if>
+            <if test="growthValue != null">#{growthValue},</if>
+            <if test="lastActiveTime != null">#{lastActiveTime},</if>
             <if test="status != null">#{status},</if>
             <if test="createBy != null">#{createBy},</if>
             <if test="remark != null">#{remark},</if>
@@ -192,6 +202,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="expireDate != null">expire_date = #{expireDate},</if>
             <if test="totalPoints != null">total_points = #{totalPoints},</if>
             <if test="availablePoints != null">available_points = #{availablePoints},</if>
+            <if test="growthValue != null">growth_value = #{growthValue},</if>
+            <if test="lastActiveTime != null">last_active_time = #{lastActiveTime},</if>
             <if test="status != null">status = #{status},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>
             <if test="remark != null">remark = #{remark},</if>
@@ -216,5 +228,73 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where status = '0' and del_flag = '0'
           and expire_date is not null and expire_date &lt; #{today}
     </update>
+
+    <!-- 原子累加积分和成长值 -->
+    <update id="addPointsAndGrowth">
+        update mem_member
+        set total_points = COALESCE(total_points, 0) + #{pointsDelta},
+            available_points = COALESCE(available_points, 0) + #{pointsDelta},
+            growth_value = GREATEST(0, COALESCE(growth_value, 0) + #{growthDelta}),
+            last_active_time = NOW(),
+            update_by = #{operator},
+            update_time = NOW()
+        where member_id = #{memberId} and del_flag = '0'
+    </update>
+
+    <!-- 原子累加成长值（不改变积分） -->
+    <update id="addGrowthOnly">
+        update mem_member
+        set growth_value = GREATEST(0, COALESCE(growth_value, 0) + #{growthDelta}),
+            last_active_time = NOW(),
+            update_by = #{operator},
+            update_time = NOW()
+        where member_id = #{memberId} and del_flag = '0'
+    </update>
+
+    <!-- 原子累加成长值，不更新活跃时间（衰减专用，避免被衰减会员变成"活跃"） -->
+    <update id="addGrowthOnlyWithoutActiveTime">
+        update mem_member
+        set growth_value = GREATEST(0, COALESCE(growth_value, 0) + #{growthDelta}),
+            update_by = #{operator},
+            update_time = NOW()
+        where member_id = #{memberId} and del_flag = '0'
+    </update>
+
+    <!-- 更新会员等级 -->
+    <update id="updateMemberLevel">
+        update mem_member
+        set card_type = #{newLevel},
+            update_by = #{operator},
+            update_time = NOW()
+        where member_id = #{memberId} and del_flag = '0' and card_type != #{newLevel}
+    </update>
+
+    <!-- 更新最后活跃时间 -->
+    <update id="updateLastActiveTime">
+        update mem_member
+        set last_active_time = NOW()
+        where member_id = #{memberId} and del_flag = '0'
+    </update>
+
+    <!-- 查询不活跃会员（衰减任务用，按租户过滤） -->
+    <select id="selectInactiveMembers" resultMap="MemMemberResult">
+        select m.member_id, m.dept_id, m.member_no, m.member_name, m.phone, m.age, m.address, m.id_card,
+               m.card_type, m.card_id, m.join_date, m.expire_date, m.total_points,
+               COALESCE(pr.balance, 0) as available_points,
+               m.growth_value, m.last_active_time, 0 as seckill_count,
+               m.status, m.remark, m.del_flag, m.create_by, m.create_time, m.update_by, m.update_time
+        from mem_member m
+        left join (
+            select r1.member_id, r1.balance from mem_points_record r1
+            where r1.del_flag = '0' and r1.create_time = (
+                select max(create_time) from mem_points_record r2 where r2.member_id = r1.member_id and r2.del_flag = '0'
+            )
+        ) pr on m.member_id = pr.member_id
+        where m.tenant_id = #{tenantId}
+          and m.last_active_time &lt; #{threshold}
+          and m.growth_value &gt; 0
+          and m.status = '0'
+          and m.del_flag = '0'
+    </select>
 
 </mapper>

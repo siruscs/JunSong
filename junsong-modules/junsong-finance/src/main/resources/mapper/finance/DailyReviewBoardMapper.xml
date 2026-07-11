@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.DailyReviewBoardMapper">
+
+    <!-- R8-A: 每日经营复盘 Mapper，基于真实表和业务日期字段 -->
+
+    <sql id="deptFilter">
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND dept_id IN
+            <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+    </sql>
+
+    <!-- 查询某日销售额（按 sale_date） -->
+    <select id="selectSalesAmount" resultType="java.math.BigDecimal">
+        SELECT IFNULL(SUM(sale_amount), 0)
+        FROM fin_sale_record
+        WHERE del_flag = '0'
+        <include refid="deptFilter" />
+        AND sale_date &gt;= #{startDate} AND sale_date &lt;= #{endDate}
+    </select>
+
+    <!-- 查询某日实收现金（按 payment_date） -->
+    <select id="selectCashInAmount" resultType="java.math.BigDecimal">
+        SELECT IFNULL(SUM(payment_amount), 0)
+        FROM fin_sale_payment
+        WHERE del_flag = '0'
+        <include refid="deptFilter" />
+        AND payment_date &gt;= #{startDate} AND payment_date &lt;= #{endDate}
+    </select>
+
+    <!-- 查询某日费用支出（按 expense_date，只统计已核销 status='1'） -->
+    <select id="selectExpenseAmount" resultType="java.math.BigDecimal">
+        SELECT IFNULL(SUM(expense_amount), 0)
+        FROM fin_expense
+        WHERE del_flag = '0'
+        AND status = '1'
+        <include refid="deptFilter" />
+        AND expense_date &gt;= #{startDate} AND expense_date &lt;= #{endDate}
+    </select>
+
+    <!-- 查询待处理任务数（PENDING/IN_PROGRESS） -->
+    <select id="selectPendingTaskCount" resultType="int">
+        SELECT COUNT(*)
+        FROM finance_review_task
+        WHERE del_flag = '0'
+        AND status IN ('PENDING', 'IN_PROGRESS')
+        <include refid="deptFilter" />
+    </select>
+
+    <!-- 查询高优先级任务数（severity=HIGH 且 pending） -->
+    <select id="selectHighPriorityTaskCount" resultType="int">
+        SELECT COUNT(*)
+        FROM finance_review_task
+        WHERE del_flag = '0'
+        AND status IN ('PENDING', 'IN_PROGRESS')
+        AND severity = 'HIGH'
+        <include refid="deptFilter" />
+    </select>
+
+    <!-- R8-F: 查询本周已完成任务数（status=DONE 且 update_time 在指定范围内） -->
+    <select id="selectCompletedTaskCount" resultType="int">
+        SELECT COUNT(*)
+        FROM finance_review_task
+        WHERE del_flag = '0'
+        AND status = 'DONE'
+        AND update_time &gt;= #{startDate} AND update_time &lt;= #{endDate}
+        <include refid="deptFilter" />
+    </select>
+
+    <!-- 查询高优先级待办任务列表（最多 limit 条） -->
+    <select id="selectHighPriorityTasks" resultType="java.util.Map">
+        SELECT
+            task_type AS taskType,
+            title,
+            reason,
+            suggestion,
+            target_route AS targetRoute,
+            impact_amount AS impactAmount,
+            dept_id AS deptId
+        FROM finance_review_task
+        WHERE del_flag = '0'
+        AND status IN ('PENDING', 'IN_PROGRESS')
+        AND severity = 'HIGH'
+        <include refid="deptFilter" />
+        ORDER BY create_time DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 查询门店名称 -->
+    <select id="selectDeptName" resultType="string">
+        SELECT dept_name FROM sys_dept WHERE dept_id = #{deptId}
+    </select>
+
+    <!-- 检查表是否存在 -->
+    <select id="checkTableExists" resultType="int">
+        SELECT COUNT(*) FROM information_schema.tables
+        WHERE table_schema = DATABASE() AND table_name = #{tableName}
+    </select>
+
+    <!-- R10-F: 已完成任务备注 -->
+    <select id="selectDoneTaskNotes" resultType="string">
+        SELECT l.handler_note FROM finance_review_task_log l
+        INNER JOIN finance_review_task t ON t.task_id = l.task_id
+        WHERE l.action_type = 'DONE'
+          AND l.handler_note IS NOT NULL AND l.handler_note != ''
+          AND l.action_time &gt;= #{startDate} AND l.action_time &lt;= #{endDate}
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND t.dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+        ORDER BY l.action_time DESC
+        LIMIT 5
+    </select>
+
+    <!-- R10-F: 未解决高风险任务 -->
+    <select id="selectUnresolvedHighRiskTasks" resultType="string">
+        SELECT t.title FROM finance_review_task t
+        WHERE t.status IN ('PENDING', 'IN_PROGRESS')
+          AND t.severity = 'HIGH'
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND t.dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+        ORDER BY t.create_time ASC
+        LIMIT 10
+    </select>
+
+</mapper>

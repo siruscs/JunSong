@@ -125,6 +125,9 @@ class MemberActivityRoiServiceImplTest {
         assertNull(vo.getRoi(), "成本不可用时 ROI 值应为 null");
         assertEquals("MISSING_ACTIVITY_COST", vo.getUnavailableReason(),
                 "成本缺失时原因应为 MISSING_ACTIVITY_COST");
+        assertNotNull(vo.getSuggestion(), "成本缺失时应给出操作建议文案");
+        assertTrue(vo.getSuggestion().contains("成本"),
+                "成本缺失建议文案应说明补充活动成本，实际: " + vo.getSuggestion());
         // Even though sales are large, ROI should not be computed without cost
         assertEquals(new BigDecimal("50000.00"), vo.getTotalSalesAmount(),
                 "销售额应正常计算");
@@ -159,6 +162,7 @@ class MemberActivityRoiServiceImplTest {
         assertEquals(8L, vo.getFirstPurchaseMemberCount(), "首购会员应为 8");
         assertEquals(22L, vo.getRepurchaseMemberCount(), "复购会员应为 22");
         assertNull(vo.getUnavailableReason(), "READY 时原因为 null");
+        assertNull(vo.getSuggestion(), "READY 时不应有不可算建议文案");
     }
 
     // ── R5-D: No related sales → UNAVAILABLE/NO_RELATED_SALES ──

@@ -40,7 +40,20 @@ async function runCheck(baseUrl, token, check) {
         headers,
         body: check.body ? JSON.stringify(check.body) : null,
       })
-      await res.text()
+      const text = await res.text()
+      if (!res.ok) {
+        samples.push(99999)
+        continue
+      }
+      try {
+        const body = JSON.parse(text)
+        if (body && body.code !== undefined && body.code !== 200) {
+          samples.push(99999)
+          continue
+        }
+      } catch (_) {
+        // 非 JSON 响应（如健康检查纯文本），res.ok 已校验通过
+      }
     } catch (e) {
       samples.push(99999)
       continue

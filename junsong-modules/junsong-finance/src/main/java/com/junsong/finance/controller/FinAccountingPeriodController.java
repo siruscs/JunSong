@@ -1,6 +1,10 @@
 package com.junsong.finance.controller;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -28,6 +32,7 @@ import com.junsong.finance.domain.FinProfitShareRecord;
 import com.junsong.finance.domain.FinPurchase;
 import com.junsong.finance.domain.FinSalePayment;
 import com.junsong.finance.domain.FinSaleRecord;
+import com.junsong.finance.domain.bo.AccountingPeriodStartTimeAdjustRequest;
 import com.junsong.finance.domain.vo.AccountingPeriodDetailVO;
 import com.junsong.finance.service.IFinAdvanceService;
 import com.junsong.finance.service.IFinAccountingPeriodService;
@@ -157,7 +162,32 @@ public class FinAccountingPeriodController extends BaseController
         FinSalePayment salePaymentQuery = new FinSalePayment();
         salePaymentQuery.setDeptId(period.getDeptId());
         salePaymentQuery.setPeriodId(period.getPeriodId());
-        detail.setSalePayments(finSalePaymentService.selectFinSalePaymentList(salePaymentQuery));
+        List<FinSalePayment> salePayments = finSalePaymentService.selectFinSalePaymentList(salePaymentQuery);
+        detail.setSalePayments(salePayments);
+
+        // 历史欠款缴款：缴款周期为当前周期，但销售单属于历史周期，需补充查询这些销售单
+        Set<Long> existingSaleIds = detail.getSales().stream()
+                .map(FinSaleRecord::getSaleId)
+                .collect(Collectors.toSet());
+        List<FinSaleRecord> supplementarySales = new ArrayList<>();
+        for (FinSalePayment payment : salePayments)
+        {
+            if (payment.getSaleId() != null && !existingSaleIds.contains(payment.getSaleId()))
+            {
+                FinSaleRecord histSale = finSaleRecordService.selectFinSaleRecordBySaleId(payment.getSaleId());
+                if (histSale != null)
+                {
+                    supplementarySales.add(histSale);
+                    existingSaleIds.add(payment.getSaleId());
+                }
+            }
+        }
+        if (!supplementarySales.isEmpty())
+        {
+            List<FinSaleRecord> allSales = new ArrayList<>(detail.getSales());
+            allSales.addAll(supplementarySales);
+            detail.setSales(allSales);
+        }
 
         FinProfitShareRecord shareQuery = new FinProfitShareRecord();
         shareQuery.setDeptId(period.getDeptId());
@@ -205,7 +235,7 @@ public class FinAccountingPeriodController extends BaseController
     @Log(title = "财务核算周期-结转回退", businessType = BusinessType.UPDATE)
     @PostMapping("/current/{deptId}/rollbackCarryForward")
     public AjaxResult rollbackCarryForward(@PathVariable Long deptId,
-                                           @RequestParam String reason)
+                                           @RequestParam(required = false) String reason)
     {
         return success(finAccountingPeriodService.rollbackCarryForward(deptId, reason));
     }
@@ -234,5 +264,22 @@ public class FinAccountingPeriodController extends BaseController
     public AjaxResult remove(@PathVariable Long[] periodIds)
     {
         return toAjax(finAccountingPeriodService.deleteFinAccountingPeriodByPeriodIds(periodIds));
+    }
+
+    /**
+     * 运维调整历史核算周期起始时间
+     * 只调整起始时间，不重新核算金额，不重新计算分润
+     */
+    @RequiresPermissions("finance:accountingPeriod:opsAdjustStartTime")
+    @Log(title = "财务核算周期-运维调整起始时间", businessType = BusinessType.UPDATE)
+    @PostMapping("/{periodId}/opsAdjustStartTime")
+    public AjaxResult opsAdjustStartTime(@PathVariable Long periodId,
+                                         @Validated @RequestBody AccountingPeriodStartTimeAdjustRequest request)
+    {
+        FinAccountingPeriod period = finAccountingPeriodService.opsAdjustStartTime(periodId, request.getStartTime(), request.getEndTime(), request.getReason());
+        AjaxResult result = AjaxResult.success(period);
+        result.put("startTime", period.getStartTime());
+        result.put("endTime", period.getEndTime());
+        return result;
     }
 }

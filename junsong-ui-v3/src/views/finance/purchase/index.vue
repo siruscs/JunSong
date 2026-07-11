@@ -436,7 +436,7 @@ export default {
     /** 查询进货单列表 */
     getList() {
       this.loading = true
-      listPurchase(this.queryParams).then(response => {
+      listPurchase({ ...this.queryParams, deptId: userStore.currentDeptId }).then(response => {
         this.purchaseList = response.rows
         this.total = response.total
         this.loading = false
@@ -471,7 +471,7 @@ export default {
         paidAmount: 0,
         paymentMethod: undefined,
         totalQuantity: 0,
-        status: "0",
+        status: "2",
         remark: undefined,
         details: []
       }

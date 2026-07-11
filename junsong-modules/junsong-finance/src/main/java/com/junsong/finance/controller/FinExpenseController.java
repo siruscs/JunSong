@@ -2,6 +2,7 @@ package com.junsong.finance.controller;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import com.junsong.common.core.utils.poi.ExcelUtil;
+import com.junsong.common.core.exception.ServiceException;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
@@ -26,9 +28,11 @@ import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.finance.domain.FinExpense;
 import com.junsong.finance.domain.FinAdvance;
 import com.junsong.finance.domain.vo.ExpenseVerifyVO;
+import com.junsong.finance.domain.vo.ExpenseUnverifyVO;
 import com.junsong.finance.constant.VerifyStatus;
 import com.junsong.finance.service.IFinExpenseService;
 import com.junsong.finance.service.IFinAdvanceService;
+import com.junsong.finance.service.IFinExpenseVerificationService;
 
 @RestController
 @RequestMapping("/expense")
@@ -40,10 +44,17 @@ public class FinExpenseController extends BaseController
     @Autowired
     private IFinAdvanceService finAdvanceService;
 
+    @Autowired
+    private IFinExpenseVerificationService finExpenseVerificationService;
+
     @RequiresPermissions("finance:expense:list")
     @GetMapping("/list")
     public TableDataInfo list(FinExpense finExpense)
     {
+        if (finExpense.getDeptId() == null)
+        {
+            finExpense.setDeptId(SecurityUtils.getDeptId());
+        }
         startPage();
         List<FinExpense> list = finExpenseService.selectFinExpenseList(finExpense);
         return getDataTable(list);
@@ -58,8 +69,13 @@ public class FinExpenseController extends BaseController
 
     @RequiresPermissions("finance:advance:list")
     @GetMapping("/unverifiedAdvances")
-    public TableDataInfo getUnverifiedAdvances(@RequestParam(required = false) Long deptId)
+    public TableDataInfo getUnverifiedAdvances()
     {
+        Long deptId = SecurityUtils.getDeptId();
+        if (deptId == null)
+        {
+            throw new ServiceException("无法确定当前门店，禁止查询借支单");
+        }
         FinAdvance query = new FinAdvance();
         query.setStatus(VerifyStatus.UNVERIFIED);
         query.setDeptId(deptId);
@@ -67,12 +83,34 @@ public class FinExpenseController extends BaseController
         return getDataTable(list);
     }
 
-    @RequiresPermissions("finance:expense:edit")
+    @RequiresPermissions("finance:expense:verify")
     @Log(title = "批量核销费用", businessType = BusinessType.UPDATE)
     @PutMapping("/batchVerify")
     public AjaxResult batchVerify(@Validated @RequestBody ExpenseVerifyVO verifyVO)
     {
-        return toAjax(finExpenseService.batchVerifyExpense(verifyVO, SecurityUtils.getUsername()));
+        return success(finExpenseVerificationService.verify(verifyVO, SecurityUtils.getUsername()));
+    }
+
+    @RequiresPermissions("finance:expense:unverify")
+    @Log(title = "反核销费用", businessType = BusinessType.UPDATE)
+    @PutMapping("/unverify/{batchId}")
+    public AjaxResult unverify(@PathVariable Long batchId, @Validated @RequestBody ExpenseUnverifyVO request)
+    {
+        return success(finExpenseVerificationService.unverify(batchId, request, SecurityUtils.getUsername()));
+    }
+
+    @RequiresPermissions("finance:expense:unverify")
+    @GetMapping("/{expenseId}/capability")
+    public AjaxResult capability(@PathVariable Long expenseId)
+    {
+        return success(finExpenseVerificationService.getCapability(expenseId));
+    }
+
+    @RequiresPermissions("finance:expense:verify")
+    @GetMapping("/{expenseId}/verificationCandidate")
+    public AjaxResult verificationCandidate(@PathVariable Long expenseId)
+    {
+        return success(finExpenseVerificationService.getVerificationCandidate(expenseId));
     }
 
     @RequiresPermissions("finance:expense:export")
@@ -80,6 +118,10 @@ public class FinExpenseController extends BaseController
     @PostMapping("/export")
     public void export(HttpServletResponse response, FinExpense finExpense)
     {
+        if (!SecurityUtils.isAdmin())
+        {
+            finExpense.setDeptId(SecurityUtils.getDeptId());
+        }
         List<FinExpense> list = finExpenseService.selectFinExpenseList(finExpense);
         ExcelUtil<FinExpense> util = new ExcelUtil<FinExpense>(FinExpense.class);
         util.exportExcel(response, list, "费用记录数据");
@@ -126,12 +168,17 @@ public class FinExpenseController extends BaseController
         return toAjax(finExpenseService.deleteFinExpenseByExpenseIds(expenseIds));
     }
 
-    @RequiresPermissions("finance:expense:edit")
+    @Deprecated
+    @RequiresPermissions("finance:expense:verify")
     @Log(title = "核销费用", businessType = BusinessType.UPDATE)
     @PutMapping("/verify/{expenseId}")
     public AjaxResult verify(@PathVariable Long expenseId)
     {
-        return toAjax(finExpenseService.verifyExpense(expenseId, SecurityUtils.getUsername()));
+        ExpenseVerifyVO request = new ExpenseVerifyVO();
+        request.setExpenseIds(List.of(expenseId));
+        request.setAdvanceIds(List.of());
+        request.setRequestId("legacy-" + UUID.randomUUID());
+        return success(finExpenseVerificationService.verify(request, SecurityUtils.getUsername()));
     }
 
     /**

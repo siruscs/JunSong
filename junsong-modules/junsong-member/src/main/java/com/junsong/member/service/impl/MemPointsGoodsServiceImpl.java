@@ -98,7 +98,7 @@ public class MemPointsGoodsServiceImpl implements IMemPointsGoodsService {
      */
     @Override
     public boolean checkMemPointsGoodsNoUnique(MemPointsGoods memPointsGoods) {
-        int count = memPointsGoodsMapper.checkMemGoodsCodeUnique(memPointsGoods.getGoodsCode());
+        int count = memPointsGoodsMapper.checkMemGoodsCodeUnique(memPointsGoods.getGoodsCode(), memPointsGoods.getGoodsId());
         return count == 0;
     }
 }

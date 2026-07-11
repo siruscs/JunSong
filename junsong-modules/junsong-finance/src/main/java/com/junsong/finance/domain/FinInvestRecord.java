@@ -25,8 +25,8 @@ public class FinInvestRecord extends BaseEntity
     @Excel(name = "投资金额", cellType = ColumnType.NUMERIC)
     @NotNull(message = "投资金额不能为空")
     private BigDecimal investAmount;
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    @Excel(name = "投资时间", width = 30, dateFormat = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    @Excel(name = "投资时间", width = 20, dateFormat = "yyyy-MM-dd")
     @NotNull(message = "投资时间不能为空")
     private Date investTime;
     private String delFlag;

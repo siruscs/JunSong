@@ -1,7 +1,7 @@
 # 开放平台 API 开发者快速入门
 
-> **更新日期：** 2026-06-27
-> **适用版本：** JunSong-Cloud 开放平台 v2
+> **更新日期：** 2026-07-05
+> **适用版本：** JunSong-Cloud 开放平台 v1/v2
 
 本文档帮助第三方开发者在 5 分钟内完成开放 API 的接入和首次调用。
 
@@ -12,6 +12,8 @@
 ```
 注册应用 → 获取测试Key → 实现签名 → 调用API → (可选)申请生产Key
 ```
+
+平台会在网关验签通过后生成可信调用上下文，并由开放服务透传给下游业务服务。外部调用方只需要按本文携带 `X-App-*` 请求头，不能自行伪造内部身份头。
 
 ---
 
@@ -65,7 +67,22 @@
 | `X-App-Nonce` | 随机串（建议 UUID） |
 | `X-App-Signature` | HMAC-SHA256 签名（十六进制小写） |
 
-### 4.3 Python 示例
+### 4.3 平台生成的可信上下文
+
+以下请求头由网关和开放服务内部生成，外部调用方不需要也不应该主动传入：
+
+| Header | 说明 |
+|--------|------|
+| `X-Open-App-Id` | 当前开放应用 ID |
+| `X-Open-App-Key` | 当前 AppKey |
+| `X-Open-Tenant-Id` | 当前授权租户 |
+| `X-Open-Request-Id` | 当前请求 ID，用于日志追踪 |
+| `X-Open-Key-Type` | 测试 / 生产 Key 类型 |
+| `X-Open-Auth-Version` | 开放平台鉴权版本 |
+
+平台会剥离外部请求中可能伪造的内部身份头，并在验签后重新注入可信上下文。
+
+### 4.4 Python 示例
 
 ```python
 import hmac, hashlib, time, uuid, urllib.request, json
@@ -100,7 +117,7 @@ result = call_openapi("GET", "/openapi/v2/members/dashboard/stats")
 print(result)
 ```
 
-### 4.4 JavaScript / Node.js 示例
+### 4.5 JavaScript / Node.js 示例
 
 ```javascript
 const crypto = require('crypto');
@@ -179,6 +196,27 @@ X-RateLimit-Remaining: 98
 X-API-Version: v2
 ```
 
+调用日志：
+
+- 认证失败、签名失败、限流、业务成功和业务异常都会写入开放平台调用日志。
+- 排查问题时请记录请求时间、AppKey、接口路径和响应中的 requestId（如有）。
+
+### 5.4 Webhook 订阅
+
+Webhook 订阅已绑定应用和租户，订阅信息会持久化保存。创建订阅时至少需要提供回调地址和事件范围：
+
+```http
+POST /openapi/v1/open/webhooks/subscriptions
+Content-Type: application/json
+
+{
+  "callbackUrl": "https://example.com/junsong/webhook",
+  "events": "member.created,workflow.completed"
+}
+```
+
+回调地址必须使用服务端可访问的 HTTPS 地址。生产环境订阅建议先在测试 Key 下完成签名、超时和重试验证。
+
 ---
 
 ## 六、第五步：使用 SDK（可选）
@@ -218,13 +256,19 @@ sh generate-sdk.sh
 ### Q2: 返回 "请求已过期"
 时间戳超过 5 分钟有效期，请使用当前时间。
 
-### Q3: 返回 "请求不可重放"
+### Q3: 我可以调用 `/open/internal/**` 吗？
+不可以。`/open/internal/**` 是服务内部接口，不属于开放 API。生产部署中 open 服务端口不发布到宿主机，内部接口还需要 `@InnerAuth` 和 `X-Inner-Token` 双重校验。
+
+### Q4: 为什么我传入的 `from-source` 或 `user_id` 没有效？
+这些属于内部身份头。网关会剥离外部请求中可伪造的身份头，并在验签通过后注入可信 `X-Open-*` 上下文。
+
+### Q5: 返回 "请求不可重放"
 nonce 在 10 分钟内已被使用，每次请求请生成新的随机 nonce。
 
-### Q4: 返回 "签名校验失败"
+### Q6: 返回 "签名校验失败"
 签名串拼接顺序为：`方法 + 完整路径 + 时间戳 + nonce + 请求体`，路径需含 `/openapi/v2` 前缀。
 
-### Q5: 返回 HTTP 429 "请求超出每日配额限制"
+### Q7: 返回 HTTP 429 "请求超出每日配额限制"
 当日调用次数超限，等待次日自动重置或申请生产 Key。
 
 ---

@@ -5,6 +5,8 @@ com.junsong.system.api.factory.RemoteMenuFallbackFactory
 com.junsong.system.api.factory.RemoteDeptFallbackFactory
 com.junsong.system.api.factory.RemoteStoreOpeningFallbackFactory
 com.junsong.system.api.factory.RemoteNotificationFallbackFactory
+com.junsong.system.api.factory.RemoteOperationAuditFallbackFactory
+com.junsong.system.api.factory.RemoteOperationAlertFallbackFactory
 com.junsong.member.api.factory.RemoteRefundApplyFallbackFactory
 com.junsong.member.api.factory.RemoteMemberGrowthFallbackFactory
 com.junsong.member.api.factory.RemoteMemberPredictionFallbackFactory

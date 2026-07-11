@@ -57,6 +57,22 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </where>
     </select>
 
+    <select id="selectFinAdvanceByAdvanceIdsScoped" resultMap="FinAdvanceResult">
+        <include refid="selectFinAdvanceVo"/>
+        where a.tenant_id = #{tenantId} and a.dept_id = #{deptId} and a.del_flag = '0' and a.advance_id in
+        <foreach item="id" collection="advanceIds" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <update id="markAdvanceVerified">
+        update fin_advance set status='1', verify_by=#{verifyBy}, verify_time=#{verifyTime}, update_time=sysdate()
+        where advance_id=#{advanceId} and tenant_id=#{tenantId} and dept_id=#{deptId} and status='0' and del_flag='0'
+    </update>
+
+    <update id="restoreAdvanceStatus">
+        update fin_advance set status=#{status}, verify_by=#{verifyBy}, verify_time=#{verifyTime}, update_time=sysdate()
+        where advance_id=#{advanceId} and del_flag='0'
+    </update>
+
     <select id="checkAdvanceNoUnique" parameterType="String" resultMap="FinAdvanceResult">
         <include refid="selectFinAdvanceVo"/>
         where a.advance_no = #{advanceNo} and a.del_flag = '0'

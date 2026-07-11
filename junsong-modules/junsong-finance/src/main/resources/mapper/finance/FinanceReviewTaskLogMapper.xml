@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.FinanceReviewTaskLogMapper">
+
+    <resultMap type="com.junsong.finance.domain.FinanceReviewTaskLog" id="FinanceReviewTaskLogResult">
+        <id property="logId" column="log_id" />
+        <result property="taskId" column="task_id" />
+        <result property="deptId" column="dept_id" />
+        <result property="actionType" column="action_type" />
+        <result property="beforeStatus" column="before_status" />
+        <result property="afterStatus" column="after_status" />
+        <result property="handlerId" column="handler_id" />
+        <result property="handlerName" column="handler_name" />
+        <result property="handlerNote" column="handler_note" />
+        <result property="actionTime" column="action_time" />
+    </resultMap>
+
+    <insert id="insertFinanceReviewTaskLog" parameterType="com.junsong.finance.domain.FinanceReviewTaskLog" useGeneratedKeys="true" keyProperty="logId">
+        insert into finance_review_task_log
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="taskId != null">task_id,</if>
+            <if test="deptId != null">dept_id,</if>
+            <if test="actionType != null and actionType != ''">action_type,</if>
+            <if test="beforeStatus != null">before_status,</if>
+            <if test="afterStatus != null and afterStatus != ''">after_status,</if>
+            <if test="handlerId != null">handler_id,</if>
+            <if test="handlerName != null and handlerName != ''">handler_name,</if>
+            <if test="handlerNote != null">handler_note,</if>
+            <if test="actionTime != null">action_time,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="taskId != null">#{taskId},</if>
+            <if test="deptId != null">#{deptId},</if>
+            <if test="actionType != null and actionType != ''">#{actionType},</if>
+            <if test="beforeStatus != null">#{beforeStatus},</if>
+            <if test="afterStatus != null and afterStatus != ''">#{afterStatus},</if>
+            <if test="handlerId != null">#{handlerId},</if>
+            <if test="handlerName != null and handlerName != ''">#{handlerName},</if>
+            <if test="handlerNote != null">#{handlerNote},</if>
+            <if test="actionTime != null">#{actionTime},</if>
+        </trim>
+    </insert>
+
+    <select id="selectLogsByTaskId" parameterType="Long" resultMap="FinanceReviewTaskLogResult">
+        select log_id, task_id, dept_id, action_type, before_status, after_status,
+               handler_id, handler_name, handler_note, action_time
+        from finance_review_task_log
+        where task_id = #{taskId}
+        order by action_time asc
+    </select>
+
+</mapper>

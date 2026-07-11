@@ -7,7 +7,6 @@ import com.junsong.finance.domain.vo.FinanceAlertVO;
 import com.junsong.finance.domain.vo.FinanceReviewTaskVO;
 import com.junsong.finance.domain.vo.FinanceOperationDashboardVO;
 import com.junsong.finance.domain.vo.ReportQueryParams;
-import com.junsong.finance.service.IFinanceCashflowReportService;
 import com.junsong.finance.service.IFinanceReportService;
 import com.junsong.finance.service.alert.FinanceAlertNotifier;
 import com.junsong.finance.service.diagnosis.FinanceDiagnosisResult;
@@ -29,9 +28,6 @@ public class FinanceDashboardController extends BaseController {
     private IFinanceReportService financeReportService;
 
     @Autowired
-    private IFinanceCashflowReportService cashflowReportService;
-
-    @Autowired
     private FinanceAlertNotifier alertNotifier;
 
     @RequiresPermissions("finance:dashboard:operation")
@@ -39,12 +35,6 @@ public class FinanceDashboardController extends BaseController {
     public AjaxResult getOperationDashboard(@RequestBody ReportQueryParams params) {
         FinanceOperationDashboardVO dashboard = financeReportService.getOperationDashboard(params);
         return AjaxResult.success(dashboard);
-    }
-
-    @RequiresPermissions("finance:dashboard:operation")
-    @PostMapping("/cashflow")
-    public AjaxResult getCashflow(@RequestBody ReportQueryParams params) {
-        return AjaxResult.success(cashflowReportService.getCashflowDashboard(params));
     }
 
     @RequiresPermissions("finance:dashboard:alerts")

@@ -92,6 +92,7 @@ services:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
       - SPRING_CONFIG_IMPORT=optional:nacos:application-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:redis-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:junsong-gateway-${SPRING_PROFILES_ACTIVE:-prod}.yml
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
+      - OPEN_INTERNAL_SECRET=${OPEN_INTERNAL_SECRET:?OPEN_INTERNAL_SECRET is required}
       - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
       - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
     depends_on:
@@ -102,6 +103,7 @@ services:
     links:
       - junsong-redis
       - junsong-nacos
+      - junsong-modules-open
   junsong-auth:
     container_name: junsong-auth
     build:
@@ -255,6 +257,33 @@ services:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
       - SPRING_CONFIG_IMPORT=optional:nacos:application-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:redis-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:datasource-druid-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:junsong-finance-${SPRING_PROFILES_ACTIVE:-prod}.yml
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
+      - OPEN_INTERNAL_SECRET=${OPEN_INTERNAL_SECRET:?OPEN_INTERNAL_SECRET is required}
+    depends_on:
+      junsong-nacos:
+        condition: service_healthy
+      junsong-redis:
+        condition: service_started
+      junsong-mysql:
+        condition: service_started
+    links:
+      - junsong-redis
+      - junsong-mysql
+      - junsong-nacos
+  junsong-modules-open:
+    container_name: junsong-modules-open
+    init: true
+    build:
+      context: ./junsong/modules/open
+      dockerfile: dockerfile
+    expose:
+      - "9208"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
+      - SPRING_CONFIG_IMPORT=optional:nacos:application-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:redis-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:datasource-druid-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:junsong-open-${SPRING_PROFILES_ACTIVE:-prod}.yml
+      - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
+      - OPEN_INTERNAL_SECRET=${OPEN_INTERNAL_SECRET:?OPEN_INTERNAL_SECRET is required}
+      - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
+      - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
     depends_on:
       junsong-nacos:
         condition: service_healthy

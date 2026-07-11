@@ -60,10 +60,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </where>
     </select>
 
-    <select id="checkMemGoodsCodeUnique" parameterType="String" resultType="int">
+    <select id="checkMemGoodsCodeUnique" resultType="int">
         select count(1) from mem_points_goods
         <where>
             AND goods_code = #{goodsNo} and del_flag = '0'
+            <if test="goodsId != null">
+                AND goods_id != #{goodsId}
+            </if>
         </where>
     </select>
 

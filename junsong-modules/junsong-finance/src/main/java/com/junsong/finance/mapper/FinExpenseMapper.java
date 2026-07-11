@@ -72,10 +72,18 @@ public interface FinExpenseMapper
 
     /**
      * 统计今日费用单数量
-     * 
+     *
      * @return 结果
      */
     public int countTodayExpenses();
+
+    /**
+     * 获取今日费用单号的最大序号（4位后缀对应的数字）
+     * 用于生成不冲突的费用单号，避免 count 与实际序号不一致导致的碰撞
+     *
+     * @return 今日最大序号，无记录时返回0
+     */
+    public int maxTodayExpenseSeq();
 
     /**
      * 统计未核销费用总金额
@@ -99,6 +107,15 @@ public interface FinExpenseMapper
      * @return 费用记录集合
      */
     public List<FinExpense> selectFinExpenseByExpenseIds(Long[] expenseIds);
+
+    public List<FinExpense> selectFinExpenseByExpenseIdsScoped(@Param("expenseIds") List<Long> expenseIds,
+        @Param("tenantId") Long tenantId, @Param("deptId") Long deptId);
+
+    public int markExpenseVerified(@Param("expenseId") Long expenseId, @Param("advanceId") Long advanceId,
+        @Param("verifyBy") String verifyBy, @Param("verifyTime") Date verifyTime,
+        @Param("tenantId") Long tenantId, @Param("deptId") Long deptId);
+
+    public int restoreExpenseUnverified(@Param("expenseId") Long expenseId);
 
     /**
      * 费用分类统计

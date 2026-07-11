@@ -223,7 +223,119 @@ public class MemDashboardController extends BaseController {
         stats.put("totalInvest", queryDecimal(
                 "SELECT COALESCE(SUM(total_invest),0) FROM fin_cost_accounting WHERE " + df + " AND del_flag='0'", resolved));
 
+        // --- R8-D: 经营化字段（增长、活跃、复购、积分负债、活动贡献、会员销售贡献）---
+        stats.put("newMemberCount30d", queryCount(
+                "SELECT COUNT(*) FROM mem_member WHERE " + df + " AND del_flag = '0' AND create_time > NOW() - INTERVAL 30 DAY", resolved));
+
+        long activeMemberCount30d = queryCount(
+                "SELECT COUNT(DISTINCT member_id) FROM mem_points_record WHERE " + df + " AND del_flag = '0' AND create_time > NOW() - INTERVAL 30 DAY", resolved);
+        stats.put("activeMemberCount30d", activeMemberCount30d);
+
+        long repeatMemberCount90d = queryCount(
+                "SELECT COUNT(*) FROM (SELECT member_id FROM mem_points_record WHERE " + df + " AND del_flag = '0' AND create_time > NOW() - INTERVAL 90 DAY GROUP BY member_id HAVING COUNT(*) >= 2) t", resolved);
+        stats.put("repeatMemberCount90d", repeatMemberCount90d);
+
+        long activeMemberCount90d = queryCount(
+                "SELECT COUNT(DISTINCT member_id) FROM mem_points_record WHERE " + df + " AND del_flag = '0' AND create_time > NOW() - INTERVAL 90 DAY", resolved);
+        stats.put("repeatRate90d", computeRepeatRate90d(repeatMemberCount90d, activeMemberCount90d));
+
+        // 积分负债：只统计剩余正积分（成员欠公司的积分）
+        BigDecimal totalPositivePoints = queryDecimal(buildPointsLiabilitySql(resolved), resolved);
+        stats.put("pointsLiability", computePointsLiability(totalPositivePoints));
+
+        // 已兑换积分成本（积分 < 0 的绝对值 / 100 转金额）
+        BigDecimal totalRedeemedPoints = queryDecimal(
+                "SELECT COALESCE(SUM(ABS(points)),0) FROM mem_points_record WHERE " + df + " AND del_flag = '0' AND points < 0", resolved);
+        stats.put("pointsRedeemedCost", computePointsRedeemedCost(totalRedeemedPoints));
+
+        // 活动贡献：秒杀已领取记录的成交金额
+        BigDecimal activityContributionAmount = queryDecimal(
+                "SELECT COALESCE(SUM(total_amount),0) FROM mem_seckill_record WHERE " + df + " AND del_flag = '0' AND status = '1'", resolved);
+        stats.put("activityContributionAmount", activityContributionAmount);
+
+        // 会员销售贡献：来自真实销售记录 fin_sale_record
+        stats.put("memberSalesAmount", queryDecimal(buildMemberSalesAmountSql(resolved), resolved));
+        stats.put("memberSalesOrderCount", queryCount(
+                "SELECT COUNT(*) FROM fin_sale_record WHERE " + df + " AND del_flag = '0' AND (member_id IS NOT NULL OR remark LIKE '%member%')", resolved));
+
+        // 活动成本暂无真实表，ROI 不显示 0% 而是提示暂不可算
+        stats.put("activityRoiText", computeActivityRoiText(BigDecimal.ZERO, activityContributionAmount));
+
+        // R10-E: 会员销售关联质量
+        long memberLinkedSaleCount = queryCount(
+                "SELECT COUNT(*) FROM fin_sale_record WHERE " + df + " AND del_flag='0' AND member_id IS NOT NULL", resolved);
+        long memberRemarkFallbackSaleCount = queryCount(
+                "SELECT COUNT(*) FROM fin_sale_record WHERE " + df + " AND del_flag='0' AND member_id IS NULL AND remark LIKE '%member%'", resolved);
+        long totalLinked = memberLinkedSaleCount + memberRemarkFallbackSaleCount;
+        BigDecimal linkQualityRate = totalLinked > 0
+                ? BigDecimal.valueOf(memberLinkedSaleCount * 100).divide(BigDecimal.valueOf(totalLinked), 1, java.math.RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+        stats.put("memberLinkedSaleCount", memberLinkedSaleCount);
+        stats.put("memberRemarkFallbackSaleCount", memberRemarkFallbackSaleCount);
+        stats.put("memberLinkQualityRate", linkQualityRate);
+
+        BigDecimal linkThreshold = readRuleThreshold("MEM_MEMBER_LINK_QUALITY", BigDecimal.valueOf(80));
+        String linkSuggestion = "";
+        if (totalLinked > 0 && linkQualityRate.compareTo(linkThreshold) < 0) {
+            linkSuggestion = "会员销售精确关联率偏低，建议销售录入时选择会员。";
+        }
+        stats.put("memberLinkQualitySuggestion", linkSuggestion);
+
+        // R11-I: 会员经营动作项
+        stats.put("memberActionItems", buildMemberActionItems(
+                linkQualityRate, linkThreshold, totalLinked,
+                (BigDecimal) stats.get("pointsLiability"),
+                (long) stats.get("activeMemberCount30d"),
+                (long) stats.get("totalMembers")));
+
         return AjaxResult.success(stats);
+    }
+
+    /**
+     * Build member action items based on health thresholds (R11-I).
+     * Each item: { level, title, reason, suggestion, targetRoute }
+     */
+    List<Map<String, Object>> buildMemberActionItems(
+            BigDecimal linkQualityRate, BigDecimal linkThreshold, long totalLinked,
+            BigDecimal pointsLiability, long activeMemberCount, long totalMemberCount)
+    {
+        List<Map<String, Object>> items = new ArrayList<>();
+
+        // Rule 1: 会员销售关联率低于阈值 -> MEDIUM
+        if (totalLinked > 0 && linkQualityRate.compareTo(linkThreshold) < 0) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("level", "MEDIUM");
+            item.put("title", "会员销售精确关联率偏低");
+            item.put("reason", "当前关联率 " + linkQualityRate + "%，低于阈值 " + linkThreshold + "%。");
+            item.put("suggestion", "销售录入时选择会员，提高精确关联率。");
+            item.put("targetRoute", "/finance/sale");
+            items.add(item);
+        }
+
+        // Rule 2: 积分负债超过阈值 -> MEDIUM
+        BigDecimal liabilityThreshold = readRuleThreshold("MEM_POINTS_LIABILITY", BigDecimal.valueOf(1000));
+        if (pointsLiability != null && pointsLiability.compareTo(liabilityThreshold) > 0) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("level", "MEDIUM");
+            item.put("title", "积分负债偏高");
+            item.put("reason", "当前积分负债 ¥" + pointsLiability + "，超过阈值 ¥" + liabilityThreshold + "。");
+            item.put("suggestion", "关注积分兑换压力，可考虑引导会员消耗积分。");
+            item.put("targetRoute", "/member/pointsRule");
+            items.add(item);
+        }
+
+        // Rule 3: 有会员但30天无活跃 -> LOW
+        if (activeMemberCount == 0 && totalMemberCount > 0) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("level", "LOW");
+            item.put("title", "会员活跃度为零");
+            item.put("reason", "共有 " + totalMemberCount + " 名会员，但近 30 天无活跃记录。");
+            item.put("suggestion", "可通过促销活动或积分激励唤醒沉睡会员。");
+            item.put("targetRoute", "/member/member");
+            items.add(item);
+        }
+
+        return items;
     }
 
     @RequiresPermissions("member:dashboard:list")
@@ -305,6 +417,78 @@ public class MemDashboardController extends BaseController {
                 "LIMIT 10";
     }
 
+    // ==================== R8-D: 经营化计算方法（可测试，纯逻辑无 JDBC）====================
+
+    /**
+     * 计算 90 日复购率 = 复购会员数 / 活跃会员数 * 100。
+     * 分母为 0 时返回 0（避免除零异常）。
+     */
+    protected BigDecimal computeRepeatRate90d(long repeatMemberCount90d, long activeMemberCount90d) {
+        if (activeMemberCount90d <= 0) {
+            return BigDecimal.ZERO;
+        }
+        return BigDecimal.valueOf(repeatMemberCount90d)
+                .multiply(BigDecimal.valueOf(100))
+                .divide(BigDecimal.valueOf(activeMemberCount90d), 1, BigDecimal.ROUND_HALF_UP);
+    }
+
+    /**
+     * 计算积分负债金额：剩余正积分 / 100 转金额。
+     * 仅统计正积分（成员欠公司的积分），负积分不计入负债。
+     */
+    protected BigDecimal computePointsLiability(BigDecimal totalPositivePoints) {
+        if (totalPositivePoints == null || totalPositivePoints.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+        return totalPositivePoints.divide(BigDecimal.valueOf(100), 2, BigDecimal.ROUND_HALF_UP);
+    }
+
+    /**
+     * 计算已兑换积分成本：已使用积分绝对值 / 100 转金额。
+     */
+    protected BigDecimal computePointsRedeemedCost(BigDecimal totalRedeemedPoints) {
+        if (totalRedeemedPoints == null || totalRedeemedPoints.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+        return totalRedeemedPoints.divide(BigDecimal.valueOf(100), 2, BigDecimal.ROUND_HALF_UP);
+    }
+
+    /**
+     * 计算活动 ROI 文本。
+     * 活动成本缺失时不显示 0%，而是提示"暂不可算"。
+     */
+    protected String computeActivityRoiText(BigDecimal activityCost, BigDecimal activityRevenue) {
+        if (activityCost == null || activityCost.compareTo(BigDecimal.ZERO) <= 0) {
+            return "ROI 暂不可算 / 缺少活动成本";
+        }
+        if (activityRevenue == null) {
+            return "ROI 暂不可算 / 缺少活动收入";
+        }
+        BigDecimal roi = activityRevenue.subtract(activityCost)
+                .multiply(BigDecimal.valueOf(100))
+                .divide(activityCost, 1, BigDecimal.ROUND_HALF_UP);
+        return roi + "%";
+    }
+
+    /**
+     * 构建会员销售金额 SQL（来源：真实销售记录表 fin_sale_record）。
+     */
+    String buildMemberSalesAmountSql(List<Long> resolved) {
+        String df = inFilter("dept_id", resolved);
+        return "SELECT COALESCE(SUM(sale_amount),0) FROM fin_sale_record WHERE " + df
+                + " AND del_flag = '0' AND (member_id IS NOT NULL OR remark LIKE '%member%')";
+    }
+
+    /**
+     * 构建积分负债 SQL：只统计成员最新余额为正的积分（负债）。
+     */
+    String buildPointsLiabilitySql(List<Long> resolved) {
+        String df = inFilter("dept_id", resolved);
+        return "SELECT COALESCE(SUM(CASE WHEN r.balance > 0 THEN r.balance ELSE 0 END),0) " +
+                "FROM mem_points_record r " +
+                "INNER JOIN (SELECT member_id, MAX(record_id) AS max_id FROM mem_points_record WHERE " + df + " AND del_flag = '0' GROUP BY member_id) latest ON r.record_id = latest.max_id";
+    }
+
     @RequiresPermissions("member:dashboard:list")
     @GetMapping("/operation")
     public AjaxResult getOperation(@RequestParam(required = false) String deptIds) {
@@ -338,9 +522,9 @@ public class MemDashboardController extends BaseController {
 
         // --- member sales ---
         BigDecimal memberSalesAmount = queryDecimal(
-                "SELECT COALESCE(SUM(sale_amount),0) FROM fin_sale_record WHERE " + df + " AND del_flag = '0' AND remark LIKE '%member%'", resolved);
+                "SELECT COALESCE(SUM(sale_amount),0) FROM fin_sale_record WHERE " + df + " AND del_flag = '0' AND (member_id IS NOT NULL OR remark LIKE '%member%')", resolved);
         long memberSaleOrderCount = queryCount(
-                "SELECT COUNT(*) FROM fin_sale_record WHERE " + df + " AND del_flag = '0' AND remark LIKE '%member%'", resolved);
+                "SELECT COUNT(*) FROM fin_sale_record WHERE " + df + " AND del_flag = '0' AND (member_id IS NOT NULL OR remark LIKE '%member%')", resolved);
 
         data.put("memberSalesAmount", memberSalesAmount);
         data.put("memberSaleOrderCount", memberSaleOrderCount);
@@ -540,6 +724,18 @@ public class MemDashboardController extends BaseController {
             return new BigDecimal(result.toString());
         } catch (EmptyResultDataAccessException e) {
             return BigDecimal.ZERO;
+        }
+    }
+
+    /** R10-E: 读取规则阈值，失败返回默认值 */
+    protected BigDecimal readRuleThreshold(String ruleCode, BigDecimal defaultValue) {
+        try {
+            BigDecimal val = jdbcTemplate.queryForObject(
+                "SELECT threshold_value FROM sys_health_rule_config WHERE rule_code = ? AND enabled = '1'",
+                BigDecimal.class, ruleCode);
+            return val != null ? val : defaultValue;
+        } catch (Exception e) {
+            return defaultValue;
         }
     }
 }

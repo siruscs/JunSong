@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.ReviewQualityMapper">
+
+    <select id="countTasks" resultType="int">
+        SELECT COUNT(*) FROM finance_review_task t
+        WHERE 1=1
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND t.dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+        <if test="startDate != null">AND t.create_time &gt;= #{startDate}</if>
+        <if test="endDate != null">AND t.create_time &lt;= #{endDate}</if>
+    </select>
+
+    <select id="countDoneTasks" resultType="int">
+        SELECT COUNT(*) FROM finance_review_task t
+        WHERE t.status = 'DONE'
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND t.dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+        <if test="startDate != null">AND t.create_time &gt;= #{startDate}</if>
+        <if test="endDate != null">AND t.create_time &lt;= #{endDate}</if>
+    </select>
+
+    <select id="countOverdueTasks" resultType="int">
+        SELECT COUNT(*) FROM finance_review_task t
+        WHERE t.status IN ('PENDING', 'IN_PROGRESS')
+          AND t.task_date &lt; CURDATE()
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND t.dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+        <if test="startDate != null">AND t.create_time &gt;= #{startDate}</if>
+        <if test="endDate != null">AND t.create_time &lt;= #{endDate}</if>
+    </select>
+
+    <!--
+        R10-FIX-A: 修复嵌套聚合错误。
+        MySQL 不允许 AVG(... MIN(...)) 直接嵌套，会报 Invalid use of group function。
+        改为先按 task_id 分组求每个任务首次 IN_PROGRESS 响应时长，再外层 AVG。
+    -->
+    <select id="avgFirstResponseHours" resultType="java.lang.Double">
+        SELECT AVG(resp.first_response_hours)
+        FROM (
+            SELECT TIMESTAMPDIFF(HOUR, MIN(t.create_time), MIN(l.action_time)) AS first_response_hours
+            FROM finance_review_task t
+            INNER JOIN finance_review_task_log l ON l.task_id = t.task_id
+            WHERE l.action_type = 'IN_PROGRESS'
+            <if test="deptIds != null and deptIds.size() > 0">
+                AND t.dept_id IN
+                <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+            </if>
+            <if test="startDate != null">AND t.create_time &gt;= #{startDate}</if>
+            <if test="endDate != null">AND t.create_time &lt;= #{endDate}</if>
+            GROUP BY t.task_id
+        ) resp
+    </select>
+
+    <select id="avgCloseHours" resultType="java.lang.Double">
+        SELECT AVG(TIMESTAMPDIFF(HOUR, t.create_time, t.update_time))
+        FROM finance_review_task t
+        WHERE t.status = 'DONE'
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND t.dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+        <if test="startDate != null">AND t.create_time &gt;= #{startDate}</if>
+        <if test="endDate != null">AND t.create_time &lt;= #{endDate}</if>
+    </select>
+
+    <select id="countNoNoteDoneTasks" resultType="int">
+        SELECT COUNT(*) FROM finance_review_task t
+        WHERE t.status = 'DONE'
+          AND NOT EXISTS (
+              SELECT 1 FROM finance_review_task_log l
+              WHERE l.task_id = t.task_id
+                AND l.action_type = 'DONE'
+                AND l.handler_note IS NOT NULL
+                AND l.handler_note != ''
+          )
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND t.dept_id IN
+            <foreach item="id" collection="deptIds" open="(" separator="," close=")">#{id}</foreach>
+        </if>
+        <if test="startDate != null">AND t.create_time &gt;= #{startDate}</if>
+        <if test="endDate != null">AND t.create_time &lt;= #{endDate}</if>
+    </select>
+
+</mapper>

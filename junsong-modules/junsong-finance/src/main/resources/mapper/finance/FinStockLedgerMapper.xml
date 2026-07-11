@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.FinStockLedgerMapper">
+
+    <resultMap type="FinStockLedger" id="FinStockLedgerResult">
+        <id     property="ledgerId"        column="ledger_id"        />
+        <result property="deptId"          column="dept_id"          />
+        <result property="productId"       column="product_id"       />
+        <result property="productName"     column="product_name"     />
+        <result property="changeType"      column="change_type"      />
+        <result property="changeQuantity"  column="change_quantity"  />
+        <result property="beforeQuantity"  column="before_quantity"  />
+        <result property="afterQuantity"   column="after_quantity"   />
+        <result property="unitCost"        column="unit_cost"        />
+        <result property="referenceType"   column="reference_type"   />
+        <result property="referenceId"     column="reference_id"     />
+        <result property="referenceNo"     column="reference_no"     />
+        <result property="delFlag"         column="del_flag"         />
+        <result property="createBy"        column="create_by"        />
+        <result property="createTime"      column="create_time"      />
+        <result property="remark"          column="remark"           />
+    </resultMap>
+
+    <insert id="insertPositionIfAbsent">
+        insert ignore into fin_stock_position (dept_id, product_id, quantity)
+        values (#{deptId}, #{productId}, 0)
+    </insert>
+
+    <select id="selectPositionQuantityForUpdate" resultType="java.lang.Integer">
+        select quantity from fin_stock_position
+        where dept_id = #{deptId} and product_id = #{productId}
+        for update
+    </select>
+
+    <update id="updatePositionQuantity">
+        update fin_stock_position
+        set quantity = #{quantity}
+        where dept_id = #{deptId} and product_id = #{productId}
+    </update>
+
+    <select id="sumRecordedNet" resultType="java.lang.Integer">
+        select coalesce(sum(change_quantity), 0)
+        from fin_stock_ledger
+        where reference_type = #{referenceType}
+          and reference_id = #{referenceId}
+          and product_id = #{productId}
+          and del_flag = '0'
+    </select>
+
+    <select id="selectRecordedProductIds" resultType="java.lang.Long">
+        select distinct product_id
+        from fin_stock_ledger
+        where reference_type = #{referenceType}
+          and reference_id = #{referenceId}
+          and del_flag = '0'
+    </select>
+
+    <insert id="insertFinStockLedger" parameterType="FinStockLedger" useGeneratedKeys="true" keyProperty="ledgerId">
+        insert into fin_stock_ledger
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="deptId != null">dept_id,</if>
+            <if test="productId != null">product_id,</if>
+            <if test="productName != null">product_name,</if>
+            <if test="changeType != null">change_type,</if>
+            <if test="changeQuantity != null">change_quantity,</if>
+            <if test="beforeQuantity != null">before_quantity,</if>
+            <if test="afterQuantity != null">after_quantity,</if>
+            <if test="unitCost != null">unit_cost,</if>
+            <if test="referenceType != null">reference_type,</if>
+            <if test="referenceId != null">reference_id,</if>
+            <if test="referenceNo != null">reference_no,</if>
+            <if test="delFlag != null">del_flag,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time,
+            <if test="remark != null">remark,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="deptId != null">#{deptId},</if>
+            <if test="productId != null">#{productId},</if>
+            <if test="productName != null">#{productName},</if>
+            <if test="changeType != null">#{changeType},</if>
+            <if test="changeQuantity != null">#{changeQuantity},</if>
+            <if test="beforeQuantity != null">#{beforeQuantity},</if>
+            <if test="afterQuantity != null">#{afterQuantity},</if>
+            <if test="unitCost != null">#{unitCost},</if>
+            <if test="referenceType != null">#{referenceType},</if>
+            <if test="referenceId != null">#{referenceId},</if>
+            <if test="referenceNo != null">#{referenceNo},</if>
+            <if test="delFlag != null">#{delFlag},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate(),
+            <if test="remark != null">#{remark},</if>
+        </trim>
+    </insert>
+
+    <resultMap type="com.junsong.finance.domain.vo.FinStockPositionView" id="FinStockPositionViewResult">
+        <result property="deptId"      column="dept_id"      />
+        <result property="productId"   column="product_id"   />
+        <result property="quantity"    column="quantity"     />
+        <result property="productName" column="product_name" />
+    </resultMap>
+
+    <select id="selectPositionsByDept" resultMap="FinStockPositionViewResult">
+        select p.dept_id,
+               p.product_id,
+               p.quantity,
+               (select l.product_name from fin_stock_ledger l
+                 where l.dept_id = p.dept_id
+                   and l.product_id = p.product_id
+                   and l.del_flag = '0'
+                 order by l.create_time desc limit 1) as product_name
+        from fin_stock_position p
+        where p.dept_id = #{deptId}
+    </select>
+
+    <resultMap type="com.junsong.finance.domain.vo.DailyFlowView" id="DailyFlowViewResult">
+        <result property="inQuantity"  column="in_quantity"  />
+        <result property="outQuantity" column="out_quantity" />
+    </resultMap>
+
+    <select id="sumDailyFlow" resultMap="DailyFlowViewResult">
+        select coalesce(sum(case when change_quantity &gt; 0 then change_quantity else 0 end), 0) as in_quantity,
+               coalesce(sum(case when change_quantity &lt; 0 then -change_quantity else 0 end), 0) as out_quantity
+        from fin_stock_ledger
+        where dept_id = #{deptId}
+          and product_id = #{productId}
+          and del_flag = '0'
+          and date(create_time) = #{snapshotDate}
+    </select>
+
+    <insert id="upsertSnapshot" parameterType="com.junsong.finance.domain.FinStockSnapshot">
+        insert into fin_stock_snapshot
+            (snapshot_date, dept_id, dept_name, product_id, product_name,
+             quantity, opening_quantity, in_quantity, out_quantity, unit_cost, total_value)
+        values
+            (#{snapshotDate}, #{deptId}, #{deptName}, #{productId}, #{productName},
+             #{quantity}, #{openingQuantity}, #{inQuantity}, #{outQuantity}, #{unitCost}, #{totalValue})
+        on duplicate key update
+             quantity          = values(quantity),
+             opening_quantity  = values(opening_quantity),
+             in_quantity       = values(in_quantity),
+             out_quantity      = values(out_quantity),
+             dept_name         = values(dept_name),
+             product_name      = values(product_name),
+             unit_cost         = values(unit_cost),
+             total_value       = values(total_value)
+    </insert>
+
+    <!-- R21：查询所有有当前结存的门店ID列表（去重），供库存每日快照批量重建 -->
+    <select id="selectAllDeptIdsWithPosition" resultType="java.lang.Long">
+        select distinct dept_id from fin_stock_position
+    </select>
+</mapper>

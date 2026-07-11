@@ -117,4 +117,72 @@ public interface MemMemberMapper
      * @return 更新行数
      */
     public int expireMemberCards(@Param("today") Date today);
+
+    /**
+     * 原子累加积分和成长值，同时更新最后活跃时间
+     *
+     * @param memberId 会员ID
+     * @param pointsDelta 积分变动（可正可负）
+     * @param growthDelta 成长值变动（可正可负）
+     * @param operator 操作人
+     * @return 更新行数
+     */
+    public int addPointsAndGrowth(@Param("memberId") Long memberId,
+                                  @Param("pointsDelta") java.math.BigDecimal pointsDelta,
+                                  @Param("growthDelta") Long growthDelta,
+                                  @Param("operator") String operator);
+
+    /**
+     * 原子累加成长值，同时更新最后活跃时间（不改变积分）
+     *
+     * @param memberId 会员ID
+     * @param growthDelta 成长值变动
+     * @param operator 操作人
+     * @return 更新行数
+     */
+    public int addGrowthOnly(@Param("memberId") Long memberId,
+                             @Param("growthDelta") Long growthDelta,
+                             @Param("operator") String operator);
+
+    /**
+     * 原子累加成长值，不更新最后活跃时间（用于衰减扣减，避免被衰减会员变成"活跃"）
+     *
+     * @param memberId 会员ID
+     * @param growthDelta 成长值变动（衰减时传负数）
+     * @param operator 操作人
+     * @return 更新行数
+     */
+    public int addGrowthOnlyWithoutActiveTime(@Param("memberId") Long memberId,
+                                              @Param("growthDelta") Long growthDelta,
+                                              @Param("operator") String operator);
+
+    /**
+     * 更新会员等级
+     *
+     * @param memberId 会员ID
+     * @param newLevel 新等级 type_code
+     * @param operator 操作人
+     * @return 更新行数
+     */
+    public int updateMemberLevel(@Param("memberId") Long memberId,
+                                 @Param("newLevel") String newLevel,
+                                 @Param("operator") String operator);
+
+    /**
+     * 更新最后活跃时间
+     *
+     * @param memberId 会员ID
+     * @return 更新行数
+     */
+    public int updateLastActiveTime(@Param("memberId") Long memberId);
+
+    /**
+     * 查询不活跃会员（用于衰减定时任务，按租户过滤）
+     *
+     * @param tenantId 租户ID
+     * @param threshold 不活跃截止时间
+     * @return 会员列表
+     */
+    public List<MemMember> selectInactiveMembers(@Param("tenantId") Long tenantId,
+                                                  @Param("threshold") Date threshold);
 }

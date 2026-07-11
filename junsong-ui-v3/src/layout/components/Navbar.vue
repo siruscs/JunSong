@@ -37,7 +37,7 @@
             :key="theme.key"
             class="theme-dot"
             :class="{ active: settingsStore.themePreset === theme.key }"
-            :style="{ background: `linear-gradient(135deg, ${theme.primary} 0%, ${theme.primaryLight} 100%)` }"
+            :style="{ background: `linear-gradient(135deg, ${theme.primary} 0%, ${theme.action || theme.primaryLight} 100%)` }"
             :title="theme.name"
             @click="settingsStore.changeThemePreset(theme.key)"
           ></div>
@@ -75,7 +75,7 @@
             <router-link to="/user/profile">
               <el-dropdown-item>个人中心</el-dropdown-item>
             </router-link>
-            <router-link to="/system/delegate">
+            <router-link to="/system/delegate" v-hasPermi="['system:delegate:list']">
               <el-dropdown-item>委托设置</el-dropdown-item>
             </router-link>
             <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>

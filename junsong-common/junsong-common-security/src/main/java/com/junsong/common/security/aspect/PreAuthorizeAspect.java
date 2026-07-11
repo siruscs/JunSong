@@ -7,6 +7,9 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.stereotype.Component;
+import com.junsong.common.core.constant.SecurityConstants;
+import com.junsong.common.core.utils.ServletUtils;
+import com.junsong.common.core.utils.StringUtils;
 import com.junsong.common.security.annotation.RequiresLogin;
 import com.junsong.common.security.annotation.RequiresPermissions;
 import com.junsong.common.security.annotation.RequiresRoles;
@@ -53,11 +56,33 @@ public class PreAuthorizeAspect
     @Around("pointcut()")
     public Object around(ProceedingJoinPoint joinPoint) throws Throwable
     {
+        // 开放平台可信请求跳过用户权限校验
+        // （from-source: open-api 由开放服务内部调用透传，网关已从外部请求中剥离该头）
+        if (isOpenApiTrustedRequest())
+        {
+            return joinPoint.proceed();
+        }
         // 注解鉴权
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         checkMethodAnnotation(signature.getMethod());
         // 执行原有逻辑
         return joinPoint.proceed();
+    }
+
+    /**
+     * 判断是否为开放平台可信内部请求
+     */
+    private boolean isOpenApiTrustedRequest()
+    {
+        try
+        {
+            String source = ServletUtils.getRequest().getHeader(SecurityConstants.FROM_SOURCE);
+            return StringUtils.equals(SecurityConstants.OPEN_API, source);
+        }
+        catch (Exception e)
+        {
+            return false;
+        }
     }
 
     /**

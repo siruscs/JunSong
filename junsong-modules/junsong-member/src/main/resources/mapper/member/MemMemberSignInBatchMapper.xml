@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.member.mapper.MemMemberSignInBatchMapper">
+
+    <resultMap type="com.junsong.member.domain.MemMemberSignInBatch" id="MemMemberSignInBatchResult">
+        <id property="batchId" column="batch_id"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="memberId" column="member_id"/>
+        <result property="memberNo" column="member_no"/>
+        <result property="memberName" column="member_name"/>
+        <result property="targetMonth" column="target_month"/>
+        <result property="fillMode" column="fill_mode"/>
+        <result property="requestedCount" column="requested_count"/>
+        <result property="actualCount" column="actual_count"/>
+        <result property="selectedDates" column="selected_dates"/>
+        <result property="rewardLevelCode" column="reward_level_code"/>
+        <result property="pointsPerSign" column="points_per_sign"/>
+        <result property="growthPerSign" column="growth_per_sign"/>
+        <result property="totalPoints" column="total_points"/>
+        <result property="totalGrowth" column="total_growth"/>
+        <result property="remark" column="remark"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <sql id="selectBatchVo">
+        select batch_id, tenant_id, dept_id, member_id, member_no, member_name,
+               target_month, fill_mode, requested_count, actual_count, selected_dates,
+               reward_level_code, points_per_sign, growth_per_sign, total_points, total_growth,
+               remark, create_by, create_time
+        from mem_member_sign_in_batch
+    </sql>
+
+    <insert id="insertBatch" parameterType="com.junsong.member.domain.MemMemberSignInBatch" useGeneratedKeys="true" keyProperty="batchId">
+        insert into mem_member_sign_in_batch (
+            tenant_id, dept_id, member_id, member_no, member_name,
+            target_month, fill_mode, requested_count, actual_count, selected_dates,
+            reward_level_code, points_per_sign, growth_per_sign, total_points, total_growth,
+            remark, create_by, create_time
+        ) values (
+            #{tenantId}, #{deptId}, #{memberId}, #{memberNo}, #{memberName},
+            #{targetMonth}, #{fillMode}, #{requestedCount}, #{actualCount}, #{selectedDates},
+            #{rewardLevelCode}, #{pointsPerSign}, #{growthPerSign}, #{totalPoints}, #{totalGrowth},
+            #{remark}, #{createBy}, sysdate()
+        )
+    </insert>
+
+    <select id="selectBatchById" parameterType="Long" resultMap="MemMemberSignInBatchResult">
+        <include refid="selectBatchVo"/>
+        where batch_id = #{batchId}
+    </select>
+
+    <update id="updateBatch" parameterType="com.junsong.member.domain.MemMemberSignInBatch">
+        update mem_member_sign_in_batch
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="actualCount != null">actual_count = #{actualCount},</if>
+            <if test="selectedDates != null">selected_dates = #{selectedDates},</if>
+            <if test="totalPoints != null">total_points = #{totalPoints},</if>
+            <if test="totalGrowth != null">total_growth = #{totalGrowth},</if>
+        </trim>
+        where batch_id = #{batchId}
+    </update>
+
+</mapper>

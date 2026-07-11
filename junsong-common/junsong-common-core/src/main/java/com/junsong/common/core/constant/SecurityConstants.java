@@ -33,6 +33,11 @@ public class SecurityConstants
     public static final String INNER = "inner";
 
     /**
+     * 开放平台可信请求（由开放服务透传，下游跳过用户权限校验）
+     */
+    public static final String OPEN_API = "open-api";
+
+    /**
      * 用户标识
      */
     public static final String USER_KEY = "user_key";

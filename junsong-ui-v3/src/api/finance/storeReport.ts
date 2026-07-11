@@ -29,3 +29,19 @@ export function getAuthorizedStorePortfolio(data: AuthorizedStoreReportQuery) {
     data
   })
 }
+
+export function getAuthorizedStoreHealthTrend(data: any) {
+  return request({
+    url: '/finance/report/store/authorized/health-trend',
+    method: 'post',
+    data,
+  })
+}
+
+export function generateStoreHealthReviewTasks(data: any) {
+  return request({
+    url: '/finance/report/store/authorized/health-tasks/generate',
+    method: 'post',
+    data,
+  })
+}

@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
-import com.junsong.common.security.annotation.RequiresPermissions;
 
 
 /**
@@ -94,7 +93,6 @@ public class OpenMemberController extends BaseController
      * @param params   积分变动参数（points积分值、reason原因、idempotencyKey幂等键）
      */
     @PostMapping("/{memberId}/points/records")
-    @RequiresPermissions("open:member:points:write")
     public AjaxResult createPointsRecord(@PathVariable("memberId") Long memberId,
             @RequestBody Map<String, Object> params)
     {
@@ -106,7 +104,6 @@ public class OpenMemberController extends BaseController
      * 积分兑换(写入操作)
      */
     @PostMapping("/points-exchanges")
-    @RequiresPermissions("open:member:points:write")
     public AjaxResult createPointsExchange(@RequestBody Map<String, Object> params)
     {
         return restTemplate.postForObject(MEMBER_BASE + "/pointsExchange", params, AjaxResult.class);

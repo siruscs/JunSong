@@ -1,0 +1,467 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.member.mapper.MemberGrowthActionMapper">
+
+    <!-- 查询最新现金压力等级 -->
+    <select id="selectLatestCashPressureLevel" resultType="string">
+        SELECT fs.pressure_level
+        FROM finance_cashflow_forecast_snapshot fs
+        WHERE 1=1
+        <if test="deptId != null">
+            AND fs.dept_id = #{deptId}
+        </if>
+        ORDER BY fs.forecast_date DESC
+        LIMIT 1
+    </select>
+
+    <!-- 候选会员查询：UNION ALL 4 种分层，读取 mem_member / mem_member_card_type / fin_sale_record / mem_member_sign_in / finance_cashflow_forecast_snapshot -->
+    <select id="selectCandidates" resultType="com.junsong.member.domain.vo.GrowthActionCandidateVO">
+        <![CDATA[
+        SELECT * FROM (
+            -- 1. SLEEPING_HIGH_VALUE: 成长值 >= 500 且 last_active_time >= 30 天
+            SELECT
+                m.member_id AS memberId,
+                m.member_no AS memberNo,
+                m.member_name AS memberName,
+                m.dept_id AS deptId,
+                d.dept_name AS deptName,
+                'SLEEPING_HIGH_VALUE' AS segmentType,
+                m.growth_value AS growthValue,
+                m.card_type AS cardType,
+                ct.type_name AS cardTypeName,
+                m.last_active_time AS lastActiveTime,
+                DATEDIFF(NOW(), m.last_active_time) AS activeDaysAgo,
+                CASE WHEN EXISTS(
+                    SELECT 1 FROM fin_sale_record r
+                    WHERE r.member_id = m.member_id
+                      AND r.sale_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                      AND r.del_flag = '0'
+                ) THEN TRUE ELSE FALSE END AS recentRepurchased,
+                (SELECT COUNT(*) FROM mem_member_sign_in si
+                 WHERE si.member_id = m.member_id
+                   AND si.sign_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+                ) AS recentSignInCount,
+                CONCAT('成长值', m.growth_value, '，', DATEDIFF(NOW(), m.last_active_time), '天未活跃') AS candidateReason
+            FROM mem_member m
+            LEFT JOIN sys_dept d ON m.dept_id = d.dept_id
+            LEFT JOIN mem_member_card_type ct ON m.card_type = ct.type_code AND ct.status = '0' AND ct.del_flag = '0'
+            WHERE m.del_flag = '0' AND m.status = '0'
+              AND m.growth_value >= 500
+              AND m.last_active_time IS NOT NULL
+              AND DATEDIFF(NOW(), m.last_active_time) >= 30
+        ]]>
+        <if test="params.deptId != null">
+            <![CDATA[ AND m.dept_id = #{params.deptId} ]]>
+        </if>
+        <![CDATA[
+
+            UNION ALL
+
+            -- 2. NEAR_LEVEL_UP: 距下一等级成长值 <= 100 且 last_active_time <= 45 天
+            SELECT
+                m.member_id AS memberId,
+                m.member_no AS memberNo,
+                m.member_name AS memberName,
+                m.dept_id AS deptId,
+                d.dept_name AS deptName,
+                'NEAR_LEVEL_UP' AS segmentType,
+                m.growth_value AS growthValue,
+                m.card_type AS cardType,
+                ct.type_name AS cardTypeName,
+                m.last_active_time AS lastActiveTime,
+                DATEDIFF(NOW(), m.last_active_time) AS activeDaysAgo,
+                CASE WHEN EXISTS(
+                    SELECT 1 FROM fin_sale_record r
+                    WHERE r.member_id = m.member_id
+                      AND r.sale_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                      AND r.del_flag = '0'
+                ) THEN TRUE ELSE FALSE END AS recentRepurchased,
+                (SELECT COUNT(*) FROM mem_member_sign_in si
+                 WHERE si.member_id = m.member_id
+                   AND si.sign_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+                ) AS recentSignInCount,
+                CONCAT('距下一等级差', (next_ct.min_growth - m.growth_value), '成长值') AS candidateReason
+            FROM mem_member m
+            LEFT JOIN sys_dept d ON m.dept_id = d.dept_id
+            LEFT JOIN mem_member_card_type ct ON m.card_type = ct.type_code AND ct.status = '0' AND ct.del_flag = '0'
+            LEFT JOIN mem_member_card_type next_ct ON next_ct.status = '0' AND next_ct.del_flag = '0'
+                AND next_ct.min_growth = (
+                    SELECT MIN(min_growth) FROM mem_member_card_type
+                    WHERE min_growth > COALESCE(ct.min_growth, 0)
+                      AND status = '0' AND del_flag = '0'
+                )
+            WHERE m.del_flag = '0' AND m.status = '0'
+              AND m.last_active_time IS NOT NULL
+              AND DATEDIFF(NOW(), m.last_active_time) <= 45
+              AND next_ct.min_growth IS NOT NULL
+              AND (next_ct.min_growth - m.growth_value) <= 100
+              AND (next_ct.min_growth - m.growth_value) > 0
+        ]]>
+        <if test="params.deptId != null">
+            <![CDATA[ AND m.dept_id = #{params.deptId} ]]>
+        </if>
+        <![CDATA[
+
+            UNION ALL
+
+            -- 3. RECENT_ACTIVE_NO_REPEAT: 近 30 天活跃但近 30 天无复购
+            SELECT
+                m.member_id AS memberId,
+                m.member_no AS memberNo,
+                m.member_name AS memberName,
+                m.dept_id AS deptId,
+                d.dept_name AS deptName,
+                'RECENT_ACTIVE_NO_REPEAT' AS segmentType,
+                m.growth_value AS growthValue,
+                m.card_type AS cardType,
+                ct.type_name AS cardTypeName,
+                m.last_active_time AS lastActiveTime,
+                DATEDIFF(NOW(), m.last_active_time) AS activeDaysAgo,
+                FALSE AS recentRepurchased,
+                (SELECT COUNT(*) FROM mem_member_sign_in si
+                 WHERE si.member_id = m.member_id
+                   AND si.sign_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+                ) AS recentSignInCount,
+                '近30天活跃但无复购' AS candidateReason
+            FROM mem_member m
+            LEFT JOIN sys_dept d ON m.dept_id = d.dept_id
+            LEFT JOIN mem_member_card_type ct ON m.card_type = ct.type_code AND ct.status = '0' AND ct.del_flag = '0'
+            WHERE m.del_flag = '0' AND m.status = '0'
+              AND m.last_active_time IS NOT NULL
+              AND DATEDIFF(NOW(), m.last_active_time) <= 30
+              AND NOT EXISTS (
+                  SELECT 1 FROM fin_sale_record r
+                  WHERE r.member_id = m.member_id
+                    AND r.sale_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                    AND r.del_flag = '0'
+              )
+        ]]>
+        <if test="params.deptId != null">
+            <![CDATA[ AND m.dept_id = #{params.deptId} ]]>
+        </if>
+        <![CDATA[
+
+            UNION ALL
+
+            -- 4. PRESSURE_STORE_RECALL: 门店现金压力 HIGH/CRITICAL 且 last_active 15-90 天
+            SELECT
+                m.member_id AS memberId,
+                m.member_no AS memberNo,
+                m.member_name AS memberName,
+                m.dept_id AS deptId,
+                d.dept_name AS deptName,
+                'PRESSURE_STORE_RECALL' AS segmentType,
+                m.growth_value AS growthValue,
+                m.card_type AS cardType,
+                ct.type_name AS cardTypeName,
+                m.last_active_time AS lastActiveTime,
+                DATEDIFF(NOW(), m.last_active_time) AS activeDaysAgo,
+                CASE WHEN EXISTS(
+                    SELECT 1 FROM fin_sale_record r
+                    WHERE r.member_id = m.member_id
+                      AND r.sale_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                      AND r.del_flag = '0'
+                ) THEN TRUE ELSE FALSE END AS recentRepurchased,
+                (SELECT COUNT(*) FROM mem_member_sign_in si
+                 WHERE si.member_id = m.member_id
+                   AND si.sign_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+                ) AS recentSignInCount,
+                CONCAT('门店现金压力', fs.pressure_level, '，需优先召回') AS candidateReason
+            FROM mem_member m
+            LEFT JOIN sys_dept d ON m.dept_id = d.dept_id
+            LEFT JOIN mem_member_card_type ct ON m.card_type = ct.type_code AND ct.status = '0' AND ct.del_flag = '0'
+            INNER JOIN finance_cashflow_forecast_snapshot fs ON fs.dept_id = m.dept_id
+                AND fs.forecast_date = (
+                    SELECT MAX(forecast_date) FROM finance_cashflow_forecast_snapshot
+                    WHERE dept_id = m.dept_id
+                )
+                AND fs.pressure_level IN ('HIGH', 'CRITICAL')
+            WHERE m.del_flag = '0' AND m.status = '0'
+              AND m.last_active_time IS NOT NULL
+              AND DATEDIFF(NOW(), m.last_active_time) BETWEEN 15 AND 90
+        ]]>
+        <if test="params.deptId != null">
+            <![CDATA[ AND m.dept_id = #{params.deptId} ]]>
+        </if>
+        <![CDATA[
+        ) AS combined
+        WHERE 1=1
+        ]]>
+        <if test="params.segmentType != null and params.segmentType != ''">
+            <![CDATA[ AND segmentType = #{params.segmentType} ]]>
+        </if>
+        <![CDATA[
+        ORDER BY
+            CASE segmentType
+                WHEN 'PRESSURE_STORE_RECALL' THEN 1
+                WHEN 'SLEEPING_HIGH_VALUE' THEN 2
+                WHEN 'NEAR_LEVEL_UP' THEN 3
+                WHEN 'RECENT_ACTIVE_NO_REPEAT' THEN 4
+                ELSE 5
+            END,
+            growthValue DESC
+        LIMIT 50
+        ]]>
+    </select>
+
+    <!-- 查询最近动作 -->
+    <select id="selectRecentActions" resultType="com.junsong.member.domain.vo.GrowthActionRowVO">
+        SELECT
+            a.action_id AS actionId,
+            a.action_no AS actionNo,
+            a.dept_id AS deptId,
+            a.dept_name AS deptName,
+            a.action_type AS actionType,
+            a.action_title AS actionTitle,
+            a.pressure_level AS pressureLevel,
+            a.candidate_count AS candidateCount,
+            a.executed_count AS executedCount,
+            a.status,
+            a.action_reason AS actionReason,
+            a.suggested_script AS suggestedScript,
+            a.create_time AS createTime
+        FROM mem_growth_action a
+        WHERE a.del_flag = '0'
+        <if test="params.deptId != null">
+            AND a.dept_id = #{params.deptId}
+        </if>
+        <if test="params.actionType != null and params.actionType != ''">
+            AND a.action_type = #{params.actionType}
+        </if>
+        <if test="params.status != null and params.status != ''">
+            AND a.status = #{params.status}
+        </if>
+        ORDER BY a.create_time DESC
+        LIMIT 20
+    </select>
+
+    <!-- 统计待执行动作数 -->
+    <select id="countPendingActions" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM mem_growth_action
+        WHERE del_flag = '0' AND status = 'PENDING'
+        <if test="params.deptId != null">
+            AND dept_id = #{params.deptId}
+        </if>
+    </select>
+
+    <!-- 统计待触达会员数 -->
+    <select id="countPendingMembers" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM mem_growth_action_member am
+        INNER JOIN mem_growth_action a ON am.action_id = a.action_id AND a.del_flag = '0'
+        WHERE am.execute_status = 'PENDING'
+        <if test="params.deptId != null">
+            AND am.dept_id = #{params.deptId}
+        </if>
+    </select>
+
+    <!-- 统计已执行会员数 -->
+    <select id="countExecutedMembers" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM mem_growth_action_member am
+        INNER JOIN mem_growth_action a ON am.action_id = a.action_id AND a.del_flag = '0'
+        WHERE am.execute_status IN ('DONE', 'IN_PROGRESS')
+        <if test="params.deptId != null">
+            AND am.dept_id = #{params.deptId}
+        </if>
+    </select>
+
+    <!-- 插入动作主记录 -->
+    <insert id="insertAction" parameterType="com.junsong.member.domain.MemGrowthAction" useGeneratedKeys="true" keyProperty="actionId">
+        INSERT INTO mem_growth_action (
+            action_no, dept_id, dept_name, action_type, action_title,
+            source_type, pressure_level, candidate_count, executed_count,
+            status, action_reason, suggested_script, effect_window_days,
+            tenant_id, del_flag, create_by, create_time
+        ) VALUES (
+            #{actionNo}, #{deptId}, #{deptName}, #{actionType}, #{actionTitle},
+            #{sourceType}, #{pressureLevel}, #{candidateCount}, 0,
+            #{status}, #{actionReason}, #{suggestedScript}, #{effectWindowDays},
+            #{tenantId}, '0', #{createBy}, NOW()
+        )
+    </insert>
+
+    <!-- 插入动作会员明细 -->
+    <insert id="insertActionMember" parameterType="com.junsong.member.domain.MemGrowthActionMember">
+        INSERT INTO mem_growth_action_member (
+            action_id, member_id, member_no, member_name, dept_id,
+            segment_type, growth_value, card_type, last_active_time,
+            candidate_reason, execute_status, repurchased, signed_in, growth_increased,
+            tenant_id, create_by, create_time
+        ) VALUES (
+            #{actionId}, #{memberId}, #{memberNo}, #{memberName}, #{deptId},
+            #{segmentType}, #{growthValue}, #{cardType}, #{lastActiveTime},
+            #{candidateReason}, 'PENDING', '0', '0', '0',
+            #{tenantId}, #{createBy}, NOW()
+        )
+    </insert>
+
+    <!-- 更新动作状态 -->
+    <update id="updateActionStatus" parameterType="com.junsong.member.domain.MemGrowthAction">
+        UPDATE mem_growth_action
+        SET executed_count = #{executedCount},
+            status = #{status},
+            update_by = #{updateBy},
+            update_time = NOW()
+        WHERE action_id = #{actionId}
+    </update>
+
+    <!-- 更新动作会员执行状态：仅当 execute_status 仍为 PENDING 或 IN_PROGRESS 时允许更新，
+         避免对已 DONE/IGNORED 的明细重复执行；返回影响行数由 Service 校验 -->
+    <update id="updateActionMemberExecute">
+        UPDATE mem_growth_action_member
+        SET execute_status = #{params.executeStatus},
+            execute_note = #{params.executeNote},
+            execute_time = NOW()
+        WHERE action_id = #{params.actionId}
+          AND member_id = #{params.memberId}
+          AND execute_status IN ('PENDING', 'IN_PROGRESS')
+    </update>
+
+    <!-- 按动作ID查询会员明细（执行弹窗使用） -->
+    <select id="selectActionMembers" resultType="com.junsong.member.domain.MemGrowthActionMember">
+        SELECT
+            id,
+            action_id AS actionId,
+            member_id AS memberId,
+            member_no AS memberNo,
+            member_name AS memberName,
+            dept_id AS deptId,
+            segment_type AS segmentType,
+            growth_value AS growthValue,
+            card_type AS cardType,
+            last_active_time AS lastActiveTime,
+            candidate_reason AS candidateReason,
+            execute_status AS executeStatus,
+            execute_note AS executeNote,
+            execute_time AS executeTime,
+            repurchased,
+            signed_in AS signedIn,
+            growth_increased AS growthIncreased
+        FROM mem_growth_action_member
+        WHERE action_id = #{actionId}
+        ORDER BY
+            CASE execute_status
+                WHEN 'PENDING' THEN 0
+                WHEN 'IN_PROGRESS' THEN 1
+                WHEN 'DONE' THEN 2
+                WHEN 'IGNORED' THEN 3
+                ELSE 4
+            END,
+            member_id ASC
+    </select>
+
+    <!-- 按动作ID统计已处理会员数（DONE/IGNORED 视为终态已处理；IN_PROGRESS 不计入，动作未完成） -->
+    <select id="countExecutedByActionId" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM mem_growth_action_member
+        WHERE action_id = #{actionId}
+          AND execute_status IN ('DONE', 'IGNORED')
+    </select>
+
+    <!-- 按动作ID统计候选会员总数 -->
+    <select id="countTotalByActionId" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM mem_growth_action_member
+        WHERE action_id = #{actionId}
+    </select>
+
+    <!-- 查询效果摘要：按 actionId 过滤时回查真实 7 天效果数据（R17-D）；
+         无 actionId 时回退到静态标记位汇总（看板全局视图） -->
+    <select id="selectEffectSummary" resultType="com.junsong.member.domain.vo.GrowthActionEffectVO">
+        SELECT
+            COUNT(*) AS totalMemberCount,
+            SUM(CASE WHEN repurchased = '1' THEN 1 ELSE 0 END) AS repurchaseMemberCount,
+            SUM(CASE WHEN signed_in = '1' THEN 1 ELSE 0 END) AS signInMemberCount,
+            SUM(CASE WHEN growth_increased = '1' THEN 1 ELSE 0 END) AS growthIncreasedMemberCount,
+            SUM(CASE WHEN repurchased = '1' OR signed_in = '1' OR growth_increased = '1' THEN 1 ELSE 0 END) AS effectiveMemberCount
+        FROM mem_growth_action_member am
+        INNER JOIN mem_growth_action a ON am.action_id = a.action_id AND a.del_flag = '0'
+        WHERE 1=1
+        <if test="params.deptId != null">
+            AND am.dept_id = #{params.deptId}
+        </if>
+        <if test="params.status != null and params.status != ''">
+            AND a.status = #{params.status}
+        </if>
+    </select>
+
+    <!-- R17-D 真实效果统计：按 actionId 回查真实 7 天效果数据 -->
+    <!-- 使用 EXISTS 子查询而非直接 JOIN，避免多流水/多签到导致的行乘法放大；
+         COUNT(DISTINCT am.id) 确保按动作会员明细行去重 -->
+    <select id="selectRealEffectByActionId" resultType="com.junsong.member.domain.vo.GrowthActionEffectVO">
+        SELECT
+            COUNT(DISTINCT am.id) AS totalMemberCount,
+            COUNT(DISTINCT CASE WHEN am.repurchased = '1'
+                OR EXISTS(
+                    SELECT 1 FROM fin_sale_record r
+                    WHERE r.member_id = am.member_id AND r.del_flag = '0'
+                      AND r.sale_date &gt;= a.create_time
+                      AND r.sale_date &lt; DATE_ADD(a.create_time, INTERVAL a.effect_window_days DAY)
+                ) THEN am.id END) AS repurchaseMemberCount,
+            COUNT(DISTINCT CASE WHEN am.signed_in = '1'
+                OR EXISTS(
+                    SELECT 1 FROM mem_member_sign_in si
+                    WHERE si.member_id = am.member_id
+                      AND si.sign_date &gt;= DATE(a.create_time)
+                      AND si.sign_date &lt; DATE_ADD(DATE(a.create_time), INTERVAL a.effect_window_days DAY)
+                ) THEN am.id END) AS signInMemberCount,
+            COUNT(DISTINCT CASE WHEN am.growth_increased = '1'
+                OR EXISTS(
+                    SELECT 1 FROM mem_member m
+                    WHERE m.member_id = am.member_id AND m.del_flag = '0'
+                      AND m.growth_value &gt; am.growth_value
+                ) THEN am.id END) AS growthIncreasedMemberCount,
+            COUNT(DISTINCT CASE WHEN am.repurchased = '1'
+                OR EXISTS(
+                    SELECT 1 FROM fin_sale_record r
+                    WHERE r.member_id = am.member_id AND r.del_flag = '0'
+                      AND r.sale_date &gt;= a.create_time
+                      AND r.sale_date &lt; DATE_ADD(a.create_time, INTERVAL a.effect_window_days DAY)
+                )
+                OR am.signed_in = '1'
+                OR EXISTS(
+                    SELECT 1 FROM mem_member_sign_in si
+                    WHERE si.member_id = am.member_id
+                      AND si.sign_date &gt;= DATE(a.create_time)
+                      AND si.sign_date &lt; DATE_ADD(DATE(a.create_time), INTERVAL a.effect_window_days DAY)
+                )
+                OR am.growth_increased = '1'
+                OR EXISTS(
+                    SELECT 1 FROM mem_member m
+                    WHERE m.member_id = am.member_id AND m.del_flag = '0'
+                      AND m.growth_value &gt; am.growth_value
+                ) THEN am.id END) AS effectiveMemberCount
+        FROM mem_growth_action_member am
+        INNER JOIN mem_growth_action a ON am.action_id = a.action_id AND a.del_flag = '0'
+        WHERE am.action_id = #{actionId}
+    </select>
+
+    <!-- R17-D 回填真实效果标记位到明细表（用于看板静态汇总） -->
+    <update id="updateMemberEffectFlags">
+        UPDATE mem_growth_action_member am
+        INNER JOIN mem_growth_action a ON am.action_id = a.action_id
+        SET
+            am.repurchased = CASE WHEN EXISTS(
+                SELECT 1 FROM fin_sale_record r
+                WHERE r.member_id = am.member_id AND r.del_flag = '0'
+                  AND r.sale_date &gt;= a.create_time
+                  AND r.sale_date &lt; DATE_ADD(a.create_time, INTERVAL a.effect_window_days DAY)
+            ) THEN '1' ELSE am.repurchased END,
+            am.signed_in = CASE WHEN EXISTS(
+                SELECT 1 FROM mem_member_sign_in si
+                WHERE si.member_id = am.member_id
+                  AND si.sign_date &gt;= DATE(a.create_time)
+                  AND si.sign_date &lt; DATE_ADD(DATE(a.create_time), INTERVAL a.effect_window_days DAY)
+            ) THEN '1' ELSE am.signed_in END,
+            am.growth_increased = CASE WHEN EXISTS(
+                SELECT 1 FROM mem_member m
+                WHERE m.member_id = am.member_id AND m.del_flag = '0'
+                  AND m.growth_value &gt; am.growth_value
+            ) THEN '1' ELSE am.growth_increased END,
+            am.update_time = NOW()
+        WHERE am.action_id = #{actionId}
+    </update>
+
+    <!-- R21：查询所有未删除动作的 actionId，供批量回填效果标记位 -->
+    <select id="selectAllActionIds" resultType="java.lang.Long">
+        SELECT action_id FROM mem_growth_action WHERE del_flag = '0'
+    </select>
+
+</mapper>

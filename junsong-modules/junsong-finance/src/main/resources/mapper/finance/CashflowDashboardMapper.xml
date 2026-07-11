@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.CashflowDashboardMapper">
+
+    <!-- 可复用的部门过滤片段（无表别名场景） -->
+    <sql id="deptFilter">
+        <if test="deptIds != null and deptIds.size() > 0">
+            AND dept_id IN
+            <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+    </sql>
+
+    <!-- 检查表是否存在 -->
+    <select id="checkTableExists" resultType="int">
+        SELECT COUNT(*) FROM information_schema.tables
+        WHERE table_schema = DATABASE() AND table_name = #{tableName}
+    </select>
+
+    <!-- 现金流汇总查询（按业务日期统计，非录入时间） -->
+    <select id="selectCashflowSummary" resultType="com.junsong.finance.domain.vo.CashflowDashboardVO">
+        SELECT
+            /* 现金流入: 销售缴款（按 payment_date 业务日期） */
+            (SELECT COALESCE(SUM(payment_amount), 0)
+             FROM fin_sale_payment
+             WHERE del_flag = '0'
+               AND payment_date BETWEEN #{startTime} AND #{endTime}
+               <include refid="deptFilter"/>
+            ) AS "cashInAmount",
+
+            /* 现金流出: 已核销费用（按 expense_date）+ 投资人返款（按 payment_date） */
+            (
+              (SELECT COALESCE(SUM(expense_amount), 0)
+               FROM fin_expense
+               WHERE del_flag = '0' AND status = '1'
+                 AND expense_date BETWEEN #{startTime} AND #{endTime}
+                 <include refid="deptFilter"/>
+              )
+              +
+              (SELECT COALESCE(SUM(amount), 0)
+               FROM fin_investor_payment
+               WHERE del_flag = '0'
+                 AND payment_date BETWEEN #{startTime} AND #{endTime}
+                 <include refid="deptFilter"/>
+              )
+            ) AS "cashOutAmount",
+
+            /* 待核销费用金额 */
+            (SELECT COALESCE(SUM(expense_amount), 0)
+             FROM fin_expense
+             WHERE del_flag = '0' AND status = '0'
+             <include refid="deptFilter"/>
+            ) AS "pendingExpenseAmount",
+
+            /* 待核销费用数量 */
+            (SELECT COUNT(*)
+             FROM fin_expense
+             WHERE del_flag = '0' AND status = '0'
+             <include refid="deptFilter"/>
+            ) AS "pendingExpenseCount",
+
+            /* 待核销借支金额 */
+            (SELECT COALESCE(SUM(advance_amount), 0)
+             FROM fin_advance
+             WHERE del_flag = '0' AND status = '0'
+             <include refid="deptFilter"/>
+            ) AS "pendingAdvanceAmount",
+
+            /* 待核销借支数量 */
+            (SELECT COUNT(*)
+             FROM fin_advance
+             WHERE del_flag = '0' AND status = '0'
+             <include refid="deptFilter"/>
+            ) AS "pendingAdvanceCount",
+
+            /* 待分润金额 */
+            (SELECT COALESCE(SUM(manager_profit_amount + investor_profit_amount), 0)
+             FROM fin_profit_share_record
+             WHERE del_flag = '0' AND status = '0'
+             <include refid="deptFilter"/>
+            ) AS "pendingProfitShareAmount",
+
+            /* 待分润数量 */
+            (SELECT COUNT(*)
+             FROM fin_profit_share_record
+             WHERE del_flag = '0' AND status = '0'
+             <include refid="deptFilter"/>
+            ) AS "pendingProfitShareCount"
+    </select>
+
+    <!-- 现金流日趋势（按业务日期统计） -->
+    <select id="selectCashflowTrendRows"
+            resultType="com.junsong.finance.domain.vo.CashflowDashboardVO$CashflowTrendRowVO">
+        SELECT
+            t.dateStr AS "date",
+            COALESCE(SUM(t.cashIn), 0) AS "cashIn",
+            COALESCE(SUM(t.cashOut), 0) AS "cashOut",
+            COALESCE(SUM(t.cashIn), 0) - COALESCE(SUM(t.cashOut), 0) AS "net"
+        FROM (
+            SELECT DATE_FORMAT(payment_date, '%Y-%m-%d') AS dateStr,
+                   SUM(payment_amount) AS cashIn,
+                   0 AS cashOut
+            FROM fin_sale_payment
+            WHERE del_flag = '0'
+              AND payment_date BETWEEN #{startTime} AND #{endTime}
+              <include refid="deptFilter"/>
+            GROUP BY DATE_FORMAT(payment_date, '%Y-%m-%d')
+
+            UNION ALL
+
+            SELECT DATE_FORMAT(expense_date, '%Y-%m-%d') AS dateStr,
+                   0 AS cashIn,
+                   SUM(expense_amount) AS cashOut
+            FROM fin_expense
+            WHERE del_flag = '0' AND status = '1'
+              AND expense_date BETWEEN #{startTime} AND #{endTime}
+              <include refid="deptFilter"/>
+            GROUP BY DATE_FORMAT(expense_date, '%Y-%m-%d')
+
+            UNION ALL
+
+            SELECT DATE_FORMAT(payment_date, '%Y-%m-%d') AS dateStr,
+                   0 AS cashIn,
+                   SUM(amount) AS cashOut
+            FROM fin_investor_payment
+            WHERE del_flag = '0'
+              AND payment_date BETWEEN #{startTime} AND #{endTime}
+              <include refid="deptFilter"/>
+            GROUP BY DATE_FORMAT(payment_date, '%Y-%m-%d')
+        ) t
+        GROUP BY t.dateStr
+        ORDER BY t.dateStr
+    </select>
+
+    <!-- 待结算明细列表 -->
+    <select id="selectPendingItems"
+            resultType="com.junsong.finance.domain.vo.CashflowDashboardVO$CashflowPendingItemVO">
+        SELECT * FROM (
+            SELECT 'EXPENSE' AS "type",
+                   CAST(e.expense_id AS CHAR) AS "bizId",
+                   COALESCE(e.expense_amount, 0) AS "amount",
+                   d.dept_name AS "deptName",
+                   e.create_time AS "createDate"
+            FROM fin_expense e
+            LEFT JOIN sys_dept d ON e.dept_id = d.dept_id
+            WHERE e.del_flag = '0' AND e.status = '0'
+            <if test="deptIds != null and deptIds.size() > 0">
+                AND e.dept_id IN
+                <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
+                    #{deptId}
+                </foreach>
+            </if>
+
+            UNION ALL
+
+            SELECT 'ADVANCE' AS "type",
+                   CAST(a.advance_id AS CHAR) AS "bizId",
+                   COALESCE(a.advance_amount, 0) AS "amount",
+                   d.dept_name AS "deptName",
+                   a.create_time AS "createDate"
+            FROM fin_advance a
+            LEFT JOIN sys_dept d ON a.dept_id = d.dept_id
+            WHERE a.del_flag = '0' AND a.status = '0'
+            <if test="deptIds != null and deptIds.size() > 0">
+                AND a.dept_id IN
+                <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
+                    #{deptId}
+                </foreach>
+            </if>
+
+            UNION ALL
+
+            SELECT 'PROFIT_SHARE' AS "type",
+                   CAST(s.share_id AS CHAR) AS "bizId",
+                   COALESCE(s.manager_profit_amount + s.investor_profit_amount, 0) AS "amount",
+                   d.dept_name AS "deptName",
+                   s.create_time AS "createDate"
+            FROM fin_profit_share_record s
+            LEFT JOIN sys_dept d ON s.dept_id = d.dept_id
+            WHERE s.del_flag = '0' AND s.status = '0'
+            <if test="deptIds != null and deptIds.size() > 0">
+                AND s.dept_id IN
+                <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
+                    #{deptId}
+                </foreach>
+            </if>
+        ) pending
+        ORDER BY createDate DESC
+        LIMIT 50
+    </select>
+
+</mapper>

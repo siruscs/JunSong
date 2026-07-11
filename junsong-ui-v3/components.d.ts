@@ -84,6 +84,7 @@ declare module 'vue' {
     ImagePreview: typeof import('./src/components/ImagePreview/index.vue')['default']
     ImageUpload: typeof import('./src/components/ImageUpload/index.vue')['default']
     MapPicker: typeof import('./src/components/MapPicker/index.vue')['default']
+    MemberSelect: typeof import('./src/components/MemberSelect/index.vue')['default']
     Pagination: typeof import('./src/components/Pagination/index.vue')['default']
     PanThumb: typeof import('./src/components/PanThumb/index.vue')['default']
     ParentView: typeof import('./src/components/ParentView/index.vue')['default']

@@ -55,7 +55,38 @@
     </select>
 
     <select id="countArchiveCandidates" resultType="java.lang.Long">
-        select count(*) from ${tableName} where create_time &lt; #{cutoffTime}
+        <choose>
+            <when test="tableName == 'sys_oper_log'">
+                select count(*) from sys_oper_log where oper_time &lt; #{cutoffTime}
+            </when>
+            <when test="tableName == 'sys_logininfor'">
+                select count(*) from sys_logininfor where access_time &lt; #{cutoffTime}
+            </when>
+            <when test="tableName == 'sys_notification'">
+                select count(*) from sys_notification where create_time &lt; #{cutoffTime}
+            </when>
+            <when test="tableName == 'sys_action_center_touch_log'">
+                select count(*) from sys_action_center_touch_log where create_time &lt; #{cutoffTime}
+            </when>
+            <when test="tableName == 'sys_operation_schedule_log'">
+                select count(*) from sys_operation_schedule_log where create_time &lt; #{cutoffTime}
+            </when>
+            <when test="tableName == 'finance_prediction_sample'">
+                select count(*) from finance_prediction_sample where create_time &lt; #{cutoffTime}
+            </when>
+            <when test="tableName == 'finance_what_if_simulation'">
+                select count(*) from finance_what_if_simulation where create_time &lt; #{cutoffTime}
+            </when>
+            <when test="tableName == 'open_api_log'">
+                select count(*) from open_api_log where create_time &lt; #{cutoffTime}
+            </when>
+            <when test="tableName == 'open_webhook_subscription'">
+                select count(*) from open_webhook_subscription where create_time &lt; #{cutoffTime}
+            </when>
+            <otherwise>
+                select 0
+            </otherwise>
+        </choose>
     </select>
 
 </mapper>

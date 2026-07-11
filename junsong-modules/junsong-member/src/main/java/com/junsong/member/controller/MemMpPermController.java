@@ -21,6 +21,10 @@ public class MemMpPermController extends BaseController {
     static {
         String[][] defs = {
                 {"member", "会员管理", "会员服务"},
+                {"dashboard", "会员运营看板", "会员服务"},
+                {"growth", "成长体系", "会员服务"},
+                {"actions", "增长动作", "会员服务"},
+                {"points", "积分运营", "会员服务"},
                 {"pointsGoods", "积分商品", "会员服务"},
                 {"pointsRecord", "积分记录", "会员服务"},
                 {"pointsExchange", "积分兑换", "会员服务"},

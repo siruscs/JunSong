@@ -30,7 +30,6 @@ public class SysFileController
     /**
      * 文件上传请求
      */
-    @RequiresPermissions("system:file:upload")
     @PostMapping("upload")
     public R<SysFile> upload(MultipartFile file)
     {

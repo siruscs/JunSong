@@ -91,12 +91,6 @@
           </template>
         </template>
       </el-table-column>
-      <el-table-column label="已选" align="center" width="60">
-        <template #default="scope">
-          <span style="color: #409EFF; font-weight: bold;">{{ getModulesForRole(scope.row.roleId).length }}</span>
-          <span style="color: #909399;">/{{ allModules.length }}</span>
-        </template>
-      </el-table-column>
       <el-table-column label="移动办公模块" align="left" min-width="160">
         <template #default="scope">
           <template v-for="m in officeModules">
@@ -117,6 +111,12 @@
               style="margin: 2px 4px 2px 0; opacity: 0.45;"
             >{{ m.name }}</el-tag>
           </template>
+        </template>
+      </el-table-column>
+      <el-table-column label="已选" align="center" width="90">
+        <template #default="scope">
+          <span style="color: #409EFF; font-weight: bold;">{{ getModulesForRole(scope.row.roleId).length }}</span>
+          <span style="color: #909399;">/{{ allModules.length }}</span>
         </template>
       </el-table-column>
       <el-table-column label="操作" align="center" class-name="small-padding fixed-width" width="150">
@@ -174,6 +174,10 @@ import { listMpPerm, getMpPermRoles, getMpPermModules, saveMpPerm, deleteMpPerm,
 
 const DEFAULT_MODULES = [
   { key: "member", name: "会员管理", group: "会员服务" },
+  { key: "dashboard", name: "会员运营看板", group: "会员服务" },
+  { key: "growth", name: "成长体系", group: "会员服务" },
+  { key: "actions", name: "增长动作", group: "会员服务" },
+  { key: "points", name: "积分运营", group: "会员服务" },
   { key: "pointsGoods", name: "积分商品", group: "会员服务" },
   { key: "pointsRecord", name: "积分记录", group: "会员服务" },
   { key: "pointsExchange", name: "积分兑换", group: "会员服务" },

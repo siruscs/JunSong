@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.system.mapper.SysGovernanceTaskLogMapper">
+
+	<resultMap type="SysGovernanceTaskLog" id="SysGovernanceTaskLogResult">
+		<id     property="logId"        column="log_id"        />
+		<result property="taskType"     column="task_type"     />
+		<result property="severity"     column="severity"      />
+		<result property="countValue"   column="count_value"   />
+		<result property="actionType"   column="action_type"   />
+		<result property="handlerId"    column="handler_id"    />
+		<result property="handlerName"  column="handler_name"  />
+		<result property="handlerNote"  column="handler_note"  />
+		<result property="actionTime"   column="action_time"   />
+	</resultMap>
+
+	<insert id="insertGovernanceTaskLog" parameterType="SysGovernanceTaskLog">
+		insert into sys_governance_task_log (task_type, severity, count_value, action_type, handler_id, handler_name, handler_note, action_time)
+		values (#{taskType}, #{severity}, #{countValue}, #{actionType}, #{handlerId}, #{handlerName}, #{handlerNote}, #{actionTime})
+	</insert>
+
+	<select id="selectLogsByType" parameterType="String" resultMap="SysGovernanceTaskLogResult">
+		select log_id, task_type, severity, count_value, action_type, handler_id, handler_name, handler_note, action_time
+		from sys_governance_task_log
+		where task_type = #{taskType}
+		order by action_time desc
+	</select>
+
+	<select id="selectLatestLogByType" parameterType="String" resultMap="SysGovernanceTaskLogResult">
+		select log_id, task_type, severity, count_value, action_type, handler_id, handler_name, handler_note, action_time
+		from sys_governance_task_log
+		where task_type = #{taskType}
+		order by action_time desc
+		limit 1
+	</select>
+
+</mapper>

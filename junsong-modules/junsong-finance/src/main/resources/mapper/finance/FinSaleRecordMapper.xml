@@ -10,6 +10,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="periodId" column="period_id" />
         <result property="saleNo" column="sale_no" />
         <result property="productId" column="product_id" />
+        <result property="memberId" column="member_id" />
+        <result property="memberNo" column="member_no" />
+        <result property="memberName" column="member_name" />
         <result property="productName" column="product_name" />
         <result property="saleQuantity" column="sale_quantity" />
         <result property="giftQuantity" column="gift_quantity" />
@@ -25,11 +28,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="updateBy" column="update_by" />
         <result property="updateTime" column="update_time" />
         <result property="remark" column="remark" />
+        <result property="periodNo" column="period_no" />
+        <result property="periodStatus" column="period_status" />
+        <result property="latestPaymentDate" column="latest_payment_date" />
     </resultMap>
-    
+
     <sql id="selectFinSaleRecordVo">
-        select r.sale_id, r.dept_id, r.period_id, r.sale_no, r.product_id, r.product_name, r.sale_quantity, r.gift_quantity, r.total_quantity, r.sale_amount, r.unit_price, r.paid_amount, r.sale_date, r.status, r.del_flag, r.create_by, r.create_time, r.update_by, r.update_time, r.remark
+        select r.sale_id, r.dept_id, r.period_id, r.sale_no, r.product_id, r.member_id, r.member_no, r.member_name, r.product_name, r.sale_quantity, r.gift_quantity, r.total_quantity, r.sale_amount, r.unit_price, r.paid_amount, r.sale_date, r.status, r.del_flag, r.create_by, r.create_time, r.update_by, r.update_time, r.remark,
+               p.period_no as period_no, p.status as period_status
         from fin_sale_record r
+        left join fin_accounting_period p on r.period_id = p.period_id
     </sql>
 
     <select id="selectFinSaleRecordList" parameterType="FinSaleRecord" resultMap="FinSaleRecordResult">
@@ -56,6 +64,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where r.sale_id = #{saleId}
     </select>
 
+    <select id="selectFinSaleRecordBySaleIdForUpdate" parameterType="Long" resultMap="FinSaleRecordResult">
+        <include refid="selectFinSaleRecordVo"/>
+        where r.sale_id = #{saleId}
+        for update
+    </select>
+
     <select id="checkSaleNoUnique" parameterType="String" resultMap="FinSaleRecordResult">
         <include refid="selectFinSaleRecordVo"/>
         where r.sale_no = #{saleNo} and r.del_flag = '0'
@@ -68,6 +82,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         and del_flag = '0'
         </where>
     </select>
+
+    <select id="maxTodaySaleSeq" resultType="int">
+        select ifnull(max(cast(substring(sale_no, -4) as unsigned)), 0)
+        from fin_sale_record
+        where sale_no like concat('SX', date_format(now(), '%Y%m%d'), '%')
+    </select>
         
     <insert id="insertFinSaleRecord" parameterType="FinSaleRecord" useGeneratedKeys="true" keyProperty="saleId">
         insert into fin_sale_record
@@ -76,6 +96,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="periodId != null">period_id,</if>
             <if test="saleNo != null and saleNo != ''">sale_no,</if>
             <if test="productId != null">product_id,</if>
+            <if test="memberId != null">member_id,</if>
+            <if test="memberNo != null">member_no,</if>
+            <if test="memberName != null">member_name,</if>
             <if test="productName != null and productName != ''">product_name,</if>
             <if test="saleQuantity != null">sale_quantity,</if>
             <if test="giftQuantity != null">gift_quantity,</if>
@@ -95,6 +118,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="periodId != null">#{periodId},</if>
             <if test="saleNo != null and saleNo != ''">#{saleNo},</if>
             <if test="productId != null">#{productId},</if>
+            <if test="memberId != null">#{memberId},</if>
+            <if test="memberNo != null">#{memberNo},</if>
+            <if test="memberName != null">#{memberName},</if>
             <if test="productName != null and productName != ''">#{productName},</if>
             <if test="saleQuantity != null">#{saleQuantity},</if>
             <if test="giftQuantity != null">#{giftQuantity},</if>
@@ -118,6 +144,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="periodId != null">period_id = #{periodId},</if>
             <if test="saleNo != null and saleNo != ''">sale_no = #{saleNo},</if>
             <if test="productId != null">product_id = #{productId},</if>
+            <if test="memberId != null">member_id = #{memberId},</if>
+            <if test="memberNo != null">member_no = #{memberNo},</if>
+            <if test="memberName != null">member_name = #{memberName},</if>
             <if test="productName != null and productName != ''">product_name = #{productName},</if>
             <if test="saleQuantity != null">sale_quantity = #{saleQuantity},</if>
             <if test="giftQuantity != null">gift_quantity = #{giftQuantity},</if>
@@ -134,6 +163,53 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </trim>
         where sale_id = #{saleId}
     </update>
+
+    <update id="updatePaidAmountAndStatus">
+        update fin_sale_record
+        set paid_amount = #{paidAmount},
+            status = #{status},
+            update_time = sysdate()
+        where sale_id = #{saleId}
+    </update>
+
+    <select id="selectReceivableList" parameterType="FinSaleRecord" resultMap="FinSaleRecordResult">
+        select r.sale_id, r.dept_id, r.period_id, r.sale_no, r.product_id, r.member_id, r.member_no, r.member_name,
+               r.product_name, r.sale_quantity, r.gift_quantity, r.total_quantity, r.sale_amount, r.unit_price,
+               r.paid_amount, r.sale_date, r.status, r.del_flag, r.create_by, r.create_time, r.update_by, r.update_time, r.remark,
+               p.period_no as period_no,
+               p.status as period_status,
+               (select max(sp.payment_date) from fin_sale_payment sp where sp.sale_id = r.sale_id and sp.del_flag = '0') as latest_payment_date
+        from fin_sale_record r
+        left join fin_accounting_period p on r.period_id = p.period_id
+        <where>
+            r.del_flag = '0'
+            and coalesce(r.paid_amount, 0) &lt; r.sale_amount
+            <if test="deptId != null"> and r.dept_id = #{deptId}</if>
+            <if test="periodId != null"> and r.period_id = #{periodId}</if>
+            <if test="saleNo != null and saleNo != ''"> and r.sale_no like concat('%', #{saleNo}, '%')</if>
+            <if test="productName != null and productName != ''"> and r.product_name like concat('%', #{productName}, '%')</if>
+            <if test="status != null and status != ''"> and r.status = #{status}</if>
+        </where>
+        order by r.sale_date asc, r.sale_id asc
+    </select>
+
+    <select id="countReceivableByPeriodId" resultType="int">
+        select count(*)
+        from fin_sale_record r
+        where r.del_flag = '0'
+          and coalesce(r.paid_amount, 0) &lt; r.sale_amount
+          <if test="deptId != null"> and r.dept_id = #{deptId}</if>
+          <if test="periodId != null"> and r.period_id = #{periodId}</if>
+    </select>
+
+    <select id="sumReceivableByPeriodId" resultType="java.math.BigDecimal">
+        select coalesce(sum(r.sale_amount - coalesce(r.paid_amount, 0)), 0)
+        from fin_sale_record r
+        where r.del_flag = '0'
+          and coalesce(r.paid_amount, 0) &lt; r.sale_amount
+          <if test="deptId != null"> and r.dept_id = #{deptId}</if>
+          <if test="periodId != null"> and r.period_id = #{periodId}</if>
+    </select>
 
     <delete id="deleteFinSaleRecordBySaleId" parameterType="Long">
         update fin_sale_record set del_flag = '2' where sale_id = #{saleId}
@@ -298,6 +374,67 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <if test="startTime != null"> and r.sale_date &gt;= #{startTime} </if>
         <if test="endTime != null"> and r.sale_date &lt;= #{endTime} </if>
         </where>
+    </select>
+
+    <!-- R13-D: 本期实收 -->
+    <select id="selectCurrentPeriodPaymentTotal" resultType="java.math.BigDecimal">
+        select coalesce(sum(sp.payment_amount), 0)
+        from fin_sale_payment sp
+        where sp.del_flag = '0'
+        <if test="periodId != null">and sp.period_id = #{periodId}</if>
+        <if test="deptIds != null and deptIds.size() > 0">
+            and sp.dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+    </select>
+
+    <!-- R13-D: 历史欠款回收 -->
+    <select id="selectHistoricalReceivableCollected" resultType="java.math.BigDecimal">
+        select coalesce(sum(sp.payment_amount), 0)
+        from fin_sale_payment sp
+        inner join fin_sale_record sr on sr.sale_id = sp.sale_id
+        where sp.del_flag = '0' and sr.del_flag = '0'
+        <if test="periodId != null">
+            and sp.period_id = #{periodId}
+            and sr.period_id != #{periodId}
+        </if>
+        <if test="deptIds != null and deptIds.size() > 0">
+            and sp.dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+    </select>
+
+    <!-- R13-D: 本期新增应收 -->
+    <select id="selectCurrentPeriodNewReceivable" resultType="java.math.BigDecimal">
+        select coalesce(sum(r.sale_amount - coalesce(r.paid_amount, 0)), 0)
+        from fin_sale_record r
+        where r.del_flag = '0'
+        and coalesce(r.paid_amount, 0) &lt; r.sale_amount
+        <if test="periodId != null">and r.period_id = #{periodId}</if>
+        <if test="deptIds != null and deptIds.size() > 0">
+            and r.dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+    </select>
+
+    <!-- R13-D: 期末应收余额 -->
+    <select id="selectEndingReceivableBalance" resultType="java.math.BigDecimal">
+        select coalesce(sum(r.sale_amount - coalesce(r.paid_amount, 0)), 0)
+        from fin_sale_record r
+        where r.del_flag = '0'
+        and coalesce(r.paid_amount, 0) &lt; r.sale_amount
+        <if test="deptIds != null and deptIds.size() > 0">
+            and r.dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+    </select>
+
+    <!-- R13-D: 逾期应收笔数（账龄超30天） -->
+    <select id="countOverdueReceivable" resultType="int">
+        select count(*)
+        from fin_sale_record r
+        where r.del_flag = '0'
+        and coalesce(r.paid_amount, 0) &lt; r.sale_amount
+        and datediff(curdate(), date(r.sale_date)) &gt; 30
+        <if test="deptIds != null and deptIds.size() > 0">
+            and r.dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
     </select>
 
 </mapper>

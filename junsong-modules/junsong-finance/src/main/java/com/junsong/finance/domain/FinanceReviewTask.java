@@ -39,6 +39,16 @@ public class FinanceReviewTask extends BaseEntity {
     /** 状态: PENDING/IN_PROGRESS/DONE/IGNORED */
     private String status;
 
+    /** 是否归档 1是 0否 */
+    private String archived;
+
+    /** 归档时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private Date archiveTime;
+
+    /** 重开次数 */
+    private Integer reopenCount;
+
     /** 严重级别: HIGH/MEDIUM/LOW */
     private String severity;
 
@@ -129,6 +139,30 @@ public class FinanceReviewTask extends BaseEntity {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getArchived() {
+        return archived;
+    }
+
+    public void setArchived(String archived) {
+        this.archived = archived;
+    }
+
+    public Date getArchiveTime() {
+        return archiveTime;
+    }
+
+    public void setArchiveTime(Date archiveTime) {
+        this.archiveTime = archiveTime;
+    }
+
+    public Integer getReopenCount() {
+        return reopenCount;
+    }
+
+    public void setReopenCount(Integer reopenCount) {
+        this.reopenCount = reopenCount;
     }
 
     public String getSeverity() {
@@ -237,6 +271,9 @@ public class FinanceReviewTask extends BaseEntity {
                 .append("periodId", getPeriodId())
                 .append("taskDate", getTaskDate())
                 .append("status", getStatus())
+                .append("archived", getArchived())
+                .append("archiveTime", getArchiveTime())
+                .append("reopenCount", getReopenCount())
                 .append("severity", getSeverity())
                 .append("title", getTitle())
                 .append("reason", getReason())

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.StockHealthMapper">
+
+    <select id="countLedger" resultType="java.lang.Long">
+        select count(1) from fin_stock_ledger where del_flag = '0'
+    </select>
+
+    <select id="countSnapshot" resultType="java.lang.Long">
+        select count(1) from fin_stock_snapshot
+    </select>
+
+    <select id="countNegativeStockProducts" resultType="java.lang.Long">
+        select count(distinct concat(dept_id, ':', product_id))
+        from fin_stock_ledger
+        where del_flag = '0'
+          and after_quantity &lt; 0
+    </select>
+
+    <select id="countPositionsWithoutLedger" resultType="java.lang.Long">
+        select count(1)
+        from fin_stock_position p
+        where p.quantity != 0
+          and not exists (
+            select 1 from fin_stock_ledger l
+            where l.dept_id = p.dept_id
+              and l.product_id = p.product_id
+              and l.del_flag = '0'
+          )
+    </select>
+
+    <!-- SNAPSHOT_MISSING：昨日有结存(quantity != 0)但无昨日快照 -->
+    <select id="countPositionsMissingYesterdaySnapshot" resultType="java.lang.Long">
+        select count(1)
+        from fin_stock_position p
+        where p.quantity != 0
+          and not exists (
+            select 1 from fin_stock_snapshot s
+            where s.dept_id = p.dept_id
+              and s.product_id = p.product_id
+              and s.snapshot_date = date_sub(curdate(), interval 1 day)
+          )
+    </select>
+
+    <!-- SNAPSHOT_POSITION_MISMATCH：当日快照存在但 closing(quantity) 与 position.quantity 不一致 -->
+    <select id="countSnapshotPositionMismatchToday" resultType="java.lang.Long">
+        select count(1)
+        from fin_stock_position p
+        where exists (
+            select 1 from fin_stock_snapshot s
+            where s.dept_id = p.dept_id
+              and s.product_id = p.product_id
+              and s.snapshot_date = curdate()
+              and s.quantity != p.quantity
+          )
+    </select>
+</mapper>

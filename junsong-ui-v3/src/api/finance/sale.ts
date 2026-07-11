@@ -9,6 +9,15 @@ export function listSale(query: any) {
   })
 }
 
+// 查询未缴清销售单（历史欠款）列表
+export function listReceivable(query: any) {
+  return request({
+    url: '/finance/sale/receivable/list',
+    method: 'get',
+    params: query
+  })
+}
+
 // 查询销售记录详细
 export function getSale(saleId: any) {
   return request({

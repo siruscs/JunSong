@@ -52,13 +52,25 @@ public class FinProfitShareRecordServiceImpl implements IFinProfitShareRecordSer
 
     public FinProfitShareRecord selectFinProfitShareRecordByShareId(Long shareId) { return finProfitShareRecordMapper.selectFinProfitShareRecordByShareId(shareId); }
 
+    /**
+     * 预检查分润配置是否就绪（不加 @Transactional，避免影响调用方事务）
+     */
+    @Override
+    public void checkProfitConfigReady(Long deptId) {
+        FinDeptProfitConfig config = finDeptProfitConfigMapper.selectFinDeptProfitConfigByDeptId(deptId);
+        if (config == null || !"0".equals(config.getStatus())) {
+            throw new ServiceException("没有进行分润配置，请先进行配置");
+        }
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public FinProfitShareRecord carryForwardPeriod(Long periodId) {
         if (periodId == null) {
             throw new ServiceException("核算周期不能为空");
         }
         FinProfitShareRecord existingShare = finProfitShareRecordMapper.selectFinProfitShareRecordByPeriodId(periodId);
-        if (existingShare != null) {
+        // 仅当存在有效（非作废）的分润记录时才直接返回；已作废的记录（status=2）不阻止重新分润
+        if (existingShare != null && !ShareStatus.CANCELLED.equals(existingShare.getStatus())) {
             return existingShare;
         }
 
@@ -66,8 +78,13 @@ public class FinProfitShareRecordServiceImpl implements IFinProfitShareRecordSer
         if (period == null || !"0".equals(period.getDelFlag())) {
             throw new ServiceException("核算周期不存在");
         }
-        if (!"2".equals(period.getStatus())) {
-            throw new ServiceException("只有已结转的周期才能执行分润");
+        // 结转调用时分润可能处于两种场景：
+        // 1. 外层 carryForward 已将状态置为 CARRIED（正常结转）
+        // 2. 手动对已结转周期重新执行分润（状态为 CARRIED）
+        // ACTIVE 状态在结转流程中是合法的过渡态（外层事务还未提交）
+        String periodStatus = period.getStatus();
+        if (!PeriodStatus.ACTIVE.equals(periodStatus) && !PeriodStatus.CARRIED.equals(periodStatus)) {
+            throw new ServiceException("只有进行中或已结转的周期才能执行分润");
         }
         period = refreshClosedPeriodStats(period);
         BigDecimal netProfit = nvl(period.getNetProfit());
@@ -87,8 +104,16 @@ public class FinProfitShareRecordServiceImpl implements IFinProfitShareRecordSer
         query.setDeptId(period.getDeptId());
         List<FinInvestRecord> investRecords = mergeInvestRecordsByInvestor(finInvestRecordMapper.selectFinInvestRecordList(query));
         BigDecimal totalInvest = investRecords.stream().map(record -> nvl(record.getInvestAmount())).reduce(BigDecimal.ZERO, BigDecimal::add);
+        boolean autoCreatePayment = "1".equals(config.getAutoCreateInvestorPayment());
+        // 投资人分润金额 > 0 且无投资记录时：
+        // - 自动分润模式：抛异常阻断结转，提示先选择分润的投资人员（事务回滚，外层 catch 记录 remark）
+        // - 手动分润模式：跳过投资人明细创建，仅分润给店长，投资人分润金额保留为待分配（后续手动处理）
+        boolean skipInvestorDetails = false;
         if (investorAmount.compareTo(BigDecimal.ZERO) > 0 && totalInvest.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new ServiceException("没有可用于分润的投资记录");
+            if (autoCreatePayment) {
+                throw new ServiceException("投资人自动分润已开启，但无可用投资记录，请先选择分润的投资人员");
+            }
+            skipInvestorDetails = true;
         }
 
         Date now = new Date();
@@ -103,11 +128,13 @@ public class FinProfitShareRecordServiceImpl implements IFinProfitShareRecordSer
         share.setStatus(ShareStatus.CARRIED);
         share.setShareTime(now);
         share.setCreateBy(SecurityUtils.getUsername());
-        share.setRemark("回本周期结转自动生成");
+        share.setRemark(skipInvestorDetails ? "回本周期结转自动生成；投资人分润待手动分配（无投资记录）" : "回本周期结转自动生成");
         finProfitShareRecordMapper.insertFinProfitShareRecord(share);
 
         insertManagerDetail(share, managerAmount);
-        insertInvestorDetailsAndPayments(share, investRecords, totalInvest, investorAmount, now, "1".equals(config.getAutoCreateInvestorPayment()));
+        if (!skipInvestorDetails) {
+            insertInvestorDetailsAndPayments(share, investRecords, totalInvest, investorAmount, now, autoCreatePayment);
+        }
 
         // 周期状态已由结转操作设置为CARRIED，此处只更新分润相关字段
         period.setManagerProfitRate(managerRate);

@@ -1,110 +1,242 @@
 package com.junsong.finance.domain.vo;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import java.math.BigDecimal;
+import java.util.Date;
 import java.util.List;
 
 /**
- * Cash health dashboard VO.
- * Aggregates cashflow-related metrics across authorized departments.
+ * 轻量现金流看板 VO.
+ * R7-D: 只做现金流入/流出/净额/待结算，不做预算。
  */
 public class CashflowDashboardVO {
 
-    /** netCashInflow = totalReceivedSalePayment - totalVerifiedExpense */
-    private BigDecimal netCashInflow = BigDecimal.ZERO;
+    /** 现金流入（销售缴款） */
+    private BigDecimal cashInAmount = BigDecimal.ZERO;
 
-    /** SUM(payment_amount) FROM fin_sale_payment WHERE del_flag='0' */
-    private BigDecimal totalReceivedSalePayment = BigDecimal.ZERO;
+    /** 现金流出（已核销费用 + 投资人返款） */
+    private BigDecimal cashOutAmount = BigDecimal.ZERO;
 
-    /** SUM(expense_amount) FROM fin_expense WHERE status='1' AND del_flag='0' */
-    private BigDecimal totalVerifiedExpense = BigDecimal.ZERO;
+    /** 净现金流 = cashInAmount - cashOutAmount */
+    private BigDecimal netCashflowAmount = BigDecimal.ZERO;
 
-    /** SUM(expense_amount) FROM fin_expense WHERE status='0' AND del_flag='0' */
-    private BigDecimal totalUnverifiedExpense = BigDecimal.ZERO;
+    /** 待核销费用金额 */
+    private BigDecimal pendingExpenseAmount = BigDecimal.ZERO;
 
-    /** SUM(advance_amount) FROM fin_advance WHERE status='0' AND del_flag='0' */
-    private BigDecimal totalAdvanceBalance = BigDecimal.ZERO;
+    /** 待核销借支金额 */
+    private BigDecimal pendingAdvanceAmount = BigDecimal.ZERO;
 
-    /** SUM(amount) FROM fin_investor_payment WHERE payment_status='1' AND del_flag='0' */
-    private BigDecimal totalPaidInvestorPayment = BigDecimal.ZERO;
+    /** 待分润金额 */
+    private BigDecimal pendingProfitShareAmount = BigDecimal.ZERO;
 
-    /** SUM(amount) FROM fin_investor_payment WHERE payment_status='0' AND del_flag='0' */
-    private BigDecimal totalUnpaidInvestorPayment = BigDecimal.ZERO;
+    /** 待核销费用数量 */
+    private Integer pendingExpenseCount = 0;
 
-    /** count of unverified expenses + count of unpaid investor payments */
-    private int cashPressureItems = 0;
+    /** 待核销借支数量 */
+    private Integer pendingAdvanceCount = 0;
 
-    /** departments that were queried */
-    private List<Long> deptIds;
+    /** 待分润数量 */
+    private Integer pendingProfitShareCount = 0;
 
-    public BigDecimal getNetCashInflow() {
-        return netCashInflow;
+    /** 日趋势行 */
+    private List<CashflowTrendRowVO> trendRows;
+
+    /** 待结算明细 */
+    private List<CashflowPendingItemVO> pendingItems;
+
+    // ── getters / setters ──
+
+    public BigDecimal getCashInAmount() {
+        return cashInAmount;
     }
 
-    public void setNetCashInflow(BigDecimal netCashInflow) {
-        this.netCashInflow = netCashInflow;
+    public void setCashInAmount(BigDecimal cashInAmount) {
+        this.cashInAmount = cashInAmount;
     }
 
-    public BigDecimal getTotalReceivedSalePayment() {
-        return totalReceivedSalePayment;
+    public BigDecimal getCashOutAmount() {
+        return cashOutAmount;
     }
 
-    public void setTotalReceivedSalePayment(BigDecimal totalReceivedSalePayment) {
-        this.totalReceivedSalePayment = totalReceivedSalePayment;
+    public void setCashOutAmount(BigDecimal cashOutAmount) {
+        this.cashOutAmount = cashOutAmount;
     }
 
-    public BigDecimal getTotalVerifiedExpense() {
-        return totalVerifiedExpense;
+    public BigDecimal getNetCashflowAmount() {
+        return netCashflowAmount;
     }
 
-    public void setTotalVerifiedExpense(BigDecimal totalVerifiedExpense) {
-        this.totalVerifiedExpense = totalVerifiedExpense;
+    public void setNetCashflowAmount(BigDecimal netCashflowAmount) {
+        this.netCashflowAmount = netCashflowAmount;
     }
 
-    public BigDecimal getTotalUnverifiedExpense() {
-        return totalUnverifiedExpense;
+    public BigDecimal getPendingExpenseAmount() {
+        return pendingExpenseAmount;
     }
 
-    public void setTotalUnverifiedExpense(BigDecimal totalUnverifiedExpense) {
-        this.totalUnverifiedExpense = totalUnverifiedExpense;
+    public void setPendingExpenseAmount(BigDecimal pendingExpenseAmount) {
+        this.pendingExpenseAmount = pendingExpenseAmount;
     }
 
-    public BigDecimal getTotalAdvanceBalance() {
-        return totalAdvanceBalance;
+    public BigDecimal getPendingAdvanceAmount() {
+        return pendingAdvanceAmount;
     }
 
-    public void setTotalAdvanceBalance(BigDecimal totalAdvanceBalance) {
-        this.totalAdvanceBalance = totalAdvanceBalance;
+    public void setPendingAdvanceAmount(BigDecimal pendingAdvanceAmount) {
+        this.pendingAdvanceAmount = pendingAdvanceAmount;
     }
 
-    public BigDecimal getTotalPaidInvestorPayment() {
-        return totalPaidInvestorPayment;
+    public BigDecimal getPendingProfitShareAmount() {
+        return pendingProfitShareAmount;
     }
 
-    public void setTotalPaidInvestorPayment(BigDecimal totalPaidInvestorPayment) {
-        this.totalPaidInvestorPayment = totalPaidInvestorPayment;
+    public void setPendingProfitShareAmount(BigDecimal pendingProfitShareAmount) {
+        this.pendingProfitShareAmount = pendingProfitShareAmount;
     }
 
-    public BigDecimal getTotalUnpaidInvestorPayment() {
-        return totalUnpaidInvestorPayment;
+    public Integer getPendingExpenseCount() {
+        return pendingExpenseCount;
     }
 
-    public void setTotalUnpaidInvestorPayment(BigDecimal totalUnpaidInvestorPayment) {
-        this.totalUnpaidInvestorPayment = totalUnpaidInvestorPayment;
+    public void setPendingExpenseCount(Integer pendingExpenseCount) {
+        this.pendingExpenseCount = pendingExpenseCount;
     }
 
-    public int getCashPressureItems() {
-        return cashPressureItems;
+    public Integer getPendingAdvanceCount() {
+        return pendingAdvanceCount;
     }
 
-    public void setCashPressureItems(int cashPressureItems) {
-        this.cashPressureItems = cashPressureItems;
+    public void setPendingAdvanceCount(Integer pendingAdvanceCount) {
+        this.pendingAdvanceCount = pendingAdvanceCount;
     }
 
-    public List<Long> getDeptIds() {
-        return deptIds;
+    public Integer getPendingProfitShareCount() {
+        return pendingProfitShareCount;
     }
 
-    public void setDeptIds(List<Long> deptIds) {
-        this.deptIds = deptIds;
+    public void setPendingProfitShareCount(Integer pendingProfitShareCount) {
+        this.pendingProfitShareCount = pendingProfitShareCount;
+    }
+
+    public List<CashflowTrendRowVO> getTrendRows() {
+        return trendRows;
+    }
+
+    public void setTrendRows(List<CashflowTrendRowVO> trendRows) {
+        this.trendRows = trendRows;
+    }
+
+    public List<CashflowPendingItemVO> getPendingItems() {
+        return pendingItems;
+    }
+
+    public void setPendingItems(List<CashflowPendingItemVO> pendingItems) {
+        this.pendingItems = pendingItems;
+    }
+
+    // ── 内部静态类 ──
+
+    /**
+     * 现金流日趋势行
+     */
+    public static class CashflowTrendRowVO {
+        /** 日期 yyyy-MM-dd */
+        private String date;
+        /** 当日现金流入 */
+        private BigDecimal cashIn = BigDecimal.ZERO;
+        /** 当日现金流出 */
+        private BigDecimal cashOut = BigDecimal.ZERO;
+        /** 当日净额 */
+        private BigDecimal net = BigDecimal.ZERO;
+
+        public String getDate() {
+            return date;
+        }
+
+        public void setDate(String date) {
+            this.date = date;
+        }
+
+        public BigDecimal getCashIn() {
+            return cashIn;
+        }
+
+        public void setCashIn(BigDecimal cashIn) {
+            this.cashIn = cashIn;
+        }
+
+        public BigDecimal getCashOut() {
+            return cashOut;
+        }
+
+        public void setCashOut(BigDecimal cashOut) {
+            this.cashOut = cashOut;
+        }
+
+        public BigDecimal getNet() {
+            return net;
+        }
+
+        public void setNet(BigDecimal net) {
+            this.net = net;
+        }
+    }
+
+    /**
+     * 待结算明细项
+     */
+    public static class CashflowPendingItemVO {
+        /** 类型: EXPENSE / ADVANCE / PROFIT_SHARE */
+        private String type;
+        /** 业务ID */
+        private String bizId;
+        /** 金额 */
+        private BigDecimal amount = BigDecimal.ZERO;
+        /** 门店名称 */
+        private String deptName;
+        /** 创建时间 */
+        @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+        private Date createDate;
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        public String getBizId() {
+            return bizId;
+        }
+
+        public void setBizId(String bizId) {
+            this.bizId = bizId;
+        }
+
+        public BigDecimal getAmount() {
+            return amount;
+        }
+
+        public void setAmount(BigDecimal amount) {
+            this.amount = amount;
+        }
+
+        public String getDeptName() {
+            return deptName;
+        }
+
+        public void setDeptName(String deptName) {
+            this.deptName = deptName;
+        }
+
+        public Date getCreateDate() {
+            return createDate;
+        }
+
+        public void setCreateDate(Date createDate) {
+            this.createDate = createDate;
+        }
     }
 }

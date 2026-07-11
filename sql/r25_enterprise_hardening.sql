@@ -17,7 +17,11 @@ CREATE TABLE IF NOT EXISTS sys_operation_audit_snapshot (
   operator_id BIGINT DEFAULT NULL COMMENT '操作人ID',
   operator_name VARCHAR(64) DEFAULT '' COMMENT '操作人',
   request_ip VARCHAR(64) DEFAULT '' COMMENT '请求IP',
+  create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+  update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  remark VARCHAR(512) DEFAULT '' COMMENT '备注',
   PRIMARY KEY (audit_id),
   KEY idx_r25_audit_scope (tenant_id, biz_type, biz_id, create_time),
   KEY idx_r25_audit_risk (risk_level, create_time)
@@ -75,6 +79,7 @@ CREATE TABLE IF NOT EXISTS sys_operation_alert_rule (
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  remark VARCHAR(512) DEFAULT '' COMMENT '备注',
   PRIMARY KEY (rule_id),
   UNIQUE KEY uk_r25_alert_rule_key (rule_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='R25操作告警规则';
@@ -99,10 +104,27 @@ CREATE TABLE IF NOT EXISTS sys_operation_alert_event (
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
   update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  remark VARCHAR(512) DEFAULT '' COMMENT '备注',
   PRIMARY KEY (event_id),
   UNIQUE KEY uk_r25_alert_dedup (dedup_key),
   KEY idx_r25_alert_status (status, severity, last_seen_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='R25操作告警事件';
+
+-- ============================================================
+-- 幂等补列（适配已执行旧版 DDL 的环境）
+-- ============================================================
+SET @ddl := IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'sys_operation_audit_snapshot' AND column_name = 'create_by'), 'SELECT 1', 'ALTER TABLE sys_operation_audit_snapshot ADD COLUMN create_by VARCHAR(64) DEFAULT '''' COMMENT ''创建者''');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl := IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'sys_operation_audit_snapshot' AND column_name = 'update_by'), 'SELECT 1', 'ALTER TABLE sys_operation_audit_snapshot ADD COLUMN update_by VARCHAR(64) DEFAULT '''' COMMENT ''更新者''');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl := IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'sys_operation_audit_snapshot' AND column_name = 'update_time'), 'SELECT 1', 'ALTER TABLE sys_operation_audit_snapshot ADD COLUMN update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT ''更新时间''');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl := IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'sys_operation_audit_snapshot' AND column_name = 'remark'), 'SELECT 1', 'ALTER TABLE sys_operation_audit_snapshot ADD COLUMN remark VARCHAR(512) DEFAULT '''' COMMENT ''备注''');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl := IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'sys_operation_alert_rule' AND column_name = 'remark'), 'SELECT 1', 'ALTER TABLE sys_operation_alert_rule ADD COLUMN remark VARCHAR(512) DEFAULT '''' COMMENT ''备注''');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @ddl := IF(EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'sys_operation_alert_event' AND column_name = 'remark'), 'SELECT 1', 'ALTER TABLE sys_operation_alert_event ADD COLUMN remark VARCHAR(512) DEFAULT '''' COMMENT ''备注''');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- ============================================================
 -- 默认留存策略（幂等）
@@ -140,7 +162,7 @@ SELECT 'open_api_log', 180, 'SUMMARY_ONLY', '1', '开放API日志默认留存180
 WHERE NOT EXISTS (SELECT 1 FROM sys_data_retention_policy WHERE table_name = 'open_api_log');
 
 INSERT INTO sys_data_retention_policy (table_name, retention_days, archive_mode, enabled, remark, create_by, create_time)
-SELECT 'open_webhook_subscription', 365, 'DISABLED', '1', 'webhook订阅默认不自动归档', 'admin', NOW()
+SELECT 'open_webhook_subscription', 365, 'DISABLED', '0', 'webhook订阅默认不自动归档', 'admin', NOW()
 WHERE NOT EXISTS (SELECT 1 FROM sys_data_retention_policy WHERE table_name = 'open_webhook_subscription');
 
 -- ============================================================

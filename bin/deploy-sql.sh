@@ -1,68 +1,60 @@
 #!/bin/bash
-# =============================================
-# JunSong Cloud - SQL 菜单部署脚本
-# 用法: ./deploy-sql.sh <sql-file-or-dir> [dev|prod]
-# 示例:
-#   ./deploy-sql.sh sql/finance_operation_dashboard_menu.sql
-#   ./deploy-sql.sh sql/  (执行目录下所有 .sql 文件)
-# =============================================
+set -euo pipefail
 
-set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/deploy-common.sh"
 
-ENV=${2:-dev}
-PROJECT_ROOT="/Users/sirius/Documents/TRAE/JunSong-Cloud"
-DOCKER_PATH="/Applications/Docker.app/Contents/Resources/bin/docker"
-MYSQL_CONTAINER="junsong-mysql"
-DB_NAME="junsong-cloud"
-MYSQL_USER="root"
-MYSQL_PASS="root_123"
+TARGET="${1:-}"
+ENV="${2:-dev}"
+MYSQL_CONTAINER="${MYSQL_CONTAINER:-junsong-mysql}"
+DB_NAME="${DB_NAME:-junsong-cloud}"
+MYSQL_USER="${MYSQL_USER:-root}"
+MYSQL_PASS="${MYSQL_PASS:-root_123}"
 
-export PATH="/Applications/Docker.app/Contents/Resources/bin:$PATH"
-
-TARGET=$1
-
-if [ -z "${TARGET}" ]; then
-    echo "用法: ./deploy-sql.sh <sql-file-or-dir> [dev|prod]"
-    echo "示例: ./deploy-sql.sh sql/finance_operation_dashboard_menu.sql"
-    echo "      ./deploy-sql.sh sql/"
-    exit 1
-fi
-
-echo "=========================================="
-echo "  SQL 部署 - ${ENV}环境"
-echo "=========================================="
-
-cd ${PROJECT_ROOT}
+[ -n "${TARGET}" ] || die "用法: ./deploy-sql.sh <sql-file-or-dir> [dev|prod]"
+validate_environment "${ENV}"
+cd "${PROJECT_ROOT}"
 
 apply_sql() {
     local file=$1
-    echo ""
-    echo "[SQL] 执行: $(basename ${file})"
-    docker exec -i ${MYSQL_CONTAINER} mysql -u${MYSQL_USER} -p${MYSQL_PASS} --batch --raw \`${DB_NAME}\` < "${file}" 2>/dev/null
-    if [ $? -eq 0 ]; then
-        echo "  ✓ $(basename ${file}) 执行成功"
-    else
-        echo "  ✗ $(basename ${file}) 执行失败"
-        return 1
+    log "[SQL] 执行: $(basename "${file}")"
+    if [ "${DEPLOY_DRY_RUN}" = "1" ]; then
+        if [ "${ENV}" = "prod" ]; then
+            print_command ssh "${PROD_USER}@${PROD_HOST}" docker exec -i "${MYSQL_CONTAINER}" mysql "-u${MYSQL_USER}" "-p***" "${DB_NAME}" '<' "${file}"
+        else
+            print_command docker exec -i "${MYSQL_CONTAINER}" mysql "-u${MYSQL_USER}" "-p***" "${DB_NAME}" '<' "${file}"
+        fi
+        return 0
     fi
+    if [ "${ENV}" = "prod" ]; then
+        prod_ssh "docker exec -i '${MYSQL_CONTAINER}' mysql '-u${MYSQL_USER}' '-p${MYSQL_PASS}' --batch --raw '${DB_NAME}'" < "${file}"
+    else
+        docker exec -i "${MYSQL_CONTAINER}" mysql "-u${MYSQL_USER}" "-p${MYSQL_PASS}" --batch --raw "${DB_NAME}" < "${file}"
+    fi
+    log "  ✓ $(basename "${file}")"
 }
 
+if [ "${ENV}" = "prod" ]; then
+    backup="${PROD_DEPLOY_DIR}/backup/$(date '+%Y%m%d')/mysql/${DB_NAME}-before-$(date '+%Y%m%d%H%M%S').sql.gz"
+    prod_ssh "set -e; set -o pipefail; mkdir -p '$(dirname "${backup}")'; docker exec '${MYSQL_CONTAINER}' mysqldump '-u${MYSQL_USER}' '-p${MYSQL_PASS}' --single-transaction '${DB_NAME}' | gzip > '${backup}'; test -s '${backup}'; gzip -t '${backup}'"
+fi
+
 if [ -d "${TARGET}" ]; then
-    echo ""
-    echo "目录模式：执行 ${TARGET} 下所有 .sql 文件"
-    for f in "${TARGET}"/*.sql; do
-        if [ -f "$f" ]; then
-            apply_sql "$f"
-        fi
+    found=0
+    for file in "${TARGET}"/*.sql; do
+        [ -f "${file}" ] || continue
+        found=1
+        apply_sql "${file}"
     done
+    [ "${found}" = "1" ] || die "目录中没有 SQL 文件: ${TARGET}"
 elif [ -f "${TARGET}" ]; then
     apply_sql "${TARGET}"
 else
-    echo "✗ 路径不存在: ${TARGET}"
-    exit 1
+    die "路径不存在: ${TARGET}"
 fi
 
-echo ""
-echo "=========================================="
-echo "  SQL 部署完成！"
-echo "=========================================="
+if [ "${DEPLOY_DRY_RUN}" = "1" ]; then
+    log "✓ SQL ${ENV} DRY-RUN 计划生成完成（未执行 SQL）"
+else
+    log "✓ SQL ${ENV} 部署完成"
+fi

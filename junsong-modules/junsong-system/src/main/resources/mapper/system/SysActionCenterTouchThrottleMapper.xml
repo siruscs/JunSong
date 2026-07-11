@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.system.mapper.SysActionCenterTouchThrottleMapper">
+
+	<resultMap type="SysActionCenterTouchThrottle" id="SysActionCenterTouchThrottleResult">
+		<id     property="throttleId"      column="throttle_id"      />
+		<result property="throttleKey"     column="throttle_key"     />
+		<result property="channel"         column="channel"          />
+		<result property="targetRef"       column="target_ref"       />
+		<result property="lastTouchTime"   column="last_touch_time"  />
+		<result property="touchCount24h"   column="touch_count_24h"  />
+		<result property="createTime"      column="create_time"      />
+		<result property="updateTime"      column="update_time"      />
+	</resultMap>
+
+	<select id="selectByKey" parameterType="String" resultMap="SysActionCenterTouchThrottleResult">
+		select throttle_id, throttle_key, channel, target_ref, last_touch_time, touch_count_24h, create_time, update_time
+		from sys_action_center_touch_throttle
+		where throttle_key = #{throttleKey}
+	</select>
+
+	<insert id="insertThrottle" parameterType="SysActionCenterTouchThrottle" useGeneratedKeys="true" keyProperty="throttleId">
+		insert into sys_action_center_touch_throttle (
+			throttle_key, channel, target_ref, last_touch_time, touch_count_24h, create_time, update_time
+		) values (
+			#{throttleKey}, #{channel}, #{targetRef}, #{lastTouchTime}, #{touchCount24h}, sysdate(), sysdate()
+		)
+	</insert>
+
+	<update id="updateThrottle" parameterType="SysActionCenterTouchThrottle">
+		update sys_action_center_touch_throttle
+		set last_touch_time = #{lastTouchTime},
+		    touch_count_24h = #{touchCount24h},
+		    update_time = sysdate()
+		where throttle_key = #{throttleKey}
+	</update>
+
+</mapper>

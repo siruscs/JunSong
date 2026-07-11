@@ -1,16 +1,21 @@
 package com.junsong.finance.controller;
 
+import com.junsong.common.core.domain.R;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
 import com.junsong.common.security.annotation.RequiresPermissions;
 import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.finance.domain.FinanceReviewTask;
+import com.junsong.finance.domain.FinanceReviewTaskLog;
 import com.junsong.finance.domain.vo.ReportQueryParams;
+import com.junsong.finance.domain.vo.ReviewTaskEffectSummaryVO;
+import com.junsong.finance.domain.vo.ReviewTaskEffectVO;
 import com.junsong.finance.service.IFinanceReviewTaskService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +45,8 @@ public class FinanceReviewTaskController extends BaseController {
             @RequestParam(required = false) List<Long> deptIds,
             @RequestParam(required = false) Long periodId,
             @RequestParam(required = false) String beginTime,
-            @RequestParam(required = false) String endTime) {
+            @RequestParam(required = false) String endTime,
+            @RequestParam(required = false) Boolean includeArchived) {
         startPage();
         Map<String, Object> params = new HashMap<>();
         if (status != null && !status.isEmpty()) {
@@ -67,6 +73,9 @@ public class FinanceReviewTaskController extends BaseController {
         if (endTime != null && !endTime.isEmpty()) {
             params.put("endTime", endTime);
         }
+        if (includeArchived != null) {
+            params.put("includeArchived", includeArchived);
+        }
         List<FinanceReviewTask> list = reviewTaskService.listTasks(params);
         return getDataTable(list);
     }
@@ -83,6 +92,16 @@ public class FinanceReviewTaskController extends BaseController {
         }
         int count = reviewTaskService.generateFromDiagnosis(deptIds, params);
         return AjaxResult.success("成功生成 " + count + " 条复盘任务", count);
+    }
+
+    /**
+     * 从会员动作生成复盘任务
+     */
+    @RequiresPermissions("finance:reviewTask:add")
+    @PostMapping("/from-member-action")
+    public AjaxResult createFromMemberAction(@RequestBody Map<String, Object> req) {
+        FinanceReviewTask task = reviewTaskService.createFromMemberAction(req);
+        return AjaxResult.success("已生成复盘任务", task);
     }
 
     /**
@@ -121,5 +140,61 @@ public class FinanceReviewTaskController extends BaseController {
         String username = SecurityUtils.getUsername();
         reviewTaskService.markIgnored(taskId, userId, username, ignoreReason);
         return AjaxResult.success("任务已标记为忽略");
+    }
+
+    /**
+     * 重开已完成或已忽略的任务
+     */
+    @RequiresPermissions("finance:reviewTask:edit")
+    @PostMapping("/{taskId}/reopen")
+    public AjaxResult reopen(@PathVariable Long taskId, @RequestBody Map<String, String> body) {
+        String reason = body.get("reason");
+        reviewTaskService.reopenTask(taskId, reason);
+        return AjaxResult.success("任务已重开");
+    }
+
+    /**
+     * 评估已完成任务的动作效果
+     */
+    @RequiresPermissions("finance:reviewTask:list")
+    @GetMapping("/{taskId}/effect")
+    public R<ReviewTaskEffectVO> effect(@PathVariable Long taskId,
+                                        @RequestParam(defaultValue = "7") Integer windowDays) {
+        return R.ok(reviewTaskService.evaluateTaskEffect(taskId, windowDays));
+    }
+
+    /**
+     * 汇总已完成任务的动作效果评估
+     */
+    @RequiresPermissions("finance:reviewTask:list")
+    @GetMapping("/effect-summary")
+    public R<ReviewTaskEffectSummaryVO> effectSummary(
+            @RequestParam(required = false) List<Long> deptIds,
+            @RequestParam(defaultValue = "7") Integer windowDays) {
+        return R.ok(reviewTaskService.summarizeEffect(deptIds, windowDays));
+    }
+
+    /**
+     * 查询复盘任务处理轨迹
+     */
+    @RequiresPermissions("finance:reviewTask:list")
+    @GetMapping("/{taskId}/logs")
+    public R<List<FinanceReviewTaskLog>> getTaskLogs(@PathVariable Long taskId) {
+        return R.ok(reviewTaskService.getTaskLogs(taskId));
+    }
+
+    /**
+     * R13-E: 从逾期应收生成催收复盘任务
+     */
+    @RequiresPermissions("finance:reviewTask:add")
+    @PostMapping("/generate/receivable-collection")
+    public AjaxResult generateReceivableCollectionTasks(@RequestBody Map<String, Object> body) {
+        Long deptId = Long.valueOf(String.valueOf(body.get("deptId")));
+        Integer minAgeDays = body.containsKey("minAgeDays")
+                ? Integer.valueOf(String.valueOf(body.get("minAgeDays"))) : 14;
+        BigDecimal minUnpaidAmount = body.containsKey("minUnpaidAmount")
+                ? new BigDecimal(String.valueOf(body.get("minUnpaidAmount"))) : new BigDecimal("500");
+        int count = reviewTaskService.generateReceivableCollectionTasks(deptId, minAgeDays, minUnpaidAmount);
+        return AjaxResult.success("已生成 " + count + " 条催收任务", count);
     }
 }

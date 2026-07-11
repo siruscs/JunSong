@@ -224,12 +224,15 @@
             <el-tag v-else type="warning" size="small" effect="plain">不可用</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="ROI" width="110" align="right">
+        <el-table-column label="ROI" width="140" align="right">
           <template #default="{ row }">
-            <span v-if="row.roiStatus === 'AVAILABLE'" :class="roiClass(row.roi)">
+            <span v-if="row.roiStatus === 'READY'" :class="roiClass(row.roi)">
               {{ row.roi }}%
             </span>
-            <el-tag v-else type="warning" size="small" effect="plain">不可用</el-tag>
+            <el-tooltip v-else-if="row.roiStatus === 'UNAVAILABLE'" :content="roiUnavailableHint(row)" placement="top" effect="dark">
+              <el-tag type="warning" size="small" effect="plain">ROI 暂不可算</el-tag>
+            </el-tooltip>
+            <el-tag v-else type="info" size="small" effect="plain">暂无数据</el-tag>
           </template>
         </el-table-column>
       </el-table>
@@ -391,6 +394,17 @@ export default {
       if (roi > 0) return 'roi-positive';
       if (roi < 0) return 'roi-negative';
       return '';
+    },
+    roiUnavailableHint(row) {
+      if (row && row.suggestion) return row.suggestion;
+      switch (row && row.unavailableReason) {
+        case 'MISSING_ACTIVITY_COST':
+          return '缺少活动成本，暂不能计算 ROI，请先补充活动成本。';
+        case 'NO_RELATED_SALES':
+          return '暂无关联销售，暂不能计算 ROI。';
+        default:
+          return 'ROI 暂不可算。';
+      }
     },
     resetQuery() {
       this.queryParams = {

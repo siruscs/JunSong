@@ -140,6 +140,23 @@
           <p>近24小时登录失败次数</p>
           <router-link to="/monitor/logininfor" class="gov-link">查看日志</router-link>
         </div>
+        <div class="governance-card">
+          <span>今日登录</span>
+          <strong>{{ governance.todayLoginSuccessCount ?? 0 }}</strong>
+          <p>今日成功{{ governance.todayLoginSuccessCount ?? 0 }}次，失败{{ governance.todayLoginFailCount ?? 0 }}次</p>
+        </div>
+        <div class="governance-card" :class="{ risk: Number(governance.recentHighRiskOperCount ?? 0) > 0 }">
+          <span>高危操作(7d)</span>
+          <strong>{{ governance.recentHighRiskOperCount ?? 0 }}</strong>
+          <p>近7天更新/删除操作数</p>
+          <router-link to="/monitor/operlog" class="gov-link">查看日志</router-link>
+        </div>
+        <div class="governance-card" :class="{ info: Number(governance.unreadNotificationCount ?? 0) > 0 }">
+          <span>未读通知</span>
+          <strong>{{ governance.unreadNotificationCount ?? 0 }}</strong>
+          <p>未读系统通知</p>
+          <router-link to="/system/notice" class="gov-link">查看通知</router-link>
+        </div>
       </div>
       <div v-if="governanceWarnings.length > 0" class="governance-warnings">
         <el-alert
@@ -154,6 +171,88 @@
       </div>
     </el-card>
 
+    <el-card class="section-card governance-task-section">
+      <template #header>
+        <div class="card-head">
+          <span>治理任务</span>
+          <div class="card-head-actions">
+            <el-switch
+              v-model="includeArchived"
+              active-text="包含归档"
+              inactive-text=""
+              size="small"
+              @change="reloadGovernance"
+            />
+            <el-tag :type="governanceTasks.length > 0 ? 'danger' : 'success'" size="small">
+              {{ governanceTasks.length > 0 ? governanceTasks.length + ' 项待处理' : '状态良好' }}
+            </el-tag>
+          </div>
+        </div>
+      </template>
+      <div v-if="governanceTasks.length === 0" class="governance-empty">
+        治理状态良好，暂无待处理任务。
+      </div>
+      <div v-else class="governance-task-list">
+        <div
+          v-for="task in governanceTasks"
+          :key="task.taskType"
+          class="governance-task-item"
+          :class="['severity-' + task.severity.toLowerCase(), { 'is-archived': task.archived }]"
+        >
+          <router-link :to="task.targetRoute" class="task-card-link">
+            <div class="task-head">
+              <el-tag :type="task.severity === 'HIGH' ? 'danger' : task.severity === 'MEDIUM' ? 'warning' : 'info'" size="small">
+                {{ task.severity }}
+              </el-tag>
+              <strong>{{ task.title }}</strong>
+              <el-tag v-if="task.archived" type="info" size="small" effect="plain" class="archived-badge">已归档</el-tag>
+              <span class="task-count">{{ task.count }}</span>
+            </div>
+            <p class="task-reason">{{ task.reason }}</p>
+            <p class="task-action">建议：{{ task.action }}</p>
+            <p v-if="task.lastActionType" class="task-last-action">
+              最近处理：
+              <el-tag size="small" :type="actionTagType(task.lastActionType)">
+                {{ actionLabel(task.lastActionType) }}
+              </el-tag>
+              <span class="last-handler">{{ task.lastHandlerName || '-' }}</span>
+              <span class="last-time">{{ task.lastActionTime }}</span>
+            </p>
+          </router-link>
+          <div class="task-actions">
+            <template v-if="task.archived">
+              <el-button size="small" type="warning" link @click.stop="handleGovernanceAction(task, 'REOPEN')">重开</el-button>
+            </template>
+            <template v-else>
+              <el-button size="small" type="primary" link @click.stop="handleGovernanceAction(task, 'ACK')">已知晓</el-button>
+              <el-button size="small" type="success" link @click.stop="handleGovernanceAction(task, 'DONE')">标记完成</el-button>
+              <el-button size="small" type="info" link @click.stop="handleGovernanceAction(task, 'IGNORED')">忽略</el-button>
+            </template>
+            <el-button size="small" type="warning" link @click.stop="toggleGovernanceLogs(task)">
+              {{ governanceLogVisible[task.taskType] ? '收起轨迹' : '查看轨迹' }}
+            </el-button>
+          </div>
+          <div v-if="governanceLogVisible[task.taskType]" class="task-log-trail">
+            <div v-if="governanceLogLoading[task.taskType]" v-loading="true" style="min-height: 40px" />
+            <template v-else-if="(governanceLogMap[task.taskType] || []).length > 0">
+              <div v-for="log in governanceLogMap[task.taskType]" :key="log.logId" class="log-entry">
+                <el-tag
+                  size="small"
+                  :type="actionTagType(log.actionType)"
+                >
+                  {{ actionLabel(log.actionType) }}
+                </el-tag>
+                <span class="log-handler-name">{{ log.handlerName || '-' }}</span>
+                <span class="log-time">{{ log.actionTime }}</span>
+                <p v-if="log.handlerNote" class="log-note-text">{{ log.handlerNote }}</p>
+              </div>
+            </template>
+            <span v-else class="no-logs">暂无治理记录</span>
+          </div>
+        </div>
+      </div>
+    </el-card>
+
     <el-card class="section-card">
       <template #header><span>常用治理入口</span></template>
       <div class="quick-grid">
@@ -164,13 +263,34 @@
         </router-link>
       </div>
     </el-card>
+
+    <!-- 治理备注弹窗 -->
+    <el-dialog v-model="governanceNoteDialog.visible" :title="governanceNoteDialog.title" width="460px" append-to-body>
+      <el-form @submit.prevent="submitGovernanceAction">
+        <el-form-item :label="governanceNoteDialog.actionType === 'REOPEN' ? '重开原因' : '处理说明'">
+          <el-input
+            v-model="governanceNoteDialog.handlerNote"
+            type="textarea"
+            :placeholder="governanceNoteDialog.actionType === 'REOPEN' ? '请输入重开原因' : '请输入处理说明'"
+            :rows="3"
+            maxlength="500"
+            show-word-limit
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button type="primary" :loading="governanceNoteDialog.loading" @click="submitGovernanceAction">确 定</el-button>
+        <el-button @click="governanceNoteDialog.visible = false">取 消</el-button>
+      </template>
+    </el-dialog>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { getDashboardHealth, getDashboardStats, getDashboardGovernance } from '@/api/system/dashboard'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getDashboardHealth, getDashboardStats, getDashboardGovernance, recordGovernanceAction, getGovernanceLogs } from '@/api/system/dashboard'
 
 const loading = ref(false)
 const loadError = ref('')
@@ -182,6 +302,138 @@ const governance = ref<Record<string, any>>({})
 const governanceWarnings = computed(() => {
   return Array.isArray(governance.value.governanceWarnings) ? governance.value.governanceWarnings : []
 })
+
+const governanceTasks = computed(() => {
+  return Array.isArray(governance.value.governanceTasks) ? governance.value.governanceTasks : []
+})
+
+const governanceLogMap = reactive<Record<string, any[]>>({})
+const governanceLogVisible = reactive<Record<string, boolean>>({})
+const governanceLogLoading = reactive<Record<string, boolean>>({})
+const governanceActionLoading = ref(false)
+const includeArchived = ref(false)
+
+const governanceNoteDialog = reactive({
+  visible: false,
+  title: '',
+  handlerNote: '',
+  loading: false,
+  taskType: '',
+  severity: '',
+  countValue: 0,
+  actionType: '',
+})
+
+function handleGovernanceAction(task: any, actionType: string) {
+  if (actionType === 'ACK') {
+    governanceActionLoading.value = true
+    recordGovernanceAction({
+      taskType: task.taskType,
+      actionType: 'ACK',
+      handlerNote: '',
+    })
+      .then(() => {
+        ElMessage.success('已标记为已知晓')
+        reloadGovernance()
+        loadGovernanceLogs(task.taskType)
+      })
+      .catch(() => {
+        ElMessage.error('操作失败')
+      })
+      .finally(() => {
+        governanceActionLoading.value = false
+      })
+  } else {
+    governanceNoteDialog.visible = true
+    governanceNoteDialog.title = actionType === 'DONE' ? '标记完成' : actionType === 'IGNORED' ? '忽略任务' : '重开任务'
+    governanceNoteDialog.handlerNote = ''
+    governanceNoteDialog.taskType = task.taskType
+    governanceNoteDialog.severity = task.severity
+    governanceNoteDialog.countValue = task.count
+    governanceNoteDialog.actionType = actionType
+    governanceNoteDialog.loading = false
+  }
+}
+
+function submitGovernanceAction() {
+  if (!governanceNoteDialog.handlerNote || governanceNoteDialog.handlerNote.trim().length < 1) {
+    ElMessage.warning('请输入处理说明')
+    return
+  }
+  governanceNoteDialog.loading = true
+  recordGovernanceAction({
+    taskType: governanceNoteDialog.taskType,
+    actionType: governanceNoteDialog.actionType,
+    handlerNote: governanceNoteDialog.handlerNote,
+  })
+    .then(() => {
+      const msg = governanceNoteDialog.actionType === 'DONE' ? '已标记完成'
+        : governanceNoteDialog.actionType === 'IGNORED' ? '已忽略'
+        : '已重开'
+      ElMessage.success(msg)
+      governanceNoteDialog.visible = false
+      reloadGovernance()
+      loadGovernanceLogs(governanceNoteDialog.taskType)
+    })
+    .catch(() => {
+      ElMessage.error('操作失败')
+    })
+    .finally(() => {
+      governanceNoteDialog.loading = false
+    })
+}
+
+function loadGovernanceLogs(taskType: string) {
+  governanceLogLoading[taskType] = true
+  getGovernanceLogs(taskType)
+    .then((res: any) => {
+      governanceLogMap[taskType] = res.data || []
+    })
+    .catch(() => {
+      governanceLogMap[taskType] = []
+    })
+    .finally(() => {
+      governanceLogLoading[taskType] = false
+    })
+}
+
+function toggleGovernanceLogs(task: any) {
+  if (governanceLogVisible[task.taskType]) {
+    governanceLogVisible[task.taskType] = false
+  } else {
+    governanceLogVisible[task.taskType] = true
+    if (!governanceLogMap[task.taskType]) {
+      loadGovernanceLogs(task.taskType)
+    }
+  }
+}
+
+function reloadGovernance() {
+  getDashboardGovernance(includeArchived.value)
+    .then((govRes: any) => {
+      governance.value = govRes.data || {}
+    })
+    .catch(() => {})
+}
+
+function actionLabel(actionType: string): string {
+  switch (actionType) {
+    case 'ACK': return '已知晓'
+    case 'DONE': return '完成'
+    case 'IGNORED': return '忽略'
+    case 'REOPEN': return '重开'
+    default: return actionType
+  }
+}
+
+function actionTagType(actionType: string): string {
+  switch (actionType) {
+    case 'DONE': return 'success'
+    case 'ACK': return 'primary'
+    case 'REOPEN': return 'warning'
+    default: return 'info'
+  }
+}
 
 const quickLinks = [
   { group: '租户', title: '租户管理', desc: '管理租户主体、管理员和开通状态。', to: '/system/tenant' },
@@ -231,7 +483,7 @@ async function loadData() {
     const [statsRes, healthRes, govRes] = await Promise.all([
       getDashboardStats(),
       getDashboardHealth(),
-      getDashboardGovernance()
+      getDashboardGovernance(includeArchived.value)
     ])
     stats.value = statsRes.data || {}
     health.value = healthRes.data || {}
@@ -261,7 +513,8 @@ onMounted(loadData)
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 16px;
+  padding: 12px 20px 4px;
+  margin-bottom: 0;
 
   .page-title {
     margin: 0 0 6px;
@@ -335,6 +588,12 @@ onMounted(loadData)
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.card-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .health-bars {
@@ -442,6 +701,172 @@ onMounted(loadData)
   margin-top: 4px;
 }
 
+.governance-task-section {
+  margin-bottom: 14px;
+}
+
+.governance-empty {
+  padding: 24px;
+  text-align: center;
+  color: #239b63;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.governance-task-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.governance-task-item {
+  display: block;
+  padding: 0;
+  border: 1px solid #e5e9f2;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+
+  &:hover {
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  }
+
+  .task-card-link {
+    display: block;
+    padding: 14px;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .task-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+
+    strong {
+      flex: 1;
+      color: #18202f;
+      font-size: 14px;
+    }
+
+    .task-count {
+      color: #c24136;
+      font-size: 18px;
+      font-weight: 700;
+    }
+  }
+
+  .task-reason {
+    margin: 0 0 6px;
+    color: #667085;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .task-action {
+    margin: 0;
+    color: #445065;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .task-last-action {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 8px 0 0;
+    padding-top: 8px;
+    border-top: 1px dashed #e5e9f2;
+    color: #667085;
+    font-size: 11px;
+
+    .last-handler {
+      font-weight: 600;
+      color: #475569;
+    }
+
+    .last-time {
+      color: #94a3b8;
+    }
+  }
+
+  .task-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 14px;
+    border-top: 1px solid #f0f2f5;
+    background: #fafbfc;
+  }
+
+  .task-log-trail {
+    padding: 10px 14px;
+    border-top: 1px solid #f0f2f5;
+    background: #f8fafc;
+
+    .log-entry {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 0;
+      border-bottom: 1px dashed #e5e9f2;
+      font-size: 12px;
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    .log-handler-name {
+      color: #445065;
+      font-weight: 500;
+    }
+
+    .log-time {
+      color: #909399;
+      font-size: 11px;
+      margin-left: auto;
+    }
+
+    .log-note-text {
+      width: 100%;
+      margin: 4px 0 0;
+      color: #667085;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .no-logs {
+      color: #909399;
+      font-size: 12px;
+    }
+  }
+
+  &.severity-high {
+    border-left: 4px solid #c24136;
+  }
+
+  &.severity-medium {
+    border-left: 4px solid #b7791f;
+  }
+
+  &.severity-low {
+    border-left: 4px solid #909399;
+  }
+
+  &.is-archived {
+    opacity: 0.75;
+    border-left-color: #c0c4cc;
+  }
+
+  .archived-badge {
+    margin-left: 4px;
+  }
+}
+
 .quick-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -498,6 +923,10 @@ onMounted(loadData)
   }
 
   .governance-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .governance-task-list {
     grid-template-columns: 1fr;
   }
 }

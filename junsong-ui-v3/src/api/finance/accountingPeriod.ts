@@ -58,10 +58,11 @@ export function carryForward(deptId: any) {
 }
 
 // 结转回退
-export function rollbackCarryForward(deptId: any) {
+export function rollbackCarryForward(deptId: any, reason: string) {
   return request({
     url: '/finance/accountingPeriod/current/' + deptId + '/rollbackCarryForward',
-    method: 'post'
+    method: 'post',
+    params: { reason }
   })
 }
 
@@ -80,5 +81,14 @@ export function checkBeforeLock(deptId: any) {
     url: '/finance/accountingPeriod/check-before-lock',
     method: 'get',
     params: { deptId }
+  })
+}
+
+// 运维调整历史核算周期起始时间
+export function opsAdjustAccountingPeriodStartTime(periodId: any, data: any) {
+  return request({
+    url: '/finance/accountingPeriod/' + periodId + '/opsAdjustStartTime',
+    method: 'post',
+    data
   })
 }

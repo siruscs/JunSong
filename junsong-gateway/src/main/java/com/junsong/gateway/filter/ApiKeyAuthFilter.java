@@ -7,6 +7,7 @@ import javax.crypto.spec.SecretKeySpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -20,6 +21,7 @@ import org.springframework.http.server.reactive.ServerHttpRequestDecorator;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ServerWebExchange;
+import com.junsong.common.core.constant.SecurityConstants;
 import com.junsong.common.core.utils.ServletUtils;
 import com.junsong.common.core.utils.StringUtils;
 import com.junsong.common.redis.service.RedisService;
@@ -58,6 +60,8 @@ public class ApiKeyAuthFilter implements GlobalFilter, Ordered
     private static final String HEADER_TIMESTAMP = "X-App-Timestamp";
     private static final String HEADER_NONCE = "X-App-Nonce";
     private static final String HEADER_SIGNATURE = "X-App-Signature";
+    /** 服务间内部密钥头（不可由外部伪造，与 OPEN_INTERNAL_SECRET 配对） */
+    private static final String HEADER_INNER_TOKEN = "X-Inner-Token";
 
     // ── 统一错误码（见 OpenApiErrorCodes）─────────────────
 
@@ -78,6 +82,14 @@ public class ApiKeyAuthFilter implements GlobalFilter, Ordered
 
     @Autowired
     private OpenApiMetricsRecorder metricsRecorder;
+
+    /**
+     * 内部服务间密钥，由 OPEN_INTERNAL_SECRET 环境变量注入。
+     * 网关调用开放服务内部接口时携带 X-Inner-Token 头，开放服务校验一致性。
+     * 为空时仅记录警告（不阻断网关启动），开放服务侧 fail closed。
+     */
+    @Value("${open.internal.secret:}")
+    private String innerToken;
 
     private WebClient webClient;
 
@@ -114,6 +126,7 @@ public class ApiKeyAuthFilter implements GlobalFilter, Ordered
         private Long tenantId;
         private Integer dailyQuota;
         private String status;
+        private String keyType;
 
         public String getAppSecret() { return appSecret; }
         public void setAppSecret(String appSecret) { this.appSecret = appSecret; }
@@ -129,6 +142,9 @@ public class ApiKeyAuthFilter implements GlobalFilter, Ordered
 
         public String getStatus() { return status; }
         public void setStatus(String status) { this.status = status; }
+
+        public String getKeyType() { return keyType; }
+        public void setKeyType(String keyType) { this.keyType = keyType; }
     }
 
     // ── 过滤器入口 ─────────────────────────────────────
@@ -225,14 +241,45 @@ public class ApiKeyAuthFilter implements GlobalFilter, Ordered
                     // 记录 Nonce
                     redisService.setCacheObject(nonceKey, "1", Long.valueOf(NONCE_CACHE_SECONDS), TimeUnit.SECONDS);
 
+                    // 日额度检查（原子计数，超限返回 429）
+                    if (authCtx.getDailyQuota() != null && authCtx.getDailyQuota() > 0)
+                    {
+                        String quotaKey = "openapi:quota:" + appKey + ":" + java.time.LocalDate.now();
+                        Long used = redisService.increment(quotaKey);
+                        if (used != null && used == 1L)
+                        {
+                            redisService.expire(quotaKey, 2, TimeUnit.DAYS);
+                        }
+                        if (used != null && used > authCtx.getDailyQuota())
+                        {
+                            return quotaExceededResponse(exchange, "开放API日额度已用尽", OpenApiErrorCodes.QUOTA_EXCEEDED);
+                        }
+                    }
+
                     // 记录请求指标
                     if (metricsRecorder != null)
                     {
                         metricsRecorder.recordRequest(appKey, method, path, 200);
                     }
 
-                    // 转发到下游（September 将在此处注入 X-Open-* 上下文头）
-                    return chain.filter(exchange);
+                    // 注入可信开放上下文头后转发到下游
+                    // 同时剥离外部请求可能携带的内部头，防止伪造 from-source / user_id 绕过下游权限
+                    String requestId = java.util.UUID.randomUUID().toString().replace("-", "");
+                    ServerHttpRequest decorated = exchange.getRequest().mutate()
+                            .headers(h -> {
+                                h.remove("from-source");
+                                h.remove("user_id");
+                                h.remove("username");
+                                h.remove("user_key");
+                            })
+                            .header("X-Open-App-Id", String.valueOf(authCtx.getAppId()))
+                            .header("X-Open-App-Key", appKey)
+                            .header("X-Open-Tenant-Id", String.valueOf(authCtx.getTenantId()))
+                            .header("X-Open-Key-Type", authCtx.getKeyType())
+                            .header("X-Open-Request-Id", requestId)
+                            .header("X-Open-Auth-Version", "R23")
+                            .build();
+                    return chain.filter(exchange.mutate().request(decorated).build());
                 })
                 .onErrorResume(e -> {
                     log.error("[ApiKeyAuth] 查询认证上下文失败, appKey={}, error={}", appKey, e.getMessage());
@@ -282,6 +329,8 @@ public class ApiKeyAuthFilter implements GlobalFilter, Ordered
     {
         return webClient.get()
                 .uri("http://junsong-modules-open:9208/internal/secret/byKey/{appKey}", appKey)
+                .header(SecurityConstants.FROM_SOURCE, SecurityConstants.INNER)
+                .header(HEADER_INNER_TOKEN, innerToken)
                 .retrieve()
                 .bodyToMono(String.class)
                 .map(resp -> {
@@ -294,9 +343,9 @@ public class ApiKeyAuthFilter implements GlobalFilter, Ordered
                     {
                         JsonNode root = OBJECT_MAPPER.readTree(resp);
 
-                        // 检查业务状态码
+                        // 检查业务状态码（AjaxResult 成功为 200，兼容 0）
                         JsonNode codeNode = root.get("code");
-                        if (codeNode == null || codeNode.asInt() != 0)
+                        if (codeNode == null || (codeNode.asInt() != 0 && codeNode.asInt() != 200))
                         {
                             String msg = root.has("msg") ? root.get("msg").asText() : "unknown";
                             throw new RuntimeException("Open service error: " + msg);
@@ -329,6 +378,13 @@ public class ApiKeyAuthFilter implements GlobalFilter, Ordered
                         ctx.setTenantId(getFieldLong(dataNode, "tenantId"));
                         ctx.setDailyQuota(getFieldInt(dataNode, "dailyQuota"));
                         ctx.setStatus(status);
+                        ctx.setKeyType(getFieldText(dataNode, "keyType"));
+
+                        if (ctx.getAppId() == null || ctx.getTenantId() == null
+                                || StringUtils.isEmpty(ctx.getKeyType()))
+                        {
+                            throw new RuntimeException("Missing required auth context");
+                        }
 
                         return ctx;
                     }
@@ -406,9 +462,74 @@ public class ApiKeyAuthFilter implements GlobalFilter, Ordered
         {
             metricsRecorder.recordAuthError(errorCode);
         }
+        logGatewayRejection(exchange, 401, errorCode, msg);
         String responseBody = errorCode + ": " + msg;
         return ServletUtils.webFluxResponseWriter(
                 exchange.getResponse(), HttpStatus.UNAUTHORIZED, responseBody, HttpStatus.UNAUTHORIZED.value());
+    }
+
+    /**
+     * 返回 429 Too Many Requests 响应，携带统一错误码。
+     */
+    private Mono<Void> quotaExceededResponse(ServerWebExchange exchange, String msg, String errorCode)
+    {
+        log.warn("[ApiKeyAuth] {} path={}, errorCode={}", msg, exchange.getRequest().getPath(), errorCode);
+        if (metricsRecorder != null)
+        {
+            metricsRecorder.recordAuthError(errorCode);
+        }
+        logGatewayRejection(exchange, 429, errorCode, msg);
+        String responseBody = errorCode + ": " + msg;
+        return ServletUtils.webFluxResponseWriter(
+                exchange.getResponse(), HttpStatus.TOO_MANY_REQUESTS, responseBody, HttpStatus.TOO_MANY_REQUESTS.value());
+    }
+
+    /**
+     * 异步记录网关层拒绝日志到 open_api_log（fire-and-forget，不阻塞响应）
+     */
+    private void logGatewayRejection(ServerWebExchange exchange, int responseCode, String errorCode, String msg)
+    {
+        try
+        {
+            String appKey = exchange.getRequest().getHeaders().getFirst("X-App-Key");
+            String path = exchange.getRequest().getPath().value();
+            String method = exchange.getRequest().getMethod() != null ? exchange.getRequest().getMethod().name() : "GET";
+            String requestIp = exchange.getRequest().getRemoteAddress() != null
+                    ? exchange.getRequest().getRemoteAddress().getAddress().getHostAddress() : "";
+
+            java.util.Map<String, Object> logBody = new java.util.LinkedHashMap<>();
+            logBody.put("appKey", appKey);
+            logBody.put("requestMethod", method);
+            logBody.put("requestPath", path);
+            logBody.put("requestIp", requestIp);
+            logBody.put("responseCode", responseCode);
+            logBody.put("status", "fail");
+            logBody.put("errorCode", errorCode);
+            if (msg != null && msg.length() > 500)
+            {
+                logBody.put("responseMessage", msg.substring(0, 500));
+            }
+            else
+            {
+                logBody.put("responseMessage", msg);
+            }
+
+            webClient.post()
+                    .uri("http://junsong-modules-open:9208/internal/log/access")
+                    .header(SecurityConstants.FROM_SOURCE, SecurityConstants.INNER)
+                    .header(HEADER_INNER_TOKEN, innerToken)
+                    .bodyValue(logBody)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .subscribe(
+                            r -> {},
+                            e -> log.debug("[ApiKeyAuth] 网关拒绝日志写入失败: {}", e.getMessage())
+                    );
+        }
+        catch (Exception e)
+        {
+            log.debug("[ApiKeyAuth] 网关拒绝日志构造失败: {}", e.getMessage());
+        }
     }
 
     @Override

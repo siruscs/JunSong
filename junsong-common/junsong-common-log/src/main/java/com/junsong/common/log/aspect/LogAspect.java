@@ -21,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.alibaba.fastjson2.JSON;
 import com.junsong.common.core.text.Convert;
 import com.junsong.common.core.utils.ExceptionUtil;
+import com.junsong.common.core.utils.SensitiveDataMasker;
 import com.junsong.common.core.utils.ServletUtils;
 import com.junsong.common.core.utils.StringUtils;
 import com.junsong.common.core.utils.ip.IpUtils;
@@ -174,11 +175,11 @@ public class LogAspect
         if (StringUtils.isEmpty(paramsMap) && StringUtils.equalsAny(requestMethod, HttpMethod.PUT.name(), HttpMethod.POST.name(), HttpMethod.DELETE.name()))
         {
             String params = argsArrayToString(joinPoint.getArgs(), excludeParamNames);
-            operLog.setOperParam(params);
+            operLog.setOperParam(SensitiveDataMasker.maskSensitive(params));
         }
         else
         {
-            operLog.setOperParam(StringUtils.substring(JSON.toJSONString(paramsMap, excludePropertyPreFilter(excludeParamNames)), 0, PARAM_MAX_LENGTH));
+            operLog.setOperParam(StringUtils.substring(SensitiveDataMasker.maskSensitive(JSON.toJSONString(paramsMap, excludePropertyPreFilter(excludeParamNames))), 0, PARAM_MAX_LENGTH));
         }
     }
 

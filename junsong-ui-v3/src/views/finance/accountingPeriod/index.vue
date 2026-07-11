@@ -141,10 +141,12 @@
       <el-table-column label="结转时间" align="center" prop="carryForwardTime" width="170">
         <template #default="scope">{{ parseTime(scope.row.carryForwardTime, '{y}-{m}-{d} {h}:{i}:{s}') || '-' }}</template>
       </el-table-column>
-      <el-table-column label="操作" align="center" fixed="right" width="180">
+      <el-table-column label="操作" align="center" fixed="right" width="440">
         <template #default="scope">
           <el-button size="small" type="text" @click="handleDetail(scope.row)">明细</el-button>
+          <el-button size="small" type="text" @click="handleExportDetail(scope.row)">导出</el-button>
           <el-button size="small" type="text" @click="handleCheckBeforeLock(scope.row)" v-hasPermi="['finance:accountingPeriod:checkBeforeLock']">锁账检查</el-button>
+          <el-button size="small" type="text" style="color:#e6a23c" @click="handleOpsAdjustStartTime(scope.row)" v-hasPermi="['finance:accountingPeriod:opsAdjustStartTime']">调整起始时间</el-button>
         </template>
       </el-table-column>
       </el-table>
@@ -214,16 +216,31 @@
           </el-table>
         </el-tab-pane>
         <el-tab-pane label="销售缴款" name="sale">
-          <el-table v-loading="detailLoading" :data="detail.salePayments" height="360">
-            <el-table-column label="缴款单号" prop="paymentNo" min-width="150" />
-            <el-table-column label="销售ID" prop="saleId" width="100" />
+          <el-table v-loading="detailLoading" :data="salePaymentRows" height="360" border :span-method="salePaymentSpan">
+            <el-table-column label="商品名称" prop="productName" min-width="140" show-overflow-tooltip />
+            <el-table-column label="销售日期" prop="saleDate" width="120" align="center">
+              <template #default="scope">{{ parseTime(scope.row.saleDate, '{y}-{m}-{d}') }}</template>
+            </el-table-column>
+            <el-table-column label="销售金额" prop="saleAmount" width="110" align="right">
+              <template #default="scope">¥{{ formatMoney(scope.row.saleAmount) }}</template>
+            </el-table-column>
+            <el-table-column label="已缴款" prop="paidAmount" width="110" align="right">
+              <template #default="scope">¥{{ formatMoney(scope.row.paidAmount) }}</template>
+            </el-table-column>
+            <el-table-column label="未缴款" prop="unpaidAmount" width="110" align="right">
+              <template #default="scope">¥{{ formatMoney(scope.row.unpaidAmount) }}</template>
+            </el-table-column>
             <el-table-column label="缴款时间" prop="paymentDate" width="170">
               <template #default="scope">{{ parseTime(scope.row.paymentDate, '{y}-{m}-{d} {h}:{i}:{s}') }}</template>
             </el-table-column>
             <el-table-column label="缴款金额" prop="paymentAmount" width="120" align="right">
               <template #default="scope">¥{{ formatMoney(scope.row.paymentAmount) }}</template>
             </el-table-column>
-            <el-table-column label="付款方式" prop="paymentMethod" min-width="120" />
+            <el-table-column label="付款方式" prop="paymentMethod" min-width="110" align="center">
+              <template #default="scope">
+                <dict-tag :options="dict.type.finance_payment_method" :value="scope.row.paymentMethod" />
+              </template>
+            </el-table-column>
             <el-table-column label="备注" prop="remark" min-width="160" show-overflow-tooltip />
           </el-table>
         </el-tab-pane>
@@ -340,18 +357,64 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 运维调整起始时间弹窗 -->
+    <el-dialog title="运维调整周期起始/结束时间" v-model="opsAdjustOpen" width="560px" append-to-body>
+      <el-form ref="opsAdjustFormRef" :model="opsAdjustForm" :rules="opsAdjustRules" label-width="120px">
+        <el-form-item label="周期编号">
+          <span>{{ opsAdjustRow?.periodNo || '-' }}</span>
+        </el-form-item>
+        <el-form-item label="机构">
+          <span>{{ getDeptName(opsAdjustRow?.deptId) }}</span>
+        </el-form-item>
+        <el-form-item label="原起始时间">
+          <span>{{ parseTime(opsAdjustRow?.startTime, '{y}-{m}-{d} {h}:{i}:{s}') }}</span>
+        </el-form-item>
+        <el-form-item label="原结束时间">
+          <span>{{ parseTime(opsAdjustRow?.endTime, '{y}-{m}-{d} {h}:{i}:{s}') || '（进行中，暂无结束时间）' }}</span>
+        </el-form-item>
+        <el-form-item label="新起始时间" prop="startTime">
+          <el-date-picker v-model="opsAdjustForm.startTime" type="datetime" placeholder="选择新起始时间" value-format="YYYY-MM-DD HH:mm:ss" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="新结束时间">
+          <el-date-picker v-model="opsAdjustForm.endTime" type="datetime" placeholder="留空表示不修改结束时间" value-format="YYYY-MM-DD HH:mm:ss" style="width: 100%" clearable />
+        </el-form-item>
+        <el-form-item label="调整原因" prop="reason">
+          <el-input v-model="opsAdjustForm.reason" type="textarea" :rows="3" placeholder="请输入调整原因（不少于5个字）" maxlength="200" show-word-limit />
+        </el-form-item>
+        <el-alert type="warning" :closable="false" show-icon>
+          <div style="line-height: 1.6">
+            该操作仅调整周期起始/结束时间，不重新核算周期金额，不重新计算分润。<br/>
+            如该周期已存在分润记录，分润时间将同步为周期结束时间。
+          </div>
+        </el-alert>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="opsAdjustOpen = false">取 消</el-button>
+          <el-button type="primary" :loading="opsAdjustSubmitting" @click="submitOpsAdjustStartTime">确 定</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { listAccountingPeriod, getCurrentAccountingPeriod, initCurrentAccountingPeriod, trialBreakEven, carryForward, rollbackCarryForward, getAccountingPeriodDetail, checkBeforeLock } from '@/api/finance/accountingPeriod'
+import { listAccountingPeriod, getCurrentAccountingPeriod, initCurrentAccountingPeriod, trialBreakEven, carryForward, rollbackCarryForward, getAccountingPeriodDetail, checkBeforeLock, opsAdjustAccountingPeriodStartTime } from '@/api/finance/accountingPeriod'
 import { useUserStore } from '@/stores/user'
+import { useDict } from '@/composables/useDict'
+import { saveAs } from 'file-saver'
+import ExcelJS from 'exceljs'
 
 const userStore = useUserStore()
 
 export default {
   name: 'AccountingPeriod',
+  setup() {
+    const dict = useDict('finance_payment_method')
+    return { dict }
+  },
   data() {
     return {
       loading: false,
@@ -387,7 +450,23 @@ export default {
       checkLoading: false,
       checkResult: null,
       checkDeptId: null,
-      forceCarryForwardReason: ''
+      forceCarryForwardReason: '',
+      // 运维调整起始时间弹窗
+      opsAdjustOpen: false,
+      opsAdjustSubmitting: false,
+      opsAdjustRow: null,
+      opsAdjustForm: {
+        startTime: '',
+        endTime: '',
+        reason: ''
+      },
+      opsAdjustRules: {
+        startTime: [{ required: true, message: '新起始时间不能为空', trigger: 'change' }],
+        reason: [
+          { required: true, message: '调整原因不能为空', trigger: 'blur' },
+          { min: 5, message: '调整原因不少于5个字', trigger: 'blur' }
+        ]
+      }
     }
   },
   computed: {
@@ -414,6 +493,39 @@ export default {
       return (this.detail.profitShares || []).reduce((list, share) => {
         return list.concat(share.details || [])
       }, [])
+    },
+    salePaymentRows() {
+      const saleMap = {}
+      ;(this.detail.sales || []).forEach(sale => {
+        saleMap[sale.saleId] = sale
+      })
+      const rows = (this.detail.salePayments || []).map(p => {
+        const sale = saleMap[p.saleId] || {}
+        return {
+          ...p,
+          saleNo: sale.saleNo || '',
+          productName: sale.productName || '-',
+          saleDate: sale.saleDate,
+          saleAmount: sale.saleAmount,
+          paidAmount: sale.paidAmount,
+          unpaidAmount: Number(sale.saleAmount || 0) - Number(sale.paidAmount || 0)
+        }
+      })
+      rows.sort((a, b) => String(a.saleNo).localeCompare(String(b.saleNo)))
+      const groupSize = {}
+      rows.forEach(r => {
+        groupSize[r.saleNo] = (groupSize[r.saleNo] || 0) + 1
+      })
+      let prev = null
+      rows.forEach(r => {
+        if (r.saleNo !== prev) {
+          r._rowspan = groupSize[r.saleNo]
+          prev = r.saleNo
+        } else {
+          r._rowspan = 0
+        }
+      })
+      return rows
     }
   },
   created() {
@@ -497,8 +609,17 @@ export default {
       }).catch(() => {})
     },
     handleRollbackCarryForward() {
-      ElMessageBox.confirm('确认回退结转？将删除当前进行中的空周期，并将最新已结转周期回退为进行中。').then(() => {
-        return rollbackCarryForward(userStore.currentDeptId)
+      ElMessageBox.prompt('请输入结转回退原因（必填，将记录审计日志）', '结转回退确认', {
+        confirmButtonText: '确认回退',
+        cancelButtonText: '取消',
+        inputType: 'textarea',
+        inputPlaceholder: '请输入回退原因',
+        inputValidator: (value) => {
+          if (!value || !value.trim()) return '回退原因不能为空'
+          return true
+        }
+      }).then(({ value }) => {
+        return rollbackCarryForward(userStore.currentDeptId, value.trim())
       }).then(response => {
         this.currentPeriod = response.data
         this.getList()
@@ -523,6 +644,191 @@ export default {
       }).finally(() => {
         this.detailLoading = false
       })
+    },
+    handleExportDetail(row) {
+      const loading = ElMessage({ message: '正在生成明细导出...', type: 'info', duration: 0 })
+      getAccountingPeriodDetail(row.periodId).then(async response => {
+        const data = response.data || {}
+        const buffer = await this.buildDetailExportXlsx(row, data)
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+        saveAs(blob, `周期明细_${row.periodNo || row.periodId}_${new Date().getTime()}.xlsx`)
+        ElMessage.success('导出成功')
+      }).catch(() => {
+        ElMessage.error('导出失败')
+      }).finally(() => {
+        loading.close()
+      })
+    },
+    async buildDetailExportXlsx(row, data) {
+      const money = v => Number(v || 0)
+      const dateTime = v => this.parseTime(v, '{y}-{m}-{d} {h}:{i}:{s}') || ''
+      const date = v => this.parseTime(v, '{y}-{m}-{d}') || ''
+      const methodLabel = v => {
+        const opt = (this.dict.type.finance_payment_method || []).find(d => d.value === String(v))
+        return opt ? opt.label : (v || '')
+      }
+
+      const TOTAL_COLS = 9
+      const BORDER = { top: { style: 'thin', color: { argb: 'FFDCDFE6' } }, left: { style: 'thin', color: { argb: 'FFDCDFE6' } }, bottom: { style: 'thin', color: { argb: 'FFDCDFE6' } }, right: { style: 'thin', color: { argb: 'FFDCDFE6' } } }
+      const HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F7FA' } }
+      const TITLE_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECF5FF' } }
+
+      const wb = new ExcelJS.Workbook()
+      const ws = wb.addWorksheet('周期明细')
+      ws.columns = [{ width: 20 }, { width: 16 }, { width: 14 }, { width: 20 }, { width: 16 }, { width: 20 }, { width: 14 }, { width: 12 }, { width: 22 }]
+
+      const applyBorder = (r) => { for (let c = 1; c <= TOTAL_COLS; c++) { r.getCell(c).border = BORDER } }
+
+      const addBigTitle = (text) => {
+        const r = ws.addRow([text])
+        ws.mergeCells(r.number, 1, r.number, TOTAL_COLS)
+        const cell = r.getCell(1)
+        cell.font = { bold: true, size: 15, color: { argb: 'FF303133' } }
+        cell.alignment = { vertical: 'middle', horizontal: 'left' }
+        r.height = 24
+      }
+      const addSectionTitle = (text) => {
+        const r = ws.addRow([text])
+        ws.mergeCells(r.number, 1, r.number, TOTAL_COLS)
+        const cell = r.getCell(1)
+        cell.font = { bold: true, size: 12, color: { argb: 'FF303133' } }
+        cell.fill = TITLE_FILL
+        cell.alignment = { vertical: 'middle', horizontal: 'left' }
+        applyBorder(r)
+        r.height = 20
+      }
+      const addHeaderRow = (headers) => {
+        const r = ws.addRow(headers)
+        headers.forEach((h, i) => {
+          const cell = r.getCell(i + 1)
+          cell.font = { bold: true, color: { argb: 'FF303133' } }
+          cell.fill = HEADER_FILL
+          cell.alignment = { vertical: 'middle', horizontal: 'center' }
+          cell.border = BORDER
+        })
+        r.height = 18
+      }
+      const addDataRow = (values, aligns) => {
+        const r = ws.addRow(values)
+        values.forEach((v, i) => {
+          const cell = r.getCell(i + 1)
+          cell.border = BORDER
+          cell.alignment = { vertical: 'middle', horizontal: (aligns && aligns[i]) || 'left', wrapText: true }
+        })
+        return r
+      }
+      const addEmptyRow = (span) => {
+        const r = ws.addRow(['暂无数据'])
+        ws.mergeCells(r.number, 1, r.number, span)
+        r.getCell(1).alignment = { horizontal: 'center' }
+        applyBorder(r)
+      }
+      const spacer = () => ws.addRow([])
+
+      addBigTitle(`周期明细：${row.periodNo || row.periodId}（${this.getDeptName(row.deptId)}）`)
+      spacer()
+
+      addSectionTitle('汇总')
+      addHeaderRow(['周期', '总费用', '总进货', '总销售', '总缴款', '利润', '结转时间'])
+      const sumRow = addDataRow([
+        row.periodNo || row.periodId,
+        money(row.totalVerifiedExpense),
+        money(row.totalPurchase),
+        money(row.totalSaleAmount),
+        money(row.totalSalePayment),
+        money(row.netProfit),
+        this.parseTime(row.carryForwardTime, '{y}-{m}-{d} {h}:{i}:{s}') || '-'
+      ], ['center', 'right', 'right', 'right', 'right', 'right', 'center'])
+      ;[2, 3, 4, 5, 6].forEach(c => { sumRow.getCell(c).numFmt = '¥#,##0.00' })
+      spacer()
+
+      const addSection = (title, headers, rows, buildRow, aligns) => {
+        addSectionTitle(title)
+        addHeaderRow(headers)
+        if (!rows || rows.length === 0) {
+          addEmptyRow(headers.length)
+        } else {
+          rows.forEach(item => {
+            const { values, moneyCols } = buildRow(item)
+            const r = addDataRow(values, aligns)
+            ;(moneyCols || []).forEach(c => { r.getCell(c).numFmt = '¥#,##0.00' })
+          })
+        }
+        spacer()
+      }
+
+      addSection('费用', ['费用单号', '费用日期', '类别', '内容', '金额', '状态'],
+        data.expenses || [],
+        r => ({ values: [r.expenseNo, date(r.expenseDate), r.expenseType, r.expenseContent, money(r.expenseAmount), r.status === '1' ? '已核销' : '未核销'], moneyCols: [5] }),
+        ['left', 'center', 'center', 'left', 'right', 'center'])
+
+      addSection('借支', ['借支单号', '借支日期', '借款人', '用途', '金额', '状态'],
+        data.advances || [],
+        r => ({ values: [r.advanceNo, date(r.advanceDate), r.borrower, r.purpose, money(r.advanceAmount), r.status === '1' ? '已核销' : '未核销'], moneyCols: [5] }),
+        ['left', 'center', 'left', 'left', 'right', 'center'])
+
+      addSection('进货', ['进货单号', '供应商', '进货日期', '总金额', '状态'],
+        data.purchases || [],
+        r => ({ values: [r.purchaseNo, r.supplierName, date(r.purchaseDate), money(r.totalAmount), this.getPurchaseStatusText(r.status)], moneyCols: [4] }),
+        ['left', 'left', 'center', 'right', 'center'])
+
+      addSection('投资来源', ['投资人', '投资时间', '投资金额', '备注'],
+        data.investRecords || [],
+        r => ({ values: [r.investorName, dateTime(r.investTime), money(r.investAmount), r.remark], moneyCols: [3] }),
+        ['left', 'center', 'right', 'left'])
+
+      // 销售缴款（按销售单号合并前5列）
+      addSectionTitle('销售缴款')
+      const saleHeaders = ['商品名称', '销售日期', '销售金额', '已缴款', '未缴款', '缴款时间', '缴款金额', '付款方式', '备注']
+      addHeaderRow(saleHeaders)
+      const saleMap = {}
+      ;(data.sales || []).forEach(s => { saleMap[s.saleId] = s })
+      const payRows = (data.salePayments || []).map(p => {
+        const s = saleMap[p.saleId] || {}
+        return { ...p, saleNo: s.saleNo || '', productName: s.productName || '-', saleDate: s.saleDate, saleAmount: s.saleAmount, paidAmount: s.paidAmount, unpaidAmount: Number(s.saleAmount || 0) - Number(s.paidAmount || 0) }
+      })
+      payRows.sort((a, b) => String(a.saleNo).localeCompare(String(b.saleNo)))
+      if (payRows.length === 0) {
+        addEmptyRow(saleHeaders.length)
+      } else {
+        const groupSize = {}
+        payRows.forEach(r => { groupSize[r.saleNo] = (groupSize[r.saleNo] || 0) + 1 })
+        let idx = 0
+        let prevNo = null
+        let groupStartRow = 0
+        payRows.forEach(r => {
+          const rowValues = [
+            r.productName, date(r.saleDate), money(r.saleAmount), money(r.paidAmount), money(r.unpaidAmount),
+            dateTime(r.paymentDate), money(r.paymentAmount), methodLabel(r.paymentMethod), r.remark
+          ]
+          const excelRow = addDataRow(rowValues, ['left', 'center', 'right', 'right', 'right', 'center', 'right', 'center', 'left'])
+          ;[3, 4, 5, 7].forEach(c => { excelRow.getCell(c).numFmt = '¥#,##0.00' })
+          if (r.saleNo !== prevNo) {
+            if (prevNo !== null && idx - groupStartRow > 0) {
+              for (let c = 1; c <= 5; c++) { ws.mergeCells(groupStartRow, c, idx, c) }
+            }
+            groupStartRow = excelRow.number
+            prevNo = r.saleNo
+          }
+          idx = excelRow.number
+        })
+        if (prevNo !== null && idx - groupStartRow > 0) {
+          for (let c = 1; c <= 5; c++) { ws.mergeCells(groupStartRow, c, idx, c) }
+        }
+      }
+      spacer()
+
+      addSection('分润结果', ['分润单号', '分润时间', '净利', '店长分润', '投资人分润', '店长比例'],
+        data.profitShares || [],
+        r => ({ values: [r.shareNo, dateTime(r.shareTime), money(r.netProfit), money(r.managerProfitAmount), money(r.investorProfitAmount), this.formatRate(r.managerProfitRate)], moneyCols: [3, 4, 5] }),
+        ['left', 'center', 'right', 'right', 'right', 'right'])
+
+      addSection('分润返款', ['返款单号', '投资人', '返款日期', '金额', '来源', '状态'],
+        data.investorPayments || [],
+        r => ({ values: [r.paymentNo, r.investorName, dateTime(r.paymentDate), money(r.amount), r.sourceType === '1' ? '结转自动' : '手工', r.paymentStatus === '1' ? '已返款' : '待返款'], moneyCols: [4] }),
+        ['left', 'left', 'center', 'right', 'center', 'center'])
+
+      return await wb.xlsx.writeBuffer()
     },
     handleQuery() {
       this.queryParams.pageNum = 1
@@ -567,6 +873,11 @@ export default {
     formatMoney(value) {
       return Number(value || 0).toFixed(2)
     },
+    salePaymentSpan({ row, columnIndex }) {
+      if (columnIndex >= 0 && columnIndex <= 4) {
+        return { rowspan: row._rowspan, colspan: row._rowspan > 0 ? 1 : 0 }
+      }
+    },
     handleCheckBeforeLock(row) {
       this.checkDeptId = row.deptId
       this.checkResult = null
@@ -610,6 +921,33 @@ export default {
         this.checkDialogOpen = false
         ElMessage.success('结转完成')
       }).catch(() => {})
+    },
+    handleOpsAdjustStartTime(row) {
+      this.opsAdjustRow = row
+      this.opsAdjustForm = { startTime: '', endTime: '', reason: '' }
+      this.opsAdjustOpen = true
+    },
+    submitOpsAdjustStartTime() {
+      this.$refs.opsAdjustFormRef.validate(valid => {
+        if (!valid) return
+        this.opsAdjustSubmitting = true
+        opsAdjustAccountingPeriodStartTime(this.opsAdjustRow.periodId, {
+          startTime: this.opsAdjustForm.startTime,
+          endTime: this.opsAdjustForm.endTime || null,
+          reason: this.opsAdjustForm.reason
+        }).then(() => {
+          this.opsAdjustOpen = false
+          this.getList()
+          if (this.detailOpen && this.detail.periodId === this.opsAdjustRow.periodId) {
+            this.handleDetail(this.opsAdjustRow)
+          }
+          ElMessage.success('起始时间已调整')
+        }).catch(() => {
+          // 后端错误信息由 request 拦截器展示，弹窗保留
+        }).finally(() => {
+          this.opsAdjustSubmitting = false
+        })
+      })
     }
   }
 }

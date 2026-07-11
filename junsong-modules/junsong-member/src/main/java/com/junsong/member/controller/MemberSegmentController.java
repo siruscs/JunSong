@@ -90,7 +90,7 @@ public class MemberSegmentController extends BaseController {
                         + "WHERE r1.del_flag='0' AND r1.record_id = (SELECT MAX(record_id) FROM mem_points_record r2 "
                         + "WHERE r2.member_id=r1.member_id AND r2.del_flag='0')) pr ON m.member_id = pr.member_id "
                         + "WHERE " + where + " ORDER BY m.member_no DESC LIMIT ? OFFSET ?",
-                concatArgs(concatArgs(resolved, timeArgs), Arrays.asList((long) pageSize, (long) offset)));
+                concatArgs(concatArgs(resolved, timeArgs), Arrays.asList((long) pageSize, (long) offset)).toArray());
 
         String segmentType = normalizeSegmentType(query.getSegmentType());
         String action = suggestedAction(segmentType);
@@ -104,7 +104,7 @@ public class MemberSegmentController extends BaseController {
             vo.setDeptName((String) row.get("dept_name"));
             vo.setTotalSalesAmount(toBigDecimal(row.get("total_sales_amount")));
             vo.setOrderCount(toInt(row.get("order_count")));
-            vo.setLastOrderTime((java.util.Date) row.get("last_order_time"));
+            vo.setLastOrderTime(toDate(row.get("last_order_time")));
             vo.setAvailablePoints(toLong(row.get("available_points")));
             vo.setSuggestedAction(action);
             return vo;
@@ -282,5 +282,20 @@ public class MemberSegmentController extends BaseController {
         if (v == null) return java.math.BigDecimal.ZERO;
         if (v instanceof java.math.BigDecimal) return (java.math.BigDecimal) v;
         try { return new java.math.BigDecimal(v.toString()); } catch (Exception e) { return java.math.BigDecimal.ZERO; }
+    }
+
+    /**
+     * 兼容 MySQL JDBC 9.x 返回 LocalDateTime 与旧版返回 Date/Timestamp 的情况
+     */
+    private java.util.Date toDate(Object v) {
+        if (v == null) return null;
+        if (v instanceof java.util.Date) return (java.util.Date) v;
+        if (v instanceof java.time.LocalDateTime) {
+            return java.util.Date.from(((java.time.LocalDateTime) v).atZone(java.time.ZoneId.systemDefault()).toInstant());
+        }
+        if (v instanceof java.time.LocalDate) {
+            return java.util.Date.from(((java.time.LocalDate) v).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant());
+        }
+        return null;
     }
 }

@@ -149,6 +149,37 @@ test('three module regression includes member contribution report test', () => {
   )
 })
 
+test('three module regression includes R11 knowledge and dashboard tests', () => {
+  const steps = createThreeModuleRegressionSteps()
+
+  assert.ok(
+    steps.some(step =>
+      step.name === '财务模块单测' &&
+      step.args.some(arg =>
+        arg.includes('FinanceReviewKnowledgeServiceImplTest') &&
+        arg.includes('DailyReviewBoardServiceImplTest')
+      )
+    ),
+    '财务模块单测应包含复盘知识库和日结看板测试'
+  )
+
+  assert.ok(
+    steps.some(step =>
+      step.name === '系统模块单测' &&
+      step.args.some(arg => arg.includes('SysDashboardControllerTest'))
+    ),
+    '系统模块单测应包含治理台控制器测试 SysDashboardControllerTest'
+  )
+
+  assert.ok(
+    steps.some(step =>
+      step.name === '会员模块单测' &&
+      step.args.some(arg => arg.includes('MemDashboardControllerTest'))
+    ),
+    '会员模块单测应包含会员概览控制器测试 MemDashboardControllerTest'
+  )
+})
+
 test('three module regression keeps permission and admin gates after module checks', () => {
   const steps = createThreeModuleRegressionSteps()
   const names = steps.map(step => step.name)

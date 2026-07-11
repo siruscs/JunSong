@@ -4,6 +4,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.web.client.RestTemplate;
+import com.junsong.open.context.OpenApiRequestContext;
+import com.junsong.open.context.OpenApiRequestContextHolder;
 
 /**
  * 开放平台配置类
@@ -14,7 +16,7 @@ import org.springframework.web.client.RestTemplate;
 public class OpenApiConfig
 {
     /**
-     * RestTemplate(注入内部调用身份header)
+     * RestTemplate(透传网关注入的 X-Open-* 开放上下文)
      */
     @Bean
     public RestTemplate restTemplate()
@@ -26,15 +28,20 @@ public class OpenApiConfig
 
     /**
      * 内部调用拦截器
-     * 注入用户身份header，让下游服务识别为管理员调用
+     * 透传来自可信网关的开放上下文，不再用固定 admin 身份冒用。
      */
-    private ClientHttpRequestInterceptor internalCallInterceptor()
+    ClientHttpRequestInterceptor internalCallInterceptor()
     {
         return (request, body, execution) -> {
             request.getHeaders().add("from-source", "open-api");
-            request.getHeaders().add("user_id", "1");
-            request.getHeaders().add("username", "admin");
-            request.getHeaders().add("user_key", "openapi-internal");
+            OpenApiRequestContext context = OpenApiRequestContextHolder.get();
+            if (context != null)
+            {
+                request.getHeaders().add("X-Open-App-Id", String.valueOf(context.getAppId()));
+                request.getHeaders().add("X-Open-App-Key", context.getAppKey());
+                request.getHeaders().add("X-Open-Tenant-Id", String.valueOf(context.getTenantId()));
+                request.getHeaders().add("X-Open-Request-Id", context.getRequestId());
+            }
             return execution.execute(request, body);
         };
     }

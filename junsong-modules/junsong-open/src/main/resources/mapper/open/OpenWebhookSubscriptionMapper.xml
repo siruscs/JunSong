@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.open.mapper.OpenWebhookSubscriptionMapper">
+
+    <insert id="insertOpenWebhookSubscription" parameterType="OpenWebhookSubscription" useGeneratedKeys="true" keyProperty="id">
+        insert into open_webhook_subscription
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="tenantId != null">tenant_id,</if>
+            <if test="appId != null">app_id,</if>
+            <if test="callbackUrl != null">callback_url,</if>
+            <if test="events != null">events,</if>
+            <if test="status != null">status,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="tenantId != null">#{tenantId},</if>
+            <if test="appId != null">#{appId},</if>
+            <if test="callbackUrl != null">#{callbackUrl},</if>
+            <if test="events != null">#{events},</if>
+            <if test="status != null">#{status},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+</mapper>

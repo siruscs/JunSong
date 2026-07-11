@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.FinCompositeAccountingMapper">
+
+    <!-- ================= 复合核算池主表 ================= -->
+    <resultMap type="FinCompositeAccountingPool" id="FinCompositeAccountingPoolResult">
+        <id property="poolId" column="pool_id"/>
+        <result property="poolNo" column="pool_no"/>
+        <result property="poolName" column="pool_name"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="totalInvestAmount" column="total_invest_amount"/>
+        <result property="totalReturnAmount" column="total_return_amount"/>
+        <result property="breakEvenGap" column="break_even_gap"/>
+        <result property="overReturnAmount" column="over_return_amount"/>
+        <result property="breakEvenTime" column="break_even_time"/>
+        <result property="confirmedTime" column="confirmed_time"/>
+        <result property="confirmedBy" column="confirmed_by"/>
+        <result property="status" column="status"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <sql id="selectPoolVo">select p.pool_id, p.pool_no, p.pool_name, p.tenant_id, p.total_invest_amount, p.total_return_amount, p.break_even_gap, p.over_return_amount, p.break_even_time, p.confirmed_time, p.confirmed_by, p.status, p.del_flag, p.create_by, p.create_time, p.update_by, p.update_time, p.remark from fin_composite_accounting_pool p</sql>
+
+    <select id="selectCompositePoolByPoolId" resultMap="FinCompositeAccountingPoolResult">
+        <include refid="selectPoolVo"/>
+        where p.pool_id = #{poolId} and p.del_flag = '0'
+    </select>
+
+    <select id="selectCompositePoolList" parameterType="FinCompositeAccountingPool" resultMap="FinCompositeAccountingPoolResult">
+        <include refid="selectPoolVo"/>
+        <where>
+            p.del_flag = '0'
+            <if test="poolNo != null and poolNo != ''"> and p.pool_no like concat('%', #{poolNo}, '%')</if>
+            <if test="poolName != null and poolName != ''"> and p.pool_name like concat('%', #{poolName}, '%')</if>
+            <if test="status != null and status != ''"> and p.status = #{status}</if>
+            <if test="tenantId != null"> and p.tenant_id = #{tenantId}</if>
+            <if test="params.currentCreateBy != null and params.currentCreateBy != ''">
+                and (
+                    p.create_by = #{params.currentCreateBy}
+                    <if test="params.userDeptIds != null and params.userDeptIds.size() > 0">
+                        or exists (
+                            select 1 from fin_composite_pool_dept d
+                            where d.pool_id = p.pool_id and d.del_flag = '0' and d.status = '0'
+                            and d.dept_id in
+                            <foreach item="deptId" collection="params.userDeptIds" open="(" separator="," close=")">#{deptId}</foreach>
+                        )
+                    </if>
+                )
+            </if>
+        </where>
+        order by p.create_time desc
+    </select>
+
+    <insert id="insertCompositePool" parameterType="FinCompositeAccountingPool" useGeneratedKeys="true" keyProperty="poolId">
+        insert into fin_composite_accounting_pool(
+            pool_no, pool_name, tenant_id, total_invest_amount, total_return_amount,
+            break_even_gap, over_return_amount, break_even_time, confirmed_time, confirmed_by,
+            status, del_flag, create_by, create_time, remark
+        ) values (
+            #{poolNo}, #{poolName}, #{tenantId}, #{totalInvestAmount}, #{totalReturnAmount},
+            #{breakEvenGap}, #{overReturnAmount}, #{breakEvenTime}, #{confirmedTime}, #{confirmedBy},
+            #{status}, '0', #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updateCompositePool" parameterType="FinCompositeAccountingPool">
+        update fin_composite_accounting_pool
+        <trim prefix="set" suffixOverrides=",">
+            <if test="poolName != null">pool_name=#{poolName},</if>
+            <if test="totalInvestAmount != null">total_invest_amount=#{totalInvestAmount},</if>
+            <if test="totalReturnAmount != null">total_return_amount=#{totalReturnAmount},</if>
+            <if test="breakEvenGap != null">break_even_gap=#{breakEvenGap},</if>
+            <if test="overReturnAmount != null">over_return_amount=#{overReturnAmount},</if>
+            <if test="breakEvenTime != null">break_even_time=#{breakEvenTime},</if>
+            <if test="confirmedTime != null">confirmed_time=#{confirmedTime},</if>
+            <if test="confirmedBy != null">confirmed_by=#{confirmedBy},</if>
+            <if test="status != null">status=#{status},</if>
+            <if test="updateBy != null">update_by=#{updateBy},</if>
+            update_time=sysdate(),
+            <if test="remark != null">remark=#{remark},</if>
+        </trim>
+        where pool_id=#{poolId} and del_flag='0'
+    </update>
+
+    <delete id="deleteCompositePoolByPoolIds">
+        update fin_composite_accounting_pool set del_flag='2'
+        where pool_id in
+        <foreach item="poolId" collection="array" open="(" separator="," close=")">#{poolId}</foreach>
+    </delete>
+
+    <select id="selectActivePoolByDeptId" resultMap="FinCompositeAccountingPoolResult">
+        <include refid="selectPoolVo"/>
+        where p.del_flag = '0'
+          and p.status in ('0','1','2')
+          and p.pool_id = (
+              select max(d.pool_id) from fin_composite_pool_dept d
+              where d.del_flag = '0' and d.dept_id = #{deptId}
+                and d.status = '0'
+          )
+    </select>
+
+    <update id="addReturnAmount">
+        update fin_composite_accounting_pool
+        set total_return_amount = total_return_amount + #{amount},
+            update_time = sysdate()
+        where pool_id = #{poolId} and del_flag = '0'
+    </update>
+
+    <!-- ================= 复合池店面关系表 ================= -->
+    <resultMap type="FinCompositePoolDept" id="FinCompositePoolDeptResult">
+        <id property="id" column="id"/>
+        <result property="poolId" column="pool_id"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="deptName" column="dept_name"/>
+        <result property="joinTime" column="join_time"/>
+        <result property="status" column="status"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <select id="selectPoolDeptsByPoolId" resultMap="FinCompositePoolDeptResult">
+        select id, pool_id, dept_id, dept_name, join_time, status, del_flag, create_by, create_time, update_by, update_time, remark
+        from fin_composite_pool_dept
+        where pool_id = #{poolId} and del_flag = '0'
+        order by join_time asc
+    </select>
+
+    <select id="selectPoolDeptIdsByPoolId" resultType="long">
+        select dept_id from fin_composite_pool_dept
+        where pool_id = #{poolId} and del_flag = '0' and status = '0'
+    </select>
+
+    <select id="selectUserDeptIdsByUserId" resultType="long">
+        select dept_id from sys_user_dept
+        where user_id = #{userId} and status = '0'
+    </select>
+
+    <select id="selectDeptNameById" resultType="String">
+        select dept_name from sys_dept where dept_id = #{deptId} limit 1
+    </select>
+
+    <insert id="insertPoolDept" parameterType="FinCompositePoolDept" useGeneratedKeys="true" keyProperty="id">
+        insert into fin_composite_pool_dept(
+            pool_id, dept_id, dept_name, join_time, status, del_flag, create_by, create_time, remark
+        ) values (
+            #{poolId}, #{deptId}, #{deptName}, #{joinTime}, #{status}, '0', #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <delete id="deletePoolDeptByPoolId">
+        delete from fin_composite_pool_dept where pool_id = #{poolId}
+    </delete>
+
+    <delete id="deletePoolDeptByPoolIdAndDeptId">
+        delete from fin_composite_pool_dept
+        where pool_id = #{poolId} and dept_id = #{deptId}
+    </delete>
+
+    <!-- ================= 复合池共享投资人表 ================= -->
+    <resultMap type="FinCompositePoolInvestor" id="FinCompositePoolInvestorResult">
+        <id property="id" column="id"/>
+        <result property="poolId" column="pool_id"/>
+        <result property="investorId" column="investor_id"/>
+        <result property="investorName" column="investor_name"/>
+        <result property="investAmount" column="invest_amount"/>
+        <result property="investRatio" column="invest_ratio"/>
+        <result property="returnedAmount" column="returned_amount"/>
+        <result property="status" column="status"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <select id="selectPoolInvestorsByPoolId" resultMap="FinCompositePoolInvestorResult">
+        select id, pool_id, investor_id, investor_name, invest_amount, invest_ratio, returned_amount, status, del_flag, create_by, create_time, update_by, update_time, remark
+        from fin_composite_pool_investor
+        where pool_id = #{poolId} and del_flag = '0'
+        order by id asc
+    </select>
+
+    <insert id="insertPoolInvestor" parameterType="FinCompositePoolInvestor" useGeneratedKeys="true" keyProperty="id">
+        insert into fin_composite_pool_investor(
+            pool_id, investor_id, investor_name, invest_amount, invest_ratio, returned_amount, status, del_flag, create_by, create_time, remark
+        ) values (
+            #{poolId}, #{investorId}, #{investorName}, #{investAmount}, #{investRatio}, #{returnedAmount}, #{status}, '0', #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <delete id="deletePoolInvestorByPoolId">
+        delete from fin_composite_pool_investor where pool_id = #{poolId}
+    </delete>
+
+    <update id="updateInvestorReturnedAmount">
+        update fin_composite_pool_investor
+        set returned_amount = #{returnedAmount},
+            update_time = sysdate()
+        where id = #{id} and del_flag = '0'
+    </update>
+
+    <!-- ================= 复合核算周期纳入明细表 ================= -->
+    <resultMap type="FinCompositePeriodItem" id="FinCompositePeriodItemResult">
+        <id property="itemId" column="item_id"/>
+        <result property="poolId" column="pool_id"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="deptName" column="dept_name"/>
+        <result property="periodId" column="period_id"/>
+        <result property="periodNo" column="period_no"/>
+        <result property="periodStartTime" column="period_start_time"/>
+        <result property="periodEndTime" column="period_end_time"/>
+        <result property="netProfit" column="net_profit"/>
+        <result property="managerProfitAmount" column="manager_profit_amount"/>
+        <result property="investorProfitAmount" column="investor_profit_amount"/>
+        <result property="includedMode" column="included_mode"/>
+        <result property="includedTime" column="included_time"/>
+        <result property="includedBy" column="included_by"/>
+        <result property="status" column="status"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <select id="selectPeriodItemsByPoolId" resultMap="FinCompositePeriodItemResult">
+        select i.item_id,
+               i.pool_id,
+               i.dept_id,
+               d.dept_name,
+               i.period_id,
+               i.period_no,
+               p.start_time as period_start_time,
+               p.end_time as period_end_time,
+               i.net_profit,
+               i.manager_profit_amount,
+               i.investor_profit_amount,
+               i.included_mode,
+               i.included_time,
+               i.included_by,
+               i.status,
+               i.del_flag,
+               i.create_by,
+               i.create_time,
+               i.update_by,
+               i.update_time,
+               i.remark
+        from fin_composite_period_item i
+        left join sys_dept d on d.dept_id = i.dept_id
+        left join fin_accounting_period p on p.period_id = i.period_id and p.del_flag = '0'
+        where i.pool_id = #{poolId} and i.del_flag = '0' and i.status = '0'
+        order by i.included_time desc
+    </select>
+
+    <select id="selectSummaryByPoolId" resultType="CompositeAccountingSummaryVO">
+        select coalesce(sum(p.total_verified_expense), 0) as totalVerifiedExpense,
+               coalesce(sum(p.total_purchase), 0) as totalPurchase,
+               coalesce(sum(p.total_sale_amount), 0) as totalSaleAmount,
+               coalesce(sum(p.total_sale_payment), 0) as totalSalePayment,
+               coalesce(sum(p.total_unverified_advance), 0) as totalUnverifiedAdvance
+        from fin_composite_period_item i
+        join fin_accounting_period p on p.period_id = i.period_id and p.del_flag = '0'
+        where i.pool_id = #{poolId}
+          and i.del_flag = '0'
+          and i.status = '0'
+    </select>
+
+    <select id="selectPeriodItemByPoolIdAndPeriodId" resultMap="FinCompositePeriodItemResult">
+        select item_id, pool_id, dept_id, period_id, period_no, net_profit, manager_profit_amount, investor_profit_amount, included_mode, included_time, included_by, status, del_flag
+        from fin_composite_period_item
+        where pool_id = #{poolId} and period_id = #{periodId} and del_flag = '0'
+        limit 1
+    </select>
+
+    <select id="selectPeriodItemByPeriodId" resultMap="FinCompositePeriodItemResult">
+        select item_id, pool_id, dept_id, period_id, period_no, net_profit, manager_profit_amount, investor_profit_amount, included_mode, included_time, included_by, status, del_flag
+        from fin_composite_period_item
+        where period_id = #{periodId} and del_flag = '0' and status = '0'
+        limit 1
+    </select>
+
+    <insert id="insertPeriodItem" parameterType="FinCompositePeriodItem" useGeneratedKeys="true" keyProperty="itemId">
+        insert into fin_composite_period_item(
+            pool_id, dept_id, period_id, period_no, net_profit, manager_profit_amount, investor_profit_amount,
+            included_mode, included_time, included_by, status, del_flag, create_by, create_time, remark
+        ) values (
+            #{poolId}, #{deptId}, #{periodId}, #{periodNo}, #{netProfit}, #{managerProfitAmount}, #{investorProfitAmount},
+            #{includedMode}, #{includedTime}, #{includedBy}, '0', '0', #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <delete id="deletePeriodItemByPoolId">
+        delete from fin_composite_period_item where pool_id = #{poolId}
+    </delete>
+
+    <update id="revokePeriodItem">
+        update fin_composite_period_item
+        set status = '1',
+            update_time = sysdate()
+        where pool_id = #{poolId} and period_id = #{periodId} and del_flag = '0' and status = '0'
+    </update>
+
+</mapper>

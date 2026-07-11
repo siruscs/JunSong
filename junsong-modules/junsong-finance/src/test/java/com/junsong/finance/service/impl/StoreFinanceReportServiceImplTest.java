@@ -710,5 +710,31 @@ class StoreFinanceReportServiceImplTest {
         public List<Map<String, Object>> selectMemberSalesByDepts(List<Long> deptIds, Date startTime, Date endTime) {
             return Collections.emptyList();
         }
+
+        @Override
+        public List<Map<String, Object>> selectCashInByDepts(List<Long> deptIds, Date startTime, Date endTime) {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public List<Map<String, Object>> selectVerifiedExpenseByDepts(List<Long> deptIds, Date startTime, Date endTime) {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public List<Map<String, Object>> selectHighRiskTaskCountByDepts(List<Long> deptIds) {
+            return Collections.emptyList();
+        }
+
+        // R11-FIX-C: 按周期统计高风险任务数
+        @Override
+        public List<Map<String, Object>> selectHighRiskTaskCountByDeptsAndPeriod(List<Long> deptIds, Date startTime, Date endTime, String groupBy) {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public List<Map<String, Object>> selectHealthTrendByDepts(List<Long> deptIds, Date startTime, Date endTime, String groupBy) {
+            return Collections.emptyList();
+        }
     }
 }

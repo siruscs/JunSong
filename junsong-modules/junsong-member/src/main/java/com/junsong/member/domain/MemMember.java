@@ -62,6 +62,9 @@ public class MemMember extends BaseEntity
     @Size(max = 32, message = "会员卡类型长度不能超过32个字符")
     private String cardType;
 
+    /** 会员卡类型名称 */
+    private String cardTypeName;
+
     /** 会员卡ID */
     private Long cardId;
 
@@ -82,6 +85,15 @@ public class MemMember extends BaseEntity
     /** 可用积分 */
     @Excel(name = "可用积分", cellType = ColumnType.NUMERIC)
     private BigDecimal availablePoints;
+
+    /** 成长值 */
+    @Excel(name = "成长值", cellType = ColumnType.NUMERIC)
+    private Long growthValue;
+
+    /** 最后活跃时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Excel(name = "最后活跃时间", width = 30, dateFormat = "yyyy-MM-dd HH:mm:ss")
+    private Date lastActiveTime;
 
     /** 秒杀次数（非数据库字段，用于列表展示） */
     private Integer seckillCount;
@@ -188,6 +200,16 @@ public class MemMember extends BaseEntity
         this.cardType = cardType;
     }
 
+    public String getCardTypeName()
+    {
+        return cardTypeName;
+    }
+
+    public void setCardTypeName(String cardTypeName)
+    {
+        this.cardTypeName = cardTypeName;
+    }
+
     public Long getCardId()
     {
         return cardId;
@@ -246,6 +268,26 @@ public class MemMember extends BaseEntity
     public void setSeckillCount(Integer seckillCount)
     {
         this.seckillCount = seckillCount;
+    }
+
+    public Long getGrowthValue()
+    {
+        return growthValue;
+    }
+
+    public void setGrowthValue(Long growthValue)
+    {
+        this.growthValue = growthValue;
+    }
+
+    public Date getLastActiveTime()
+    {
+        return lastActiveTime;
+    }
+
+    public void setLastActiveTime(Date lastActiveTime)
+    {
+        this.lastActiveTime = lastActiveTime;
     }
 
     public String getStatus()

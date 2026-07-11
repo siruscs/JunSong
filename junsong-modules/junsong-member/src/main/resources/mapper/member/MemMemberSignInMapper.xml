@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.member.mapper.MemMemberSignInMapper">
+
+    <resultMap type="com.junsong.member.domain.MemMemberSignIn" id="MemMemberSignInResult">
+        <id property="signId" column="sign_id"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="memberId" column="member_id"/>
+        <result property="memberNo" column="member_no"/>
+        <result property="memberName" column="member_name"/>
+        <result property="signDate" column="sign_date"/>
+        <result property="continuousDays" column="continuous_days"/>
+        <result property="pointsEarned" column="points_earned"/>
+        <result property="growthEarned" column="growth_earned"/>
+        <result property="batchId" column="batch_id"/>
+        <result property="signType" column="sign_type"/>
+        <result property="rewardLevelCode" column="reward_level_code"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <sql id="selectSignInVo">
+        select sign_id, tenant_id, dept_id, member_id, member_no, member_name,
+               sign_date, continuous_days, points_earned, growth_earned,
+               batch_id, sign_type, reward_level_code,
+               create_by, create_time
+        from mem_member_sign_in
+    </sql>
+
+    <select id="selectSignInList" parameterType="com.junsong.member.domain.MemMemberSignIn" resultMap="MemMemberSignInResult">
+        <include refid="selectSignInVo"/>
+        <where>
+            <if test="memberId != null">
+                AND member_id = #{memberId}
+            </if>
+            <if test="memberNo != null and memberNo != ''">
+                AND member_no like concat('%', #{memberNo}, '%')
+            </if>
+            <if test="memberName != null and memberName != ''">
+                AND member_name like concat('%', #{memberName}, '%')
+            </if>
+            <if test="deptId != null">
+                AND dept_id = #{deptId}
+            </if>
+            <if test="signDate != null">
+                AND sign_date = DATE(#{signDate})
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                AND sign_date &gt;= #{params.beginTime}
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                AND sign_date &lt;= #{params.endTime}
+            </if>
+        </where>
+        order by sign_date desc, create_time desc
+    </select>
+
+    <insert id="insertSignIn" parameterType="com.junsong.member.domain.MemMemberSignIn" useGeneratedKeys="true" keyProperty="signId">
+        insert into mem_member_sign_in (
+            tenant_id, dept_id, member_id, member_no, member_name,
+            sign_date, continuous_days, points_earned, growth_earned,
+            batch_id, sign_type, reward_level_code,
+            create_by, create_time
+        ) values (
+            #{tenantId}, #{deptId}, #{memberId}, #{memberNo}, #{memberName},
+            #{signDate}, #{continuousDays}, #{pointsEarned}, #{growthEarned},
+            #{batchId}, #{signType}, #{rewardLevelCode},
+            #{createBy}, sysdate()
+        )
+    </insert>
+
+    <select id="selectSignInById" parameterType="Long" resultMap="MemMemberSignInResult">
+        <include refid="selectSignInVo"/>
+        where sign_id = #{signId}
+        limit 1
+    </select>
+
+    <delete id="deleteSignInById" parameterType="Long">
+        delete from mem_member_sign_in
+        where sign_id = #{signId}
+    </delete>
+
+    <select id="selectTodaySignIn" resultMap="MemMemberSignInResult">
+        <include refid="selectSignInVo"/>
+        where member_id = #{memberId} and sign_date = DATE(#{signDate})
+        limit 1
+    </select>
+
+    <select id="selectYesterdaySignIn" resultMap="MemMemberSignInResult">
+        <include refid="selectSignInVo"/>
+        where member_id = #{memberId} and sign_date = DATE(#{signDate})
+        limit 1
+    </select>
+
+    <select id="selectMonthlyCalendar" resultMap="MemMemberSignInResult">
+        <include refid="selectSignInVo"/>
+        where member_id = #{memberId}
+          and sign_date &gt;= #{beginDate}
+          and sign_date &lt;= #{endDate}
+        order by sign_date asc
+    </select>
+
+    <select id="selectSignedDates" resultType="java.util.Date">
+        select sign_date
+        from mem_member_sign_in
+        where member_id = #{memberId}
+          and sign_date &gt;= #{beginDate}
+          and sign_date &lt;= #{endDate}
+        order by sign_date asc
+    </select>
+
+</mapper>

@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.FinanceReviewKnowledgeMapper">
+
+    <resultMap type="com.junsong.finance.domain.FinanceReviewKnowledge" id="FinanceReviewKnowledgeResult">
+        <id property="knowledgeId" column="knowledge_id" />
+        <result property="taskId" column="task_id" />
+        <result property="deptId" column="dept_id" />
+        <result property="problemType" column="problem_type" />
+        <result property="title" column="title" />
+        <result property="problemSummary" column="problem_summary" />
+        <result property="rootCause" column="root_cause" />
+        <result property="actionTaken" column="action_taken" />
+        <result property="resultSummary" column="result_summary" />
+        <result property="reusable" column="reusable" />
+        <result property="sourceHandlerName" column="source_handler_name" />
+        <result property="createBy" column="create_by" />
+        <result property="createTime" column="create_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="updateTime" column="update_time" />
+        <result property="remark" column="remark" />
+    </resultMap>
+
+    <sql id="selectKnowledgeVo">
+        select knowledge_id, task_id, dept_id, problem_type, title, problem_summary,
+               root_cause, action_taken, result_summary, reusable, source_handler_name,
+               create_by, create_time, update_by, update_time, remark
+        from finance_review_knowledge
+    </sql>
+
+    <select id="selectKnowledgeList" parameterType="java.util.Map" resultMap="FinanceReviewKnowledgeResult">
+        <include refid="selectKnowledgeVo"/>
+        <where>
+            <if test="problemType != null and problemType != ''">
+                and problem_type = #{problemType}
+            </if>
+            <if test="deptId != null">
+                and dept_id = #{deptId}
+            </if>
+            <if test="reusable != null and reusable != ''">
+                and reusable = #{reusable}
+            </if>
+            <if test="title != null and title != ''">
+                and title like concat('%', #{title}, '%')
+            </if>
+            <if test="allowedDeptIds != null and allowedDeptIds.size() > 0">
+                and dept_id in
+                <foreach item="deptId" collection="allowedDeptIds" open="(" separator="," close=")">
+                    #{deptId}
+                </foreach>
+            </if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="selectByKnowledgeId" parameterType="Long" resultMap="FinanceReviewKnowledgeResult">
+        <include refid="selectKnowledgeVo"/>
+        where knowledge_id = #{knowledgeId}
+    </select>
+
+    <select id="selectReusableByTaskId" resultMap="FinanceReviewKnowledgeResult">
+        <include refid="selectKnowledgeVo"/>
+        where task_id = #{taskId} and reusable = '1'
+        limit 1
+    </select>
+
+    <insert id="insertKnowledge" parameterType="com.junsong.finance.domain.FinanceReviewKnowledge" useGeneratedKeys="true" keyProperty="knowledgeId">
+        insert into finance_review_knowledge
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="taskId != null">task_id,</if>
+            <if test="deptId != null">dept_id,</if>
+            <if test="problemType != null and problemType != ''">problem_type,</if>
+            <if test="title != null and title != ''">title,</if>
+            <if test="problemSummary != null and problemSummary != ''">problem_summary,</if>
+            <if test="rootCause != null">root_cause,</if>
+            <if test="actionTaken != null and actionTaken != ''">action_taken,</if>
+            <if test="resultSummary != null">result_summary,</if>
+            <if test="reusable != null and reusable != ''">reusable,</if>
+            <if test="sourceHandlerName != null">source_handler_name,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null and updateBy != ''">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="remark != null">remark,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="taskId != null">#{taskId},</if>
+            <if test="deptId != null">#{deptId},</if>
+            <if test="problemType != null and problemType != ''">#{problemType},</if>
+            <if test="title != null and title != ''">#{title},</if>
+            <if test="problemSummary != null and problemSummary != ''">#{problemSummary},</if>
+            <if test="rootCause != null">#{rootCause},</if>
+            <if test="actionTaken != null and actionTaken != ''">#{actionTaken},</if>
+            <if test="resultSummary != null">#{resultSummary},</if>
+            <if test="reusable != null and reusable != ''">#{reusable},</if>
+            <if test="sourceHandlerName != null">#{sourceHandlerName},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null and updateBy != ''">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="remark != null">#{remark},</if>
+        </trim>
+    </insert>
+
+    <update id="updateKnowledge" parameterType="com.junsong.finance.domain.FinanceReviewKnowledge">
+        update finance_review_knowledge
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="problemType != null and problemType != ''">problem_type = #{problemType},</if>
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="problemSummary != null and problemSummary != ''">problem_summary = #{problemSummary},</if>
+            <if test="rootCause != null">root_cause = #{rootCause},</if>
+            <if test="actionTaken != null and actionTaken != ''">action_taken = #{actionTaken},</if>
+            <if test="resultSummary != null">result_summary = #{resultSummary},</if>
+            <if test="reusable != null and reusable != ''">reusable = #{reusable},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where knowledge_id = #{knowledgeId}
+    </update>
+
+    <select id="selectRecentReusable" resultMap="FinanceReviewKnowledgeResult">
+        <include refid="selectKnowledgeVo"/>
+        where reusable = '1'
+        <if test="problemTypes != null and problemTypes.size() > 0">
+            order by case when problem_type in
+            <foreach item="pt" collection="problemTypes" open="(" separator="," close=")">
+                #{pt}
+            </foreach>
+            then 0 else 1 end,
+            create_time desc
+        </if>
+        <if test="problemTypes == null or problemTypes.size() == 0">
+            order by create_time desc
+        </if>
+        limit #{limit}
+    </select>
+
+    <select id="selectRecommendations" resultMap="FinanceReviewKnowledgeResult">
+        <include refid="selectKnowledgeVo"/>
+        WHERE reusable = '1'
+            AND (
+                <if test="allowedDeptIds != null and allowedDeptIds.size() > 0">
+                    dept_id IN
+                    <foreach collection="allowedDeptIds" item="deptId" open="(" separator="," close=")">
+                        #{deptId}
+                    </foreach>
+                    OR dept_id IS NULL
+                </if>
+                <if test="allowedDeptIds == null or allowedDeptIds.size() == 0">
+                    dept_id IS NULL
+                </if>
+            )
+            <if test="problemType != null and problemType != ''">
+                AND problem_type = #{problemType}
+            </if>
+            <if test="keywords != null and keywords.size() > 0">
+                AND (
+                    <foreach collection="keywords" item="kw" separator=" OR ">
+                        title LIKE concat('%', #{kw}, '%')
+                        OR problem_summary LIKE concat('%', #{kw}, '%')
+                        OR action_taken LIKE concat('%', #{kw}, '%')
+                    </foreach>
+                )
+            </if>
+        ORDER BY
+            CASE WHEN problem_type = #{problemType} THEN 0 ELSE 1 END,
+            CASE WHEN dept_id = #{deptId} THEN 0 ELSE 1 END,
+            create_time DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

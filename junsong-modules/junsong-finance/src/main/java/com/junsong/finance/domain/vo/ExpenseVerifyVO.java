@@ -1,6 +1,8 @@
 package com.junsong.finance.domain.vo;
 
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 
 /**
@@ -16,6 +18,10 @@ public class ExpenseVerifyVO
 
     /** 关联借支记录ID列表 */
     private List<Long> advanceIds;
+
+    @NotBlank(message = "请求编号不能为空")
+    @Size(max = 64, message = "请求编号长度不能超过64个字符")
+    private String requestId;
 
     public List<Long> getExpenseIds()
     {
@@ -36,4 +42,7 @@ public class ExpenseVerifyVO
     {
         this.advanceIds = advanceIds;
     }
+
+    public String getRequestId() { return requestId; }
+    public void setRequestId(String requestId) { this.requestId = requestId; }
 }

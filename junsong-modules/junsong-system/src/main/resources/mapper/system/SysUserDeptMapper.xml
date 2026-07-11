@@ -17,35 +17,41 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="updateTime"   column="update_time"   />
         <result property="remark"       column="remark"        />
         <result property="nickName"     column="nick_name"     />
+        <result property="userName"     column="user_name"     />
+        <result property="deptName"     column="dept_name"     />
     </resultMap>
 
     <sql id="selectSysUserDeptVo">
-        select user_dept_id, user_id, dept_id, status, hire_date, leave_date, create_by, create_time, update_by, update_time, remark 
-        from sys_user_dept
+        select ud.user_dept_id, ud.user_id, ud.dept_id, ud.status, ud.hire_date, ud.leave_date,
+               ud.create_by, ud.create_time, ud.update_by, ud.update_time, ud.remark,
+               u.nick_name, u.user_name, d.dept_name
+        from sys_user_dept ud
+        left join sys_user u on ud.user_id = u.user_id
+        left join sys_dept d on ud.dept_id = d.dept_id
     </sql>
 
     <select id="selectSysUserDeptList" parameterType="SysUserDept" resultMap="SysUserDeptResult">
         <include refid="selectSysUserDeptVo"/>
-        <where>  
-            <if test="userId != null "> and user_id = #{userId}</if>
-            <if test="deptId != null "> and dept_id = #{deptId}</if>
-            <if test="status != null  and status != ''"> and status = #{status}</if>
+        <where>
+            <if test="userId != null "> and ud.user_id = #{userId}</if>
+            <if test="deptId != null "> and ud.dept_id = #{deptId}</if>
+            <if test="status != null  and status != ''"> and ud.status = #{status}</if>
         </where>
-        order by create_time desc
+        order by ud.create_time desc
     </select>
-    
+
     <select id="selectUserDeptByUserId" parameterType="Long" resultMap="SysUserDeptResult">
         <include refid="selectSysUserDeptVo"/>
         <where>
-            user_id = #{userId}
+            ud.user_id = #{userId}
         </where>
-        order by create_time desc
+        order by ud.create_time desc
     </select>
-    
+
     <select id="selectUserDeptByUserIdAndDeptId" resultMap="SysUserDeptResult">
         <include refid="selectSysUserDeptVo"/>
         <where>
-            user_id = #{userId} and dept_id = #{deptId}
+            ud.user_id = #{userId} and ud.dept_id = #{deptId}
         </where>
     </select>
         

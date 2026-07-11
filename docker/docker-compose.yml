@@ -129,8 +129,9 @@ services:
     ports:
       - "8081:8080"
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
+      - OPEN_INTERNAL_SECRET=${OPEN_INTERNAL_SECRET:-dev-inner-secret-change-me-2026}
       - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
       - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
     depends_on:
@@ -141,6 +142,7 @@ services:
     links:
       - junsong-redis
       - junsong-nacos
+      - junsong-modules-open
   junsong-auth:
     container_name: junsong-auth
     build:
@@ -149,7 +151,7 @@ services:
     ports:
       - "9200:9200"
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
       - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
       - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
@@ -170,7 +172,7 @@ services:
     ports:
       - "9201:9201"
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
       - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
       - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
@@ -193,7 +195,7 @@ services:
     ports:
       - "9202:9202"
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
       - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
       - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
@@ -213,7 +215,7 @@ services:
     ports:
       - "9203:9203"
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
       - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
       - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
@@ -233,7 +235,7 @@ services:
     ports:
       - "9300:9300"
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
       - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
       - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
@@ -252,7 +254,7 @@ services:
     ports:
       - "9206:9206"
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
       - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
       - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
@@ -275,7 +277,8 @@ services:
     ports:
       - "9205:9205"
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      - TZ=Asia/Shanghai
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
       - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
       - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
@@ -299,8 +302,36 @@ services:
     ports:
       - "9207:9207"
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
+      - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
+      - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
+    depends_on:
+      junsong-nacos:
+        condition: service_healthy
+      junsong-redis:
+        condition: service_started
+      junsong-mysql:
+        condition: service_started
+    links:
+      - junsong-redis
+      - junsong-mysql
+      - junsong-nacos
+  # 开放平台模块：9208 端口仅 Docker 内网可访问（expose 不发布到宿主机）
+  # 网关通过 Docker 内网直连 junsong-modules-open:9208 调用内部接口
+  # 内部接口额外校验 X-Inner-Token（OPEN_INTERNAL_SECRET），防止端口误暴露后被伪造 from-source 攻击
+  junsong-modules-open:
+    container_name: junsong-modules-open
+    init: true
+    build:
+      context: ./junsong/modules/open
+      dockerfile: dockerfile
+    expose:
+      - "9208"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
+      - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
+      - OPEN_INTERNAL_SECRET=${OPEN_INTERNAL_SECRET:-dev-inner-secret-change-me-2026}
       - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
       - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
     depends_on:
@@ -322,7 +353,7 @@ services:
     ports:
       - "9100:9100"
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
       - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
       - spring.cloud.nacos.config.server-addr=junsong-nacos:8848

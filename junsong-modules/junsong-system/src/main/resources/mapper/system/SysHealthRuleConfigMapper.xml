@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.system.mapper.SysHealthRuleConfigMapper">
+
+    <resultMap type="com.junsong.system.domain.SysHealthRuleConfig" id="HealthRuleResult">
+        <id     property="ruleId"         column="rule_id"         />
+        <result property="tenantId"       column="tenant_id"       />
+        <result property="ruleCode"       column="rule_code"       />
+        <result property="ruleName"       column="rule_name"       />
+        <result property="ruleDomain"     column="rule_domain"     />
+        <result property="metricKey"      column="metric_key"      />
+        <result property="compareOp"      column="compare_op"      />
+        <result property="thresholdValue" column="threshold_value" />
+        <result property="severity"       column="severity"        />
+        <result property="enabled"        column="enabled"         />
+        <result property="notifyEnabled"  column="notify_enabled"  />
+        <result property="deptScope"      column="dept_scope"      />
+        <result property="suggestion"     column="suggestion"      />
+        <result property="sortOrder"      column="sort_order"      />
+        <result property="createBy"       column="create_by"       />
+        <result property="createTime"     column="create_time"     />
+        <result property="updateBy"       column="update_by"       />
+        <result property="updateTime"     column="update_time"     />
+        <result property="remark"         column="remark"          />
+    </resultMap>
+
+    <sql id="selectVo">
+        select rule_id, tenant_id, rule_code, rule_name, rule_domain, metric_key, compare_op,
+               threshold_value, severity, enabled, notify_enabled, dept_scope,
+               suggestion, sort_order, create_by, create_time, update_by, update_time, remark
+        from sys_health_rule_config
+    </sql>
+
+    <select id="selectHealthRuleList" parameterType="com.junsong.system.domain.SysHealthRuleConfig" resultMap="HealthRuleResult">
+        <include refid="selectVo"/>
+        <where>
+            <if test="ruleDomain != null and ruleDomain != ''">
+                AND rule_domain = #{ruleDomain}
+            </if>
+            <if test="severity != null and severity != ''">
+                AND severity = #{severity}
+            </if>
+            <if test="enabled != null and enabled != ''">
+                AND enabled = #{enabled}
+            </if>
+        </where>
+        order by sort_order
+    </select>
+
+    <select id="selectById" parameterType="Long" resultMap="HealthRuleResult">
+        <include refid="selectVo"/>
+        where rule_id = #{ruleId}
+    </select>
+
+    <select id="selectByCode" parameterType="String" resultMap="HealthRuleResult">
+        <include refid="selectVo"/>
+        where rule_code = #{ruleCode}
+    </select>
+
+    <update id="updateHealthRule" parameterType="com.junsong.system.domain.SysHealthRuleConfig">
+        update sys_health_rule_config
+        <set>
+            <if test="thresholdValue != null">threshold_value = #{thresholdValue},</if>
+            <if test="severity != null">severity = #{severity},</if>
+            <if test="enabled != null">enabled = #{enabled},</if>
+            <if test="notifyEnabled != null">notify_enabled = #{notifyEnabled},</if>
+            <if test="suggestion != null">suggestion = #{suggestion},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = NOW(),
+        </set>
+        where rule_id = #{ruleId}
+    </update>
+
+</mapper>

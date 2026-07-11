@@ -84,8 +84,8 @@ public class FinExpenseServiceImpl implements IFinExpenseService
             int maxRetries = 10;
             while (retryCount < maxRetries) {
                 try {
-                    int todayCount = finExpenseMapper.countTodayExpenses();
-                    finExpense.setExpenseNo(CodeGenerator.generateExpenseNo(todayCount + retryCount));
+                    int baseSeq = finExpenseMapper.maxTodayExpenseSeq();
+                    finExpense.setExpenseNo(CodeGenerator.generateExpenseNo(baseSeq + 1 + retryCount));
 
                     // 尝试插入
                     return doInsertFinExpense(finExpense);
@@ -441,12 +441,40 @@ public class FinExpenseServiceImpl implements IFinExpenseService
 
         java.math.BigDecimal unverifiedAdvance = nvl(finAdvanceMapper.sumUnverifiedAdvancesByDeptId(deptId));
         java.math.BigDecimal unverifiedExpense = nvl(finExpenseMapper.sumUnverifiedExpensesByDeptId(deptId));
-        FinAccountingPeriod currentPeriod = deptId == null ? null : finAccountingPeriodService.selectCurrentPeriodByDeptId(deptId);
-        java.math.BigDecimal totalExpense = currentPeriod == null ? java.math.BigDecimal.ZERO : nvl(finExpenseMapper.sumAllExpensesByPeriodId(currentPeriod.getPeriodId()));
+
+        // 借支余额 = 未核销借支 - 未核销费用，但无借支时余额为0，且不应为负数
+        java.math.BigDecimal advanceBalance;
+        if (unverifiedAdvance.compareTo(java.math.BigDecimal.ZERO) <= 0)
+        {
+            advanceBalance = java.math.BigDecimal.ZERO;
+        }
+        else
+        {
+            advanceBalance = unverifiedAdvance.subtract(unverifiedExpense).max(java.math.BigDecimal.ZERO);
+        }
+
+        // 本周期总费用：只统计当前核销周期内的费用
+        java.math.BigDecimal totalExpense;
+        if (deptId != null)
+        {
+            FinAccountingPeriod currentPeriod = finAccountingPeriodService.selectCurrentPeriodByDeptId(deptId);
+            if (currentPeriod != null)
+            {
+                totalExpense = nvl(finExpenseMapper.sumAllExpensesByPeriodId(currentPeriod.getPeriodId()));
+            }
+            else
+            {
+                totalExpense = java.math.BigDecimal.ZERO;
+            }
+        }
+        else
+        {
+            totalExpense = nvl(finExpenseMapper.sumAllExpensesByDeptId(deptId));
+        }
 
         summary.setUnverifiedAdvanceAmount(unverifiedAdvance);
         summary.setUnverifiedExpenseAmount(unverifiedExpense);
-        summary.setAdvanceBalance(unverifiedAdvance.compareTo(java.math.BigDecimal.ZERO) == 0 ? java.math.BigDecimal.ZERO : unverifiedAdvance.subtract(unverifiedExpense));
+        summary.setAdvanceBalance(advanceBalance);
         summary.setTotalExpenseAmount(totalExpense);
 
         return summary;
@@ -470,6 +498,9 @@ public class FinExpenseServiceImpl implements IFinExpenseService
         java.util.Set<String> validExpenseTypes = java.util.Set.of("预支", "开支", "收入");
         // 有效的付款方式
         java.util.Set<String> validPaymentMethods = java.util.Set.of("现金", "微信", "支付宝", "银行卡");
+
+        // 导入前查询今日最大序号，作为单号生成基数（避免 count 与实际序号不一致导致碰撞）
+        int baseSeq = finExpenseMapper.maxTodayExpenseSeq();
 
         for (FinExpense expense : expenseList) {
             try {
@@ -525,8 +556,7 @@ public class FinExpenseServiceImpl implements IFinExpenseService
                         int maxRetries = 10;
                         while (retryCount < maxRetries) {
                             try {
-                                int todayCount = finExpenseMapper.countTodayExpenses();
-                                expense.setExpenseNo(CodeGenerator.generateExpenseNo(todayCount + successNum + retryCount));
+                                expense.setExpenseNo(CodeGenerator.generateExpenseNo(baseSeq + 1 + successNum + retryCount));
                                 expense.setDeptId(deptId);
                                 expense.setCreateBy(operName);
                                 // 自动设置核算周期

@@ -151,17 +151,39 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="authMenuDialog.visible" :title="authMenuDialog.title" width="500px" append-to-body>
-      <el-tree
-        ref="menuTreeRef"
-        :data="menuOptions"
-        :props="{ children: 'children', label: 'label' }"
-        node-key="id"
-        show-checkbox
-        default-expand-all
-        :check-strictly="!form.menuCheckStrictly"
-        @check="handleMenuCheck"
-      />
+    <el-dialog v-model="authMenuDialog.visible" :title="authMenuDialog.title" width="720px" append-to-body @opened="onMenuDialogOpened">
+      <div class="menu-auth-toolbar">
+        <el-input
+          v-model="menuFilterText"
+          placeholder="搜索菜单名称"
+          clearable
+          size="small"
+          style="width: 220px"
+        >
+          <template #prefix><el-icon><Search /></el-icon></template>
+        </el-input>
+        <div class="menu-auth-actions">
+          <el-button text size="small" @click="expandAllMenu">展开全部</el-button>
+          <el-button text size="small" @click="collapseAllMenu">折叠全部</el-button>
+          <el-divider direction="vertical" />
+          <el-button text size="small" @click="checkAllMenu">全选</el-button>
+          <el-button text size="small" @click="uncheckAllMenu">清空</el-button>
+        </div>
+      </div>
+      <div class="menu-auth-tree-wrapper">
+        <el-tree
+          ref="menuTreeRef"
+          :data="menuOptions"
+          :props="{ children: 'children', label: 'label' }"
+          node-key="id"
+          show-checkbox
+          :default-expand-all="false"
+          :expand-on-click-node="false"
+          :filter-node-method="filterMenuNode"
+          :check-strictly="!form.menuCheckStrictly"
+          @check="handleMenuCheck"
+        />
+      </div>
       <template #footer>
         <div class="dialog-footer">
           <el-button type="primary" @click="submitAuthMenu">确 定</el-button>
@@ -208,9 +230,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ref, reactive, onMounted, nextTick, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Edit, Delete, Download } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, Download, Search } from '@element-plus/icons-vue'
 import RightToolbar from '@/components/RightToolbar/index.vue'
 import Pagination from '@/components/Pagination/index.vue'
 import DictTag from '@/components/DictTag/index.vue'
@@ -248,6 +270,80 @@ const dateRange = ref<any[]>([])
 const menuOptions = ref<any[]>([])
 const checkedMenus = ref<any[]>([])
 const menuTreeRef = ref()
+const menuFilterText = ref('')
+
+watch(menuFilterText, (val) => {
+  ;(menuTreeRef.value as any)?.filter?.(val)
+})
+
+function filterMenuNode(value: string, data: any) {
+  if (!value) return true
+  return (data.label || '').includes(value)
+}
+
+function onMenuDialogOpened() {
+  nextTick(() => {
+    ;(menuTreeRef.value as any)?.setCheckedKeys?.(checkedMenus.value)
+    expandFirstLevel()
+  })
+}
+
+function expandFirstLevel() {
+  const tree = menuTreeRef.value as any
+  if (!tree) return
+  const nodes = tree.store?.root?.childNodes || []
+  nodes.forEach((n: any) => {
+    if (n.childNodes && n.childNodes.length) n.expanded = true
+  })
+}
+
+function expandAllMenu() {
+  const tree = menuTreeRef.value as any
+  if (!tree) return
+  const stack: any[] = [...(tree.store?.root?.childNodes || [])]
+  while (stack.length) {
+    const n = stack.pop()
+    if (n) {
+      n.expanded = true
+      if (n.childNodes) stack.push(...n.childNodes)
+    }
+  }
+}
+
+function collapseAllMenu() {
+  const tree = menuTreeRef.value as any
+  if (!tree) return
+  const stack: any[] = [...(tree.store?.root?.childNodes || [])]
+  while (stack.length) {
+    const n = stack.pop()
+    if (n) {
+      n.expanded = false
+      if (n.childNodes) stack.push(...n.childNodes)
+    }
+  }
+}
+
+function collectAllNodeIds(nodes: any[]): number[] {
+  const ids: number[] = []
+  const walk = (list: any[]) => {
+    list.forEach((n) => {
+      ids.push(n.id)
+      if (n.children && n.children.length) walk(n.children)
+    })
+  }
+  walk(nodes)
+  return ids
+}
+
+function checkAllMenu() {
+  const tree = menuTreeRef.value as any
+  if (!tree) return
+  tree.setCheckedKeys(collectAllNodeIds(menuOptions.value))
+}
+
+function uncheckAllMenu() {
+  ;(menuTreeRef.value as any)?.setCheckedKeys?.([])
+}
 
 const deptOptions = ref<any[]>([])
 const checkedDepts = ref<any[]>([])
@@ -504,11 +600,9 @@ function handleAuthMenu(row: any) {
   roleTreeselect(row.roleId).then((res: any) => {
     menuOptions.value = res.menus
     checkedMenus.value = res.checkedKeys || []
+    menuFilterText.value = ''
     authMenuDialog.visible = true
     authMenuDialog.title = '分配菜单权限'
-    nextTick(() => {
-      ;(menuTreeRef.value as any)?.setCheckedKeys?.(checkedMenus.value)
-    })
   })
 }
 
@@ -570,5 +664,31 @@ onMounted(() => {
 <style scoped>
 .app-container {
   padding: 20px;
+}
+
+.menu-auth-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 0 10px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  margin-bottom: 10px;
+}
+
+.menu-auth-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.menu-auth-tree-wrapper {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 4px 8px 4px 0;
+}
+
+.menu-auth-tree-wrapper :deep(.el-tree-node__content) {
+  height: 30px;
 }
 </style>

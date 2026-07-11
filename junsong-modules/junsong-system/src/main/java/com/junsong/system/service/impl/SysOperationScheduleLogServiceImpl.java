@@ -9,7 +9,10 @@ import com.junsong.system.domain.SysOperationScheduleLog;
 import com.junsong.system.domain.vo.OperationScheduleDashboardVO;
 import com.junsong.system.domain.vo.OperationScheduleLogVO;
 import com.junsong.system.mapper.SysOperationScheduleLogMapper;
+import com.junsong.system.service.ISysOperationAlertService;
 import com.junsong.system.service.ISysOperationScheduleLogService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
@@ -19,10 +22,14 @@ import org.springframework.stereotype.Service;
 @Service
 public class SysOperationScheduleLogServiceImpl implements ISysOperationScheduleLogService {
 
-    private final SysOperationScheduleLogMapper mapper;
+    private static final Logger LOGGER = LoggerFactory.getLogger(SysOperationScheduleLogServiceImpl.class);
 
-    public SysOperationScheduleLogServiceImpl(SysOperationScheduleLogMapper mapper) {
+    private final SysOperationScheduleLogMapper mapper;
+    private final ISysOperationAlertService alertService;
+
+    public SysOperationScheduleLogServiceImpl(SysOperationScheduleLogMapper mapper, ISysOperationAlertService alertService) {
         this.mapper = mapper;
+        this.alertService = alertService;
     }
 
     // ==================== 生命周期方法 ====================
@@ -65,6 +72,21 @@ public class SysOperationScheduleLogServiceImpl implements ISysOperationSchedule
         log.setResultSummary(resultSummary);
         log.setErrorMessage(errorMessage);
         finalizeLog(log);
+        // R25 告警：部分失败上报，severity=MEDIUM
+        try {
+            alertService.raiseAlert(
+                    "SCHEDULE_FAILED",
+                    "schedule:" + log.getJobCode(),
+                    "OPERATION_SCHEDULE",
+                    log.getJobCode(),
+                    "MEDIUM",
+                    "自动经营任务部分失败: " + log.getJobName(),
+                    log.getErrorMessage()
+            );
+        } catch (Exception ex) {
+            // 告警失败不影响业务日志写入
+            LOGGER.warn("R25 raiseAlert failed (schedule PARTIAL jobCode={}): {}", log.getJobCode(), ex.getMessage());
+        }
     }
 
     @Override
@@ -74,6 +96,21 @@ public class SysOperationScheduleLogServiceImpl implements ISysOperationSchedule
         // 必须完整记录异常类名和消息，不能吞掉异常文本
         log.setErrorMessage(throwable.getClass().getName() + ": " + throwable.getMessage());
         finalizeLog(log);
+        // R25 告警：失败任务上报，severity=HIGH
+        try {
+            alertService.raiseAlert(
+                    "SCHEDULE_FAILED",
+                    "schedule:" + log.getJobCode(),
+                    "OPERATION_SCHEDULE",
+                    log.getJobCode(),
+                    "HIGH",
+                    "自动经营任务失败: " + log.getJobName(),
+                    log.getErrorMessage()
+            );
+        } catch (Exception ex) {
+            // 告警失败不影响业务日志写入
+            LOGGER.warn("R25 raiseAlert failed (schedule FAILED jobCode={}): {}", log.getJobCode(), ex.getMessage());
+        }
     }
 
     // ==================== 查询方法 ====================

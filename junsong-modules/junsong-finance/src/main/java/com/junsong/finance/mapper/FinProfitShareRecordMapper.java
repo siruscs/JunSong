@@ -51,4 +51,9 @@ public interface FinProfitShareRecordMapper
     int countUnsettledRecordsByPeriodId(@Param("deptIds") List<Long> deptIds, @Param("periodId") Long periodId);
     List<Map<String, Object>> selectSettlementByDept(@Param("deptIds") List<Long> deptIds, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
     BigDecimal selectPaidAmount(@Param("deptIds") List<Long> deptIds, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
+
+    /**
+     * 运维调整：按周期ID更新分润记录的分润时间为指定时间
+     */
+    public int updateShareTimeByPeriodId(@Param("periodId") Long periodId, @Param("shareTime") Date shareTime, @Param("updateBy") String updateBy, @Param("remark") String remark);
 }

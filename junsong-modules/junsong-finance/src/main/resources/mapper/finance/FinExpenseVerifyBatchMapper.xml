@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.FinExpenseVerifyBatchMapper">
+    <resultMap id="BatchResult" type="com.junsong.finance.domain.FinExpenseVerifyBatch">
+        <id property="batchId" column="batch_id"/>
+        <result property="batchNo" column="batch_no"/><result property="requestId" column="request_id"/>
+        <result property="tenantId" column="tenant_id"/><result property="deptId" column="dept_id"/>
+        <result property="totalExpenseAmount" column="total_expense_amount"/><result property="totalAdvanceAmount" column="total_advance_amount"/>
+        <result property="differenceAmount" column="difference_amount"/><result property="status" column="status"/>
+        <result property="sourceType" column="source_type"/><result property="verifyBy" column="verify_by"/>
+        <result property="verifyTime" column="verify_time"/><result property="reverseBy" column="reverse_by"/>
+        <result property="reverseTime" column="reverse_time"/><result property="reverseReason" column="reverse_reason"/>
+        <result property="reverseRequestId" column="reverse_request_id"/><result property="version" column="version"/>
+        <result property="createTime" column="create_time"/><result property="updateTime" column="update_time"/>
+    </resultMap>
+    <resultMap id="ExpenseDetailResult" type="com.junsong.finance.domain.FinExpenseVerifyDetail">
+        <id property="detailId" column="detail_id"/><result property="batchId" column="batch_id"/>
+        <result property="expenseId" column="expense_id"/><result property="tenantId" column="tenant_id"/>
+        <result property="deptId" column="dept_id"/><result property="expenseAmount" column="expense_amount"/>
+        <result property="originalStatus" column="original_status"/><result property="originalAdvanceId" column="original_advance_id"/>
+        <result property="periodId" column="period_id"/><result property="createTime" column="create_time"/>
+    </resultMap>
+    <resultMap id="AdvanceDetailResult" type="com.junsong.finance.domain.FinAdvanceVerifyDetail">
+        <id property="detailId" column="detail_id"/><result property="batchId" column="batch_id"/>
+        <result property="advanceId" column="advance_id"/><result property="tenantId" column="tenant_id"/>
+        <result property="deptId" column="dept_id"/><result property="advanceAmount" column="advance_amount"/>
+        <result property="originalStatus" column="original_status"/><result property="periodId" column="period_id"/>
+        <result property="relationType" column="relation_type"/><result property="generatedFlag" column="generated_flag"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <select id="selectByRequestId" resultMap="BatchResult">
+        SELECT * FROM fin_expense_verify_batch WHERE tenant_id = #{tenantId} AND request_id = #{requestId}
+    </select>
+    <select id="selectBatchForUpdate" resultMap="BatchResult">
+        SELECT * FROM fin_expense_verify_batch WHERE batch_id = #{batchId} AND tenant_id = #{tenantId} FOR UPDATE
+    </select>
+    <insert id="insertBatch" parameterType="com.junsong.finance.domain.FinExpenseVerifyBatch" useGeneratedKeys="true" keyProperty="batchId">
+        INSERT INTO fin_expense_verify_batch
+        (batch_no, request_id, tenant_id, dept_id, total_expense_amount, total_advance_amount,
+         difference_amount, status, source_type, verify_by, verify_time, reverse_by, reverse_time,
+         reverse_reason, reverse_request_id, version, create_time, update_time)
+        VALUES
+        (#{batchNo}, #{requestId}, #{tenantId}, #{deptId}, #{totalExpenseAmount}, #{totalAdvanceAmount},
+         #{differenceAmount}, #{status}, #{sourceType}, #{verifyBy}, #{verifyTime}, #{reverseBy}, #{reverseTime},
+         #{reverseReason}, #{reverseRequestId}, #{version}, #{createTime}, #{updateTime})
+    </insert>
+    <insert id="insertExpenseDetails">
+        INSERT INTO fin_expense_verify_detail
+        (batch_id, expense_id, tenant_id, dept_id, expense_amount, original_status, original_advance_id, period_id, create_time)
+        VALUES
+        <foreach collection="items" item="item" separator=",">
+            (#{item.batchId}, #{item.expenseId}, #{item.tenantId}, #{item.deptId}, #{item.expenseAmount},
+             #{item.originalStatus}, #{item.originalAdvanceId}, #{item.periodId}, #{item.createTime})
+        </foreach>
+    </insert>
+    <insert id="insertAdvanceDetails">
+        INSERT INTO fin_advance_verify_detail
+        (batch_id, advance_id, tenant_id, dept_id, advance_amount, original_status, period_id, relation_type, generated_flag, create_time)
+        VALUES
+        <foreach collection="items" item="item" separator=",">
+            (#{item.batchId}, #{item.advanceId}, #{item.tenantId}, #{item.deptId}, #{item.advanceAmount},
+             #{item.originalStatus}, #{item.periodId}, #{item.relationType}, #{item.generatedFlag}, #{item.createTime})
+        </foreach>
+    </insert>
+    <select id="selectExpenseDetails" resultMap="ExpenseDetailResult">
+        SELECT detail_id, batch_id, expense_id, tenant_id, dept_id, expense_amount, original_status,
+               original_advance_id, period_id, create_time
+        FROM fin_expense_verify_detail
+        WHERE batch_id = #{batchId} AND tenant_id = #{tenantId} AND dept_id = #{deptId} ORDER BY detail_id
+    </select>
+    <select id="selectAdvanceDetails" resultMap="AdvanceDetailResult">
+        SELECT detail_id, batch_id, advance_id, tenant_id, dept_id, advance_amount, original_status,
+               period_id, relation_type, generated_flag, create_time
+        FROM fin_advance_verify_detail
+        WHERE batch_id = #{batchId} AND tenant_id = #{tenantId} AND dept_id = #{deptId} ORDER BY detail_id
+    </select>
+    <update id="markBatchReversed">
+        UPDATE fin_expense_verify_batch
+        SET status = 'REVERSED', reverse_by = #{reverseBy}, reverse_time = #{reverseTime},
+            reverse_reason = #{reason}, reverse_request_id = #{requestId}, version = version + 1,
+            update_time = #{reverseTime}
+        WHERE batch_id = #{batchId} AND tenant_id = #{tenantId} AND dept_id = #{deptId}
+          AND status = 'VERIFIED' AND version = #{version}
+    </update>
+</mapper>

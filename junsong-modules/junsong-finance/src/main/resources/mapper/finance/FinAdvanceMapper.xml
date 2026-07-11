@@ -112,6 +112,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="purpose != null and purpose != ''">purpose,</if>
             <if test="attachments != null">attachments,</if>
             <if test="status != null">status,</if>
+            verify_by,
+            verify_time,
             <if test="delFlag != null">del_flag,</if>
             <if test="createBy != null">create_by,</if>
             create_time,
@@ -127,6 +129,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="purpose != null and purpose != ''">#{purpose},</if>
             <if test="attachments != null">#{attachments},</if>
             <if test="status != null">#{status},</if>
+            #{verifyBy},
+            #{verifyTime},
             <if test="delFlag != null">#{delFlag},</if>
             <if test="createBy != null">#{createBy},</if>
             sysdate(),

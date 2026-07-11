@@ -25,6 +25,17 @@ class FinExpenseControllerContractTest
     }
 
     @Test
+    void advanceInsertPersistsVerificationMetadata() throws Exception
+    {
+        String source = Files.readString(Path.of("src/main/resources/mapper/finance/FinAdvanceMapper.xml"));
+        String insert = source.substring(source.indexOf("<insert id=\"insertFinAdvance\""), source.indexOf("</insert>", source.indexOf("<insert id=\"insertFinAdvance\"")));
+        assertTrue(insert.contains("verify_by,"));
+        assertTrue(insert.contains("verify_time,"));
+        assertTrue(insert.contains("#{verifyBy},"));
+        assertTrue(insert.contains("#{verifyTime},"));
+    }
+
+    @Test
     void exposesIndependentSecureVerificationEndpoints() throws Exception
     {
         String source = Files.readString(Path.of("src/main/java/com/junsong/finance/controller/FinExpenseController.java"));

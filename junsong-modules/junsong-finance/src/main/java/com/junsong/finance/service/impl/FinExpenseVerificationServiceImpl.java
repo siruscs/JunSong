@@ -181,7 +181,7 @@ public class FinExpenseVerificationServiceImpl implements IFinExpenseVerificatio
         return 1;
     }
     private void requireSamePeriod(Long snapshot, Long current, Set<Long> ids) { if(snapshot==null||current==null)throw new ServiceException("核算周期不能为空，不能反核销"); if(!snapshot.equals(current))throw new ServiceException("核算周期已变化，不能反核销"); ids.add(snapshot); ids.add(current); }
-    private void validateAdvanceState(FinAdvanceVerifyDetail d, FinAdvance a, FinExpenseVerifyBatch b) { if(a==null)throw new ServiceException("借支状态已变化，请刷新后重试"); boolean surplus=FinAdvanceVerifyDetail.RELATION_SURPLUS.equals(d.getRelationType()); if(surplus&&"0".equals(a.getStatus())) { if(a.getVerifyBy()!=null||a.getVerifyTime()!=null)throw new ServiceException("借支核销信息已变化，请刷新后重试"); return; } if(!"1".equals(a.getStatus())||!Objects.equals(b.getVerifyBy(),a.getVerifyBy())||!Objects.equals(b.getVerifyTime(),a.getVerifyTime()))throw new ServiceException("借支核销信息已变化，请刷新后重试"); }
+    private void validateAdvanceState(FinAdvanceVerifyDetail d, FinAdvance a, FinExpenseVerifyBatch b) { if(a==null)throw new ServiceException("借支状态已变化，请刷新后重试"); boolean surplus=FinAdvanceVerifyDetail.RELATION_SURPLUS.equals(d.getRelationType()); if(surplus&&"0".equals(a.getStatus())) { if((a.getVerifyBy()!=null&&!a.getVerifyBy().isBlank())||a.getVerifyTime()!=null)throw new ServiceException("借支核销信息已变化，请刷新后重试"); return; } if(!"1".equals(a.getStatus())||!Objects.equals(b.getVerifyBy(),a.getVerifyBy())||!Objects.equals(b.getVerifyTime(),a.getVerifyTime()))throw new ServiceException("借支核销信息已变化，请刷新后重试"); }
     @Override
     public ExpenseOperationCapabilityVO getCapability(Long expenseId)
     {

@@ -20,16 +20,16 @@ apply_sql() {
     log "[SQL] 执行: $(basename "${file}")"
     if [ "${DEPLOY_DRY_RUN}" = "1" ]; then
         if [ "${ENV}" = "prod" ]; then
-            print_command ssh "${PROD_USER}@${PROD_HOST}" docker exec -i "${MYSQL_CONTAINER}" mysql "-u${MYSQL_USER}" "-p***" "${DB_NAME}" '<' "${file}"
+            print_command ssh "${PROD_USER}@${PROD_HOST}" docker exec -i "${MYSQL_CONTAINER}" mysql "-u${MYSQL_USER}" "-p***" --default-character-set=utf8mb4 "${DB_NAME}" '<' "${file}"
         else
-            print_command docker exec -i "${MYSQL_CONTAINER}" mysql "-u${MYSQL_USER}" "-p***" "${DB_NAME}" '<' "${file}"
+            print_command docker exec -i "${MYSQL_CONTAINER}" mysql "-u${MYSQL_USER}" "-p***" --default-character-set=utf8mb4 "${DB_NAME}" '<' "${file}"
         fi
         return 0
     fi
     if [ "${ENV}" = "prod" ]; then
-        prod_ssh "docker exec -i '${MYSQL_CONTAINER}' mysql '-u${MYSQL_USER}' '-p${MYSQL_PASS}' --batch --raw '${DB_NAME}'" < "${file}"
+        prod_ssh "docker exec -i '${MYSQL_CONTAINER}' mysql '-u${MYSQL_USER}' '-p${MYSQL_PASS}' --default-character-set=utf8mb4 --batch --raw '${DB_NAME}'" < "${file}"
     else
-        docker exec -i "${MYSQL_CONTAINER}" mysql "-u${MYSQL_USER}" "-p${MYSQL_PASS}" --batch --raw "${DB_NAME}" < "${file}"
+        docker exec -i "${MYSQL_CONTAINER}" mysql "-u${MYSQL_USER}" "-p${MYSQL_PASS}" --default-character-set=utf8mb4 --batch --raw "${DB_NAME}" < "${file}"
     fi
     log "  ✓ $(basename "${file}")"
 }

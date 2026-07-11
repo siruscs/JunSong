@@ -49,7 +49,9 @@ test('ui and sql production deploys use the shared remote runtime', () => {
     assert.match(source, /source .*deploy-common\.sh/, script)
     assert.match(source, /prod_ssh/, script)
   }
-  assert.match(read('bin/deploy-sql.sh'), /set -o pipefail.*mysqldump/)
+  const sqlDeploy = read('bin/deploy-sql.sh')
+  assert.match(sqlDeploy, /set -o pipefail.*mysqldump/)
+  assert.equal((sqlDeploy.match(/--default-character-set=utf8mb4/g) || []).length, 4)
 })
 
 test('decision console composes the audited deploy scripts', () => {

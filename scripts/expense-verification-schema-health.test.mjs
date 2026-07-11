@@ -5,6 +5,7 @@ import fs from 'node:fs'
 const sql = fs.readFileSync('sql/finance_expense_verification_batch.sql', 'utf8')
 
 test('verification schema has batch and detail integrity', () => {
+  assert.match(sql, /^SET NAMES utf8mb4;/)
   assert.match(sql, /CREATE TABLE IF NOT EXISTS `fin_expense_verify_batch`/)
   assert.match(sql, /UNIQUE KEY `uk_verify_batch_request` \(`tenant_id`, `request_id`\)/)
   assert.match(sql, /UNIQUE KEY `uk_verify_reverse_request` \(`tenant_id`, `reverse_request_id`\)/)

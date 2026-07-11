@@ -131,6 +131,15 @@ Agents must preserve these invariants:
 - Use explicit MyBatis `resultMap` mappings for important snake_case financial snapshots rather than relying on environment-specific camel-case settings.
 - SQL migrations must be repeatable, tenant-aware and non-destructive. Include preview/reconciliation/exception result sets for financial backfills.
 
+## Database Character-Set Safety
+
+- Every SQL file containing Chinese or other non-ASCII text must begin with `SET NAMES utf8mb4;`. Do not rely on the server, container image or interactive client default.
+- Every scripted MySQL invocation must pass `--default-character-set=utf8mb4`, including DEV, PROD, dry-run examples and one-off verification commands.
+- Before executing production SQL, verify `character_set_client`, `character_set_connection` and `character_set_results`; all three must be `utf8mb4`.
+- After menu/config/dictionary migrations, query both displayed text and `HEX(column)`. UTF-8 Chinese must not appear as mojibake such as `è´¹ç”¨` or as replacement characters.
+- If mojibake is found, back up first, identify rows by stable keys such as permission/config/dictionary keys, and use a narrow audited UTF-8 correction. Never run broad text-conversion updates over an entire table.
+- Use `bin/deploy-sql.sh` as the canonical SQL entrypoint; do not bypass its UTF-8 enforcement with ad-hoc `mysql < file.sql` commands.
+
 ## PC and Mini-Program Consistency
 
 - PC and mini-program must use the same backend permission codes, endpoints and state rules.

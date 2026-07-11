@@ -1,3 +1,4 @@
+SET NAMES utf8mb4;
 -- 费用核销批次、明细及独立权限（可重复执行）
 
 CREATE TABLE IF NOT EXISTS `fin_expense_verify_batch` (

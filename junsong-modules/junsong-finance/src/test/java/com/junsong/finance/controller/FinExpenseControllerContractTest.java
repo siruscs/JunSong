@@ -1,14 +1,29 @@
 package com.junsong.finance.controller;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.junsong.finance.service.impl.FinExpenseVerificationServiceImpl;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.lang.reflect.Modifier;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.junit.jupiter.api.Test;
 import java.util.regex.Pattern;
 
 class FinExpenseControllerContractTest
 {
+    @Test
+    void verificationServiceMarksItsProductionConstructorForSpringInjection()
+    {
+        var productionConstructor = java.util.Arrays.stream(FinExpenseVerificationServiceImpl.class.getDeclaredConstructors())
+            .filter(constructor -> Modifier.isPublic(constructor.getModifiers()))
+            .findFirst()
+            .orElseThrow();
+
+        assertNotNull(productionConstructor.getAnnotation(Autowired.class));
+    }
+
     @Test
     void exposesIndependentSecureVerificationEndpoints() throws Exception
     {

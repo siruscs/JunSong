@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.List;
 import java.util.function.Supplier;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +46,7 @@ public class FinExpenseVerificationServiceImpl implements IFinExpenseVerificatio
     private final FinAuditTrailRecorder auditRecorder;
     private final Supplier<Long> deptResolver;
 
+    @Autowired
     public FinExpenseVerificationServiceImpl(FinExpenseMapper expenseMapper, FinAdvanceMapper advanceMapper,
         FinExpenseVerifyBatchMapper batchMapper, IFinAccountingPeriodService periodService, FinAccountingPeriodMapper periodMapper, FinAuditTrailRecorder auditRecorder)
     { this(expenseMapper, advanceMapper, batchMapper, periodService, periodMapper, auditRecorder, SecurityUtils::getDeptId); }

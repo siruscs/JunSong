@@ -25,8 +25,8 @@
             v-for="(field, idx) in primaryFields"
             :key="idx"
             class="highlight-item"
-            :class="{ 'phone-callable': isPhoneField(field) }"
-            @tap="callPhone(field)"
+            :class="{ 'phone-callable': isPhoneField(field), 'sensitive-toggle': field.sensitive }"
+            @tap="onFieldTap(field)"
           >
             <view class="highlight-label">{{ field.label }}</view>
             <view class="highlight-value" :class="field.class">{{ field.value }}</view>
@@ -41,48 +41,56 @@
           v-for="(field, fIdx) in secondaryFields"
           :key="fIdx"
           class="field-row"
-          :class="{ 'phone-callable': isPhoneField(field) }"
-          @tap="callPhone(field)"
+          :class="{ 'phone-callable': isPhoneField(field), 'sensitive-toggle': field.sensitive, 'image-field-row': field.type === 'image' }"
+          @tap="onFieldTap(field)"
         >
           <view class="field-label">{{ field.label }}</view>
-          <view class="field-value" :class="field.class">{{ field.value }}</view>
+          <view v-if="field.type === 'image' && field.rawValue" class="field-image-wrap">
+            <image class="field-image" :src="resolveImageUrl(field.rawValue)" mode="aspectFit" @tap="previewImage(field.rawValue)" />
+          </view>
+          <view v-else class="field-value" :class="field.class">{{ field.value }}</view>
         </view>
       </view>
 
-      <!-- 收款区域（销售模块） -->
-      <view v-if="showPayment" class="section-card">
-        <view class="section-title">收款信息</view>
-        <view class="payment-form">
-          <view class="payment-row">
-            <text class="payment-label">收款金额</text>
-            <input
-              v-model="paymentAmount"
-              type="digit"
-              class="payment-input"
-              placeholder="请输入金额"
-            />
+      <!-- 进货单商品明细 -->
+      <view v-if="moduleKey === 'purchase' && purchaseDetails.length" class="section-card">
+        <view class="section-title">商品明细</view>
+        <view class="detail-list">
+          <view class="detail-item" v-for="(detail, index) in purchaseDetails" :key="index">
+            <view class="detail-item-header">
+              <text class="detail-item-title">商品{{ index + 1 }}</text>
+            </view>
+            <view class="detail-row">
+              <text class="detail-label">商品</text>
+              <text class="detail-value-text">{{ detail.productName || '-' }}</text>
+            </view>
+            <view class="detail-row">
+              <text class="detail-label">单位</text>
+              <text class="detail-value-text">{{ detail.unit || '-' }}</text>
+            </view>
+            <view class="detail-row">
+              <text class="detail-label">数量</text>
+              <text class="detail-value-text">{{ detail.quantity || 0 }}</text>
+            </view>
+            <view class="detail-row">
+              <text class="detail-label">单价</text>
+              <text class="detail-value-text">{{ detail.price || 0 }}</text>
+            </view>
+            <view class="detail-row">
+              <text class="detail-label">金额</text>
+              <text class="detail-value-text amount">{{ detail.isGift === '1' ? '赠品' : '¥' + (detail.amount || 0) }}</text>
+            </view>
           </view>
-          <view class="payment-row">
-            <text class="payment-label">收款方式</text>
-            <picker
-              :range="paymentMethodLabels"
-              @change="onPaymentMethodChange"
-            >
-              <view class="payment-picker">
-                {{ selectedPaymentLabel || '请选择' }}
-                <text class="picker-arrow">▸</text>
-              </view>
-            </picker>
+        </view>
+        <view class="detail-summary">
+          <view class="detail-summary-row">
+            <text class="detail-summary-label">总数量</text>
+            <text class="detail-summary-value">{{ record.totalQuantity || 0 }}</text>
           </view>
-          <view class="payment-row">
-            <text class="payment-label">备注</text>
-            <input
-              v-model="paymentRemark"
-              class="payment-input"
-              placeholder="选填"
-            />
+          <view class="detail-summary-row">
+            <text class="detail-summary-label">总金额</text>
+            <text class="detail-summary-value">¥{{ record.totalAmount || 0 }}</text>
           </view>
-          <button class="payment-btn" @tap="handlePayment">确认收款</button>
         </view>
       </view>
 
@@ -95,8 +103,28 @@
       <text class="empty-text">暂无数据</text>
     </view>
 
+    <view v-if="canUnverifyExpense && expenseCapability && !expenseCapability.canUnverify" class="unverify-disabled-reason">
+      {{ expenseCapability.operationDisabledReason }}
+    </view>
+
     <!-- 固定底部操作栏 -->
     <view v-if="record && hasAnyAction" class="footer-bar">
+      <button
+        v-if="canVerifyExpense"
+        class="action-btn custom-btn"
+        @tap="openExpenseVerify"
+      >核销</button>
+      <button
+        v-if="canUnverifyExpense"
+        class="action-btn delete-btn"
+        :disabled="!expenseCapability.canUnverify"
+        @tap="openExpenseUnverify"
+      >反核销</button>
+      <button
+        v-if="canPayment"
+        class="action-btn payment-action-btn"
+        @tap="openPayment"
+      >缴款</button>
       <button
         v-if="canEdit"
         class="action-btn edit-btn"
@@ -113,6 +141,42 @@
         class="action-btn custom-btn"
         @tap="handleCustomAction(action)"
       >{{ action.name }}</button>
+    </view>
+
+    <view class="claim-mask" v-if="paymentPanelOpen" @tap="closePayment">
+      <view class="payment-panel" @tap.stop>
+        <view class="claim-panel-title">缴款</view>
+        <view class="payment-summary">
+          <view class="payment-summary-row"><text>销售单号</text><text>{{ record?.saleNo || '-' }}</text></view>
+          <view class="payment-summary-row"><text>销售金额</text><text>¥{{ moneyText(record?.saleAmount) }}</text></view>
+          <view class="payment-summary-row"><text>累计已缴</text><text>¥{{ moneyText(record?.paidAmount) }}</text></view>
+          <view class="payment-summary-row remaining"><text>{{ isReturnSale ? '剩余应退' : '剩余应收' }}</text><text>¥{{ moneyText(remainingAmount) }}</text></view>
+        </view>
+        <view class="payment-row">
+          <text class="payment-label">缴款日期</text>
+          <picker mode="date" :value="paymentForm.paymentDate" @change="onPaymentDateChange">
+            <view class="payment-picker">{{ paymentForm.paymentDate || '请选择' }}<text class="picker-arrow">▸</text></view>
+          </picker>
+        </view>
+        <view class="payment-row">
+          <text class="payment-label">缴款金额</text>
+          <input v-model="paymentForm.paymentAmount" type="text" class="payment-input" placeholder="请输入缴款金额" />
+        </view>
+        <view class="payment-row">
+          <text class="payment-label">付款方式</text>
+          <picker :range="paymentMethodLabels" :value="paymentForm.paymentMethodIndex" @change="onPaymentMethodChange">
+            <view class="payment-picker">{{ selectedPaymentLabel || '请选择' }}<text class="picker-arrow">▸</text></view>
+          </picker>
+        </view>
+        <view class="payment-row">
+          <text class="payment-label">备注</text>
+          <input v-model="paymentForm.remark" class="payment-input" placeholder="选填" />
+        </view>
+        <view class="claim-panel-actions">
+          <button class="claim-cancel" @tap="closePayment">取消</button>
+          <button class="claim-confirm" @tap="submitPayment">确认缴款</button>
+        </view>
+      </view>
     </view>
 
     <view class="claim-mask" v-if="claimPanelOpen" @tap="closeClaim">
@@ -135,12 +199,47 @@
         </view>
       </view>
     </view>
+
+    <view class="claim-mask" v-if="breakEvenModalOpen" @tap="closeBreakEven">
+      <view class="break-even-panel" @tap.stop>
+        <view class="break-even-header">
+          <text class="break-even-title">试算回本结果</text>
+        </view>
+        <view v-if="breakEvenResult" class="break-even-content">
+          <view class="break-even-status" :class="breakEvenResult.isBreakEven ? 'break-even-success' : 'break-even-warning'">
+            <text class="break-even-icon">{{ breakEvenResult.isBreakEven ? '✓' : '!' }}</text>
+            <text class="break-even-status-text">{{ breakEvenResult.isBreakEven ? '已达到回本条件' : '暂未达到回本条件' }}</text>
+          </view>
+          <view class="break-even-detail">
+            <view class="break-even-row">
+              <text class="break-even-label">销售缴款总额</text>
+              <text class="break-even-value positive">¥{{ fmtMoney(breakEvenResult.totalSalePayment) }}</text>
+            </view>
+            <view class="break-even-row">
+              <text class="break-even-label">成本合计（费用+进货+借支未核销）</text>
+              <text class="break-even-value negative">¥{{ fmtMoney(breakEvenResult.costTotal) }}</text>
+            </view>
+            <view v-if="!breakEvenResult.isBreakEven" class="break-even-row">
+              <text class="break-even-label">距回本还差</text>
+              <text class="break-even-value negative">¥{{ fmtMoney(breakEvenResult.gap) }}</text>
+            </view>
+            <view class="break-even-row">
+              <text class="break-even-label">净利润</text>
+              <text class="break-even-value" :class="Number(breakEvenResult.netProfit) >= 0 ? 'positive' : 'negative'">¥{{ fmtMoney(breakEvenResult.netProfit) }}</text>
+            </view>
+          </view>
+          <view class="break-even-actions">
+            <button class="break-even-btn" @tap="closeBreakEven">确 定</button>
+          </view>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
 <script>
-import { getModule, displayValue, formatDisplayValue, getValueTone, paymentMethods } from '@/config/modules.js'
-import { getData, deleteData, request, actionRequest } from '@/api/index.js'
+import { getModule, displayValue, formatDisplayValue, getValueTone } from '@/config/modules.js'
+import { getData, deleteData, request, actionRequest, getBaseUrl } from '@/api/index.js'
 import { hasActionPermission, requireModulePermission } from '@/utils/permission.js'
 
 export default {
@@ -151,28 +250,38 @@ export default {
       loading: true,
       record: null,
       config: null,
-      // 收款状态
-      paymentAmount: '',
-      paymentMethodIndex: -1,
-      paymentRemark: '',
+      sensitiveVisible: {},
+      paymentPanelOpen: false,
+      paymentForm: {
+        paymentDate: '',
+        paymentAmount: '',
+        paymentMethodIndex: -1,
+        remark: ''
+      },
       claimPanelOpen: false,
       claimForm: {
         claimShares: '',
         claimDate: '',
         claimTime: '',
         remark: ''
-      }
+      },
+      breakEvenModalOpen: false,
+      breakEvenResult: null,
+      dictPaymentMethods: [],
+      reverseRequestId: '',
+      pendingUnverify: null,
+      expenseCapability: { canUnverify: false, batchId: null, operationDisabledReason: '正在检查反核销条件…' },
+      unverifySubmitting: false
     }
   },
   computed: {
-    // 收款方式列表（paymentMethods 是字符串数组）
+    // 付款方式列表（从SYS_DICT动态加载）
     paymentMethodLabels() {
-      return paymentMethods.map((item) => typeof item === 'string' ? item : item.label)
+      return this.dictPaymentMethods.map((item) => item.dictLabel)
     },
     selectedPaymentLabel() {
-      if (this.paymentMethodIndex < 0) return ''
-      const item = paymentMethods[this.paymentMethodIndex]
-      return typeof item === 'string' ? item : item?.label || ''
+      if (this.paymentForm.paymentMethodIndex < 0) return ''
+      return this.dictPaymentMethods[this.paymentForm.paymentMethodIndex]?.dictLabel || ''
     },
     // 英雄卡片 - 分组名
     heroGroup() {
@@ -191,7 +300,7 @@ export default {
       for (const key of summaryKeys) {
         if (this.record[key] !== undefined && this.record[key] !== null && this.record[key] !== '') {
           const field = this.config.fields.find(f => f.key === key)
-          return formatDisplayValue(field || { key, options: [] }, this.record[key])
+          return formatDisplayValue(field || { key, options: [] }, this.record[key], this.record)
         }
       }
       return this.config.title || ''
@@ -203,7 +312,7 @@ export default {
       for (const key of valueKeys) {
         if (this.record[key] !== undefined && this.record[key] !== null && this.record[key] !== '') {
           const field = this.config.fields.find(f => f.key === key) || { key }
-          return formatDisplayValue(field, this.record[key])
+          return formatDisplayValue(field, this.record[key], this.record)
         }
       }
       return ''
@@ -219,7 +328,7 @@ export default {
       // 查找状态字段
       const statusField = this.config.fields.find(f => f.key === 'status' && this.record[f.key] !== undefined)
       if (statusField) {
-        return statusField.label + '：' + formatDisplayValue(statusField, this.record[statusField.key])
+        return statusField.label + '：' + formatDisplayValue(statusField, this.record[statusField.key], this.record)
       }
       return ''
     },
@@ -228,12 +337,26 @@ export default {
       if (!this.record || !this.config || !this.config.summary) return []
       return this.config.summary.map(key => {
         const field = this.config.fields.find(f => f.key === key) || { key, label: key, options: [] }
+        const rawValue = this.record[key]
+        const isSensitive = field.sensitive
+        const isVisible = isSensitive && this.sensitiveVisible[key]
+        let displayVal
+        if (isSensitive && !isVisible) {
+          displayVal = this.maskValue(field.type, rawValue)
+        } else if (typeof field.formatter === 'function') {
+          displayVal = field.formatter(this.record) || ''
+        } else if (rawValue === undefined || rawValue === null || rawValue === '') {
+          displayVal = ''
+        } else {
+          displayVal = formatDisplayValue(field, rawValue, this.record)
+        }
         return {
             key,
             label: field.label || key,
-            value: typeof field.formatter === 'function' ? field.formatter(this.record) || '-' : formatDisplayValue(field, this.record[key]),
-            rawValue: this.record[key],
+            value: displayVal,
+            rawValue,
             type: field.type,
+            sensitive: isSensitive,
             class: this.getStatusClass(field)
           }
       })
@@ -244,32 +367,71 @@ export default {
       const summaryKeys = (this.config.summary || []).map(k => k)
       return this.config.fields
         .filter(f => !f.hidden && !summaryKeys.includes(f.key))
-        .map(field => ({
-          key: field.key,
-          label: field.label || field.key,
-          value: formatDisplayValue(field, this.record[field.key]),
-          rawValue: this.record[field.key],
-          type: field.type,
-          class: this.getStatusClass(field)
-        }))
+        .map(field => {
+          const rawValue = this.record[field.key]
+          const isSensitive = field.sensitive
+          const isVisible = isSensitive && this.sensitiveVisible[field.key]
+          let displayVal
+          if (isSensitive && !isVisible) {
+            displayVal = this.maskValue(field.type, rawValue)
+          } else if (rawValue === undefined || rawValue === null || rawValue === '') {
+            displayVal = ''
+          } else {
+            displayVal = formatDisplayValue(field, rawValue, this.record)
+          }
+          return {
+            key: field.key,
+            label: field.label || field.key,
+            value: displayVal,
+            rawValue,
+            type: field.type,
+            sensitive: isSensitive,
+            class: this.getStatusClass(field)
+          }
+        })
     },
-    // 是否显示收款区域
-    showPayment() {
-      if (!this.config || !this.config.payment) return false
-      if (this.moduleKey !== 'sale') return false
-      return hasActionPermission(this.moduleKey, 'payment')
+    remainingAmount() {
+      if (this.moduleKey !== 'sale' || !this.record) return 0
+      const saleAbs = Math.abs(Math.round(Number(this.record.saleAmount || 0) * 100))
+      const paidAbs = Math.abs(Math.round(Number(this.record.paidAmount || 0) * 100))
+      return Math.max(saleAbs - paidAbs, 0) / 100
+    },
+    isReturnSale() {
+      return this.moduleKey === 'sale' && Number(this.record?.saleAmount || 0) < 0
+    },
+    canPayment() {
+      if (this.moduleKey !== 'sale' || !this.record) return false
+      const saleAbs = Math.abs(Number(this.record.saleAmount || 0))
+      const paidAbs = Math.abs(Number(this.record.paidAmount || 0))
+      return String(this.record?.status) !== '2'
+        && saleAbs > 0
+        && paidAbs < saleAbs
+        && hasActionPermission(this.moduleKey, 'payment')
     },
     // 投资人返款锁定判断
     isInvestorPaymentLocked() {
       if (this.moduleKey !== 'investorPayment') return false
       return this.record?.sourceType === '1'
     },
+    // 费用已核销锁定判断
+    isExpenseVerified() {
+      if (this.moduleKey !== 'expense') return false
+      return String(this.record?.status) === '1'
+    },
+    canVerifyExpense() {
+      return this.moduleKey === 'expense' && !this.isExpenseVerified && hasActionPermission('expense', 'verify')
+    },
+    canUnverifyExpense() {
+      return this.moduleKey === 'expense' && this.isExpenseVerified && hasActionPermission('expense', 'unverify')
+    },
     canEdit() {
       if (this.isInvestorPaymentLocked) return false
+      if (this.isExpenseVerified) return false
       return hasActionPermission(this.moduleKey, 'edit')
     },
     canDelete() {
       if (this.isInvestorPaymentLocked) return false
+      if (this.isExpenseVerified) return false
       return hasActionPermission(this.moduleKey, 'remove')
     },
     // 自定义操作按钮 - 使用 action.action 匹配权限
@@ -280,14 +442,22 @@ export default {
         if (this.moduleKey === 'seckillRecord' && action.url?.includes('/claim/')) {
           return hasActionPermission(this.moduleKey, permKey) && this.canClaimRecord()
         }
+        if (this.isExpenseVerified && permKey === 'verify') return false
         return hasActionPermission(this.moduleKey, permKey)
       })
     },
     hasAnyAction() {
-      return this.canEdit || this.canDelete || this.customActions.length > 0
+      return this.canPayment || this.canVerifyExpense || this.canUnverifyExpense || this.canEdit || this.canDelete || this.customActions.length > 0
+    },
+    purchaseDetails() {
+      if (!this.record || !this.record.details) return []
+      return this.record.details
     }
   },
   onLoad(options) {
+    this.expenseCapability = { canUnverify: false, batchId: null, operationDisabledReason: '正在检查反核销条件…' }
+    this.pendingUnverify = null
+    this.reverseRequestId = ''
     this.moduleKey = options.module || ''
     this.recordId = options.id || ''
 
@@ -310,8 +480,96 @@ export default {
     }
 
     this.loadDetail()
+    this.loadDictPaymentMethods()
+  },
+  onShow() {
+    if (this.moduleKey && this.recordId && this.record) this.loadDetail()
   },
   methods: {
+    createRequestId(prefix) {
+      return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    },
+    openExpenseVerify() {
+      uni.navigateTo({ url: `/pages/expense-verify/index?expenseIds=${this.recordId}` })
+    },
+    async openExpenseUnverify() {
+      if (this.unverifySubmitting) return
+      try {
+        const capability = this.expenseCapability
+        if (!capability.canUnverify) {
+          uni.showModal({ title: '无法反核销', content: capability.operationDisabledReason || '当前费用不可反核销', showCancel: false })
+          return
+        }
+        if (!this.pendingUnverify) {
+          const modal = await new Promise((resolve) => uni.showModal({ title: '反核销', editable: true, placeholderText: '请输入反核销原因', success: resolve }))
+          if (!modal.confirm) {
+            this.reverseRequestId = ''
+            this.pendingUnverify = null
+            return
+          }
+          const reason = String(modal.content || '').trim()
+          if (!reason) return uni.showToast({ title: '请输入反核销原因', icon: 'none' })
+          this.reverseRequestId = this.createRequestId('unverify')
+          this.pendingUnverify = { batchId: capability.batchId, reason, requestId: this.reverseRequestId }
+        }
+        const pending = this.pendingUnverify
+        if (String(pending.batchId) !== String(capability.batchId)) {
+          this.pendingUnverify = null
+          this.reverseRequestId = ''
+          return uni.showToast({ title: '核销批次已变化，请重新操作', icon: 'none' })
+        }
+        this.unverifySubmitting = true
+        await request({
+          url: `/finance/expense/unverify/${pending.batchId}`,
+          method: 'PUT',
+          data: { reason: pending.reason, requestId: pending.requestId }
+        })
+        this.reverseRequestId = ''
+        this.pendingUnverify = null
+        uni.showToast({ title: '反核销成功', icon: 'success' })
+        await this.loadDetail()
+      } catch (error) {
+        console.error('反核销失败', error)
+      } finally {
+        this.unverifySubmitting = false
+      }
+    },
+    async loadExpenseCapability() {
+      this.expenseCapability = { canUnverify: false, batchId: null, operationDisabledReason: '正在检查反核销条件…' }
+      if (!this.canUnverifyExpense) return
+      try {
+        const response = await request({ url: `/finance/expense/${this.recordId}/capability`, method: 'GET', silent: true })
+        const capability = response.data || response
+        this.expenseCapability = {
+          canUnverify: capability.canUnverify === true,
+          batchId: capability.batchId || null,
+          operationDisabledReason: capability.canUnverify === true ? '' : (capability.operationDisabledReason || '当前费用不可反核销')
+        }
+      } catch (error) {
+        this.expenseCapability = { canUnverify: false, batchId: null, operationDisabledReason: '反核销条件检查失败，请稍后刷新重试' }
+      }
+    },
+    resolveImageUrl(url) {
+      if (!url) return ''
+      if (url.startsWith('http://') || url.startsWith('https://')) return url
+      if (url.startsWith('/statics/')) {
+        const baseUrl = getBaseUrl()
+        return baseUrl.replace(/\/prod-api$/, '').replace(/\/dev-api$/, '') + url
+      }
+      return getBaseUrl() + url
+    },
+    previewImage(url) {
+      const fullUrl = this.resolveImageUrl(url)
+      uni.previewImage({ urls: [fullUrl], current: fullUrl })
+    },
+    async loadDictPaymentMethods() {
+      try {
+        const res = await request({ url: '/system/dict/data/type/finance_payment_method', method: 'GET' })
+        this.dictPaymentMethods = res.data || []
+      } catch (e) {
+        console.error('加载付款方式字典失败', e)
+      }
+    },
     // 获取状态样式类
     getStatusClass(field) {
       if (!this.record) return ''
@@ -332,6 +590,32 @@ export default {
       }
       uni.makePhoneCall({ phoneNumber })
     },
+    onFieldTap(field) {
+      if (field.sensitive) {
+        const key = field.key
+        this.$set(this.sensitiveVisible, key, !this.sensitiveVisible[key])
+        return
+      }
+      if (this.isPhoneField(field)) {
+        this.callPhone(field)
+      }
+    },
+    maskValue(type, value) {
+      if (!value && value !== 0) return ''
+      const str = String(value)
+      if (type === 'phone' || /^1\d{10}$/.test(str.replace(/\D/g, ''))) {
+        return str
+      }
+      if (type === 'idcard' || str.length === 18 || str.length === 15) {
+        if (str.length >= 6) {
+          return str.slice(0, 6) + '***'
+        }
+        return '***'
+      }
+      if (str.length <= 2) return '*'.repeat(str.length)
+      if (str.length <= 6) return str[0] + '****' + str[str.length - 1]
+      return str.slice(0, 3) + '****' + str.slice(-3)
+    },
     canClaimRecord() {
       if (!this.record) return false
       const remaining = Number(this.record.remainingShares ?? this.record.shares ?? 0)
@@ -347,7 +631,10 @@ export default {
     },
     // 收款方式选择
     onPaymentMethodChange(e) {
-      this.paymentMethodIndex = e.detail.value
+      this.paymentForm.paymentMethodIndex = Number(e.detail.value)
+    },
+    onPaymentDateChange(e) {
+      this.paymentForm.paymentDate = e.detail.value
     },
     // 加载数据
     async loadDetail() {
@@ -356,6 +643,10 @@ export default {
         const path = this.config.detailPath || this.config.path
         const res = await getData(path, this.recordId)
         this.record = res.data || res
+        if (this.record && this.record.period) {
+          this.record = { ...this.record, ...this.record.period }
+        }
+        await this.loadExpenseCapability()
       } catch (e) {
         console.error('加载详情失败', e)
         uni.showToast({ title: '加载失败', icon: 'none' })
@@ -395,6 +686,10 @@ export default {
         this.openClaim()
         return
       }
+      if (this.moduleKey === 'accountingPeriod' && action.action === 'checkBreakEven') {
+        await this.handleBreakEvenCheck()
+        return
+      }
       try {
         uni.showLoading({ title: '处理中...' })
         // 优先使用 actionRequest 处理 URL 中的 {id} 占位符
@@ -427,6 +722,41 @@ export default {
         console.error('操作失败', e)
         uni.showToast({ title: action.errorMsg || '操作失败', icon: 'none' })
       }
+    },
+    async handleBreakEvenCheck() {
+      try {
+        uni.showLoading({ title: '计算中...' })
+        const deptId = this.record?.deptId || this.recordId
+        const res = await request({ url: `/finance/accountingPeriod/current/${deptId}/trialBreakEven`, method: 'POST' })
+        const period = res.data || res
+        const costTotal = Number(period.totalVerifiedExpense || 0) + Number(period.totalPurchase || 0) + Number(period.totalUnverifiedAdvance || 0)
+        const salePayment = Number(period.totalSalePayment || 0)
+        const isBreakEven = salePayment >= costTotal
+        this.breakEvenResult = {
+          isBreakEven: isBreakEven,
+          totalSalePayment: period.totalSalePayment,
+          costTotal: costTotal,
+          gap: Math.max(costTotal - salePayment, 0),
+          netProfit: period.netProfit
+        }
+        this.breakEvenModalOpen = true
+      } catch (e) {
+        console.error('回本检测失败', e)
+        uni.showToast({ title: '回本检测失败', icon: 'none' })
+      } finally {
+        uni.hideLoading()
+      }
+    },
+    closeBreakEven() {
+      this.breakEvenModalOpen = false
+      this.breakEvenResult = null
+    },
+    fmtMoney(val) {
+      if (!val && val !== 0) return '0'
+      const n = Number(val)
+      if (isNaN(n)) return '0'
+      if (n >= 10000) return (n / 10000).toFixed(1) + '万'
+      return n.toFixed(n % 1 === 0 ? 0 : 2)
     },
     openClaim() {
       if (!this.canClaimRecord()) {
@@ -478,38 +808,75 @@ export default {
         uni.showToast({ title: '领取失败', icon: 'none' })
       }
     },
-    // 收款
-    async handlePayment() {
-      const amount = parseFloat(this.paymentAmount)
-      if (!amount || amount <= 0) {
-        return uni.showToast({ title: '请输入有效金额', icon: 'none' })
+    openPayment() {
+      if (!this.canPayment) {
+        uni.showToast({ title: '当前销售单无需缴款或暂无权限', icon: 'none' })
+        return
       }
-      if (this.paymentMethodIndex < 0) {
-        return uni.showToast({ title: '请选择收款方式', icon: 'none' })
+      // 退货销售（金额为负）时缴款金额也为负
+      const sign = this.isReturnSale ? -1 : 1
+      this.paymentForm = {
+        paymentDate: this.todayStr(),
+        paymentAmount: (this.remainingAmount * sign).toFixed(2),
+        paymentMethodIndex: -1,
+        remark: ''
       }
-      const item = paymentMethods[this.paymentMethodIndex]
-      const method = typeof item === 'string' ? item : item?.value
+      this.paymentPanelOpen = true
+    },
+    closePayment() {
+      this.paymentPanelOpen = false
+      this.paymentForm = { paymentDate: '', paymentAmount: '', paymentMethodIndex: -1, remark: '' }
+    },
+    moneyText(value) {
+      const amount = Number(value || 0)
+      return Number.isFinite(amount) ? amount.toFixed(2) : '0.00'
+    },
+    async submitPayment() {
+      const paymentAmount = Number(this.paymentForm.paymentAmount)
+      if (!paymentAmount || paymentAmount === 0) {
+        return uni.showToast({ title: '缴款金额不能为0', icon: 'none' })
+      }
+      // 用绝对值校验：|缴款金额| 不能超过 |剩余额度|
+      const paymentAbs = Math.abs(Math.round(paymentAmount * 100))
+      const remainingCents = Math.round(this.remainingAmount * 100)
+      if (paymentAbs > remainingCents) {
+        return uni.showToast({ title: '缴款金额超过剩余额度', icon: 'none' })
+      }
+      // 退货销售（金额为负）缴款也必须为负；正向销售缴款必须为正
+      const saleAmount = Number(this.record.saleAmount || 0)
+      if (saleAmount < 0 && paymentAmount > 0) {
+        return uni.showToast({ title: '退货销售缴款金额需为负数', icon: 'none' })
+      }
+      if (saleAmount > 0 && paymentAmount < 0) {
+        return uni.showToast({ title: '正向销售缴款金额需为正数', icon: 'none' })
+      }
+      if (!this.paymentForm.paymentDate) {
+        return uni.showToast({ title: '请选择缴款日期', icon: 'none' })
+      }
+      if (this.paymentForm.paymentMethodIndex < 0) {
+        return uni.showToast({ title: '请选择付款方式', icon: 'none' })
+      }
+      const method = this.dictPaymentMethods[this.paymentForm.paymentMethodIndex]?.dictValue || ''
       try {
         uni.showLoading({ title: '提交中...' })
         await request({
           url: '/finance/sale/payment/' + this.recordId,
           method: 'POST',
           data: {
-            amount,
+            paymentAmount,
             paymentMethod: method,
-            remark: this.paymentRemark
+            paymentDate: this.paymentForm.paymentDate,
+            remark: this.paymentForm.remark
           }
         })
         uni.hideLoading()
-        uni.showToast({ title: '收款成功', icon: 'success' })
-        this.paymentAmount = ''
-        this.paymentMethodIndex = -1
-        this.paymentRemark = ''
-        this.loadDetail()
+        uni.showToast({ title: '缴款成功', icon: 'success' })
+        this.closePayment()
+        await this.loadDetail()
       } catch (e) {
         uni.hideLoading()
-        console.error('收款失败', e)
-        uni.showToast({ title: '收款失败', icon: 'none' })
+        console.error('缴款失败', e)
+        uni.showToast({ title: '缴款失败', icon: 'none' })
       }
     }
   }
@@ -517,6 +884,16 @@ export default {
 </script>
 
 <style scoped>
+.unverify-disabled-reason {
+  margin: 20rpx 28rpx 150rpx;
+  padding: 20rpx 24rpx;
+  border: 2rpx solid #fed7aa;
+  border-radius: 14rpx;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 24rpx;
+  line-height: 1.5;
+}
 .detail-page {
   min-height: 100vh;
   background-color: #F0F4F8;
@@ -707,6 +1084,23 @@ export default {
   border-bottom: 1rpx solid #F0F4F8;
 }
 
+.image-field-row {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12rpx;
+}
+
+.field-image-wrap {
+  width: 100%;
+}
+
+.field-image {
+  width: 100%;
+  height: 320rpx;
+  border-radius: 12rpx;
+  background: #F5F8FA;
+}
+
 .field-row:last-child {
   border-bottom: none;
 }
@@ -734,9 +1128,39 @@ export default {
   word-break: break-all;
 }
 
-/* 收款区域 */
-.payment-form {
-  padding: 0;
+/* 缴款面板 */
+.payment-panel {
+  width: 92%;
+  max-width: 680rpx;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 40rpx 36rpx;
+  border-radius: 24rpx;
+  background: #FFFFFF;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.payment-summary {
+  margin: 24rpx 0 12rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 16rpx;
+  background: #F6F9FC;
+}
+
+.payment-summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10rpx 0;
+  color: #5A6B7F;
+  font-size: 25rpx;
+}
+
+.payment-summary-row.remaining {
+  color: #C26A1B;
+  font-weight: 600;
 }
 
 .payment-row {
@@ -777,21 +1201,9 @@ export default {
   font-size: 22rpx;
 }
 
-.payment-btn {
-  margin-top: 28rpx;
-  background: linear-gradient(135deg, #2A6F97, #3A8DB8);
+.payment-action-btn {
+  background: #2A6F97;
   color: #FFFFFF;
-  font-size: 28rpx;
-  font-weight: 500;
-  border-radius: 16rpx;
-  height: 80rpx;
-  line-height: 80rpx;
-  text-align: center;
-  border: none;
-}
-
-.payment-btn::after {
-  border: none;
 }
 
 /* 底部占位 */
@@ -948,5 +1360,198 @@ export default {
 .claim-confirm {
   background: #EA580C;
   color: #FFFFFF;
+}
+
+/* ===== 回本检测弹窗 ===== */
+.break-even-panel {
+  width: 600rpx;
+  margin: auto;
+  border-radius: 24rpx;
+  background: #FFFFFF;
+  overflow: hidden;
+}
+
+.break-even-header {
+  padding: 28rpx 32rpx;
+  border-bottom: 2rpx solid #F1F5F9;
+}
+
+.break-even-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1A2332;
+}
+
+.break-even-content {
+  padding: 32rpx;
+}
+
+.break-even-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  padding: 24rpx;
+  border-radius: 16rpx;
+  margin-bottom: 28rpx;
+}
+
+.break-even-success {
+  background: #DCFCE7;
+}
+
+.break-even-warning {
+  background: #FEF3C7;
+}
+
+.break-even-icon {
+  font-size: 40rpx;
+  font-weight: 800;
+}
+
+.break-even-success .break-even-icon {
+  color: #16A34A;
+}
+
+.break-even-warning .break-even-icon {
+  color: #D97706;
+}
+
+.break-even-status-text {
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.break-even-success .break-even-status-text {
+  color: #16A34A;
+}
+
+.break-even-warning .break-even-status-text {
+  color: #D97706;
+}
+
+.break-even-detail {
+  margin-bottom: 28rpx;
+}
+
+.break-even-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16rpx 0;
+  border-bottom: 2rpx solid #F8FAFC;
+}
+
+.break-even-row:last-child {
+  border-bottom: none;
+}
+
+.break-even-label {
+  font-size: 26rpx;
+  color: #64748B;
+}
+
+.break-even-value {
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.break-even-value.positive {
+  color: #10B981;
+}
+
+.break-even-value.negative {
+  color: #EF4444;
+}
+
+.break-even-actions {
+  text-align: center;
+}
+
+.break-even-btn {
+  width: 100%;
+  height: 80rpx;
+  line-height: 80rpx;
+  border-radius: 999rpx;
+  background: #2A6F97;
+  color: #FFFFFF;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+/* 进货单商品明细样式 */
+.detail-list {
+  margin-top: 16rpx;
+}
+
+.detail-item {
+  background: #F5F8FA;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.detail-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx solid #E2E8F0;
+  margin-bottom: 16rpx;
+}
+
+.detail-item-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #1A2332;
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  padding: 12rpx 0;
+}
+
+.detail-label {
+  width: 140rpx;
+  font-size: 26rpx;
+  color: #64748B;
+  flex-shrink: 0;
+}
+
+.detail-value-text {
+  font-size: 26rpx;
+  color: #1A2332;
+  flex: 1;
+}
+
+.detail-value-text.amount {
+  font-weight: 700;
+  color: #2A6F97;
+}
+
+.detail-summary {
+  margin-top: 24rpx;
+  padding-top: 24rpx;
+  border-top: 2rpx solid #E2E8F0;
+}
+
+.detail-summary-row {
+  display: flex;
+  align-items: center;
+  padding: 12rpx 0;
+}
+
+.detail-summary-label {
+  flex: 1;
+  font-size: 28rpx;
+  color: #1A2332;
+  font-weight: 500;
+}
+
+.detail-summary-value {
+  font-size: 32rpx;
+  color: #2A6F97;
+  font-weight: 700;
 }
 </style>

@@ -6,30 +6,21 @@
       <view class="header-content" :style="headerContentStyle">
         <view class="header-row">
           <view class="header-left">
-            <text class="header-title">JunSong 运营</text>
+            <text class="header-title">峻松运营</text>
             <text class="header-sub">{{ greeting }}，{{ nickName }}</text>
           </view>
-        </view>
-        <picker v-if="canSwitchDept" :range="deptNames" :value="deptIndex" @change="onDeptChange">
-          <view class="dept-switch" hover-class="dept-switch--active">
-            <view class="dept-mark"><text class="dept-mark-text">店</text></view>
-            <view class="dept-copy">
-              <text class="dept-label">当前部门</text>
-              <text class="dept-name">{{ currentDeptName || '选择部门' }}</text>
+          <view class="header-right">
+            <view v-if="currentDeptName" class="dept-switch-inline" @tap="openDeptPicker">
+              <text class="dept-name-inline">{{ currentDeptName }}</text>
+              <text v-if="canSwitchDept" class="dept-arrow-inline">▼</text>
             </view>
-            <text class="dept-arrow">›</text>
           </view>
-        </picker>
-        <view v-else-if="currentDeptName" class="dept-static">
-          <text class="dept-static-label">当前部门</text>
-          <text class="dept-static-name">{{ currentDeptName }}</text>
         </view>
       </view>
     </view>
 
-    <scroll-view scroll-y class="scroll" :style="scrollStyle" refresher-enabled :refresher-triggered="refreshing" @refresherrefresh="onRefresh">
-
-      <!-- 核心指标卡片行 -->
+    <!-- 核心指标卡片行（浮在波浪上） -->
+    <view class="kpi-row-wrap">
       <view class="kpi-row fade-in-up" style="animation-delay:0.05s">
         <view class="kpi-card">
           <text class="kpi-value primary">{{ stats.todayMembers || 0 }}</text>
@@ -53,7 +44,9 @@
           <text class="kpi-label">总会员</text>
         </view>
       </view>
+    </view>
 
+    <scroll-view scroll-y class="scroll" refresher-enabled :refresher-triggered="refreshing" @refresherrefresh="onRefresh">
       <!-- 店面回本情况 -->
       <view class="section-card fade-in-up" style="animation-delay:0.12s" v-if="period || periodFallback">
         <view class="section-header">
@@ -109,27 +102,28 @@
       </view>
 
       <!-- 会员情况 -->
-      <view class="section-card fade-in-up" style="animation-delay:0.19s" v-if="stats">
+      <view class="section-card fade-in-up" style="animation-delay:0.19s" v-if="showMemberSection" @tap="openModule('member')">
         <view class="section-header">
           <view class="section-dot" style="background:#10B981"></view>
-          <text class="section-title">会员情况</text>
+          <text class="section-title">会员增长</text>
+          <text class="section-link">查看 ›</text>
         </view>
         <view class="member-stats-row">
           <view class="ms-item">
-            <text class="ms-value primary">{{ stats.todayMembers || 0 }}</text>
+            <text class="ms-value primary">{{ overviewMember.todayMembers || 0 }}</text>
             <text class="ms-label">今日新增</text>
           </view>
           <view class="ms-item">
-            <text class="ms-value">{{ stats.totalMembers || 0 }}</text>
+            <text class="ms-value">{{ overviewMember.totalMembers || 0 }}</text>
             <text class="ms-label">总会员数</text>
           </view>
           <view class="ms-item">
-            <text class="ms-value success">{{ stats.activeMembers || 0 }}</text>
+            <text class="ms-value success">{{ overviewMember.activeMembers || 0 }}</text>
             <text class="ms-label">活跃会员</text>
           </view>
           <view class="ms-item">
-            <text class="ms-value warning">{{ stats.pointsExchangeCount || 0 }}</text>
-            <text class="ms-label">积分兑换</text>
+            <text class="ms-value warning">{{ overviewMember.silentMembers || 0 }}</text>
+            <text class="ms-label">沉默会员</text>
           </view>
         </view>
         <!-- 会员卡类型分布 横向柱状图 -->
@@ -141,6 +135,96 @@
               <view class="bar-fill" :style="{ width: item.percent + '%', background: barColors[idx % barColors.length] }"></view>
             </view>
             <text class="bar-val">{{ item.count }}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 成长体系 -->
+      <view class="section-card fade-in-up" style="animation-delay:0.22s" v-if="showGrowthSection" @tap="goMemberGrowth">
+        <view class="section-header">
+          <view class="section-dot" style="background:#8B5CF6"></view>
+          <text class="section-title">成长体系</text>
+          <text class="section-link">查看 ›</text>
+        </view>
+        <view class="member-stats-row">
+          <view class="ms-item">
+            <text class="ms-value primary">{{ overviewGrowth.todaySignInCount || 0 }}</text>
+            <text class="ms-label">今日签到</text>
+          </view>
+          <view class="ms-item">
+            <text class="ms-value">{{ overviewGrowth.avgGrowthValue || 0 }}</text>
+            <text class="ms-label">平均成长值</text>
+          </view>
+        </view>
+        <view class="bar-chart" v-if="showLevelDistribution">
+          <text class="bar-chart-title">会员等级分布</text>
+          <view class="bar-row" v-for="(item, idx) in overviewLevelDistribution" :key="idx">
+            <text class="bar-name">{{ item.name }}</text>
+            <view class="bar-track">
+              <view class="bar-fill" :style="{ width: item.percent + '%', background: barColors[idx % barColors.length] }"></view>
+            </view>
+            <text class="bar-val">{{ item.count }}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 增长动作 -->
+      <view class="section-card fade-in-up" style="animation-delay:0.24s" v-if="showGrowthActionsSection" @tap="goMemberActions">
+        <view class="section-header">
+          <view class="section-dot" style="background:#0EA5E9"></view>
+          <text class="section-title">增长动作</text>
+          <text class="section-link">查看 ›</text>
+        </view>
+        <view class="member-stats-row">
+          <view class="ms-item">
+            <text class="ms-value warning">{{ overviewGrowthActions.pending }}</text>
+            <text class="ms-label">待执行动作</text>
+          </view>
+          <view class="ms-item">
+            <text class="ms-value success">{{ overviewGrowthActions.completed }}</text>
+            <text class="ms-label">已完成动作</text>
+          </view>
+          <view class="ms-item">
+            <text class="ms-value primary">{{ overviewGrowthActions.effectRate }}%</text>
+            <text class="ms-label">完成率</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 积分运营 -->
+      <view class="section-card fade-in-up" style="animation-delay:0.26s" v-if="showPointsSection" @tap="openModule('pointsExchange')">
+        <view class="section-header">
+          <view class="section-dot" style="background:#F59E0B"></view>
+          <text class="section-title">积分运营</text>
+          <text class="section-link">查看 ›</text>
+        </view>
+        <view class="member-stats-row">
+          <view class="ms-item">
+            <text class="ms-value warning">{{ overviewPoints.pendingExchangeCount || 0 }}</text>
+            <text class="ms-label">待领取兑换</text>
+          </view>
+          <view class="ms-item">
+            <text class="ms-value success">{{ overviewPoints.todayPointsIssued || 0 }}</text>
+            <text class="ms-label">今日发放积分</text>
+          </view>
+          <view class="ms-item">
+            <text class="ms-value primary">{{ overviewPoints.todayPointsConsumed || 0 }}</text>
+            <text class="ms-label">今日消耗积分</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 分层洞察 -->
+      <view class="section-card fade-in-up" style="animation-delay:0.28s" v-if="showSegmentSection" @tap="goMemberDashboard">
+        <view class="section-header">
+          <view class="section-dot" style="background:#EC4899"></view>
+          <text class="section-title">分层洞察</text>
+          <text class="section-link">查看 ›</text>
+        </view>
+        <view class="member-stats-row">
+          <view class="ms-item" v-for="(item, idx) in overviewSegmentDistribution" :key="idx">
+            <text class="ms-value" :class="segmentTone(item.name)">{{ item.count }}</text>
+            <text class="ms-label">{{ item.name }}</text>
           </view>
         </view>
       </view>
@@ -205,38 +289,29 @@
         </view>
       </view>
 
-      <view v-if="adminUser" class="server-card fade-in-up" style="animation-delay:0.32s">
-        <view class="server-head">
-          <view>
-            <text class="server-title">服务器状态</text>
-            <text class="server-sub">核心服务运行概览</text>
-          </view>
-          <view class="server-pill" :class="serverStatusClass">
-            <text class="server-pill-text">{{ serverStatusText }}</text>
-          </view>
+      <!-- 核算周期综合数据 -->
+      <view class="section-card fade-in-up" style="animation-delay:0.32s" v-if="expenseSummary">
+        <view class="section-header">
+          <view class="section-dot" style="background:#F59E0B"></view>
+          <text class="section-title">核算周期综合数据</text>
         </view>
-        <view class="health-grid" v-if="serverStatus && serverStatus.summary.total">
-          <view class="health-item" v-for="item in systemHealthItems" :key="item.key">
-            <view class="health-copy">
-              <text class="health-label">{{ item.label }}</text>
-              <text class="health-value">{{ item.value }}%</text>
-            </view>
-            <view class="health-track">
-              <view class="health-fill" :style="{ width: item.value + '%', background: item.color }"></view>
-            </view>
+        <view class="finance-grid">
+          <view class="finance-item">
+            <text class="finance-label">未核销借支</text>
+            <text class="finance-value warn">{{ fmtMoneyWithSign(expenseSummary.unverifiedAdvanceAmount) }}</text>
           </view>
-        </view>
-        <view class="server-grid" v-if="serverStatus && serverStatus.services.length">
-          <view class="server-item" v-for="item in serverStatus.services" :key="item.key || item.name">
-            <view class="server-dot" :class="{ 'server-dot--ok': item.ok }"></view>
-            <view class="server-info">
-              <text class="server-name">{{ item.name || item.key }}</text>
-              <text class="server-desc">{{ item.statusText }}</text>
-            </view>
+          <view class="finance-item">
+            <text class="finance-label">未核销费用</text>
+            <text class="finance-value warn">{{ fmtMoneyWithSign(expenseSummary.unverifiedExpenseAmount) }}</text>
           </view>
-        </view>
-        <view class="server-empty" v-else>
-          <text class="server-empty-text">{{ serverStatusLoading ? '正在检测服务状态' : '暂无状态数据' }}</text>
+          <view class="finance-item">
+            <text class="finance-label">借支余额</text>
+            <text class="finance-value" :class="getBalanceClass(expenseSummary.advanceBalance)">{{ fmtMoneyWithSign(expenseSummary.advanceBalance) }}</text>
+          </view>
+          <view class="finance-item">
+            <text class="finance-label">总费用</text>
+            <text class="finance-value">{{ fmtMoneyWithSign(expenseSummary.totalExpenseAmount) }}</text>
+          </view>
         </view>
       </view>
 
@@ -257,12 +332,43 @@
         <text class="empty-sub">请检查网络或重新登录</text>
       </view>
     </scroll-view>
+
+    <!-- 部门选择弹窗（复用登录页逻辑） -->
+    <view v-if="showDeptPicker" class="dept-modal-mask" @tap="closeDeptPicker">
+      <view class="dept-modal" @tap.stop>
+        <view class="dept-modal-head">
+          <text class="dept-modal-title">选择门店</text>
+          <text class="dept-modal-sub">请选择要切换的部门</text>
+        </view>
+        <scroll-view scroll-y class="dept-list">
+          <view
+            v-for="(dept, idx) in allDepts"
+            :key="dept.deptId || dept.id || idx"
+            class="dept-list-item"
+            :class="{ active: String(dept.deptId || dept.id) === String(pendingDeptId) }"
+            @tap="pickDept(dept)"
+          >
+            <view class="dept-item-mark"><text class="dept-item-mark-text">店</text></view>
+            <view class="dept-item-body">
+              <text class="dept-item-name">{{ dept.deptName || dept.name }}</text>
+              <text v-if="dept.leader" class="dept-item-meta">{{ dept.leader }}</text>
+            </view>
+            <view v-if="String(dept.deptId || dept.id) === String(pendingDeptId)" class="dept-item-check">✓</view>
+          </view>
+        </scroll-view>
+        <view class="dept-modal-foot">
+          <button class="dept-btn-cancel" @tap="closeDeptPicker">取消</button>
+          <button class="dept-btn-confirm" :disabled="!pendingDeptId" @tap="confirmDeptSwitch">确认切换</button>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
 <script>
 import { groups, modules } from '@/config/modules.js'
 import { request, getToken } from '@/api/index.js'
+import { getMpDashboardOverview } from '@/api/dashboard.js'
 import { filterAuthorizedGroups, hasModulePermission, isAdmin } from '@/utils/permission.js'
 import { applySeckillStats } from '@/utils/seckillStats.js'
 import { SERVICE_STATUS_TARGETS, buildSystemHealthItems, normalizeDeptOptions, resolveCurrentDept, normalizeServerStatus, isSystemAdminUser } from '@/utils/homeControl.js'
@@ -278,12 +384,12 @@ const MODULE_BG = {
 }
 
 const MODULE_LETTER = {
-  member: '会', pointsGoods: '品', pointsRecord: '记', pointsExchange: '兑',
-  seckill: '秒', seckillRecord: '录', expense: '费', advance: '借',
-  product: '商', supplier: '供', purchase: '进', sale: '销',
-  investorPayment: '返', investor: '投', investRecord: '款',
-  deptProfitConfig: '配', accountingPeriod: '核', profitShare: '润',
-  costAccounting: '成', userManage: '管'
+  member: '👤', pointsGoods: '🎁', pointsRecord: '📝', pointsExchange: '🔄',
+  seckill: '⚡', seckillRecord: '🏃', expense: '💰', advance: '💵',
+  product: '📦', supplier: '🏪', purchase: '🛒', sale: '📈',
+  investorPayment: '💸', investor: '🤝', investRecord: '💎',
+  deptProfitConfig: '⚙️', accountingPeriod: '📅', profitShare: '📊',
+  costAccounting: '🧮', userManage: '👥'
 }
 
 const MODULE_ICON_COLOR = {
@@ -306,7 +412,9 @@ export default {
   data() {
     return {
       stats: null,
+      overview: null,
       period: null,
+      expenseSummary: null,
       seckillList: [],
       serverStatus: null,
       serverStatusLoading: false,
@@ -321,7 +429,10 @@ export default {
       switchingDept: false,
       statusBarH: 0,
       menuButton: null,
-      barColors: ['#2A6F97', '#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EC4899']
+      barColors: ['#2A6F97', '#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EC4899'],
+      showDeptPicker: false,
+      allDepts: [],
+      pendingDeptId: null
     }
   },
   computed: {
@@ -339,6 +450,9 @@ export default {
     adminUser() {
       return isAdmin(this.modules) || isSystemAdminUser(this.userInfo, this.systemPermissions)
     },
+    canViewServerStatus() {
+      return isSystemAdminUser(this.userInfo, this.systemPermissions)
+    },
     deptNames() {
       return this.deptList.map(d => d.displayName || d.name)
     },
@@ -353,7 +467,9 @@ export default {
       return this.currentDept?.name || this.userInfo.deptName || ''
     },
     canSwitchDept() {
-      return this.deptList.length > 1 && (this.adminUser || this.deptList.length > 1)
+      // 基于登录页获取的部门列表实时判断（openDeptPicker 会重新请求）
+      const depts = this.allDepts.length > 0 ? this.allDepts : (this.userInfo?.depts || this.deptList || [])
+      return Array.isArray(depts) && depts.length > 1
     },
     serverStatusText() {
       if (this.serverStatusLoading) return '检测中'
@@ -368,21 +484,10 @@ export default {
     systemHealthItems() {
       return buildSystemHealthItems(this.serverStatus)
     },
-    headerHeight() {
-      const top = this.menuButton?.bottom ? this.menuButton.bottom + 10 : this.statusBarH + 42
-      return top + uni.upx2px(this.currentDeptName ? 236 : 156)
-    },
     headerContentStyle() {
-      const top = this.menuButton?.bottom ? this.menuButton.bottom + 10 : this.statusBarH + 42
+      const top = this.menuButton?.bottom ? this.menuButton.bottom + 8 : this.statusBarH + 48
       return {
-        paddingTop: top + 'px',
-        paddingRight: '32rpx'
-      }
-    },
-    scrollStyle() {
-      return {
-        paddingTop: (this.headerHeight + uni.upx2px(18)) + 'px',
-        height: '100vh'
+        paddingTop: top + 'px'
       }
     },
     // 回本进度百分比
@@ -450,6 +555,105 @@ export default {
     // 占位数据：当 period API 失败时使用
     periodFallback() {
       return this.period
+    },
+    // ===== 新版聚合看板计算属性（R1-R25 同步） =====
+    // 会员增长分组：优先使用 overview，回退 stats
+    overviewMember() {
+      if (this.overview && this.overview.member) {
+        return this.overview.member
+      }
+      // 回退到旧版 stats
+      return {
+        totalMembers: this.stats?.totalMembers || 0,
+        todayMembers: this.stats?.todayMembers || 0,
+        activeMembers: this.stats?.activeMembers || 0,
+        silentMembers: 0
+      }
+    },
+    // 成长体系分组
+    overviewGrowth() {
+      return this.overview?.growth || null
+    },
+    // 增长动作分组
+    overviewGrowthActions() {
+      const g = this.overviewGrowth
+      if (!g) return null
+      return {
+        pending: g.pendingGrowthActions || 0,
+        completed: g.completedGrowthActions || 0,
+        effectRate: g.growthActionEffectRate || 0
+      }
+    },
+    // 积分运营分组
+    overviewPoints() {
+      return this.overview?.points || null
+    },
+    // 等级分布
+    overviewLevelDistribution() {
+      const dist = this.overview?.level?.distribution
+      if (!Array.isArray(dist) || !dist.length) return []
+      const maxCount = Math.max(...dist.map(d => Number(d.count) || 0), 1)
+      return dist.map(d => ({
+        name: d.levelName || '未分级',
+        count: Number(d.count) || 0,
+        percent: Math.round(((Number(d.count) || 0) / maxCount) * 100)
+      }))
+    },
+    // 分层洞察分布
+    overviewSegmentDistribution() {
+      const dist = this.overview?.segment?.distribution
+      if (!Array.isArray(dist) || !dist.length) return []
+      return dist.map(d => ({
+        name: d.segmentName || '未知',
+        count: Number(d.count) || 0
+      }))
+    },
+    // 活动表现分组：优先使用 overview，回退 seckillList
+    overviewActivity() {
+      if (this.overview && this.overview.activity) {
+        return this.overview.activity
+      }
+      return {
+        activeSeckillCount: this.seckillList?.length || 0,
+        todayActivityMembers: 0,
+        todayActivityAmount: 0
+      }
+    },
+    // 今日经营分组：优先使用 overview，回退 stats
+    overviewFinance() {
+      if (this.overview && this.overview.finance) {
+        return this.overview.finance
+      }
+      return {
+        todaySale: this.stats?.todaySale || 0,
+        todayExpense: this.stats?.todayExpense || 0,
+        unverifiedExpense: this.stats?.unverifiedExpense || 0,
+        unverifiedAdvance: this.stats?.unverifiedAdvance || 0
+      }
+    },
+    // 是否展示会员增长分组（需要 member 模块权限）
+    showMemberSection() {
+      return hasModulePermission('member', this.modules)
+    },
+    // 是否展示成长体系分组（需要 member 模块权限 + overview 数据）
+    showGrowthSection() {
+      return this.showMemberSection && this.overviewGrowth
+    },
+    // 是否展示增长动作分组（需要 member 模块权限 + overview 数据）
+    showGrowthActionsSection() {
+      return this.showMemberSection && this.overviewGrowthActions
+    },
+    // 是否展示积分运营分组（需要 pointsRecord 或 pointsExchange 权限）
+    showPointsSection() {
+      return (hasModulePermission('pointsRecord', this.modules) || hasModulePermission('pointsExchange', this.modules)) && this.overviewPoints
+    },
+    // 是否展示分层洞察分组（需要 member 模块权限 + 分层数据）
+    showSegmentSection() {
+      return this.showMemberSection && this.overviewSegmentDistribution.length > 0
+    },
+    // 是否展示等级分布（需要 member 模块权限 + 等级数据）
+    showLevelDistribution() {
+      return this.showMemberSection && this.overviewLevelDistribution.length > 0
     }
   },
   onShow() {
@@ -472,8 +676,10 @@ export default {
     this.refreshModules()
     this.loadUserContext()
     this.loadDashboard()
+    this.loadOverview()
     this.loadPeriod()
     this.loadSeckill()
+    this.loadExpenseSummary()
   },
   methods: {
     go(url) {
@@ -489,6 +695,46 @@ export default {
       } else {
         uni.navigateTo({ url: '/pages/list/index?module=' + key })
       }
+    },
+    // 跳转会员运营看板
+    goMemberDashboard() {
+      if (!hasModulePermission('member', this.modules)) {
+        uni.showToast({ title: '暂无该功能权限', icon: 'none' })
+        return
+      }
+      uni.navigateTo({ url: '/pages/member/dashboard' })
+    },
+    // 跳转会员成长页
+    goMemberGrowth() {
+      if (!hasModulePermission('member', this.modules)) {
+        uni.showToast({ title: '暂无该功能权限', icon: 'none' })
+        return
+      }
+      uni.navigateTo({ url: '/pages/member/growth' })
+    },
+    // 跳转增长动作任务列表
+    goMemberActions() {
+      if (!hasModulePermission('member', this.modules)) {
+        uni.showToast({ title: '暂无该功能权限', icon: 'none' })
+        return
+      }
+      uni.navigateTo({ url: '/pages/member/actions' })
+    },
+    // 跳转积分流水页
+    goMemberPoints() {
+      if (!hasModulePermission('pointsRecord', this.modules) && !hasModulePermission('pointsExchange', this.modules)) {
+        uni.showToast({ title: '暂无该功能权限', icon: 'none' })
+        return
+      }
+      uni.navigateTo({ url: '/pages/member/points' })
+    },
+    // 分层名称对应的色调
+    segmentTone(name) {
+      if (!name) return ''
+      if (name.indexOf('高价值') >= 0) return 'primary'
+      if (name.indexOf('活跃') >= 0) return 'success'
+      if (name.indexOf('沉默') >= 0 || name.indexOf('待唤醒') >= 0) return 'warning'
+      return ''
     },
     getModuleBg(key) {
       return MODULE_BG[key] || 'rgba(148,163,184,0.08)'
@@ -515,17 +761,26 @@ export default {
       if (n >= 10000) return (n / 10000).toFixed(1) + '万'
       return n.toFixed(n % 1 === 0 ? 0 : 2)
     },
+    fmtMoneyWithSign(val) {
+      return '¥' + this.fmtMoney(val)
+    },
+    getBalanceClass(val) {
+      return Number(val) < 0 ? 'danger' : 'success'
+    },
     seckillProgress(item) {
       return Number(item.claimProgress) || 0
     },
     async loadDashboard() {
       this.loading = true
       try {
-        const res = await request({ url: '/member/mp/dashboard/stats', method: 'GET' })
+        const params = {}
+        if (this.currentDeptId !== null && this.currentDeptId !== undefined) {
+          params.deptId = this.currentDeptId
+        }
+        const res = await request({ url: '/member/mp/dashboard/stats', method: 'GET', data: params })
         this.stats = res.data || res
       } catch (e) {
         console.log('dashboard load failed', e)
-        // 占位数据
         if (!this.stats) {
           this.stats = {
             todayMembers: 0, totalMembers: 0, activeMembers: 0,
@@ -537,9 +792,33 @@ export default {
         this.loading = false
       }
     },
+    /**
+     * 加载新版聚合看板接口（R1-R25 同步）。
+     * 单模块失败时后端返回空数据，小程序不重复弹 toast；
+     * 整体失败时保留上一次成功数据，仅提示"数据更新失败"。
+     */
+    async loadOverview() {
+      try {
+        const params = {}
+        if (this.currentDeptId !== null && this.currentDeptId !== undefined) {
+          params.deptId = this.currentDeptId
+        }
+        const res = await getMpDashboardOverview(params)
+        const data = res.data || res
+        if (data && typeof data === 'object') {
+          this.overview = data
+        }
+      } catch (e) {
+        console.log('overview load failed', e)
+      }
+    },
     async loadPeriod() {
       try {
-        const res = await request({ url: '/finance/accountingPeriod/current', method: 'GET' })
+        const params = {}
+        if (this.currentDeptId !== null && this.currentDeptId !== undefined) {
+          params.deptId = this.currentDeptId
+        }
+        const res = await request({ url: '/finance/accountingPeriod/current', method: 'GET', data: params })
         this.period = res.data || res || null
       } catch (e) {
         console.log('period load failed', e)
@@ -551,14 +830,35 @@ export default {
         }
       }
     },
+    async loadExpenseSummary() {
+      try {
+        const params = {}
+        if (this.currentDeptId !== null && this.currentDeptId !== undefined) {
+          params.deptId = this.currentDeptId
+        }
+        const res = await request({ url: '/finance/expense/summary', method: 'GET', data: params })
+        this.expenseSummary = res.data || res || null
+      } catch (e) {
+        console.log('expense summary load failed', e)
+        this.expenseSummary = null
+      }
+    },
     async loadSeckill() {
       try {
-        const res = await request({ url: '/member/seckill/list', method: 'GET', data: { status: '0' } })
+        const params = { status: '0' }
+        if (this.currentDeptId !== null && this.currentDeptId !== undefined) {
+          params.deptId = this.currentDeptId
+        }
+        const res = await request({ url: '/member/seckill/list', method: 'GET', data: params })
         const list = res.data || res || []
         const activities = Array.isArray(list) ? list : (list.rows || [])
         this.seckillList = await Promise.all(activities.map(async (item) => {
           try {
-            const statsRes = await request({ url: '/member/seckillRecord/statistics', method: 'GET', data: { seckillId: item.seckillId } })
+            const statsParams = { seckillId: item.seckillId }
+            if (this.currentDeptId !== null && this.currentDeptId !== undefined) {
+              statsParams.deptId = this.currentDeptId
+            }
+            const statsRes = await request({ url: '/member/seckillRecord/statistics', method: 'GET', data: statsParams })
             return applySeckillStats(item, statsRes.data || statsRes || {})
           } catch (e) {
             console.log('seckill statistics load failed', e)
@@ -571,7 +871,7 @@ export default {
       }
     },
     async loadServerStatus() {
-      if (!this.adminUser) return
+      if (!this.canViewServerStatus) return
       this.serverStatusLoading = true
       const services = await Promise.all(SERVICE_STATUS_TARGETS.map(async (target) => {
         try {
@@ -599,8 +899,9 @@ export default {
       try {
         const res = await request({ url: '/system/user/getInfo', method: 'GET', noRedirect: true })
         const user = res.user || {}
+        const depts = res.depts || res.data?.depts || res.user?.depts || []
         this.systemPermissions = res.permissions || []
-        this.userInfo = { ...this.userInfo, ...user, depts: res.depts || [], currentDeptId: res.currentDeptId }
+        this.userInfo = { ...this.userInfo, ...user, depts, currentDeptId: res.currentDeptId }
         this.nickName = user.nickName || user.userName || user.username || this.nickName
         this.currentDeptId = res.currentDeptId || user.deptId || this.currentDeptId
         if (this.adminUser && (!this.modules || this.modules.length === 0)) {
@@ -608,7 +909,7 @@ export default {
           uni.setStorageSync('modules', this.modules)
         }
         uni.setStorageSync('userInfo', this.userInfo)
-        this.deptList = normalizeDeptOptions(res.depts || [])
+        this.deptList = normalizeDeptOptions(depts)
         if (this.adminUser) {
           await this.loadAllDepts()
         }
@@ -640,7 +941,65 @@ export default {
         this.currentDeptId = target.id
         this.userInfo = { ...this.userInfo, deptId: target.id, currentDeptId: target.id, deptName: target.name }
         uni.setStorageSync('userInfo', this.userInfo)
-        await Promise.all([this.loadDashboard(), this.loadPeriod(), this.loadSeckill()])
+        await Promise.all([this.loadDashboard(), this.loadOverview(), this.loadPeriod(), this.loadSeckill(), this.loadExpenseSummary()])
+        uni.showToast({ title: '已切换部门', icon: 'success' })
+      } catch (err) {
+        uni.showToast({ title: err?.msg || err?.message || '部门切换失败', icon: 'none' })
+      } finally {
+        this.switchingDept = false
+        uni.hideLoading()
+      }
+    },
+    async openDeptPicker() {
+      // 已知只有1个部门或更少，直接返回不弹任何提示
+      const knownDepts = this.allDepts.length > 0 ? this.allDepts : (this.userInfo?.depts || this.deptList || [])
+      if (knownDepts.length <= 1) {
+        // 再确认一次：如果缓存明确只有1个部门，不再请求
+        if (knownDepts.length === 1) return
+        // 缓存为空时才请求确认
+      }
+      try {
+        uni.showLoading({ title: '加载部门...' })
+        const res = await request({ url: '/system/user/getInfo', method: 'GET', noRedirect: true })
+        const deptList = (res.depts || res.data?.depts || res.user?.depts || [])
+        uni.hideLoading()
+        if (deptList.length <= 1) {
+          // 更新缓存，下次点击直接返回
+          this.allDepts = deptList
+          return
+        }
+        this.allDepts = deptList
+        this.pendingDeptId = this.currentDeptId
+        this.showDeptPicker = true
+      } catch (e) {
+        uni.hideLoading()
+        console.error('获取部门列表失败', e)
+      }
+    },
+    pickDept(dept) {
+      this.pendingDeptId = dept.deptId || dept.id
+    },
+    closeDeptPicker() {
+      this.showDeptPicker = false
+      this.allDepts = []
+      this.pendingDeptId = null
+    },
+    async confirmDeptSwitch() {
+      if (!this.pendingDeptId || String(this.pendingDeptId) === String(this.currentDeptId)) {
+        this.closeDeptPicker()
+        return
+      }
+      if (this.switchingDept) return
+      this.switchingDept = true
+      uni.showLoading({ title: '切换中' })
+      try {
+        await request({ url: `/system/user/switchDept/${this.pendingDeptId}`, method: 'POST' })
+        const target = this.allDepts.find(d => String(d.deptId || d.id) === String(this.pendingDeptId))
+        this.currentDeptId = this.pendingDeptId
+        this.userInfo = { ...this.userInfo, deptId: this.pendingDeptId, currentDeptId: this.pendingDeptId, deptName: target?.deptName || target?.name || '' }
+        uni.setStorageSync('userInfo', this.userInfo)
+        this.closeDeptPicker()
+        await Promise.all([this.loadDashboard(), this.loadOverview(), this.loadPeriod(), this.loadSeckill(), this.loadExpenseSummary()])
         uni.showToast({ title: '已切换部门', icon: 'success' })
       } catch (err) {
         uni.showToast({ title: err?.msg || err?.message || '部门切换失败', icon: 'none' })
@@ -651,7 +1010,7 @@ export default {
     },
     onRefresh() {
       this.refreshing = true
-      Promise.all([this.refreshModules(), this.loadUserContext(), this.loadDashboard(), this.loadPeriod(), this.loadSeckill(), this.loadServerStatus()]).finally(() => {
+      Promise.all([this.refreshModules(), this.loadUserContext(), this.loadDashboard(), this.loadOverview(), this.loadPeriod(), this.loadSeckill(), this.loadExpenseSummary(), this.loadServerStatus()]).finally(() => {
         this.refreshing = false
       })
     }
@@ -661,26 +1020,22 @@ export default {
 
 <style scoped>
 .page {
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
   width: 100vw;
-  max-width: 100vw;
-  background: #F0F4F8;
-  overflow: hidden;
-  box-sizing: border-box;
-}
-
-/* ===== 头部 ===== */
-.header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 20;
-  overflow: hidden;
-  width: 100%;
   max-width: 750rpx;
   margin: 0 auto;
+  background: #F0F4F8;
   box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* ===== 头部（参照我的页面：relative，非fixed） ===== */
+.header {
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
 .header-bg {
@@ -692,18 +1047,18 @@ export default {
 .header-bg::after {
   content: '';
   position: absolute;
-  bottom: -38rpx;
-  left: -8%;
-  right: -8%;
-  height: 88rpx;
+  bottom: -40rpx;
+  left: -10%;
+  right: -10%;
+  height: 100rpx;
   background: #F0F4F8;
   border-radius: 50% 50% 0 0;
 }
 
 .header-content {
   position: relative;
-  min-height: 168rpx;
-  padding: 28rpx 32rpx 48rpx;
+  z-index: 2;
+  padding: 0 28rpx 60rpx;
   box-sizing: border-box;
 }
 
@@ -711,6 +1066,7 @@ export default {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  gap: 16rpx;
 }
 
 .header-left {
@@ -718,12 +1074,13 @@ export default {
   flex-direction: column;
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 
 .header-title {
-  font-size: 42rpx;
+  font-size: 38rpx;
   font-weight: 700;
-  line-height: 1.18;
+  line-height: 1.2;
   color: #ffffff;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -731,13 +1088,64 @@ export default {
 }
 
 .header-sub {
-  font-size: 25rpx;
-  line-height: 1.35;
+  font-size: 24rpx;
+  line-height: 1.4;
   color: rgba(255, 255, 255, 0.72);
-  margin-top: 14rpx;
+  margin-top: 8rpx;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.dept-switch-inline,
+.dept-static-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 24rpx;
+  min-height: 60rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.22);
+  border: 1rpx solid rgba(255, 255, 255, 0.3);
+}
+
+.dept-switch-inline {
+  cursor: pointer;
+}
+
+.dept-switch-inline:active {
+  transform: scale(0.96);
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.dept-no-switch {
+  background: transparent;
+  border: none;
+  padding: 16rpx 0;
+}
+
+.dept-name-inline {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #ffffff;
+  margin-right: 8rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 160rpx;
+}
+
+.dept-arrow-inline {
+  font-size: 20rpx;
+  color: rgba(255, 255, 255, 0.85);
+  margin-left: 2rpx;
 }
 
 .dept-switch,
@@ -820,10 +1228,28 @@ export default {
   text-align: right;
 }
 
+/* ===== KPI卡片行（浮在波浪上） ===== */
+.kpi-row-wrap {
+  padding: 0 28rpx;
+  margin-top: -20rpx;
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+}
+
+.kpi-row {
+  display: flex;
+  gap: 16rpx;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 /* ===== 滚动区 ===== */
 .scroll {
+  flex: 1;
   width: 100%;
-  padding: 0 28rpx 40rpx;
+  min-height: 0;
+  padding: 20rpx 28rpx 40rpx;
   box-sizing: border-box;
   overflow-x: hidden;
 }
@@ -836,17 +1262,6 @@ export default {
 
 .fade-in-up {
   animation: fadeInUp 0.45s ease-out both;
-}
-
-/* ===== 核心指标卡片行 ===== */
-.kpi-row {
-  display: flex;
-  gap: 16rpx;
-  margin-top: 0;
-  position: relative;
-  z-index: 21;
-  width: 100%;
-  box-sizing: border-box;
 }
 
 .kpi-card {
@@ -964,6 +1379,14 @@ export default {
 .section-badge.seckill {
   color: #F97316;
   background: rgba(249, 115, 22, 0.1);
+}
+
+.section-link {
+  font-size: 22rpx;
+  color: #94A3B8;
+  font-weight: 500;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 /* ===== 店面回本 - 环形进度 ===== */
@@ -1597,6 +2020,45 @@ export default {
   color: #708196;
 }
 
+/* ===== 核算周期综合数据 ===== */
+.finance-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16rpx;
+}
+
+.finance-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+  padding: 16rpx;
+  border-radius: 16rpx;
+  background: #F8FAFC;
+}
+
+.finance-label {
+  font-size: 22rpx;
+  color: #94A3B8;
+}
+
+.finance-value {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #1A2332;
+}
+
+.finance-value.warn {
+  color: #D97706;
+}
+
+.finance-value.success {
+  color: #059669;
+}
+
+.finance-value.danger {
+  color: #EF4444;
+}
+
 /* ===== 常用操作 ===== */
 .quick-section {
   margin-top: 28rpx;
@@ -1679,5 +2141,153 @@ export default {
   color: #94A3B8;
   margin-top: 12rpx;
   display: block;
+}
+
+/* ===== 部门选择弹窗 ===== */
+.dept-modal-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 999;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.dept-modal {
+  width: 100%;
+  border-radius: 32rpx 32rpx 0 0;
+  background: #FFFFFF;
+  padding: 0 0 env(safe-area-inset-bottom);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.dept-modal-head {
+  padding: 32rpx 36rpx 20rpx;
+  text-align: center;
+}
+
+.dept-modal-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #1A2332;
+  display: block;
+}
+
+.dept-modal-sub {
+  font-size: 24rpx;
+  color: #94A3B8;
+  margin-top: 8rpx;
+  display: block;
+}
+
+.dept-list {
+  max-height: 50vh;
+  padding: 0 36rpx 0 20rpx;
+  box-sizing: border-box;
+}
+
+.dept-list-item {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 24rpx 40rpx 24rpx 20rpx;
+  border-radius: 16rpx;
+  margin-bottom: 8rpx;
+  border: 2rpx solid transparent;
+  transition: all 0.15s;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+.dept-list-item.active {
+  background: #EAF4F8;
+  border: 2rpx solid #2A6F97;
+}
+
+.dept-item-mark {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2A6F97, #3A8DB8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dept-item-mark-text {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.dept-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.dept-item-name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1A2332;
+  display: block;
+}
+
+.dept-item-meta {
+  font-size: 22rpx;
+  color: #94A3B8;
+  margin-top: 4rpx;
+  display: block;
+}
+
+.dept-item-check {
+  font-size: 32rpx;
+  color: #2A6F97;
+  font-weight: 700;
+  flex-shrink: 0;
+  width: 44rpx;
+  margin-right: 4rpx;
+  text-align: center;
+  line-height: 1;
+}
+
+.dept-modal-foot {
+  display: flex;
+  gap: 20rpx;
+  padding: 20rpx 28rpx 28rpx;
+  border-top: 1rpx solid #F1F5F9;
+}
+
+.dept-btn-cancel,
+.dept-btn-confirm {
+  flex: 1;
+  height: 88rpx;
+  line-height: 88rpx;
+  border-radius: 16rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dept-btn-cancel {
+  background: #F1F5F9;
+  color: #475569;
+}
+
+.dept-btn-confirm {
+  background: linear-gradient(135deg, #2A6F97, #3A8DB8);
+  color: #FFFFFF;
+}
+
+.dept-btn-cancel::after,
+.dept-btn-confirm::after {
+  border: none;
 }
 </style>

@@ -129,7 +129,12 @@
       </view>
 
       <view v-if="moduleKey === 'expense'">
-        <view class="expense-item" hover-class="expense-item--active" v-for="item in rows" :key="item[config.idKey]" @tap="openDetail(item)">
+        <view class="expense-batch-tools" v-if="canVerifyExpenses">
+          <button class="chip-button" @tap="toggleBatchSelection">{{ batchSelecting ? '取消批量' : '批量核销' }}</button>
+          <button v-if="batchSelecting" class="chip-button primary" :disabled="selectedExpenseIds.length === 0" @tap="continueBatchVerify">下一步（{{ selectedExpenseIds.length }}笔 / ¥{{ selectedExpenseTotal.toFixed(2) }}）</button>
+        </view>
+        <view class="expense-item" :class="{ disabled: batchSelecting && !isExpenseSelectable(item), selected: isExpenseSelected(item) }" hover-class="expense-item--active" v-for="item in rows" :key="item[config.idKey]" @tap="handleExpenseTap(item)">
+          <view class="expense-checkbox" v-if="batchSelecting">{{ isExpenseSelected(item) ? '✓' : '' }}</view>
           <view class="expense-bar"></view>
           <view class="expense-body">
             <view class="expense-row1">
@@ -283,13 +288,23 @@ export default {
         remark: ''
       },
       paymentMethodOptions: [],
-      paymentMethodDictLoaded: false
+      paymentMethodDictLoaded: false,
+      currentDeptId: null,
+      batchSelecting: false,
+      selectedExpenseIds: []
     }
   },
   computed: {
     canAdd() {
       if (this.moduleKey === 'seckillRecord') return hasActionPermission(this.moduleKey, 'add')
       return hasActionPermission(this.moduleKey, 'add') && !this.config?.addOnly
+    },
+    canVerifyExpenses() {
+      return this.moduleKey === 'expense' && hasActionPermission(this.moduleKey, 'verify')
+    },
+    selectedExpenseTotal() {
+      return this.rows.filter((item) => this.selectedExpenseIds.includes(Number(item.expenseId)))
+        .reduce((total, item) => total + Number(item.expenseAmount || 0), 0)
     },
     authorizedPageActions() {
       return (this.config?.pageActions || []).filter((action) => hasActionPermission(this.moduleKey, action.action || 'view'))
@@ -331,24 +346,35 @@ export default {
   async onLoad(options) {
     this.moduleKey = options.module
     this.config = getModule(this.moduleKey)
-      if (this.config && requireModulePermission(this.moduleKey)) {
-        uni.setNavigationBarTitle({ title: this.config.title })
-        await this.loadDictOptions()
-        if (this.moduleKey === 'seckillRecord') await this.loadSeckillOptions(options.seckillId)
-        this.refresh()
-        if (this.moduleKey === 'expense') this.loadExpenseSummary()
-      }
+    const userInfo = uni.getStorageSync('userInfo') || {}
+    this.currentDeptId = userInfo.currentDeptId || userInfo.deptId || null
+    if (this.config && requireModulePermission(this.moduleKey)) {
+      uni.setNavigationBarTitle({ title: this.config.title })
+      await this.loadDictOptions()
+      if (this.moduleKey === 'seckillRecord') await this.loadSeckillOptions(options.seckillId)
+      this.refresh()
+      if (this.moduleKey === 'expense') this.loadExpenseSummary()
+    }
   },
   onShow() {
     if (this.config && this.moduleKey) {
+      this.resetBatchSelection()
       this.refresh()
       if (this.moduleKey === 'expense') this.loadExpenseSummary()
     }
   },
   methods: {
+    resetBatchSelection() {
+      this.batchSelecting = false
+      this.selectedExpenseIds = []
+    },
     async loadExpenseSummary() {
       try {
-        const res = await request({ url: '/finance/expense/summary', method: 'GET' })
+        const params = {}
+        if (this.currentDeptId !== null && this.currentDeptId !== undefined) {
+          params.deptId = this.currentDeptId
+        }
+        const res = await request({ url: '/finance/expense/summary', method: 'GET', data: params })
         this.expenseSummary = res.data || res || null
       } catch (e) {
         console.log('加载费用统计失败', e)
@@ -371,14 +397,15 @@ export default {
       return map[String(val ?? '0')] || 'status-waiting'
     },
     expenseStatusText(val) {
-      const map = { '0': '未核销', '1': '已审核' }
+      const map = { '0': '未核销', '1': '已核销' }
       return map[String(val ?? '0')] || '未核销'
     },
     expenseStatusClass(val) {
       return String(val ?? '0') === '1' ? 'status-verified' : 'status-pending'
     },
     expenseAmountText(item) {
-      return `-¥${item.expenseAmount || '0'}`
+      const amount = Math.abs(Number(item.expenseAmount) || 0)
+      return `¥${amount}`
     },
     canClaim(item) {
       const remaining = Number(item.remainingShares ?? item.shares ?? 0)
@@ -521,7 +548,7 @@ export default {
     displayField(key, value, item) {
       const field = this.fieldOf(key)
       if (typeof field.formatter === 'function') return field.formatter(item || {}) || '-'
-      return formatDisplayValue(field, value)
+      return formatDisplayValue(field, value, item)
     },
     fieldTone(key, value) {
       return getValueTone(this.fieldOf(key), value)
@@ -543,6 +570,9 @@ export default {
     },
     buildQuery() {
       const query = { pageNum: this.pageNum, pageSize: this.pageSize }
+      if (this.currentDeptId !== null && this.currentDeptId !== undefined) {
+        query.deptId = this.currentDeptId
+      }
       if (this.moduleKey === 'seckillRecord' && this.selectedSeckillId) {
         query.seckillId = this.selectedSeckillId
       }
@@ -574,6 +604,7 @@ export default {
       return ''
     },
     async refresh() {
+      this.resetBatchSelection()
       this.pageNum = 1
       this.finished = false
       this.refreshing = true
@@ -673,6 +704,28 @@ export default {
     },
     openDetail(item) {
       uni.navigateTo({ url: `/pages/detail/index?module=${this.moduleKey}&id=${item[this.config.idKey]}` })
+    },
+    isExpenseSelectable(item) {
+      return String(item.status ?? '0') !== '1'
+    },
+    isExpenseSelected(item) {
+      return this.selectedExpenseIds.includes(Number(item.expenseId))
+    },
+    handleExpenseTap(item) {
+      if (!this.batchSelecting) return this.openDetail(item)
+      if (!this.isExpenseSelectable(item)) return
+      const id = Number(item.expenseId)
+      this.selectedExpenseIds = this.isExpenseSelected(item)
+        ? this.selectedExpenseIds.filter((value) => value !== id)
+        : [...this.selectedExpenseIds, id]
+    },
+    toggleBatchSelection() {
+      this.batchSelecting = !this.batchSelecting
+      this.selectedExpenseIds = []
+    },
+    continueBatchVerify() {
+      if (!this.selectedExpenseIds.length) return
+      uni.navigateTo({ url: `/pages/expense-verify/index?expenseIds=${this.selectedExpenseIds.join(',')}` })
     },
     async runPageAction(action) {
       if (this.moduleKey === 'costAccounting') {

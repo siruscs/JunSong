@@ -37,6 +37,10 @@
       "style": { "navigationBarTitleText": "详情" }
     },
     {
+      "path": "pages/expense-verify/index",
+      "style": { "navigationBarTitleText": "费用核销" }
+    },
+    {
       "path": "pages/form/index",
       "style": { "navigationBarTitleText": "表单" }
     },
@@ -63,6 +67,38 @@
     {
       "path": "pages/settings/index",
       "style": { "navigationBarTitleText": "接口设置" }
+    },
+    {
+      "path": "pages/notification/index",
+      "style": { "navigationBarTitleText": "消息通知" }
+    },
+    {
+      "path": "pages/workflow/todo",
+      "style": { "navigationBarTitleText": "待办任务" }
+    },
+    {
+      "path": "pages/workflow/detail",
+      "style": { "navigationBarTitleText": "审批详情" }
+    },
+    {
+      "path": "pages/member/dashboard",
+      "style": { "navigationBarTitleText": "会员运营看板" }
+    },
+    {
+      "path": "pages/member/growth",
+      "style": { "navigationBarTitleText": "成长体系" }
+    },
+    {
+      "path": "pages/member/actions",
+      "style": { "navigationBarTitleText": "增长动作" }
+    },
+    {
+      "path": "pages/member/actionDetail",
+      "style": { "navigationBarTitleText": "动作详情" }
+    },
+    {
+      "path": "pages/member/points",
+      "style": { "navigationBarTitleText": "积分运营" }
     }
   ],
   "tabBar": {
@@ -93,7 +129,7 @@
   },
   "globalStyle": {
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "JunSong店记",
+    "navigationBarTitleText": "松·云助手",
     "navigationBarBackgroundColor": "#ffffff",
     "backgroundColor": "#f5f7fa"
   }

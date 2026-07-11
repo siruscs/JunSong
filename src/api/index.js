@@ -1,5 +1,5 @@
-const DEFAULT_BASE_URL = 'http://192.168.1.8:8081'
-const REQUEST_TIMEOUT = 8000
+const DEFAULT_BASE_URL = 'https://www.junsong.vip/prod-api'
+const REQUEST_TIMEOUT = 20000
 
 export function getBaseUrl() {
   return uni.getStorageSync('baseUrl') || DEFAULT_BASE_URL
@@ -60,6 +60,7 @@ export function request(options) {
             setToken('')
             uni.removeStorageSync('userInfo')
             uni.removeStorageSync('modules')
+            uni.removeStorageSync('permissions')
             uni.reLaunch({ url: '/pages/login/index' })
           }
           reject(data)
@@ -73,16 +74,26 @@ export function request(options) {
       },
       fail: (err) => {
         const isTimeout = String(err?.errMsg || err?.message || '').includes('timeout')
-        const message = isTimeout ? '请求超时，请检查后端地址' : '网络请求失败'
+        const isCertificate = String(err?.errMsg || '').includes('certificate') || String(err?.errMsg || '').includes('SSL')
+        const isNetwork = String(err?.errMsg || '').includes('network')
+        let message = '网络请求失败'
+        if (isTimeout) message = '请求超时，请检查网络'
+        if (isCertificate) message = '证书验证失败，请检查SSL配置'
+        if (isNetwork) message = '网络连接失败，请检查网络'
         const error = {
-          code: isTimeout ? 'REQUEST_TIMEOUT' : 'REQUEST_FAIL',
+          code: isTimeout ? 'REQUEST_TIMEOUT' : (isCertificate ? 'SSL_ERROR' : (isNetwork ? 'NETWORK_ERROR' : 'REQUEST_FAIL')),
           msg: message,
           url: requestUrl,
-          errMsg: err?.errMsg || err?.message || ''
+          errMsg: err?.errMsg || err?.message || '',
+          detail: err
         }
         if (!options.silent) {
-          console.warn('request failed', error)
-          uni.showToast({ title: message, icon: 'none' })
+          console.warn('request failed', JSON.stringify(error, null, 2))
+          uni.showModal({
+            title: '请求失败',
+            content: `地址: ${requestUrl}\n错误: ${err?.errMsg || '未知错误'}\n提示: ${message}`,
+            showCancel: false
+          })
         }
         reject(error)
       }

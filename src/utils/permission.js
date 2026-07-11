@@ -7,6 +7,13 @@ function rawGrants(grants) {
   return Array.isArray(grants) ? grants : []
 }
 
+function rawActionGrants(grants) {
+  if (grants === undefined) {
+    grants = uni.getStorageSync('permissions') || []
+  }
+  return Array.isArray(grants) ? grants : []
+}
+
 function normalizeGrant(grant) {
   if (typeof grant === 'string') return grant
   if (grant && typeof grant === 'object') {
@@ -33,14 +40,13 @@ export function hasModulePermission(moduleKey, grants) {
   if (grants.length === 0) return false
   const config = modules[moduleKey]
   const aliases = [moduleKey, config?.authKey].filter(Boolean)
-  const permissions = collectPermissions(config)
-  return grants.some((grant) => aliases.includes(grant) || aliases.some((key) => grant.startsWith(key + ':')) || permissions.includes(grant))
+  return grants.some((grant) => aliases.includes(grant))
 }
 
 export function hasActionPermission(moduleKey, action, grants) {
   const config = modules[moduleKey]
   if (!config) return false
-  grants = getPermissionGrants(grants)
+  grants = rawActionGrants(grants).map(normalizeGrant).filter(Boolean)
   if (grants.length === 0) return false
   const moduleKeys = [moduleKey, config.authKey].filter(Boolean)
   const permissions = []
@@ -51,8 +57,7 @@ export function hasActionPermission(moduleKey, action, grants) {
     moduleKeys.forEach((key) => permissions.push(`${key}:${action}`))
   }
   return grants.some((grant) => {
-    if (moduleKeys.includes(grant)) return true
-    return permissions.includes(grant)
+    return grant === '*:*:*' || permissions.includes(grant)
   })
 }
 

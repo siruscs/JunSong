@@ -8,7 +8,7 @@
       </view>
     </view>
 
-    <view class="section-card member-search-card" v-if="isSeckillRecordCreate">
+    <view class="section-card member-search-card" v-if="showMemberSearch">
       <view class="section-header">
         <view class="section-dot required"></view>
         <text class="section-title">选择会员</text>
@@ -29,7 +29,8 @@
           <text class="selected-member-name">{{ form.memberName || '-' }}</text>
           <text class="selected-member-no">{{ form.memberNo || '-' }}</text>
         </view>
-        <text class="selected-member-tag">当前会员</text>
+        <text class="selected-member-tag" v-if="moduleKey === 'pointsExchange' && memberPoints !== ''">剩余积分 {{ memberPoints }}</text>
+        <text class="selected-member-tag" v-else>当前会员</text>
       </view>
       <view class="member-result-list" v-if="memberResults.length">
         <view class="member-result" v-for="member in memberResults" :key="member.memberId" @tap="selectMember(member)">
@@ -42,6 +43,31 @@
       </view>
       <view class="member-result-empty" v-if="memberSearched && !memberLoading && memberResults.length === 0">
         未找到匹配会员
+      </view>
+    </view>
+
+    <view class="section-card" v-if="pointsCalc">
+      <view class="section-header">
+        <view class="section-dot preview"></view>
+        <text class="section-title">积分核算</text>
+      </view>
+      <view class="points-calc-grid">
+        <view class="points-calc-row">
+          <text class="points-calc-label">需要积分</text>
+          <text class="points-calc-value">{{ pointsCalc.deduct }}</text>
+        </view>
+        <view class="points-calc-row">
+          <text class="points-calc-label">可用积分</text>
+          <text class="points-calc-value">{{ pointsCalc.memberPts }}</text>
+        </view>
+        <view class="points-calc-row">
+          <text class="points-calc-label">实际扣减</text>
+          <text class="points-calc-value">{{ pointsCalc.actualDeduct }}</text>
+        </view>
+        <view class="points-calc-row alert" v-if="pointsCalc.insufficient">
+          <text class="points-calc-label">积分不足，需补差价</text>
+          <text class="points-calc-value warning">{{ pointsCalc.extra }} 积分对应金额</text>
+        </view>
       </view>
     </view>
 
@@ -84,17 +110,90 @@
           </view>
         </picker>
         <textarea v-else-if="field.type === 'textarea'" class="control textarea" v-model="form[field.key]" maxlength="-1" :placeholder="'请输入' + field.label" />
+        <view v-else-if="field.type === 'image'" class="control image-upload">
+          <view class="image-preview" v-if="form[field.key]" @tap="chooseImage(field.key)">
+            <image :src="resolveImageUrl(form[field.key])" mode="aspectFit" class="upload-image" />
+            <text class="image-replace-text">点击更换</text>
+          </view>
+          <view class="image-picker" v-else @tap="chooseImage(field.key)">
+            <text class="image-picker-icon">+</text>
+            <text class="image-picker-text">上传图片</text>
+          </view>
+        </view>
         <input v-else class="control input" v-model="form[field.key]" :type="inputType(field)" :disabled="isReadonlyField(field)" :placeholder="'请输入' + field.label" @input="onFieldInput(field.key, $event.detail.value)" />
       </view>
     </view>
 
-    <view class="section-card" v-if="optionalFields.length">
+    <view class="section-card" v-if="moduleKey === 'purchase'">
       <view class="section-header">
+        <view class="section-dot required"></view>
+        <text class="section-title">商品明细</text>
+        <text class="section-count" v-if="form.details && form.details.length">{{ form.details.length }}项</text>
+        <view class="add-detail-btn" @tap="addPurchaseDetail">
+          <text class="add-detail-icon">+</text>
+          <text class="add-detail-text">添加商品</text>
+        </view>
+      </view>
+      <view class="detail-list" v-if="form.details && form.details.length">
+        <view class="detail-item" v-for="(detail, index) in form.details" :key="index">
+          <view class="detail-item-header">
+            <text class="detail-item-title">商品{{ index + 1 }}</text>
+            <text class="detail-delete" @tap="deletePurchaseDetail(index)">删除</text>
+          </view>
+          <view class="detail-row">
+            <text class="detail-label">商品</text>
+            <picker class="detail-picker" :range="productLabels" :value="productIndex(detail.productId)" @change="onDetailProductChange(index, $event.detail.value)">
+              <view class="detail-control" :class="{ 'has-value': detail.productId }">
+                <text class="detail-picker-text">{{ detail.productName || '请选择商品' }}</text>
+                <text class="picker-arrow">›</text>
+              </view>
+            </picker>
+          </view>
+          <view class="detail-row">
+            <text class="detail-label">单位</text>
+            <text class="detail-value-text">{{ detail.unit || '-' }}</text>
+          </view>
+          <view class="detail-row">
+            <text class="detail-label">数量</text>
+            <input class="detail-input" type="number" v-model="detail.quantity" @input="calculateDetailAmount(index)" />
+          </view>
+          <view class="detail-row">
+            <text class="detail-label">单价</text>
+            <input class="detail-input" type="digit" v-model="detail.price" :disabled="detail.isGift === '1'" @input="calculateDetailAmount(index)" />
+          </view>
+          <view class="detail-row">
+            <text class="detail-label">金额</text>
+            <text class="detail-value-text amount">{{ detail.isGift === '1' ? '赠品' : '¥' + (detail.amount || 0) }}</text>
+          </view>
+          <view class="detail-row">
+            <text class="detail-label">赠品</text>
+            <switch :checked="detail.isGift === '1'" @change="toggleGift(index, $event.detail.value)" color="#2A6F97" />
+          </view>
+        </view>
+      </view>
+      <view class="detail-empty" v-else>
+        <text class="detail-empty-text">请添加商品明细</text>
+      </view>
+      <view class="detail-summary" v-if="form.details && form.details.length">
+        <view class="detail-summary-row">
+          <text class="detail-summary-label">总数量</text>
+          <text class="detail-summary-value">{{ form.totalQuantity || 0 }}</text>
+        </view>
+        <view class="detail-summary-row">
+          <text class="detail-summary-label">总金额</text>
+          <text class="detail-summary-value">¥{{ form.totalAmount || 0 }}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="section-card" v-if="optionalFields.length">
+      <view class="section-header collapsible" @tap="optionalCollapsed = !optionalCollapsed">
         <view class="section-dot"></view>
         <text class="section-title">其他信息</text>
         <text class="section-count">{{ optionalFields.length }}项</text>
+        <text class="collapse-arrow" :class="{ collapsed: optionalCollapsed }">›</text>
       </view>
-      <view class="form-item" v-for="field in optionalFields" :key="field.key">
+      <view class="form-item" v-for="field in optionalFields" :key="field.key" v-show="!optionalCollapsed">
         <view class="label-row">
           <text class="label">{{ field.label }}</text>
         </view>
@@ -117,6 +216,16 @@
           </view>
         </picker>
         <textarea v-else-if="field.type === 'textarea'" class="control textarea" v-model="form[field.key]" maxlength="-1" :placeholder="'请输入' + field.label" />
+        <view v-else-if="field.type === 'image'" class="control image-upload">
+          <view class="image-preview" v-if="form[field.key]" @tap="chooseImage(field.key)">
+            <image :src="resolveImageUrl(form[field.key])" mode="aspectFit" class="upload-image" />
+            <text class="image-replace-text">点击更换</text>
+          </view>
+          <view class="image-picker" v-else @tap="chooseImage(field.key)">
+            <text class="image-picker-icon">+</text>
+            <text class="image-picker-text">上传图片</text>
+          </view>
+        </view>
         <input v-else class="control input" v-model="form[field.key]" :type="inputType(field)" :disabled="isReadonlyField(field)" :placeholder="'请输入' + field.label" @input="onFieldInput(field.key, $event.detail.value)" />
       </view>
     </view>
@@ -138,7 +247,7 @@
       <button class="btn-secondary" v-if="mode === 'preview'" @tap="preview">
         <text class="btn-icon">◉</text> 预览
       </button>
-      <button class="btn-primary" v-if="canSubmit" @tap="submit">
+      <button class="btn-primary" v-if="canSubmit" :disabled="submitting" @tap="submit">
         <text class="btn-icon">✓</text> {{ mode === 'preview' ? '生成核算' : '保存' }}
       </button>
     </view>
@@ -163,10 +272,15 @@ export default {
       dictCache: {},
       ocrImageUrl: '',
       ocrLoading: false,
+      submitting: false,
       memberKeyword: '',
       memberResults: [],
       memberLoading: false,
       memberSearched: false,
+      optionalCollapsed: false,
+      memberPoints: '',
+      pointsGoodsPrice: 0,
+      productOptions: [],
       regionIndex: [0, 0, 0, 0],
       regionRange: [[], [], [], []],
       regionOptions: []
@@ -175,6 +289,24 @@ export default {
   computed: {
     isSeckillRecordCreate() {
       return this.moduleKey === 'seckillRecord' && !this.id
+    },
+    showMemberSearch() {
+      return (this.isSeckillRecordCreate || (this.moduleKey === 'pointsExchange' && !this.id))
+    },
+    pointsCalc() {
+      if (this.moduleKey !== 'pointsExchange' || !this.form.goodsId) return null
+      const goodsPrice = Number(this.pointsGoodsPrice || 0)
+      const qty = Number(this.form.quantity || 0)
+      const memberPts = Number(this.memberPoints || 0)
+      if (!goodsPrice || !qty) return null
+      const deduct = goodsPrice * qty
+      const actualDeduct = Math.min(deduct, memberPts)
+      const insufficient = memberPts < deduct
+      const extra = insufficient ? Math.ceil((deduct - memberPts)) : 0
+      return { deduct, actualDeduct, insufficient, extra, memberPts }
+    },
+    productLabels() {
+      return this.productOptions.map((p) => p.productName || '')
     },
     requiredFields() {
       return this.config?.fields.filter((f) => f.required && !this.shouldHideFormField(f)) || []
@@ -246,6 +378,31 @@ export default {
       if (this.moduleKey === 'investRecord' && !this.id) {
         this.form.investTime = this.todayStr()
       }
+      if (this.moduleKey === 'pointsGoods' && !this.id) {
+        this.form.status = '0'
+      }
+      if (this.moduleKey === 'product' && !this.id) {
+        this.form.status = '0'
+      }
+      if (this.moduleKey === 'supplier' && !this.id) {
+        this.form.status = '0'
+      }
+      if (this.moduleKey === 'purchase') {
+        if (!this.id) {
+          this.form.purchaseDate = this.todayStr()
+          this.form.status = '2'
+          this.form.totalAmount = 0
+          this.form.totalQuantity = 0
+        }
+        if (!this.form.details) this.form.details = []
+        this.optionalCollapsed = true
+        this.loadProductOptions()
+      }
+      if (this.moduleKey === 'pointsExchange' && !this.id) {
+        this.form.exchangeDate = this.todayStr()
+        this.form.quantity = 1
+        this.form.status = '0'
+      }
       if (this.moduleKey === 'seckillRecord' && !this.id) {
         this.form.seckillId = this.routeOptions.seckillId || ''
         this.form.seckillPrice = this.routeOptions.seckillPrice || ''
@@ -253,6 +410,22 @@ export default {
         this.form.shares = this.form.shares || 1
         this.form.status = '0'
         this.calculateSeckillTotal()
+      }
+      if (this.moduleKey === 'seckill' && !this.id) {
+        this.form.seckillType = '1'
+        this.form.seckillDate = this.todayStr()
+        this.form.endDate = this.todayStr()
+        this.form.status = '0'
+        this.form.totalShares = 0
+        this.form.remainShares = 0
+      }
+      if (this.moduleKey === 'sale' && !this.id) {
+        this.form.saleDate = this.todayStr()
+        this.form.status = '0'
+      }
+      if (this.moduleKey === 'advance' && !this.id) {
+        this.form.advanceDate = this.todayStr()
+        this.form.status = '0'
       }
       if (this.id) this.loadInfo()
       this.loadDictOptions()
@@ -264,6 +437,7 @@ export default {
     shouldHideFormField(field) {
       if (field.hidden) return true
       if (this.isSeckillRecordCreate && ['seckillId', 'memberId', 'memberNo', 'memberName', 'status'].includes(field.key)) return true
+      if (this.moduleKey === 'pointsExchange' && !this.id && ['memberId', 'memberName', 'pointsDeducted', 'status', 'exchangeNo'].includes(field.key)) return true
       return false
     },
     isReadonlyField(field) {
@@ -272,6 +446,7 @@ export default {
     onFieldInput(key, value) {
       this.form[key] = value
       if (this.isSeckillRecordCreate && key === 'shares') this.calculateSeckillTotal()
+      if (this.moduleKey === 'pointsExchange' && key === 'quantity') this.syncPointsDeducted()
     },
     calculateSeckillTotal() {
       const price = Number(this.form.seckillPrice || 0)
@@ -312,7 +487,31 @@ export default {
       this.form.memberName = member.memberName
       this.memberKeyword = `${member.memberNo || ''} ${member.memberName || ''}`.trim()
       this.memberResults = []
+      if (this.moduleKey === 'pointsExchange') {
+        this.fetchMemberPoints(member.memberId)
+      }
       uni.showToast({ title: '已选择会员', icon: 'none' })
+    },
+    async fetchMemberPoints(memberId) {
+      try {
+        const res = await request({ url: '/member/pointsRecord/list', method: 'GET', data: { memberId, pageNum: 1, pageSize: 1 } })
+        const rows = res.rows || res.data || []
+        this.memberPoints = rows[0]?.balance ?? ''
+        if (this.memberPoints === '') this.memberPoints = 0
+      } catch (e) {
+        console.error('获取会员积分失败', e)
+        this.memberPoints = 0
+      }
+      this.syncPointsDeducted()
+    },
+    syncPointsDeducted() {
+      if (this.moduleKey !== 'pointsExchange') return
+      if (this.pointsCalc) {
+        this.form.pointsDeducted = this.pointsCalc.actualDeduct
+        if (this.pointsCalc.insufficient) {
+          this.form.extraAmount = this.pointsCalc.extra
+        }
+      }
     },
     async loadNextMemberNo() {
       try {
@@ -339,6 +538,49 @@ export default {
           console.log('加载字典失败:', field.dictType, e)
         }
       }
+      // 加载部门员工下拉（借款人）
+      const staffFields = this.config.fields.filter((f) => f.remoteDeptStaff && f.type === 'select')
+      for (const field of staffFields) {
+        try {
+          const deptId = this.getCurrentDeptId()
+          if (!deptId) continue
+          const res = await request({ url: '/system/userDept/staff/' + deptId, method: 'GET' })
+          const list = res.data || []
+          const labelKey = field.remoteLabel || 'nickName'
+          const valueKey = field.remoteValue || 'nickName'
+          field.options = list.map((d) => ({ label: d[labelKey], value: d[valueKey], raw: d }))
+        } catch (e) {
+          console.log('加载部门员工失败:', e)
+        }
+      }
+      // 加载远程下拉选项（如商品列表）
+      const remoteFields = this.config.fields.filter((f) => f.remoteUrl && f.type === 'select')
+      for (const field of remoteFields) {
+        try {
+          const params = { pageNum: 1, pageSize: 200 }
+          if (field.remoteFilterDept) {
+            const deptId = this.getCurrentDeptId()
+            if (deptId) params.deptId = deptId
+            params.status = '0'
+          }
+          const cacheKey = 'remote:' + field.remoteUrl + (field.remoteFilterDept ? ':dept' : '')
+          let list = this.dictCache[cacheKey]
+          if (!list) {
+            const res = await request({ url: field.remoteUrl, method: 'GET', data: params })
+            list = res.rows || res.data || []
+            this.dictCache[cacheKey] = list
+          }
+          const labelKey = field.remoteLabel || 'name'
+          const valueKey = field.remoteValue || 'id'
+          field.options = list.map((d) => ({ label: d[labelKey], value: d[valueKey], raw: d }))
+        } catch (e) {
+          console.log('加载远程选项失败:', field.remoteUrl, e)
+        }
+      }
+    },
+    getCurrentDeptId() {
+      const userInfo = uni.getStorageSync('userInfo') || {}
+      return userInfo.currentDeptId || userInfo.deptId || null
     },
     applyDictDefault(field, list) {
       if (this.id || field.key !== 'paymentMethod' || this.form[field.key]) return
@@ -360,23 +602,51 @@ export default {
       this.form[key] = value
     },
     inputType(field) {
+      if (field.allowNegative) return 'text'
       if (field.type === 'number') return 'digit'
       if (field.type === 'phone') return 'number'
       return 'text'
     },
     optionItems(field) {
-      return (field.options || []).map((item) => typeof item === 'string' ? { label: item, value: item } : item)
+      // 从config中查找正确的field引用，防止v-for中field对象引用错误
+      const configField = this.config?.fields.find(f => f.key === field.key) || field
+      return (configField.options || []).map((item) => typeof item === 'string' ? { label: item, value: item } : item)
     },
     optionLabels(field) {
       return this.optionItems(field).map((item) => item.label)
     },
     optionIndex(field) {
-      const index = this.optionItems(field).findIndex((item) => String(item.value) === String(this.form[field.key]))
+      const configField = this.config?.fields.find(f => f.key === field.key) || field
+      const index = this.optionItems(configField).findIndex((item) => String(item.value) === String(this.form[configField.key]))
       return index < 0 ? 0 : index
     },
     selectValue(field, index) {
       const item = this.optionItems(field)[Number(index)]
-      if (item) this.form[field.key] = item.value
+      if (!item) return
+      this.form[field.key] = item.value
+      // 选择商品时同步填充商品名称
+      if (field.remoteUrl && field.remoteLabel && item.raw) {
+        this.form[field.remoteLabel] = item.raw[field.remoteLabel] || ''
+      }
+      // 积分兑换：选择物品后获取积分价格
+      if (this.moduleKey === 'pointsExchange' && field.key === 'goodsId' && item.raw) {
+        this.pointsGoodsPrice = Number(item.raw.pointsPrice || 0)
+        this.form.goodsName = item.raw.goodsName || ''
+        this.syncPointsDeducted()
+      }
+      // 投资款记录：选择投资人后同步deptId
+      if (this.moduleKey === 'investRecord' && field.key === 'investorId' && item.raw) {
+        this.form.deptId = item.raw.deptId || this.getCurrentDeptId()
+      }
+      // 费用表单：切换费用类别时不应影响付款方式
+      if (this.moduleKey === 'expense' && field.key === 'expenseType') {
+        const savedPaymentMethod = this.form.paymentMethod
+        this.$nextTick(() => {
+          if (this.form.paymentMethod !== savedPaymentMethod) {
+            this.form.paymentMethod = savedPaymentMethod
+          }
+        })
+      }
     },
     hasRegionField() {
       return (this.config?.fields || []).some((field) => field.type === 'region')
@@ -450,7 +720,9 @@ export default {
       this.refreshRegionRange()
     },
     displayOption(field) {
-      const val = displayValue(field, this.form[field.key])
+      // 从config中查找正确的field引用，防止v-for中field对象引用错误
+      const configField = this.config?.fields.find(f => f.key === field.key) || field
+      const val = displayValue(configField, this.form[configField.key])
       return val === '-' ? '请选择' : val
     },
     readonlyLabel(key) {
@@ -478,10 +750,25 @@ export default {
         uni.showToast({ title: '请先选择会员', icon: 'none' })
         return false
       }
+      if (this.moduleKey === 'pointsExchange' && !this.id && !this.form.memberId) {
+        uni.showToast({ title: '请先选择会员', icon: 'none' })
+        return false
+      }
       const missing = this.config.fields.find((field) => field.required && !this.shouldHideFormField(field) && !this.form[field.key] && this.form[field.key] !== 0)
       if (missing) {
         uni.showToast({ title: '请填写' + missing.label, icon: 'none' })
         return false
+      }
+      if (this.moduleKey === 'purchase') {
+        if (!this.form.details || this.form.details.length === 0) {
+          uni.showToast({ title: '请添加商品明细', icon: 'none' })
+          return false
+        }
+        const invalid = this.form.details.find((d) => !d.productId)
+        if (invalid) {
+          uni.showToast({ title: '请选择所有商品', icon: 'none' })
+          return false
+        }
       }
       return true
     },
@@ -503,6 +790,10 @@ export default {
       ;(this.config.fields || []).forEach((field) => {
         if (field.virtual) delete data[field.key]
       })
+      // 投资款记录新增时强制设置当前部门ID
+      if (this.moduleKey === 'investRecord' && !this.id) {
+        data.deptId = this.getCurrentDeptId()
+      }
       return data
     },
     async submit() {
@@ -510,8 +801,10 @@ export default {
         uni.showToast({ title: '暂无提交权限', icon: 'none' })
         return
       }
+      if (this.submitting) return
       if (this.isSeckillRecordCreate) this.calculateSeckillTotal()
       if (!this.validate()) return
+      this.submitting = true
       try {
         const submitData = this.buildSubmitData()
         if (this.id) {
@@ -539,6 +832,145 @@ export default {
         }
       } catch (e) {
         console.error('保存失败', e)
+      } finally {
+        this.submitting = false
+      }
+    },
+    async loadProductOptions() {
+      try {
+        const params = { pageNum: 1, pageSize: 200, status: '0' }
+        const deptId = this.getCurrentDeptId()
+        if (deptId) params.deptId = deptId
+        const res = await request({ url: '/finance/product/list', method: 'GET', data: params })
+        this.productOptions = res.rows || res.data || []
+      } catch (e) {
+        console.error('加载商品列表失败', e)
+        this.productOptions = []
+      }
+    },
+    productIndex(productId) {
+      const idx = this.productOptions.findIndex((p) => p.productId === productId)
+      return idx < 0 ? 0 : idx
+    },
+    addPurchaseDetail() {
+      if (!this.form.details) this.form.details = []
+      this.form.details.push({
+        detailId: undefined,
+        purchaseId: undefined,
+        productId: undefined,
+        productName: undefined,
+        unit: undefined,
+        quantity: 1,
+        price: 0,
+        amount: 0,
+        isGift: '0'
+      })
+    },
+    deletePurchaseDetail(index) {
+      this.form.details.splice(index, 1)
+      this.calculatePurchaseTotal()
+    },
+    onDetailProductChange(index, pickerIndex) {
+      const product = this.productOptions[Number(pickerIndex)]
+      if (!product) return
+      const detail = this.form.details[index]
+      detail.productId = product.productId
+      detail.productName = product.productName
+      detail.unit = product.unit
+      detail.price = Number(product.purchasePrice || 0)
+      this.calculateDetailAmount(index)
+    },
+    calculateDetailAmount(index) {
+      const detail = this.form.details[index]
+      if (!detail) return
+      if (detail.isGift === '1') {
+        detail.price = 0
+        detail.amount = 0
+      } else {
+        const qty = Number(detail.quantity || 0)
+        const price = Number(detail.price || 0)
+        detail.amount = parseFloat((price * qty).toFixed(2))
+      }
+      this.calculatePurchaseTotal()
+    },
+    toggleGift(index, checked) {
+      const detail = this.form.details[index]
+      if (!detail) return
+      detail.isGift = checked ? '1' : '0'
+      this.calculateDetailAmount(index)
+    },
+    calculatePurchaseTotal() {
+      if (!this.form.details || !this.form.details.length) {
+        this.form.totalAmount = 0
+        this.form.totalQuantity = 0
+        return
+      }
+      let totalAmount = 0
+      let totalQuantity = 0
+      for (const d of this.form.details) {
+        if (d.isGift !== '1') {
+          totalAmount += Number(d.amount || 0)
+        }
+        totalQuantity += Number(d.quantity || 0)
+      }
+      this.form.totalAmount = parseFloat(totalAmount.toFixed(2))
+      this.form.totalQuantity = totalQuantity
+    },
+    chooseImage(key) {
+      uni.showActionSheet({
+        itemList: ['📷 拍照', '🖼 从相册选择'],
+        success: (res) => {
+          const sourceType = res.tapIndex === 0 ? ['camera'] : ['album']
+          uni.chooseImage({
+            count: 1,
+            sourceType,
+            sizeType: ['original', 'compressed'],
+            success: (imgRes) => {
+              this.uploadImage(key, imgRes.tempFilePaths[0])
+            }
+          })
+        }
+      })
+    },
+    resolveImageUrl(url) {
+      if (!url) return ''
+      if (url.startsWith('http://') || url.startsWith('https://')) return url
+      if (url.startsWith('/statics/')) {
+        const baseUrl = uni.getStorageSync('baseUrl') || 'https://www.junsong.vip/prod-api'
+        const origin = baseUrl.replace(/\/prod-api$/, '').replace(/\/dev-api$/, '')
+        return origin + url
+      }
+      const baseUrl = uni.getStorageSync('baseUrl') || 'https://www.junsong.vip/prod-api'
+      return baseUrl + url
+    },
+    async uploadImage(key, filePath) {
+      uni.showLoading({ title: '上传中...' })
+      try {
+        const baseUrl = uni.getStorageSync('baseUrl') || 'https://www.junsong.vip/prod-api'
+        const token = uni.getStorageSync('token')
+        const uploadRes = await new Promise((resolve, reject) => {
+          uni.uploadFile({
+            url: baseUrl + '/file/upload',
+            filePath,
+            name: 'file',
+            header: { Authorization: 'Bearer ' + token },
+            success: (r) => {
+              try { resolve(JSON.parse(r.data)) } catch (e) { reject(e) }
+            },
+            fail: reject
+          })
+        })
+        if (uploadRes.code === 200 && uploadRes.data && uploadRes.data.url) {
+          this.form[key] = uploadRes.data.url
+          uni.showToast({ title: '上传成功', icon: 'none' })
+        } else {
+          uni.showToast({ title: uploadRes.msg || '上传失败', icon: 'none' })
+        }
+      } catch (e) {
+        console.error('上传图片失败', e)
+        uni.showToast({ title: '上传失败', icon: 'none' })
+      } finally {
+        uni.hideLoading()
       }
     },
     chooseOcrImage() {
@@ -561,7 +993,7 @@ export default {
     async doOcr(filePath) {
       this.ocrLoading = true
       try {
-        const baseUrl = uni.getStorageSync('baseUrl') || 'http://192.168.1.8:8081'
+        const baseUrl = uni.getStorageSync('baseUrl') || 'https://www.junsong.vip/prod-api'
         const token = uni.getStorageSync('token')
         const uploadRes = await new Promise((resolve, reject) => {
           uni.uploadFile({
@@ -684,6 +1116,56 @@ export default {
   margin-left: auto;
   font-size: 22rpx;
   color: #94A3B8;
+}
+
+.collapse-arrow {
+  font-size: 32rpx;
+  color: #94A3B8;
+  transform: rotate(90deg);
+  transition: transform 0.2s;
+  margin-left: 8rpx;
+}
+
+.collapse-arrow.collapsed {
+  transform: rotate(0deg);
+}
+
+.section-header.collapsible {
+  padding: 4rpx 0;
+}
+
+.points-calc-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.points-calc-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12rpx 16rpx;
+  background: #F8FAFC;
+  border-radius: 12rpx;
+}
+
+.points-calc-row.alert {
+  background: #FEF2F2;
+}
+
+.points-calc-label {
+  font-size: 26rpx;
+  color: #475569;
+}
+
+.points-calc-value {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1A2332;
+}
+
+.points-calc-value.warning {
+  color: #DC2626;
 }
 
 .member-search-card {
@@ -998,5 +1480,218 @@ export default {
   color: #FFFFFF;
   font-size: 28rpx;
   font-weight: 500;
+}
+
+.image-upload {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.image-preview {
+  position: relative;
+  width: 100%;
+  height: 280rpx;
+  border-radius: 12rpx;
+  overflow: hidden;
+  background: #F5F8FA;
+  border: 2rpx solid #E2E8F0;
+}
+
+.upload-image {
+  width: 100%;
+  height: 100%;
+}
+
+.image-replace-text {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 48rpx;
+  line-height: 48rpx;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.5);
+  color: #FFFFFF;
+  font-size: 22rpx;
+}
+
+.image-picker {
+  width: 100%;
+  height: 280rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  border-radius: 12rpx;
+  border: 2rpx dashed #CBD5E1;
+  background: #F5F8FA;
+}
+
+.image-picker-icon {
+  font-size: 64rpx;
+  color: #94A3B8;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.image-picker-text {
+  font-size: 24rpx;
+  color: #94A3B8;
+}
+
+.add-detail-btn {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 8rpx 18rpx;
+  background: #EFF6FF;
+  border-radius: 999rpx;
+  border: 1rpx solid #BFDBFE;
+}
+
+.add-detail-icon {
+  font-size: 28rpx;
+  color: #2A6F97;
+  font-weight: 700;
+}
+
+.add-detail-text {
+  font-size: 22rpx;
+  color: #2A6F97;
+  font-weight: 500;
+}
+
+.detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.detail-item {
+  padding: 20rpx;
+  background: #F8FAFC;
+  border-radius: 16rpx;
+  border: 1rpx solid #E2E8F0;
+}
+
+.detail-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.detail-item-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #1A2332;
+}
+
+.detail-delete {
+  font-size: 24rpx;
+  color: #EF4444;
+  padding: 4rpx 12rpx;
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 8rpx 0;
+}
+
+.detail-label {
+  width: 80rpx;
+  font-size: 24rpx;
+  color: #64748B;
+  flex-shrink: 0;
+}
+
+.detail-value-text {
+  flex: 1;
+  font-size: 26rpx;
+  color: #1A2332;
+  font-weight: 500;
+}
+
+.detail-value-text.amount {
+  color: #2A6F97;
+  font-weight: 700;
+}
+
+.detail-control {
+  width: 100%;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20rpx;
+  background: #FFFFFF;
+  border-radius: 10rpx;
+  border: 1rpx solid #E2E8F0;
+  box-sizing: border-box;
+}
+
+.detail-picker {
+  flex: 1;
+  width: 0;
+}
+
+.detail-control.has-value {
+  border-color: #2A6F97;
+}
+
+.detail-picker-text {
+  font-size: 26rpx;
+  color: #1A2332;
+}
+
+.detail-input {
+  flex: 1;
+  height: 64rpx;
+  padding: 0 20rpx;
+  background: #FFFFFF;
+  border-radius: 10rpx;
+  border: 1rpx solid #E2E8F0;
+  font-size: 26rpx;
+  color: #1A2332;
+}
+
+.detail-empty {
+  padding: 40rpx 0;
+  text-align: center;
+}
+
+.detail-empty-text {
+  font-size: 24rpx;
+  color: #94A3B8;
+}
+
+.detail-summary {
+  margin-top: 20rpx;
+  padding: 16rpx 20rpx;
+  background: #F0F9FF;
+  border-radius: 12rpx;
+  border: 1rpx solid #BAE6FD;
+}
+
+.detail-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6rpx 0;
+}
+
+.detail-summary-label {
+  font-size: 26rpx;
+  color: #475569;
+}
+
+.detail-summary-value {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #2A6F97;
 }
 </style>

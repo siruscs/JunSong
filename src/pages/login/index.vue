@@ -10,12 +10,10 @@
     <view class="content" :style="{ paddingTop: (statusBarHeight + 36) + 'px' }">
       <view class="brand anim-fade-up">
         <view class="brand-mark">
-          <view class="brand-mark-inner">
-            <text class="brand-logo-text">JS</text>
-          </view>
+          <image class="brand-logo-img" src="/static/logo.png" mode="aspectFit" />
         </view>
         <view class="brand-copy">
-          <text class="brand-name">JunSong 店记</text>
+          <text class="brand-name">松·云助手</text>
           <text class="brand-sub">把今日经营收进掌心</text>
         </view>
       </view>
@@ -33,42 +31,25 @@
       <view class="form-card anim-slide-up" style="animation-delay: 0.16s">
         <view class="form-head">
           <text class="form-title">账号登录</text>
-          <view class="settings-pill" @tap="goSettings">
-            <text class="settings-text">接口设置</text>
-          </view>
         </view>
 
         <view class="form-item">
           <view class="input-wrap">
             <view class="input-icon-wrap"><text class="input-icon-text">人</text></view>
-            <input class="input-field" v-model="form.username" placeholder="请输入用户名" placeholder-class="input-placeholder" @blur="loadDepts" />
+            <input class="input-field" v-model="form.username" placeholder="请输入用户名" placeholder-class="input-placeholder" />
           </view>
         </view>
         <view class="form-item">
           <view class="input-wrap">
             <view class="input-icon-wrap"><text class="input-icon-text">密</text></view>
-            <input class="input-field" v-model="form.password" type="password" placeholder="请输入密码" placeholder-class="input-placeholder" />
+            <input class="input-field" v-model="form.password" password placeholder="请输入密码" placeholder-class="input-placeholder" />
           </view>
-        </view>
-        <view class="form-item">
-          <picker :range="deptNames" :value="deptIndex" @change="onDeptChange">
-            <view class="input-wrap">
-              <view class="input-icon-wrap"><text class="input-icon-text">店</text></view>
-              <text class="picker-text" :class="{ placeholder: !form.deptId }">{{ deptNames[deptIndex] || '输入用户名后选择门店' }}</text>
-              <view class="picker-arrow-wrap"><text class="picker-arrow">›</text></view>
-            </view>
-          </picker>
         </view>
 
         <button class="btn-login" hover-class="btn-login--active" :disabled="loading" @tap="handleLogin">
           <text v-if="!loading">进入工作台</text>
-          <text v-else>正在登录...</text>
+          <text v-else>{{ loadingText }}</text>
         </button>
-
-        <view class="conn-bar" :class="connStatus" @tap="testConnection">
-          <view class="conn-dot"></view>
-          <text class="conn-text">{{ connText }}</text>
-        </view>
 
         <view class="trust-row">
           <view class="trust-item">
@@ -86,26 +67,59 @@
         </view>
       </view>
     </view>
+
+    <!-- 部门选择弹窗 -->
+    <view v-if="showDeptPicker" class="dept-modal-mask" @tap="cancelDeptPick">
+      <view class="dept-modal" @tap.stop>
+        <view class="dept-modal-head">
+          <text class="dept-modal-title">选择门店</text>
+          <text class="dept-modal-sub">您有多个门店，请选择要进入的部门</text>
+        </view>
+        <scroll-view scroll-y class="dept-list">
+          <view
+            v-for="(dept, idx) in depts"
+            :key="dept.deptId || dept.id || idx"
+            class="dept-list-item"
+            :class="{ active: String(dept.deptId || dept.id) === String(selectedDeptId) }"
+            @tap="pickDept(dept)"
+          >
+            <view class="dept-item-mark"><text class="dept-item-mark-text">店</text></view>
+            <view class="dept-item-body">
+              <text class="dept-item-name">{{ dept.deptName || dept.name }}</text>
+              <text v-if="dept.leader" class="dept-item-meta">{{ dept.leader }}</text>
+            </view>
+            <view v-if="String(dept.deptId || dept.id) === String(selectedDeptId)" class="dept-item-check">✓</view>
+          </view>
+        </scroll-view>
+        <view class="dept-modal-foot">
+          <button class="btn-secondary" @tap="cancelDeptPick">取消</button>
+          <button class="btn-primary" :disabled="!selectedDeptId" @tap="confirmDept">确认进入</button>
+        </view>
+      </view>
+    </view>
+
     <view class="safe-bottom"></view>
   </view>
 </template>
 
 <script>
-import { request, setToken, getBaseUrl } from '@/api/index.js'
+import { request, setToken, getToken, getBaseUrl } from '@/api/index.js'
 
 export default {
   data() {
     return {
       statusBarHeight: 0,
       form: {
-        username: 'admin',
-        password: 'admin123',
-        deptId: null
+        username: '',
+        password: ''
       },
       depts: [],
-      deptNames: [],
       deptIndex: 0,
+      selectedDeptId: null,
+      showDeptPicker: false,
+      tempToken: null,
       loading: false,
+      loadingText: '正在登录...',
       connStatus: 'idle',
       connText: '点击检测后端连接'
     }
@@ -114,17 +128,15 @@ export default {
     const sysInfo = uni.getSystemInfoSync()
     this.statusBarHeight = sysInfo.statusBarHeight || 20
     this.testConnection()
-    this.loadDepts()
   },
   methods: {
     async testConnection() {
       this.connStatus = 'testing'
       this.connText = '正在检测连接...'
       try {
-        // 使用 uni.request 直接请求，不经过 request() 的 401 拦截
         const [err, res] = await new Promise((resolve) => {
           uni.request({
-            url: getBaseUrl() + '/auth/login',
+            url: getBaseUrl() + '/auth/mp/login',
             method: 'POST',
             data: {},
             header: { 'Content-Type': 'application/json' },
@@ -144,30 +156,52 @@ export default {
         this.connText = '连接失败 · 点击重试或检查设置'
       }
     },
-    async loadDepts() {
-      if (!this.form.username) return
-      try {
-        // 使用 noRedirect 防止 401 时跳转循环
-        const res = await request({ url: '/system/user/deptsForLogin', method: 'GET', data: { username: this.form.username }, noRedirect: true, header: { isToken: false } })
-        const list = res.data || res || []
-        this.depts = list
-        this.deptNames = list.map(d => d.deptName || d.label || d.name)
-        if (list.length > 0) {
-          this.form.deptId = list[0].deptId || list[0].id
-          this.deptIndex = 0
-        }
-      } catch (e) {
-        console.log('加载部门失败', e)
-      }
+    pickDept(dept) {
+      this.selectedDeptId = dept.deptId || dept.id
     },
-    onDeptChange(e) {
-      this.deptIndex = Number(e.detail.value)
-      const dept = this.depts[this.deptIndex]
-      if (!dept) {
-        this.form.deptId = null
+    cancelDeptPick() {
+      this.showDeptPicker = false
+      this.loading = false
+    },
+    async confirmDept() {
+      if (!this.selectedDeptId) {
+        uni.showToast({ title: '请选择门店', icon: 'none' })
         return
       }
-      this.form.deptId = dept.deptId || dept.id || dept.value
+      this.loading = true
+      this.loadingText = '切换门店中...'
+      try {
+        await request({
+          url: '/system/user/switchDept/' + this.selectedDeptId,
+          method: 'POST',
+          noRedirect: true
+        })
+        this.showDeptPicker = false
+        await this.completeLogin()
+      } catch (e) {
+        console.error('切换部门失败', e)
+        this.loading = false
+      }
+    },
+    async completeLogin() {
+      try {
+        const userRes = await request({ url: '/member/mp/userinfo', method: 'GET' })
+        const userInfo = userRes.data || userRes
+        uni.setStorageSync('userInfo', userInfo)
+        uni.setStorageSync('modules', userInfo.modules || [])
+        uni.setStorageSync('permissions', userInfo.permissions || [])
+      } catch (e) {
+        console.log('获取用户信息失败', e)
+        uni.setStorageSync('userInfo', { username: this.form.username, deptId: this.selectedDeptId })
+        uni.setStorageSync('modules', [])
+        uni.setStorageSync('permissions', [])
+      }
+
+      uni.showToast({ title: '登录成功' })
+      setTimeout(() => {
+        uni.reLaunch({ url: '/pages/index/index' })
+      }, 500)
+      this.loading = false
     },
     async handleLogin() {
       if (!this.form.username) {
@@ -179,19 +213,21 @@ export default {
         return
       }
       this.loading = true
+      this.loadingText = '正在登录...'
       setToken('')
       uni.removeStorageSync('userInfo')
       uni.removeStorageSync('modules')
+      uni.removeStorageSync('permissions')
+
       try {
-        // 使用 /auth/mp/login（小程序专用，不触发PC端互踢），加 noRedirect 防止 401 循环跳转
+        // 第一步：用户名密码登录（小程序专用接口 /auth/mp/login，已在网关白名单）
         const loginRes = await request({
           url: '/auth/mp/login',
           method: 'POST',
           noRedirect: true,
           data: {
             username: this.form.username,
-            password: this.form.password,
-            deptId: this.form.deptId
+            password: this.form.password
           }
         })
         const tokenData = loginRes.data || loginRes
@@ -199,28 +235,59 @@ export default {
         if (!accessToken) {
           uni.showToast({ title: '登录返回数据异常', icon: 'none' })
           console.error('登录响应:', JSON.stringify(loginRes))
+          this.loading = false
           return
         }
         setToken(accessToken)
+        this.tempToken = accessToken
 
+        // 第二步：用已获取的 token 调 /system/user/getInfo（含部门列表）
+        this.loadingText = '加载用户信息...'
         try {
-          const userRes = await request({ url: '/member/mp/userinfo', method: 'GET' })
-          const userInfo = userRes.data || userRes
-          uni.setStorageSync('userInfo', userInfo)
-          uni.setStorageSync('modules', userInfo.modules || [])
+          const infoRes = await request({
+            url: '/system/user/getInfo',
+            method: 'GET',
+            noRedirect: true
+          })
+          const info = infoRes || infoRes.data || {}
+          const deptList = (info.depts || info.data?.depts || info.user?.depts || [])
+          const currentDeptId = info.currentDeptId || info.data?.currentDeptId || info.user?.deptId
+          const userObj = info.user || info.data?.user || {}
+
+          // 保存用户基础信息
+          const baseInfo = {
+            username: this.form.username,
+            nickName: userObj.nickName || userObj.userName || this.form.username,
+            deptId: currentDeptId,
+            currentDeptId: currentDeptId
+          }
+          uni.setStorageSync('userInfo', baseInfo)
+
+          // 判断部门数量：单部门直接进入，多部门弹窗选择
+          if (deptList.length <= 1) {
+            if (deptList.length === 1) {
+              this.selectedDeptId = deptList[0].deptId || deptList[0].id
+            }
+            await this.completeLogin()
+          } else {
+            this.depts = deptList
+            this.selectedDeptId = currentDeptId || (deptList[0] && (deptList[0].deptId || deptList[0].id))
+            this.loading = false
+            this.showDeptPicker = true
+          }
         } catch (e) {
-          console.log('获取用户信息失败，使用默认值', e)
+          console.log('获取用户信息失败，直接进入', e)
           uni.setStorageSync('userInfo', { username: this.form.username })
           uni.setStorageSync('modules', [])
+          uni.setStorageSync('permissions', [])
+          uni.showToast({ title: '登录成功' })
+          setTimeout(() => {
+            uni.reLaunch({ url: '/pages/index/index' })
+          }, 500)
+          this.loading = false
         }
-
-        uni.showToast({ title: '登录成功' })
-        setTimeout(() => {
-          uni.reLaunch({ url: '/pages/index/index' })
-        }, 500)
       } catch (e) {
         console.error('登录失败详情:', e)
-      } finally {
         this.loading = false
       }
     },
@@ -307,13 +374,8 @@ export default {
   background: rgba(42, 111, 151, 0.08);
 }
 
-.l1 {
-  top: 260rpx;
-}
-
-.l2 {
-  top: 640rpx;
-}
+.l1 { top: 260rpx; }
+.l2 { top: 640rpx; }
 
 .content {
   position: relative;
@@ -332,29 +394,13 @@ export default {
   position: relative;
   width: 108rpx;
   height: 108rpx;
-  border-radius: 30rpx;
-  background: linear-gradient(145deg, #173B57, #2A6F97);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 18rpx 44rpx rgba(42, 111, 151, 0.24);
+  flex-shrink: 0;
 }
 
-.brand-mark-inner {
-  width: 76rpx;
-  height: 76rpx;
-  border-radius: 24rpx;
-  border: 2rpx solid rgba(255, 255, 255, 0.32);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.brand-logo-text {
-  font-size: 34rpx;
-  font-weight: 800;
-  color: #FFFFFF;
-  letter-spacing: 2rpx;
+.brand-logo-img {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .brand-copy {
@@ -388,9 +434,7 @@ export default {
   gap: 20rpx;
 }
 
-.daily-main {
-  flex: 1;
-}
+.daily-main { flex: 1; }
 
 .daily-title {
   display: block;
@@ -502,30 +546,6 @@ export default {
   color: #94A3B8;
 }
 
-.picker-text {
-  flex: 1;
-  font-size: 28rpx;
-  color: #1A2332;
-  line-height: 94rpx;
-}
-
-.picker-text.placeholder {
-  color: #94A3B8;
-}
-
-.picker-arrow-wrap {
-  width: 40rpx;
-  height: 40rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.picker-arrow {
-  font-size: 24rpx;
-  color: #94A3B8;
-}
-
 /* 登录按钮 */
 .btn-login {
   margin-top: 30rpx;
@@ -586,54 +606,14 @@ export default {
   white-space: nowrap;
 }
 
-.conn-bar.idle {
-  background: #F7FAFC;
-}
-
-.conn-bar.idle .conn-dot {
-  background: #94A3B8;
-}
-
-.conn-bar.idle .conn-text {
-  color: #94A3B8;
-}
-
-.conn-bar.testing {
-  background: #FFF7ED;
-}
-
-.conn-bar.testing .conn-dot {
-  background: #F59E0B;
-  animation: blink 1s infinite;
-}
-
-.conn-bar.testing .conn-text {
-  color: #B45309;
-}
-
-.conn-bar.ok {
-  background: #ECFDF5;
-}
-
-.conn-bar.ok .conn-dot {
-  background: #10B981;
-}
-
-.conn-bar.ok .conn-text {
-  color: #047857;
-}
-
-.conn-bar.fail {
-  background: #FEF2F2;
-}
-
-.conn-bar.fail .conn-dot {
-  background: #EF4444;
-}
-
-.conn-bar.fail .conn-text {
-  color: #B91C1C;
-}
+.conn-bar.idle .conn-dot { background: #94A3B8; }
+.conn-bar.idle .conn-text { color: #94A3B8; }
+.conn-bar.testing .conn-dot { background: #F59E0B; animation: blink 1s infinite; }
+.conn-bar.testing .conn-text { color: #B45309; }
+.conn-bar.ok .conn-dot { background: #10B981; }
+.conn-bar.ok .conn-text { color: #047857; }
+.conn-bar.fail .conn-dot { background: #EF4444; }
+.conn-bar.fail .conn-text { color: #B91C1C; }
 
 @keyframes blink {
   0%, 100% { opacity: 1; }
@@ -670,5 +650,162 @@ export default {
 
 .safe-bottom {
   height: env(safe-area-inset-bottom);
+}
+
+/* ===== 部门选择弹窗 ===== */
+.dept-modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(16, 42, 58, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.dept-modal {
+  width: 86%;
+  max-width: 640rpx;
+  background: #FFFFFF;
+  border-radius: 28rpx;
+  overflow: hidden;
+  box-shadow: 0 24rpx 64rpx rgba(16, 42, 58, 0.2);
+}
+
+.dept-modal-head {
+  padding: 30rpx 28rpx 20rpx;
+  text-align: center;
+}
+
+.dept-modal-title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #102A3A;
+}
+
+.dept-modal-sub {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #5A6B7F;
+}
+
+.dept-list {
+  max-height: 560rpx;
+  padding: 0 40rpx 0 20rpx;
+  box-sizing: border-box;
+}
+
+.dept-list-item {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 44rpx 20rpx 16rpx;
+  border-radius: 18rpx;
+  background: #F7FAFC;
+  margin-bottom: 12rpx;
+  border: 2rpx solid transparent;
+  transition: all 0.15s;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+.dept-list-item.active {
+  background: #EAF4F8;
+  border-color: #2A6F97;
+}
+
+.dept-item-mark {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 16rpx;
+  background: #DCEFF4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+}
+
+.dept-item-mark-text {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #2A6F97;
+}
+
+.dept-item-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.dept-item-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1A2332;
+}
+
+.dept-item-meta {
+  font-size: 20rpx;
+  color: #94A3B8;
+  margin-top: 4rpx;
+}
+
+.dept-item-check {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #2A6F97;
+  margin-left: 16rpx;
+  margin-right: 4rpx;
+  flex-shrink: 0;
+  width: 44rpx;
+  text-align: center;
+  line-height: 1;
+}
+
+.dept-modal-foot {
+  display: flex;
+  gap: 16rpx;
+  padding: 20rpx 28rpx 28rpx;
+}
+
+.btn-secondary,
+.btn-primary {
+  flex: 1;
+  height: 84rpx;
+  line-height: 84rpx;
+  border-radius: 999rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  border: none;
+}
+
+.btn-secondary {
+  background: #F0F4F8;
+  color: #5A6B7F;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #173B57, #2A6F97);
+  color: #FFFFFF;
+}
+
+.btn-primary[disabled] {
+  opacity: 0.5;
+}
+
+.btn-secondary::after,
+.btn-primary::after {
+  border: none;
 }
 </style>

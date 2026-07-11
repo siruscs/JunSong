@@ -9,17 +9,26 @@
     "pages/mine/index",
     "pages/list/index",
     "pages/detail/index",
+    "pages/expense-verify/index",
     "pages/form/index",
     "pages/user/index",
     "pages/user/detail",
     "pages/user/form",
     "pages/profile/index",
     "pages/password/index",
-    "pages/settings/index"
+    "pages/settings/index",
+    "pages/notification/index",
+    "pages/workflow/todo",
+    "pages/workflow/detail",
+    "pages/member/dashboard",
+    "pages/member/growth",
+    "pages/member/actions",
+    "pages/member/actionDetail",
+    "pages/member/points"
   ],
   "window": {
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "JunSong店记",
+    "navigationBarTitleText": "松·云助手",
     "navigationBarBackgroundColor": "#ffffff",
     "backgroundColor": "#f5f7fa"
   },

@@ -89,6 +89,7 @@ export default {
         setToken('')
         uni.removeStorageSync('userInfo')
         uni.removeStorageSync('modules')
+        uni.removeStorageSync('permissions')
         setTimeout(() => uni.reLaunch({ url: '/pages/login/index' }), 700)
       } catch (e) {
         console.error('修改密码失败', e)

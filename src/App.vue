@@ -3,7 +3,7 @@ export default {
   onLaunch() {
     const baseUrl = uni.getStorageSync('baseUrl')
     if (!baseUrl) {
-      uni.setStorageSync('baseUrl', 'http://192.168.1.8:8081')
+      uni.setStorageSync('baseUrl', 'https://www.junsong.vip/prod-api')
     }
   }
 }

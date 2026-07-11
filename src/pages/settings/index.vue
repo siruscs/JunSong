@@ -31,7 +31,7 @@
         <input
           class="control input"
           v-model="baseUrl"
-          placeholder="例如 http://192.168.1.8:8081"
+          placeholder="例如 https://www.junsong.vip/prod-api"
           placeholder-class="input-placeholder"
         />
       </view>

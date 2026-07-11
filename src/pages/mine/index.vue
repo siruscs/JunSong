@@ -5,7 +5,7 @@
       <view class="profile-bg"></view>
       <view class="profile-content" :style="{ paddingTop: statusBarH + 'px' }">
         <view class="avatar">
-          <image class="avatar-img" v-if="userInfo.avatar" :src="userInfo.avatar" mode="aspectFill"></image>
+          <image class="avatar-img" v-if="userInfo.avatar" :src="avatarUrl" mode="aspectFill"></image>
           <text class="avatar-text" v-else>{{ avatarChar }}</text>
         </view>
         <view class="profile-info">
@@ -27,7 +27,7 @@
         <text class="menu-label">密码修改</text>
         <text class="menu-arrow">›</text>
       </view>
-      <view class="menu-item" @tap="goSettings" hover-class="menu-item--active">
+      <view class="menu-item" v-if="isAdmin" @tap="goSettings" hover-class="menu-item--active">
         <view class="menu-icon-wrap settings-bg"><text class="menu-icon-text settings-icon-color">设</text></view>
         <text class="menu-label">接口设置</text>
         <text class="menu-arrow">›</text>
@@ -41,19 +41,21 @@
 
     <!-- 版本 -->
     <view class="version">
-      <text class="version-text">JunSong 店记 v2.0</text>
+      <text class="version-text">松·云助手 v1.1.0</text>
     </view>
   </view>
 </template>
 
 <script>
 import { setToken } from '@/api/index.js'
+import { isAdmin } from '@/utils/permission.js'
 
 export default {
   data() {
     return {
       userInfo: {},
-      statusBarH: 0
+      statusBarH: 0,
+      isAdmin: false
     }
   },
   computed: {
@@ -63,11 +65,23 @@ export default {
     avatarChar() {
       const name = this.displayName || ''
       return name.charAt(0).toUpperCase() || '?'
+    },
+    avatarUrl() {
+      const url = this.userInfo.avatar || ''
+      if (!url) return ''
+      if (url.startsWith('http://') || url.startsWith('https://')) return url
+      const baseUrl = uni.getStorageSync('baseUrl') || 'https://www.junsong.vip/prod-api'
+      if (url.startsWith('/statics/')) {
+        return baseUrl.replace(/\/prod-api$/, '').replace(/\/dev-api$/, '') + url
+      }
+      return baseUrl + url
     }
   },
   onShow() {
     this.statusBarH = uni.getSystemInfoSync().statusBarHeight || 20
     this.userInfo = uni.getStorageSync('userInfo') || {}
+    const modules = uni.getStorageSync('modules') || []
+    this.isAdmin = isAdmin(modules)
   },
   methods: {
     goProfile() {
@@ -88,6 +102,7 @@ export default {
             setToken('')
             uni.removeStorageSync('userInfo')
             uni.removeStorageSync('modules')
+            uni.removeStorageSync('permissions')
             uni.reLaunch({ url: '/pages/login/index' })
           }
         }
@@ -106,7 +121,7 @@ export default {
 .profile-header {
   position: relative;
   overflow: hidden;
-  padding-bottom: 48rpx;
+  padding-bottom: 80rpx;
 }
 
 .profile-bg {
@@ -118,10 +133,10 @@ export default {
 .profile-bg::after {
   content: '';
   position: absolute;
-  bottom: -40rpx;
+  bottom: -60rpx;
   left: -10%;
   right: -10%;
-  height: 100rpx;
+  height: 140rpx;
   background: #F0F4F8;
   border-radius: 50% 50% 0 0;
 }
@@ -130,7 +145,7 @@ export default {
   position: relative;
   display: flex;
   align-items: center;
-  padding: 80rpx 40rpx 0;
+  padding: 32rpx 40rpx 0;
 }
 
 .avatar {

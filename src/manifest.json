@@ -1,12 +1,12 @@
 {
-  "name": "JunSong店记",
+  "name": "峻松店记",
   "appid": "__UNI__JUNSONG",
-  "description": "JunSong店记 - 会员与财务运营管理",
+  "description": "峻松店记 - 会员与财务运营管理",
   "versionName": "1.0.0",
   "versionCode": "100",
   "transformPx": false,
   "mp-weixin": {
-    "appid": "wx0224df26b5b475fb",
+    "appid": "wxe9f6685ec5de191f",
     "setting": {
       "urlCheck": false,
       "es6": true,

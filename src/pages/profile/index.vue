@@ -1,8 +1,10 @@
 <template>
   <view class="page">
     <view class="hero-card">
-      <view class="hero-avatar">
-        <text class="hero-avatar-text">{{ avatarChar }}</text>
+      <view class="hero-avatar" @tap="chooseAvatar">
+        <image class="hero-avatar-img" v-if="form.avatar" :src="avatarUrl" mode="aspectFill" />
+        <text class="hero-avatar-text" v-else>{{ avatarChar }}</text>
+        <view class="avatar-edit">更换</view>
       </view>
       <view class="hero-info">
         <text class="hero-title">个人资料</text>
@@ -57,7 +59,7 @@
 </template>
 
 <script>
-import { request } from '@/api/index.js'
+import { request, getBaseUrl, getToken } from '@/api/index.js'
 
 export default {
   data() {
@@ -71,7 +73,8 @@ export default {
         nickName: '',
         phonenumber: '',
         email: '',
-        sex: ''
+        sex: '',
+        avatar: ''
       },
       sexOptions: [
         { label: '男', value: '0' },
@@ -84,6 +87,16 @@ export default {
     avatarChar() {
       const name = this.form.nickName || this.form.userName || ''
       return name.charAt(0).toUpperCase() || '?'
+    },
+    avatarUrl() {
+      const url = this.form.avatar || ''
+      if (!url) return ''
+      if (url.startsWith('http://') || url.startsWith('https://')) return url
+      const baseUrl = getBaseUrl()
+      if (url.startsWith('/statics/')) {
+        return baseUrl.replace(/\/prod-api$/, '').replace(/\/dev-api$/, '') + url
+      }
+      return baseUrl + url
     },
     sexLabels() {
       return this.sexOptions.map(item => item.label)
@@ -157,6 +170,8 @@ export default {
         this.form.phonenumber = data.phonenumber || ''
         this.form.email = data.email || ''
         this.form.sex = data.sex || ''
+        const storedUserInfo = uni.getStorageSync('userInfo') || {}
+        this.form.avatar = data.avatar || storedUserInfo.avatar || ''
       } catch (e) {
         console.error('加载个人资料失败', e)
       } finally {

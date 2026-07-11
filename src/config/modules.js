@@ -35,15 +35,16 @@ export const modules = {
     idKey: 'memberId',
     searchKey: 'memberName',
     searchKeys: ['memberName', 'memberNo'],
-    summary: ['memberNo', 'phone', 'cardType', 'availablePoints'],
+    summary: ['memberNo', 'phone', 'cardType', 'availablePoints', 'growthValue'],
     fields: [
       { key: 'memberNo', label: '会员编号', required: true },
       { key: 'memberName', label: '会员姓名', required: true },
       { key: 'phone', label: '手机号码', type: 'phone' },
       { key: 'age', label: '年龄', type: 'number' },
       { key: 'address', label: '住址' },
-      { key: 'idCard', label: '身份证号' },
-      { key: 'cardType', label: '会员卡类型', type: 'select', dictType: 'mem_card_type' },
+      { key: 'idCard', label: '身份证号', type: 'idcard', sensitive: true },
+      { key: 'cardType', label: '会员卡类型', displayKey: 'cardTypeName' },
+      { key: 'growthValue', label: '成长值', type: 'number' },
       { key: 'joinDate', label: '入会日期', type: 'date' },
       { key: 'expireDate', label: '有效期至', type: 'date' },
       { key: 'totalPoints', label: '总积分', type: 'number' },
@@ -66,13 +67,14 @@ export const modules = {
     summary: ['goodsCode', 'pointsPrice', 'stock', 'status'],
     fields: [
       { key: 'goodsName', label: '物品名称', required: true },
-      { key: 'goodsCode', label: '物品编码' },
-      { key: 'goodsValue', label: '物品价值', type: 'number' },
+      { key: 'goodsCode', label: '物品编码', hidden: true },
+      { key: 'goodsValue', label: '物品价值', type: 'number', required: true },
       { key: 'pointsPrice', label: '积分价格', type: 'number', required: true },
-      { key: 'stock', label: '库存', type: 'number' },
-      { key: 'exchanged', label: '已兑换数量', type: 'number' },
-      { key: 'goodsImage', label: '物品图片' },
-      { key: 'status', label: '状态', type: 'select', options: [{ label: '上架', value: '0' }, { label: '下架', value: '1' }] }
+      { key: 'stock', label: '库存', type: 'number', required: true },
+      { key: 'exchanged', label: '已兑换数量', type: 'number', hidden: true },
+      { key: 'goodsImage', label: '物品图片', type: 'image' },
+      { key: 'status', label: '状态', type: 'select', options: [{ label: '正常', value: '0' }, { label: '停用', value: '1' }] },
+      { key: 'remark', label: '备注', type: 'textarea' }
     ]
   },
   pointsRule: {
@@ -123,18 +125,18 @@ export const modules = {
     searchKey: 'memberName',
     summary: ['exchangeNo', 'goodsName', 'quantity', 'status'],
     fields: [
-      { key: 'exchangeNo', label: '兑换单号' },
-      { key: 'memberId', label: '会员ID', type: 'number' },
-      { key: 'memberNo', label: '会员编号' },
-      { key: 'memberName', label: '会员姓名' },
-      { key: 'goodsId', label: '物品ID', type: 'number' },
-      { key: 'goodsName', label: '物品名称' },
-      { key: 'exchangeDate', label: '兑换日期', type: 'date' },
-      { key: 'quantity', label: '兑换数量', type: 'number' },
-      { key: 'pointsDeducted', label: '扣减积分', type: 'number' },
+      { key: 'exchangeNo', label: '兑换单号', hidden: true },
+      { key: 'memberId', label: '会员ID', type: 'number', hidden: true },
+      { key: 'memberNo', label: '会员编号', required: true },
+      { key: 'memberName', label: '会员姓名', hidden: true },
+      { key: 'goodsId', label: '兑换物品', type: 'select', remoteUrl: '/member/pointsGoods/list', remoteLabel: 'goodsName', remoteValue: 'goodsId', required: true },
+      { key: 'goodsName', label: '物品名称', hidden: true },
+      { key: 'exchangeDate', label: '兑换日期', type: 'date', required: true },
+      { key: 'quantity', label: '兑换数量', type: 'number', required: true },
+      { key: 'pointsDeducted', label: '扣减积分', type: 'number', hidden: true },
       { key: 'paymentMethod', label: '付款方式', type: 'select', dictType: 'finance_payment_method', options: paymentMethods },
       { key: 'extraAmount', label: '补差价金额', type: 'number' },
-      { key: 'status', label: '状态', type: 'select', options: [{ label: '待领取', value: '0' }, { label: '已领取', value: '1' }, { label: '已取消', value: '2' }] },
+      { key: 'status', label: '状态', type: 'select', options: [{ label: '待领取', value: '0' }, { label: '已领取', value: '1' }, { label: '已取消', value: '2' }], hidden: true },
       { key: 'remark', label: '备注', type: 'textarea' }
     ],
     actions: [{ name: '领取', action: 'edit', url: '/member/pointsExchange/claim', method: 'PUT', body: 'ids' }]
@@ -148,18 +150,18 @@ export const modules = {
     searchKey: 'seckillName',
     summary: ['seckillNo', 'seckillType', 'seckillPrice', 'remainShares'],
     fields: [
-      { key: 'seckillNo', label: '秒杀编号' },
+      { key: 'seckillNo', label: '秒杀编号', hidden: true },
       { key: 'seckillName', label: '秒杀名称', required: true },
-      { key: 'seckillType', label: '类型', type: 'select', options: ['秒杀', '团购'] },
-      { key: 'seckillDate', label: '开始日期', type: 'date' },
-      { key: 'endDate', label: '结束日期', type: 'date' },
-      { key: 'seckillTime', label: '时间段' },
-      { key: 'seckillAmount', label: '秒杀金额', type: 'number' },
-      { key: 'seckillPrice', label: '秒杀单价', type: 'number' },
-      { key: 'totalShares', label: '总份额', type: 'number' },
-      { key: 'remainShares', label: '剩余份额', type: 'number' },
+      { key: 'seckillType', label: '类型', type: 'select', required: true, options: [{ label: '秒杀', value: '1' }, { label: '团购', value: '2' }] },
+      { key: 'seckillDate', label: '开始日期', type: 'date', required: true },
+      { key: 'endDate', label: '结束日期', type: 'date', required: true },
+      { key: 'timeSlot', label: '时间段', hidden: true },
+      { key: 'seckillAmount', label: '秒杀金额', type: 'number', required: true },
+      { key: 'seckillPrice', label: '秒杀单价', type: 'number', required: true },
+      { key: 'totalShares', label: '总份额', type: 'number', required: true },
+      { key: 'remainShares', label: '剩余份额', type: 'number', hidden: true },
       { key: 'policy', label: '秒杀政策', type: 'textarea' },
-      { key: 'status', label: '状态', type: 'select', options: [{ label: '进行中', value: '0' }, { label: '已结束', value: '1' }, { label: '已取消', value: '2' }] },
+      { key: 'status', label: '状态', type: 'select', options: [{ label: '进行中', value: '0' }, { label: '已结束', value: '1' }, { label: '已取消', value: '2' }], hidden: true },
       { key: 'remark', label: '备注', type: 'textarea' }
     ],
     actions: [{ name: '关闭活动', action: 'edit', url: '/member/seckill/{id}/close', idKey: 'seckillId', method: 'PUT' }]
@@ -193,7 +195,11 @@ export const modules = {
     group: '财务管理',
     title: '费用记录',
     path: '/finance/expense',
-    permissions: { ...crudPermissions('expense'), verify: 'finance:expense:edit' },
+    permissions: {
+      ...crudPermissions('expense'),
+      verify: 'finance:expense:verify',
+      unverify: 'finance:expense:unverify'
+    },
     idKey: 'expenseId',
     searchKey: 'expenseContent',
     summary: ['expenseNo', 'expenseType', 'expenseAmount', 'status'],
@@ -206,8 +212,7 @@ export const modules = {
       { key: 'expenseAmount', label: '费用金额', type: 'number', required: true },
       { key: 'advanceId', label: '关联借支ID', type: 'number', hidden: true },
       { key: 'status', label: '状态', type: 'select', options: [{ label: '未核销', value: '0' }, { label: '已核销', value: '1' }], hidden: true }
-    ],
-    actions: [{ name: '核销', action: 'verify', url: '/finance/expense/verify/{id}', idKey: 'expenseId', method: 'PUT' }]
+    ]
   },
   advance: {
     group: '财务管理',
@@ -218,12 +223,13 @@ export const modules = {
     searchKey: 'borrower',
     summary: ['advanceNo', 'advanceDate', 'advanceAmount', 'status'],
     fields: [
-      { key: 'advanceNo', label: '借支单号' },
-      { key: 'advanceDate', label: '借支日期', type: 'date' },
+      { key: 'advanceNo', label: '借支单号', hidden: true },
+      { key: 'advanceDate', label: '借支日期', type: 'date', required: true },
       { key: 'advanceAmount', label: '借支金额', type: 'number', required: true },
-      { key: 'borrower', label: '借款人', required: true },
-      { key: 'purpose', label: '借支用途', type: 'textarea' },
-      { key: 'status', label: '状态', type: 'select', options: [{ label: '未核销', value: '0' }, { label: '已核销', value: '1' }] }
+      { key: 'borrower', label: '借款人', type: 'select', remoteDeptStaff: true, remoteLabel: 'nickName', remoteValue: 'nickName', required: true },
+      { key: 'purpose', label: '借支用途', type: 'textarea', required: true },
+      { key: 'status', label: '状态', type: 'select', options: [{ label: '未核销', value: '0' }, { label: '已核销', value: '1' }], hidden: true },
+      { key: 'remark', label: '备注', type: 'textarea' }
     ]
   },
   product: {
@@ -235,15 +241,16 @@ export const modules = {
     searchKey: 'productName',
     summary: ['productCode', 'unit', 'salePrice', 'stockNum'],
     fields: [
-      { key: 'productCode', label: '商品编码' },
+      { key: 'productCode', label: '商品编码', hidden: true },
       { key: 'productName', label: '商品名称', required: true },
-      { key: 'categoryId', label: '分类ID', type: 'number' },
-      { key: 'unit', label: '计量单位' },
+      { key: 'categoryId', label: '分类ID', type: 'number', hidden: true },
+      { key: 'unit', label: '计量单位', type: 'select', dictType: 'finance_product_unit', required: true },
       { key: 'purchasePrice', label: '进货价格', type: 'number' },
       { key: 'salePrice', label: '销售价格', type: 'number' },
       { key: 'stockNum', label: '库存数量', type: 'number' },
-      { key: 'minStock', label: '最低库存', type: 'number' },
-      { key: 'status', label: '状态', type: 'select', options: [{ label: '正常', value: '0' }, { label: '停用', value: '1' }] }
+      { key: 'minStock', label: '最低库存预警', type: 'number' },
+      { key: 'status', label: '商品状态', type: 'select', options: [{ label: '正常', value: '0' }, { label: '停用', value: '1' }] },
+      { key: 'remark', label: '备注', type: 'textarea' }
     ]
   },
   supplier: {
@@ -255,12 +262,13 @@ export const modules = {
     searchKey: 'supplierName',
     summary: ['supplierCode', 'contactPerson', 'contactPhone', 'status'],
     fields: [
-      { key: 'supplierCode', label: '供应商编码' },
+      { key: 'supplierCode', label: '供应商编码', hidden: true },
       { key: 'supplierName', label: '供应商名称', required: true },
       { key: 'contactPerson', label: '联系人' },
       { key: 'contactPhone', label: '联系电话', type: 'phone' },
-      { key: 'address', label: '地址' },
-      { key: 'status', label: '状态', type: 'select', options: [{ label: '正常', value: '0' }, { label: '停用', value: '1' }] }
+      { key: 'address', label: '地址', type: 'textarea' },
+      { key: 'status', label: '供应商状态', type: 'select', options: [{ label: '正常', value: '0' }, { label: '停用', value: '1' }] },
+      { key: 'remark', label: '备注', type: 'textarea' }
     ]
   },
   purchase: {
@@ -272,18 +280,19 @@ export const modules = {
     searchKey: 'purchaseNo',
     summary: ['supplierName', 'purchaseDate', 'totalAmount', 'status'],
     fields: [
-      { key: 'purchaseNo', label: '进货单号' },
-      { key: 'supplierId', label: '供应商ID', type: 'number' },
-      { key: 'supplierName', label: '供应商名称' },
-      { key: 'purchaseDate', label: '进货日期', type: 'date' },
-      { key: 'totalAmount', label: '总金额', type: 'number' },
+      { key: 'purchaseNo', label: '进货单号', hidden: true },
+      { key: 'supplierId', label: '供应商', type: 'select', remoteUrl: '/finance/supplier/list', remoteLabel: 'supplierName', remoteValue: 'supplierId', remoteFilterDept: true, required: true },
+      { key: 'supplierName', label: '供应商名称', hidden: true },
+      { key: 'purchaseDate', label: '进货日期', type: 'date', required: true },
+      { key: 'totalAmount', label: '总金额', type: 'number', hidden: true },
       { key: 'paidAmount', label: '已付金额', type: 'number' },
       { key: 'paymentMethod', label: '付款方式', type: 'select', dictType: 'finance_payment_method', options: paymentMethods },
-      { key: 'totalQuantity', label: '总数量', type: 'number' },
-      { key: 'receiverName', label: '收货人' },
-      { key: 'receiverPhone', label: '收货电话', type: 'phone' },
-      { key: 'receiverAddress', label: '收货地址' },
-      { key: 'status', label: '状态', type: 'select', options: [{ label: '草稿', value: '0' }, { label: '已确认', value: '1' }, { label: '已完成', value: '2' }] }
+      { key: 'totalQuantity', label: '总数量', type: 'number', hidden: true },
+      { key: 'receiverName', label: '收货人姓名' },
+      { key: 'receiverPhone', label: '收货人电话', type: 'phone' },
+      { key: 'receiverAddress', label: '收货人地址' },
+      { key: 'status', label: '状态', type: 'select', options: [{ label: '草稿', value: '0' }, { label: '已确认', value: '1' }, { label: '已完成', value: '2' }] },
+      { key: 'remark', label: '备注', type: 'textarea' }
     ]
   },
   sale: {
@@ -293,19 +302,19 @@ export const modules = {
     permissions: { ...crudPermissions('sale'), payment: 'finance:sale:edit' },
     idKey: 'saleId',
     searchKey: 'productName',
-    summary: ['saleNo', 'saleQuantity', 'saleAmount', 'status'],
+    summary: ['saleNo', 'saleQuantity', 'saleAmount', 'paidAmount', 'status'],
     fields: [
-      { key: 'saleNo', label: '销售单号' },
-      { key: 'productId', label: '商品ID', type: 'number' },
-      { key: 'productName', label: '商品名称' },
-      { key: 'saleQuantity', label: '销售数量', type: 'number' },
+      { key: 'saleNo', label: '销售单号', hidden: true },
+      { key: 'productId', label: '商品', type: 'select', remoteUrl: '/finance/product/list', remoteLabel: 'productName', remoteValue: 'productId', remoteFilterDept: true, required: true },
+      { key: 'productName', label: '商品名称', hidden: true },
+      { key: 'saleQuantity', label: '销售数量', type: 'number', required: true },
       { key: 'giftQuantity', label: '赠品数量', type: 'number' },
-      { key: 'totalQuantity', label: '总数量', type: 'number' },
-      { key: 'saleAmount', label: '销售金额', type: 'number' },
+      { key: 'totalQuantity', label: '总数量', type: 'number', hidden: true },
+      { key: 'saleAmount', label: '销售金额', type: 'number', required: true, allowNegative: true },
       { key: 'unitPrice', label: '单价', type: 'number' },
-      { key: 'paidAmount', label: '已缴金额', type: 'number' },
-      { key: 'saleDate', label: '销售日期', type: 'date' },
-      { key: 'status', label: '状态', type: 'select', options: [{ label: '待缴款', value: '0' }, { label: '部分缴款', value: '1' }, { label: '已缴清', value: '2' }] }
+      { key: 'paidAmount', label: '已缴金额', type: 'number', hidden: true },
+      { key: 'saleDate', label: '销售日期', type: 'date', required: true },
+      { key: 'status', label: '状态', type: 'select', hidden: true, options: [{ label: '待缴款', value: '0' }, { label: '部分缴款', value: '1' }, { label: '已缴清', value: '2' }] }
     ],
     payment: true
   },
@@ -358,8 +367,8 @@ export const modules = {
     fields: [
       { key: 'deptId', label: '机构ID', type: 'number', hidden: true },
       { key: 'periodId', label: '周期ID', type: 'number', hidden: true },
-      { key: 'investorId', label: '投资人ID', type: 'number', required: true },
-      { key: 'investorName', label: '投资人姓名' },
+      { key: 'investorId', label: '投资人', type: 'select', remoteUrl: '/finance/investor/list', remoteFilterDept: true, remoteLabel: 'investorName', remoteValue: 'investorId', required: true },
+      { key: 'investorName', label: '投资人姓名', hidden: true },
       { key: 'investAmount', label: '投资金额', type: 'number', required: true },
       { key: 'investTime', label: '投资时间', type: 'date', required: true },
       { key: 'remark', label: '备注', type: 'textarea' }
@@ -374,9 +383,9 @@ export const modules = {
     searchKey: 'deptId',
     summary: ['deptId', 'managerProfitRate', 'autoCreateInvestorPayment', 'status'],
     fields: [
-      { key: 'deptId', label: '机构ID', type: 'number', required: true },
+      { key: 'deptId', label: '机构', type: 'select', remoteUrl: '/system/dept/list', remoteLabel: 'deptName', remoteValue: 'deptId', required: true },
       { key: 'managerProfitRate', label: '店长分润比例', type: 'number', required: true },
-      { key: 'autoCreateInvestorPayment', label: '自动生成投资人返款', type: 'select', options: [{ label: '否', value: '0' }, { label: '是', value: '1' }] },
+      { key: 'autoCreateInvestorPayment', label: '自动投资人返款', type: 'select', options: [{ label: '否', value: '0' }, { label: '是', value: '1' }] },
       { key: 'status', label: '状态', type: 'select', options: [{ label: '启用', value: '0' }, { label: '停用', value: '1' }] },
       { key: 'remark', label: '备注', type: 'textarea' }
     ]
@@ -408,8 +417,8 @@ export const modules = {
       { key: 'investorProfitAmount', label: '投资人返款', type: 'number' }
     ],
     actions: [
-      { name: '回本检测', action: 'checkBreakEven', url: '/finance/accountingPeriod/current/{deptId}/checkBreakEven', idKey: 'deptId', method: 'POST' },
-      { name: '结转分润', action: 'carryForward', url: '/finance/profitShare/carryForward/{id}', idKey: 'periodId', method: 'POST' }
+      { name: '回本检测', action: 'checkBreakEven', url: '/finance/accountingPeriod/current/{deptId}/trialBreakEven', idKey: 'deptId', method: 'POST' },
+      { name: '结转分润', action: 'carryForward', url: '/finance/accountingPeriod/current/{deptId}/carryForward', idKey: 'deptId', method: 'POST' }
     ]
   },
   profitShare: {
@@ -504,6 +513,26 @@ export const modules = {
     actions: [
       { name: '重置密码', action: 'edit', url: '/system/user/resetPwd', method: 'PUT', bodyFactory: (item) => ({ userId: item.userId, password: '123456' }) }
     ]
+  },
+
+  // ===== 移动办公 =====
+  wfTodo: {
+    group: '移动办公',
+    title: '待办任务',
+    customPage: '/pages/workflow/todo',
+    permissions: { view: ['workflow:mobile:todo'] }
+  },
+  wfDone: {
+    group: '移动办公',
+    title: '已办任务',
+    customPage: '/pages/workflow/todo?tab=done',
+    permissions: { view: ['workflow:mobile:done'] }
+  },
+  wfNotify: {
+    group: '移动办公',
+    title: '消息通知',
+    customPage: '/pages/notification/index',
+    permissions: { view: ['workflow:mobile:notify'] }
   }
 }
 
@@ -515,7 +544,8 @@ const orderedMemberServices = memberServiceOrder.map((key) => ({ key, ...modules
 export const groups = [
   { name: '会员服务', items: orderedMemberServices },
   { name: '财务管理', items: moduleList.filter((item) => item.group === '财务管理') },
-  { name: '系统管理', items: moduleList.filter((item) => item.group === '系统管理') }
+  { name: '系统管理', items: moduleList.filter((item) => item.group === '系统管理') },
+  { name: '移动办公', items: moduleList.filter((item) => item.group === '移动办公') }
 ]
 
 export function getModule(key) {
@@ -526,8 +556,11 @@ export function getFieldLabel(moduleKey, key) {
   return modules[moduleKey]?.fields.find((field) => field.key === key)?.label || key
 }
 
-export function displayValue(field, value) {
+export function displayValue(field, value, item) {
   if (value === undefined || value === null || value === '') return '-'
+  if (field?.displayKey && item && item[field.displayKey] !== undefined && item[field.displayKey] !== null && item[field.displayKey] !== '') {
+    return item[field.displayKey]
+  }
   const options = field?.options || []
   if (Array.isArray(options) && options.length) {
     const hit = options.find((item) => {
@@ -561,8 +594,8 @@ function trimNumber(value) {
   return Number.isInteger(num) ? String(num) : num.toFixed(2).replace(/\.?0+$/, '')
 }
 
-export function formatDisplayValue(field, value) {
-  const base = displayValue(field, value)
+export function formatDisplayValue(field, value, item) {
+  const base = displayValue(field, value, item)
   if (base === '-') return base
   const key = field?.key || ''
   if (MONEY_KEYS.includes(key) && isNumericLike(value)) return '¥' + Number(value).toFixed(2)

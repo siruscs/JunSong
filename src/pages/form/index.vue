@@ -436,6 +436,7 @@ export default {
     },
     shouldHideFormField(field) {
       if (field.hidden) return true
+      if (field.formHidden) return true
       if (this.isSeckillRecordCreate && ['seckillId', 'memberId', 'memberNo', 'memberName', 'status'].includes(field.key)) return true
       if (this.moduleKey === 'pointsExchange' && !this.id && ['memberId', 'memberName', 'pointsDeducted', 'status', 'exchangeNo'].includes(field.key)) return true
       return false

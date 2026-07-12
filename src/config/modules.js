@@ -43,12 +43,12 @@ export const modules = {
       { key: 'age', label: '年龄', type: 'number' },
       { key: 'address', label: '住址' },
       { key: 'idCard', label: '身份证号', type: 'idcard', sensitive: true },
-      { key: 'cardType', label: '会员卡类型', displayKey: 'cardTypeName' },
-      { key: 'growthValue', label: '成长值', type: 'number' },
+      { key: 'cardType', label: '会员卡类型', type: 'select', remoteUrl: '/member/level/list', remoteLabel: 'typeName', remoteValue: 'typeCode', required: true },
+      { key: 'growthValue', label: '成长值', type: 'number', formHidden: true },
       { key: 'joinDate', label: '入会日期', type: 'date' },
       { key: 'expireDate', label: '有效期至', type: 'date' },
-      { key: 'totalPoints', label: '总积分', type: 'number' },
-      { key: 'availablePoints', label: '可用积分', type: 'number' },
+      { key: 'totalPoints', label: '总积分', type: 'number', formHidden: true },
+      { key: 'availablePoints', label: '可用积分', type: 'number', formHidden: true },
       { key: 'status', label: '状态', type: 'select', options: [{ label: '正常', value: '0' }, { label: '无效', value: '1' }, { label: '已退卡', value: '2' }] },
       { key: 'remark', label: '备注', type: 'textarea' }
     ],
@@ -458,6 +458,12 @@ export const modules = {
     ],
     readonlyFields: ['periodNo', 'totalVerifiedExpense', 'totalPurchase', 'totalSalePayment', 'totalUnverifiedAdvance', 'netProfit', 'managerProfitRate', 'managerProfitAmount', 'investorProfitAmount', 'returnSituation'],
     pageActions: [{ name: '预览', action: 'view', url: '/finance/costAccounting/preview', method: 'GET' }]
+  },
+  verificationRecord: {
+    group: '财务管理',
+    title: '核销记录',
+    customPage: '/pages/verification-record/index',
+    permissions: { view: ['finance:expense:verificationRecord:list'] }
   },
 
   // ===== 系统管理（管理员专用）=====

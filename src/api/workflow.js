@@ -1,27 +1,27 @@
 import { request } from '@/api/index.js'
 
 export function getTodoTasks() {
-  return request({ url: '/task/todo', method: 'GET' })
+  return request({ url: '/workflow/task/todo', method: 'GET' })
 }
 
 export function getDoneTasks() {
-  return request({ url: '/task/done', method: 'GET' })
+  return request({ url: '/workflow/task/done', method: 'GET' })
 }
 
 export function getAppliedTasks() {
-  return request({ url: '/task/applied', method: 'GET' })
+  return request({ url: '/workflow/task/applied', method: 'GET' })
 }
 
 export function getTaskDetail(taskId) {
-  return request({ url: '/task/' + taskId, method: 'GET' })
+  return request({ url: '/workflow/task/' + taskId, method: 'GET' })
 }
 
 export function approveTask(taskId, data) {
-  return request({ url: '/task/' + taskId + '/approve', method: 'POST', data })
+  return request({ url: '/workflow/task/' + taskId + '/approve', method: 'POST', data })
 }
 
 export function rejectTask(taskId, data) {
-  return request({ url: '/task/' + taskId + '/reject', method: 'POST', data })
+  return request({ url: '/workflow/task/' + taskId + '/reject', method: 'POST', data })
 }
 
 export function getNotifications(params) {

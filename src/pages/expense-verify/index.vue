@@ -106,16 +106,18 @@ export default {
         if (this.expenses.some((item) => String(item.status ?? '') !== '0')) {
           throw new Error('选择中包含不可核销费用')
         }
+        this.advancePermissionNotice = ''
         if (!hasActionPermission('advance', 'list')) {
           this.advances = []
           this.advancePermissionNotice = '暂无借支单查看权限，可不选择借支单直接核销。'
-          this.verificationReady = true
-          return
+        } else try {
+          const response = await request({ url: '/finance/expense/unverifiedAdvances', method: 'GET' })
+          const data = response.data || response
+          this.advances = Array.isArray(data) ? data : (data.rows || [])
+        } catch (permErr) {
+          this.advances = []
+          this.advancePermissionNotice = '暂无借支单查看权限，可不选择借支单直接核销。'
         }
-        this.advancePermissionNotice = ''
-        const response = await request({ url: '/finance/expense/unverifiedAdvances', method: 'GET' })
-        const data = response.data || response
-        this.advances = Array.isArray(data) ? data : (data.rows || [])
         this.verificationReady = true
       } catch (error) {
         uni.showToast({ title: error?.message || error?.msg || '加载核销数据失败', icon: 'none' })
@@ -155,17 +157,171 @@ export default {
 </script>
 
 <style scoped>
-.page { min-height: 100vh; padding: 28rpx; background: #f4f7fa; color: #172033; }
-.summary-card, .card { display: flex; align-items: center; gap: 20rpx; margin-bottom: 18rpx; padding: 26rpx; border-radius: 18rpx; background: #fff; }
-.summary-card { display: block; }
-.title, .section-title { margin: 18rpx 0; font-size: 30rpx; font-weight: 700; }
-.row { display: flex; justify-content: space-between; padding: 12rpx 0; }
-.difference { font-weight: 700; color: #2a6f97; }
-.explanation, .meta, .empty { color: #64748b; font-size: 24rpx; }
-.card { justify-content: space-between; }
-.selectable.selected { outline: 3rpx solid #2a6f97; background: #eef7fb; }
-.check { width: 36rpx; color: #2a6f97; font-weight: 800; }
-.grow { display: flex; flex: 1; flex-direction: column; gap: 6rpx; }
-.submit { margin-top: 36rpx; color: #fff; background: #2a6f97; border-radius: 999rpx; }
-.submit[disabled] { opacity: .55; }
+.page {
+  min-height: 100vh;
+  padding: 28rpx 28rpx 120rpx;
+  background: #F0F4F8;
+  color: #1A2332;
+  box-sizing: border-box;
+}
+
+.summary-card {
+  background: linear-gradient(135deg, #173B57 0%, #2A6F97 100%);
+  border-radius: 20rpx;
+  padding: 32rpx;
+  margin-bottom: 28rpx;
+  color: #FFFFFF;
+}
+
+.summary-card .title {
+  font-size: 30rpx;
+  font-weight: 700;
+  margin-bottom: 20rpx;
+  opacity: 0.9;
+}
+
+.summary-card .row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14rpx 0;
+  font-size: 28rpx;
+  opacity: 0.95;
+}
+
+.summary-card .row:last-of-type {
+  border-top: 1rpx solid rgba(255, 255, 255, 0.2);
+  margin-top: 12rpx;
+  padding-top: 20rpx;
+}
+
+.summary-card .difference {
+  font-weight: 700;
+  font-size: 32rpx;
+}
+
+.explanation {
+  margin-top: 16rpx;
+  padding: 16rpx 20rpx;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1A2332;
+  margin: 28rpx 8rpx 16rpx;
+}
+
+.notice {
+  padding: 20rpx 24rpx;
+  background: #FEF3C7;
+  border-radius: 12rpx;
+  font-size: 26rpx;
+  color: #92400E;
+  margin-bottom: 16rpx;
+}
+
+.empty {
+  text-align: center;
+  padding: 60rpx 0;
+  color: #94A3B8;
+  font-size: 26rpx;
+  background: #FFFFFF;
+  border-radius: 16rpx;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin-bottom: 16rpx;
+  padding: 28rpx 24rpx;
+  border-radius: 16rpx;
+  background: #FFFFFF;
+  box-shadow: 0 2rpx 8rpx rgba(42, 111, 151, 0.04);
+}
+
+.card .grow {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8rpx;
+  min-width: 0;
+}
+
+.card .grow text:first-child {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #1A2332;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card .meta {
+  font-size: 24rpx;
+  color: #64748B;
+}
+
+.card > text:last-child {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #2A6F97;
+  flex-shrink: 0;
+}
+
+.card.selectable {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.card.selectable .check {
+  width: 44rpx;
+  height: 44rpx;
+  line-height: 44rpx;
+  text-align: center;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: transparent;
+  border: 2rpx solid #CBD5E1;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.card.selectable.selected {
+  border: 2rpx solid #2A6F97;
+  background: #F0F7FA;
+}
+
+.card.selectable.selected .check {
+  color: #FFFFFF;
+  background: #2A6F97;
+  border-color: #2A6F97;
+}
+
+.submit {
+  position: fixed;
+  bottom: 40rpx;
+  left: 28rpx;
+  right: 28rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+  color: #fff;
+  background: #2A6F97;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  box-shadow: 0 8rpx 24rpx rgba(42, 111, 151, 0.3);
+}
+
+.submit[disabled] {
+  opacity: 0.55;
+  box-shadow: none;
+}
 </style>

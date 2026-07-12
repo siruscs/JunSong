@@ -36,6 +36,10 @@
     <view class="search-wrap">
       <input class="search" v-model="queryValue" :placeholder="searchPlaceholder" confirm-type="search" @confirm="refresh" />
       <button class="search-button" @tap="refresh">查询</button>
+      <button v-if="moduleKey === 'expense' && canVerifyExpenses" class="search-button batch-verify-btn" @tap="toggleBatchSelection">{{ batchSelecting ? '取消批量' : '批量核销' }}</button>
+    </view>
+    <view v-if="moduleKey === 'expense' && canVerifyExpenses && batchSelecting" class="expense-batch-tools">
+      <button class="chip-button primary" :disabled="selectedExpenseIds.length === 0" @tap="continueBatchVerify">下一步（{{ selectedExpenseIds.length }}笔 / ¥{{ selectedExpenseTotal.toFixed(2) }}）</button>
     </view>
 
     <view class="page-actions" v-if="authorizedPageActions.length">
@@ -129,10 +133,6 @@
       </view>
 
       <view v-if="moduleKey === 'expense'">
-        <view class="expense-batch-tools" v-if="canVerifyExpenses">
-          <button class="chip-button" @tap="toggleBatchSelection">{{ batchSelecting ? '取消批量' : '批量核销' }}</button>
-          <button v-if="batchSelecting" class="chip-button primary" :disabled="selectedExpenseIds.length === 0" @tap="continueBatchVerify">下一步（{{ selectedExpenseIds.length }}笔 / ¥{{ selectedExpenseTotal.toFixed(2) }}）</button>
-        </view>
         <view class="expense-item" :class="{ disabled: batchSelecting && !isExpenseSelectable(item), selected: isExpenseSelected(item) }" hover-class="expense-item--active" v-for="item in rows" :key="item[config.idKey]" @tap="handleExpenseTap(item)">
           <view class="expense-checkbox" v-if="batchSelecting">{{ isExpenseSelected(item) ? '✓' : '' }}</view>
           <view class="expense-bar"></view>
@@ -913,6 +913,20 @@ export default {
   color: #FFFFFF;
   font-size: 26rpx;
   border-radius: 999rpx;
+  flex-shrink: 0;
+}
+
+.batch-verify-btn {
+  width: auto;
+  padding: 0 28rpx;
+  background: linear-gradient(135deg, #E07B39, #F59E0B);
+}
+
+.expense-batch-tools {
+  display: flex;
+  gap: 16rpx;
+  margin: 12rpx 28rpx 0;
+  flex-wrap: wrap;
 }
 
 .page-actions {
@@ -922,14 +936,25 @@ export default {
 }
 
 .chip-button {
-  height: 64rpx;
-  line-height: 64rpx;
-  padding: 0 22rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  padding: 0 28rpx;
   background: #FFFFFF;
   color: #2A6F97;
-  font-size: 24rpx;
-  border: 1rpx solid #E2E8F0;
-  border-radius: 999rpx;
+  font-size: 26rpx;
+  font-weight: 500;
+  border: 2rpx solid #E2E8F0;
+  border-radius: 16rpx;
+}
+
+.chip-button.primary {
+  background: #2A6F97;
+  color: #FFFFFF;
+  border-color: #2A6F97;
+}
+
+.chip-button[disabled] {
+  opacity: 0.5;
 }
 
 .scroll {

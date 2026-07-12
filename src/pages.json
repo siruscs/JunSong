@@ -99,6 +99,14 @@
     {
       "path": "pages/member/points",
       "style": { "navigationBarTitleText": "积分运营" }
+    },
+    {
+      "path": "pages/verification-record/index",
+      "style": { "navigationBarTitleText": "核销记录" }
+    },
+    {
+      "path": "pages/verification-record/detail",
+      "style": { "navigationBarTitleText": "核销批次详情" }
     }
   ],
   "tabBar": {

@@ -3,11 +3,11 @@
     <view class="hero">
       <view class="hero-main">
         <view class="eyebrow">审批中心</view>
-        <view class="hero-title">待办任务</view>
+        <view class="hero-title">{{ isDone ? '已办任务' : '待办任务' }}</view>
       </view>
       <view class="hero-badge">
         <text class="hero-badge-num">{{ rows.length }}</text>
-        <text class="hero-badge-label">待处理</text>
+        <text class="hero-badge-label">{{ isDone ? '已处理' : '待处理' }}</text>
       </view>
     </view>
 
@@ -37,7 +37,7 @@
             </view>
           </view>
         </view>
-        <view class="task-actions">
+        <view class="task-actions" v-if="!isDone">
           <button class="action-btn reject-btn" :disabled="acting === item.taskId" @tap.stop="quickReject(item)">驳回</button>
           <button class="action-btn approve-btn" :disabled="acting === item.taskId" @tap.stop="quickApprove(item)">
             {{ acting === item.taskId ? '处理中' : '通过' }}
@@ -47,8 +47,8 @@
 
       <view class="empty" v-if="!loading && rows.length === 0">
         <view class="empty-mark">办</view>
-        <view class="empty-title">暂无待办任务</view>
-        <view class="empty-subtitle">所有流程都已处理完毕</view>
+        <view class="empty-title">{{ isDone ? '暂无已办任务' : '暂无待办任务' }}</view>
+        <view class="empty-subtitle">{{ isDone ? '还没有处理过任何审批' : '所有流程都已处理完毕' }}</view>
       </view>
       <view class="loading" v-if="loading">加载中</view>
     </scroll-view>
@@ -56,7 +56,7 @@
 </template>
 
 <script>
-import { getTodoTasks, approveTask, rejectTask } from '@/api/workflow.js'
+import { getTodoTasks, getDoneTasks, approveTask, rejectTask } from '@/api/workflow.js'
 
 export default {
   data() {
@@ -64,7 +64,14 @@ export default {
       rows: [],
       loading: false,
       refreshing: false,
-      acting: ''
+      acting: '',
+      isDone: false
+    }
+  },
+  onLoad(options) {
+    this.isDone = options.tab === 'done'
+    if (this.isDone) {
+      uni.setNavigationBarTitle({ title: '已办任务' })
     }
   },
   onShow() {
@@ -91,10 +98,10 @@ export default {
     async fetchList() {
       this.loading = true
       try {
-        const res = await getTodoTasks()
+        const res = this.isDone ? await getDoneTasks() : await getTodoTasks()
         this.rows = res.rows || res.data || []
       } catch (e) {
-        console.error('加载待办失败', e)
+        console.error('加载任务失败', e)
       } finally {
         this.loading = false
       }

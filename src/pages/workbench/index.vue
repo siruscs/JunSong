@@ -95,7 +95,7 @@ const MODULE_BG = {
   supplier: 'rgba(107,114,128,0.08)', purchase: 'rgba(249,115,22,0.08)', sale: 'rgba(16,185,129,0.08)',
   investorPayment: 'rgba(236,72,153,0.08)', investor: 'rgba(14,165,233,0.08)', investRecord: 'rgba(16,185,129,0.08)',
   deptProfitConfig: 'rgba(107,114,128,0.08)', accountingPeriod: 'rgba(245,158,11,0.08)', profitShare: 'rgba(244,63,94,0.08)',
-  costAccounting: 'rgba(6,182,212,0.08)', userManage: 'rgba(99,102,241,0.08)', deptManage: 'rgba(34,197,94,0.08)',
+  costAccounting: 'rgba(6,182,212,0.08)', verificationRecord: 'rgba(59,130,246,0.08)', userManage: 'rgba(99,102,241,0.08)', deptManage: 'rgba(34,197,94,0.08)',
   wfTodo: 'rgba(16,185,129,0.08)', wfDone: 'rgba(16,185,129,0.08)', wfNotify: 'rgba(16,185,129,0.08)'
 }
 
@@ -105,7 +105,7 @@ const MODULE_LETTER = {
   product: '📦', supplier: '🏪', purchase: '🛒', sale: '📈',
   investorPayment: '💸', investor: '🤝', investRecord: '💎',
   deptProfitConfig: '⚙️', accountingPeriod: '📅', profitShare: '📊',
-  costAccounting: '🧮', userManage: '👥', deptManage: '🏢',
+  costAccounting: '🧮', verificationRecord: '✅', userManage: '👥', deptManage: '🏢',
   wfTodo: '📥', wfDone: '📤', wfNotify: '🔔'
 }
 
@@ -116,7 +116,7 @@ const MODULE_ICON_COLOR = {
   supplier: '#6B7280', purchase: '#F97316', sale: '#10B981',
   investorPayment: '#EC4899', investor: '#0EA5E9', investRecord: '#10B981',
   deptProfitConfig: '#6B7280', accountingPeriod: '#F59E0B', profitShare: '#F43F5E',
-  costAccounting: '#06B6D4', userManage: '#6366F1', deptManage: '#22C55E',
+  costAccounting: '#06B6D4', verificationRecord: '#3B82F6', userManage: '#6366F1', deptManage: '#22C55E',
   wfTodo: '#10B981', wfDone: '#10B981', wfNotify: '#10B981'
 }
 
@@ -141,6 +141,7 @@ const MODULE_DESC = {
   accountingPeriod: '回本检测和结转',
   profitShare: '分润结转记录',
   costAccounting: '成本核算预览',
+  verificationRecord: '费用核销批次记录',
   userManage: '账号和状态维护',
   deptManage: '部门层级和负责人',
   wfTodo: '待办审批任务处理',

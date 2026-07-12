@@ -19,6 +19,8 @@
         <result property="deptId" column="dept_id"/><result property="expenseAmount" column="expense_amount"/>
         <result property="originalStatus" column="original_status"/><result property="originalAdvanceId" column="original_advance_id"/>
         <result property="periodId" column="period_id"/><result property="createTime" column="create_time"/>
+        <result property="expenseNo" column="expense_no"/><result property="expenseContent" column="expense_content"/>
+        <result property="expenseDate" column="expense_date"/><result property="expenseType" column="expense_type"/>
     </resultMap>
     <resultMap id="AdvanceDetailResult" type="com.junsong.finance.domain.FinAdvanceVerifyDetail">
         <id property="detailId" column="detail_id"/><result property="batchId" column="batch_id"/>
@@ -27,6 +29,8 @@
         <result property="originalStatus" column="original_status"/><result property="periodId" column="period_id"/>
         <result property="relationType" column="relation_type"/><result property="generatedFlag" column="generated_flag"/>
         <result property="createTime" column="create_time"/>
+        <result property="advanceNo" column="advance_no"/><result property="purpose" column="purpose"/>
+        <result property="advanceDate" column="advance_date"/>
     </resultMap>
 
     <select id="selectByRequestId" resultMap="BatchResult">
@@ -125,5 +129,68 @@
              AND d.dept_id=#{deptId} AND b.dept_id=#{deptId} AND b.status='VERIFIED')
           + (SELECT COUNT(*) FROM fin_expense e WHERE e.advance_id=#{advanceId} AND e.tenant_id=#{tenantId}
              AND e.dept_id=#{deptId} AND e.del_flag='0' AND e.status='1')
+    </select>
+
+    <select id="selectBatchList" resultMap="BatchResult">
+        SELECT batch_id, batch_no, request_id, tenant_id, dept_id,
+               total_expense_amount, total_advance_amount, difference_amount,
+               status, source_type, verify_by, verify_time,
+               reverse_by, reverse_time, reverse_reason, reverse_request_id,
+               version, create_time, update_time
+        FROM fin_expense_verify_batch
+        WHERE tenant_id = #{tenantId} AND dept_id = #{deptId}
+        <if test="query.batchNo != null and query.batchNo != ''">
+            AND batch_no LIKE CONCAT('%', #{query.batchNo}, '%')
+        </if>
+        <if test="query.status != null and query.status != ''">
+            AND status = #{query.status}
+        </if>
+        <if test="query.sourceType != null and query.sourceType != ''">
+            AND source_type = #{query.sourceType}
+        </if>
+        <if test="query.verifyBy != null and query.verifyBy != ''">
+            AND verify_by LIKE CONCAT('%', #{query.verifyBy}, '%')
+        </if>
+        <if test="query.params.beginTime != null and query.params.beginTime != ''">
+            AND verify_time &gt;= #{query.params.beginTime}
+        </if>
+        <if test="query.params.endTime != null and query.params.endTime != ''">
+            AND verify_time &lt; DATE_ADD(#{query.params.endTime}, INTERVAL 1 DAY)
+        </if>
+        ORDER BY verify_time DESC, batch_id DESC
+    </select>
+
+    <select id="selectBatchById" resultMap="BatchResult">
+        SELECT batch_id, batch_no, request_id, tenant_id, dept_id,
+               total_expense_amount, total_advance_amount, difference_amount,
+               status, source_type, verify_by, verify_time,
+               reverse_by, reverse_time, reverse_reason, reverse_request_id,
+               version, create_time, update_time
+        FROM fin_expense_verify_batch
+        WHERE batch_id = #{batchId} AND tenant_id = #{tenantId} AND dept_id = #{deptId}
+    </select>
+
+    <select id="selectExpenseDetailsWithDisplay" resultMap="ExpenseDetailResult">
+        SELECT d.detail_id, d.batch_id, d.expense_id, d.tenant_id, d.dept_id,
+               d.expense_amount, d.original_status, d.original_advance_id,
+               d.period_id, d.create_time,
+               e.expense_no, e.expense_content, e.expense_date, e.expense_type
+        FROM fin_expense_verify_detail d
+        LEFT JOIN fin_expense e ON e.expense_id = d.expense_id
+            AND e.tenant_id = d.tenant_id AND e.dept_id = d.dept_id
+        WHERE d.batch_id = #{batchId} AND d.tenant_id = #{tenantId} AND d.dept_id = #{deptId}
+        ORDER BY d.detail_id
+    </select>
+
+    <select id="selectAdvanceDetailsWithDisplay" resultMap="AdvanceDetailResult">
+        SELECT d.detail_id, d.batch_id, d.advance_id, d.tenant_id, d.dept_id,
+               d.advance_amount, d.original_status, d.period_id,
+               d.relation_type, d.generated_flag, d.create_time,
+               a.advance_no, a.purpose, a.advance_date
+        FROM fin_advance_verify_detail d
+        LEFT JOIN fin_advance a ON a.advance_id = d.advance_id
+            AND a.tenant_id = d.tenant_id AND a.dept_id = d.dept_id
+        WHERE d.batch_id = #{batchId} AND d.tenant_id = #{tenantId} AND d.dept_id = #{deptId}
+        ORDER BY d.detail_id
     </select>
 </mapper>

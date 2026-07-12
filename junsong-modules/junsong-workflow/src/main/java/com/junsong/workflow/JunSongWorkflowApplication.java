@@ -2,6 +2,7 @@ package com.junsong.workflow;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
 import org.springframework.cache.annotation.EnableCaching;
 import com.junsong.common.security.annotation.EnableCustomConfig;
 import com.junsong.common.security.annotation.EnableRyFeignClients;
@@ -17,7 +18,7 @@ import com.junsong.common.security.annotation.EnableRyFeignClients;
 @EnableCaching
 @EnableCustomConfig
 @EnableRyFeignClients
-@SpringBootApplication
+@SpringBootApplication(exclude = { DataSourceAutoConfiguration.class })
 public class JunSongWorkflowApplication
 {
     public static void main(String[] args)

@@ -95,3 +95,20 @@ export function listUnverifiedAdvances(deptId: any) {
     params: { deptId }
   })
 }
+
+// 查询核销记录列表
+export function listVerificationBatches(query: any) {
+  return request({
+    url: '/finance/verification-batch/list',
+    method: 'get',
+    params: query
+  })
+}
+
+// 查询核销批次详情
+export function getVerificationBatchDetail(batchId: number) {
+  return request({
+    url: `/finance/verification-batch/${batchId}`,
+    method: 'get'
+  })
+}

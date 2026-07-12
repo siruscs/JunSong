@@ -50,6 +50,29 @@ class FinExpenseVerifyBatchMapperContractTest
         assertMapperParams("selectCurrentAdvancesForUpdate", "batchId", "tenantId", "deptId");
         assertMapperParams("markBatchReversed", "batchId", "tenantId", "deptId", "version",
             "reverseBy", "reverseTime", "reason", "requestId");
+
+        // 核销记录列表/详情查询（审计用只读查询）
+        assertTrue(xml.contains("id=\"selectBatchList\""));
+        assertTrue(xml.contains("id=\"selectBatchById\""));
+        assertTrue(xml.contains("id=\"selectExpenseDetailsWithDisplay\""));
+        assertTrue(xml.contains("id=\"selectAdvanceDetailsWithDisplay\""));
+        assertScoped(xml, "selectBatchById");
+        assertScopedDetail(xml, "selectExpenseDetailsWithDisplay");
+        assertScopedDetail(xml, "selectAdvanceDetailsWithDisplay");
+        assertMapperParams("selectBatchList", "tenantId", "deptId", "query");
+        assertMapperParams("selectBatchById", "batchId", "tenantId", "deptId");
+        assertMapperParams("selectExpenseDetailsWithDisplay", "batchId", "tenantId", "deptId");
+        assertMapperParams("selectAdvanceDetailsWithDisplay", "batchId", "tenantId", "deptId");
+    }
+
+    private static void assertScopedDetail(String xml, String statementId)
+    {
+        int start = xml.indexOf("id=\"" + statementId + "\"");
+        int end = xml.indexOf("</select>", start);
+        String statement = xml.substring(start, end);
+        assertTrue(statement.contains("batch_id = #{batchId}"));
+        assertTrue(statement.contains("tenant_id = #{tenantId}"));
+        assertTrue(statement.contains("dept_id = #{deptId}"));
     }
 
     private static void assertScoped(String xml, String statementId)

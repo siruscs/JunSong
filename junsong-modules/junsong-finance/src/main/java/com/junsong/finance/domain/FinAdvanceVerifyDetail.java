@@ -23,6 +23,12 @@ public class FinAdvanceVerifyDetail implements Serializable
     private String relationType;
     private String generatedFlag;
     private Date createTime;
+    /** 展示用：借支单号（JOIN fin_advance 获取，不持久化到明细表）。 */
+    private String advanceNo;
+    /** 展示用：借支用途。 */
+    private String purpose;
+    /** 展示用：借支日期。 */
+    private Date advanceDate;
 
     public Long getDetailId() { return detailId; }
     public void setDetailId(Long detailId) { this.detailId = detailId; }
@@ -46,4 +52,10 @@ public class FinAdvanceVerifyDetail implements Serializable
     public void setGeneratedFlag(String generatedFlag) { this.generatedFlag = generatedFlag; }
     public Date getCreateTime() { return createTime; }
     public void setCreateTime(Date createTime) { this.createTime = createTime; }
+    public String getAdvanceNo() { return advanceNo; }
+    public void setAdvanceNo(String advanceNo) { this.advanceNo = advanceNo; }
+    public String getPurpose() { return purpose; }
+    public void setPurpose(String purpose) { this.purpose = purpose; }
+    public Date getAdvanceDate() { return advanceDate; }
+    public void setAdvanceDate(Date advanceDate) { this.advanceDate = advanceDate; }
 }

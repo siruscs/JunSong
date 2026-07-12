@@ -44,4 +44,20 @@ public interface FinExpenseVerifyBatchMapper
         @Param("verifyBy") String verifyBy, @Param("verifyTime") Date verifyTime);
     int countGeneratedAdvanceDownstreamReferences(@Param("advanceId") Long advanceId,
         @Param("batchId") Long batchId, @Param("tenantId") Long tenantId, @Param("deptId") Long deptId);
+
+    /** 按租户和门店查询核销批次列表（审计用，只读）。 */
+    List<FinExpenseVerifyBatch> selectBatchList(@Param("tenantId") Long tenantId, @Param("deptId") Long deptId,
+        @Param("query") FinExpenseVerifyBatch query);
+
+    /** 按批次ID查询核销批次头信息（只读，不加锁）。 */
+    FinExpenseVerifyBatch selectBatchById(@Param("batchId") Long batchId, @Param("tenantId") Long tenantId,
+        @Param("deptId") Long deptId);
+
+    /** 查询费用明细快照并关联费用表展示字段。 */
+    List<FinExpenseVerifyDetail> selectExpenseDetailsWithDisplay(@Param("batchId") Long batchId,
+        @Param("tenantId") Long tenantId, @Param("deptId") Long deptId);
+
+    /** 查询借支明细快照并关联借支表展示字段。 */
+    List<FinAdvanceVerifyDetail> selectAdvanceDetailsWithDisplay(@Param("batchId") Long batchId,
+        @Param("tenantId") Long tenantId, @Param("deptId") Long deptId);
 }

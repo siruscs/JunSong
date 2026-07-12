@@ -3,6 +3,8 @@ package com.junsong.finance.domain;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 /** 费用核销批次。 */
 public class FinExpenseVerifyBatch implements Serializable
@@ -32,6 +34,8 @@ public class FinExpenseVerifyBatch implements Serializable
     private Integer version;
     private Date createTime;
     private Date updateTime;
+    /** 查询参数（日期范围等），不持久化。 */
+    private Map<String, Object> params;
 
     public Long getBatchId() { return batchId; }
     public void setBatchId(Long batchId) { this.batchId = batchId; }
@@ -71,4 +75,13 @@ public class FinExpenseVerifyBatch implements Serializable
     public void setCreateTime(Date createTime) { this.createTime = createTime; }
     public Date getUpdateTime() { return updateTime; }
     public void setUpdateTime(Date updateTime) { this.updateTime = updateTime; }
+    public Map<String, Object> getParams()
+    {
+        if (params == null)
+        {
+            params = new HashMap<>();
+        }
+        return params;
+    }
+    public void setParams(Map<String, Object> params) { this.params = params; }
 }

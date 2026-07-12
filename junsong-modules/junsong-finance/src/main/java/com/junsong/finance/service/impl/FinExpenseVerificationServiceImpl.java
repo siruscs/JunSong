@@ -26,6 +26,7 @@ import com.junsong.finance.domain.FinExpenseVerifyDetail;
 import com.junsong.finance.domain.vo.ExpenseOperationCapabilityVO;
 import com.junsong.finance.domain.vo.ExpenseUnverifyVO;
 import com.junsong.finance.domain.vo.ExpenseVerifyVO;
+import com.junsong.finance.domain.vo.VerificationBatchDetailVO;
 import com.junsong.finance.constant.PeriodStatus;
 import com.junsong.finance.mapper.FinAdvanceMapper;
 import com.junsong.finance.mapper.FinAccountingPeriodMapper;
@@ -79,16 +80,16 @@ public class FinExpenseVerificationServiceImpl implements IFinExpenseVerificatio
         BigDecimal expenseTotal = sumExpenses(expenses);
         BigDecimal advanceTotal = sumAdvances(advances);
         BigDecimal difference = money(expenseTotal.subtract(advanceTotal));
-        FinExpenseVerifyBatch batch = new FinExpenseVerifyBatch(); batch.setBatchNo("HX" + now.getTime()); batch.setRequestId(request.getRequestId()); batch.setTenantId(tenantId); batch.setDeptId(deptId); batch.setTotalExpenseAmount(expenseTotal); batch.setTotalAdvanceAmount(advanceTotal); batch.setDifferenceAmount(difference); batch.setStatus(FinExpenseVerifyBatch.STATUS_VERIFIED); batch.setSourceType(FinExpenseVerifyBatch.SOURCE_NORMAL); batch.setVerifyBy(operator); batch.setVerifyTime(now); batch.setVersion(0);
+        FinExpenseVerifyBatch batch = new FinExpenseVerifyBatch(); batch.setBatchNo("HX" + now.getTime()); batch.setRequestId(request.getRequestId()); batch.setTenantId(tenantId); batch.setDeptId(deptId); batch.setTotalExpenseAmount(expenseTotal); batch.setTotalAdvanceAmount(advanceTotal); batch.setDifferenceAmount(difference); batch.setStatus(FinExpenseVerifyBatch.STATUS_VERIFIED); batch.setSourceType(FinExpenseVerifyBatch.SOURCE_NORMAL); batch.setVerifyBy(operator); batch.setVerifyTime(now); batch.setVersion(0); batch.setCreateTime(now); batch.setUpdateTime(now);
         try { if (batchMapper.insertBatch(batch) != 1) throw new ServiceException("核销批次创建失败"); }
         catch (DuplicateKeyException ex) { FinExpenseVerifyBatch replay=batchMapper.selectByRequestId(tenantId,deptId,request.getRequestId()); if(replay!=null)return validateReplay(replay,request,tenantId,deptId); throw new ServiceException("核销请求并发冲突，请重试"); }
         if (batch.getBatchId() == null) throw new ServiceException("核销批次主键生成失败");
         List<FinExpenseVerifyDetail> expenseDetails = new ArrayList<>();
-        for (FinExpense e : expenses) { FinExpenseVerifyDetail d=new FinExpenseVerifyDetail(); d.setBatchId(batch.getBatchId()); d.setExpenseId(e.getExpenseId()); d.setTenantId(tenantId); d.setDeptId(deptId); d.setExpenseAmount(e.getExpenseAmount()); d.setOriginalStatus(e.getStatus()); d.setOriginalAdvanceId(e.getAdvanceId()); d.setPeriodId(e.getPeriodId()); expenseDetails.add(d); }
+        for (FinExpense e : expenses) { FinExpenseVerifyDetail d=new FinExpenseVerifyDetail(); d.setBatchId(batch.getBatchId()); d.setExpenseId(e.getExpenseId()); d.setTenantId(tenantId); d.setDeptId(deptId); d.setExpenseAmount(e.getExpenseAmount()); d.setOriginalStatus(e.getStatus()); d.setOriginalAdvanceId(e.getAdvanceId()); d.setPeriodId(e.getPeriodId()); d.setCreateTime(now); expenseDetails.add(d); }
         if (batchMapper.insertExpenseDetails(expenseDetails) != expenseDetails.size()) throw new ServiceException("费用核销明细保存失败");
         List<FinAdvanceVerifyDetail> advanceDetails = new ArrayList<>();
-        for (FinAdvance a : advances) { FinAdvanceVerifyDetail d=detail(batch.getBatchId(), tenantId, deptId, a, FinAdvanceVerifyDetail.RELATION_SOURCE, "0"); advanceDetails.add(d); }
-        if (!advances.isEmpty() && difference.signum()!=0) { boolean supplement=difference.signum()>0; FinAdvance generated=new FinAdvance(); generated.setDeptId(deptId); generated.setPeriodId(advances.get(0).getPeriodId()); generated.setAdvanceDate(now); generated.setAdvanceAmount(difference.abs()); generated.setAdvanceNo("TZ"+now.getTime()); generated.setPurpose(supplement ? "费用核销补款" : "费用核销节余"); generated.setStatus(supplement ? "1" : "0"); generated.setVerifyBy(supplement ? operator : null); generated.setVerifyTime(supplement ? now : null); generated.setDelFlag("0"); generated.setCreateBy(operator); if(advanceMapper.insertFinAdvance(generated)!=1||generated.getAdvanceId()==null)throw new ServiceException("核销差额记录生成失败"); advanceDetails.add(detail(batch.getBatchId(), tenantId, deptId, generated, supplement ? FinAdvanceVerifyDetail.RELATION_SUPPLEMENT : FinAdvanceVerifyDetail.RELATION_SURPLUS, "1")); }
+        for (FinAdvance a : advances) { FinAdvanceVerifyDetail d=detail(batch.getBatchId(), tenantId, deptId, a, FinAdvanceVerifyDetail.RELATION_SOURCE, "0", now); advanceDetails.add(d); }
+        if (!advances.isEmpty() && difference.signum()!=0) { boolean supplement=difference.signum()>0; FinAdvance generated=new FinAdvance(); generated.setDeptId(deptId); generated.setPeriodId(advances.get(0).getPeriodId()); generated.setAdvanceDate(now); generated.setAdvanceAmount(difference.abs()); generated.setAdvanceNo("TZ"+now.getTime()); generated.setPurpose(supplement ? "费用核销补款" : "费用核销节余"); generated.setStatus(supplement ? "1" : "0"); generated.setVerifyBy(supplement ? operator : null); generated.setVerifyTime(supplement ? now : null); generated.setDelFlag("0"); generated.setCreateBy(operator); if(advanceMapper.insertFinAdvance(generated)!=1||generated.getAdvanceId()==null)throw new ServiceException("核销差额记录生成失败"); advanceDetails.add(detail(batch.getBatchId(), tenantId, deptId, generated, supplement ? FinAdvanceVerifyDetail.RELATION_SUPPLEMENT : FinAdvanceVerifyDetail.RELATION_SURPLUS, "1", now)); }
         if (!advanceDetails.isEmpty() && batchMapper.insertAdvanceDetails(advanceDetails) != advanceDetails.size()) throw new ServiceException("借支核销明细保存失败");
         Long primaryAdvance = advances.isEmpty() ? null : advances.get(0).getAdvanceId();
         for (FinExpense e : expenses) if (expenseMapper.markExpenseVerified(e.getExpenseId(), primaryAdvance, operator, now,tenantId,deptId)==0) throw new ServiceException("费用状态已变化，请刷新后重试");
@@ -97,7 +98,7 @@ public class FinExpenseVerificationServiceImpl implements IFinExpenseVerificatio
         return batch.getBatchId();
     }
 
-    private FinAdvanceVerifyDetail detail(Long batchId,Long tenantId,Long deptId,FinAdvance a,String relation,String generated) { FinAdvanceVerifyDetail d=new FinAdvanceVerifyDetail(); d.setBatchId(batchId); d.setAdvanceId(a.getAdvanceId()); d.setTenantId(tenantId); d.setDeptId(deptId); d.setAdvanceAmount(a.getAdvanceAmount()); d.setOriginalStatus(a.getStatus()); d.setPeriodId(a.getPeriodId()); d.setRelationType(relation); d.setGeneratedFlag(generated); return d; }
+    private FinAdvanceVerifyDetail detail(Long batchId,Long tenantId,Long deptId,FinAdvance a,String relation,String generated,Date now) { FinAdvanceVerifyDetail d=new FinAdvanceVerifyDetail(); d.setBatchId(batchId); d.setAdvanceId(a.getAdvanceId()); d.setTenantId(tenantId); d.setDeptId(deptId); d.setAdvanceAmount(a.getAdvanceAmount()); d.setOriginalStatus(a.getStatus()); d.setPeriodId(a.getPeriodId()); d.setRelationType(relation); d.setGeneratedFlag(generated); d.setCreateTime(now); return d; }
     private void checkPeriod(Long id) { if (id != null) periodService.assertPeriodEditable(id); }
     private void requirePeriod(Long id) { if (id == null) throw new ServiceException("核算周期不能为空，禁止核销"); checkPeriod(id); }
     private Long validateReplay(FinExpenseVerifyBatch batch, ExpenseVerifyVO request, Long tenantId, Long deptId)
@@ -128,6 +129,31 @@ public class FinExpenseVerificationServiceImpl implements IFinExpenseVerificatio
         if (!Objects.equals(expenseId, expense.getExpenseId()) || !Objects.equals(deptId, expense.getDeptId()) || !"0".equals(expense.getDelFlag())) throw new ServiceException("费用记录不存在或无权访问");
         if (!"0".equals(expense.getStatus())) throw new ServiceException("费用记录不可核销");
         return expense;
+    }
+
+    @Override
+    public List<FinExpenseVerifyBatch> selectBatchList(FinExpenseVerifyBatch query)
+    {
+        Long tenantId = TenantContext.getTenantId();
+        Long deptId = deptResolver.get();
+        if (tenantId == null || deptId == null) throw new ServiceException("无法确定当前租户或门店，禁止查询核销记录");
+        return batchMapper.selectBatchList(tenantId, deptId, query);
+    }
+
+    @Override
+    public VerificationBatchDetailVO getBatchDetail(Long batchId)
+    {
+        Long tenantId = TenantContext.getTenantId();
+        Long deptId = deptResolver.get();
+        if (tenantId == null || deptId == null) throw new ServiceException("无法确定当前租户或门店，禁止查询核销记录");
+        if (batchId == null) throw new ServiceException("核销批次ID不能为空");
+        FinExpenseVerifyBatch batch = batchMapper.selectBatchById(batchId, tenantId, deptId);
+        if (batch == null) throw new ServiceException("核销批次不存在或无权访问");
+        VerificationBatchDetailVO vo = new VerificationBatchDetailVO();
+        vo.setBatch(batch);
+        vo.setExpenseDetails(batchMapper.selectExpenseDetailsWithDisplay(batchId, tenantId, deptId));
+        vo.setAdvanceDetails(batchMapper.selectAdvanceDetailsWithDisplay(batchId, tenantId, deptId));
+        return vo;
     }
     @Override
     @Transactional(rollbackFor = Exception.class)

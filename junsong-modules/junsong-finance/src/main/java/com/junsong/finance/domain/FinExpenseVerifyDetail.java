@@ -18,6 +18,14 @@ public class FinExpenseVerifyDetail implements Serializable
     private Long originalAdvanceId;
     private Long periodId;
     private Date createTime;
+    /** 展示用：费用单号（JOIN fin_expense 获取，不持久化到明细表）。 */
+    private String expenseNo;
+    /** 展示用：费用内容。 */
+    private String expenseContent;
+    /** 展示用：费用日期。 */
+    private Date expenseDate;
+    /** 展示用：费用类型。 */
+    private String expenseType;
 
     public Long getDetailId() { return detailId; }
     public void setDetailId(Long detailId) { this.detailId = detailId; }
@@ -39,4 +47,12 @@ public class FinExpenseVerifyDetail implements Serializable
     public void setPeriodId(Long periodId) { this.periodId = periodId; }
     public Date getCreateTime() { return createTime; }
     public void setCreateTime(Date createTime) { this.createTime = createTime; }
+    public String getExpenseNo() { return expenseNo; }
+    public void setExpenseNo(String expenseNo) { this.expenseNo = expenseNo; }
+    public String getExpenseContent() { return expenseContent; }
+    public void setExpenseContent(String expenseContent) { this.expenseContent = expenseContent; }
+    public Date getExpenseDate() { return expenseDate; }
+    public void setExpenseDate(Date expenseDate) { this.expenseDate = expenseDate; }
+    public String getExpenseType() { return expenseType; }
+    public void setExpenseType(String expenseType) { this.expenseType = expenseType; }
 }

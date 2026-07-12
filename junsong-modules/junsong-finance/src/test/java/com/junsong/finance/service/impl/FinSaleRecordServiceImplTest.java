@@ -4,6 +4,10 @@ import com.junsong.common.core.exception.ServiceException;
 import com.junsong.finance.domain.FinSaleRecord;
 import com.junsong.finance.domain.FinStockLedger;
 import com.junsong.finance.mapper.FinStockLedgerMapper;
+import com.junsong.common.core.constant.SecurityConstants;
+import com.junsong.common.core.context.SecurityContextHolder;
+import com.junsong.system.api.model.LoginUser;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -29,6 +33,7 @@ class FinSaleRecordServiceImplTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        loginAsDept(1L);
         mapper = new FakeStockLedgerMapper();
         stockLedgerService = new FinStockLedgerServiceImpl();
         inject(FinStockLedgerServiceImpl.class, stockLedgerService, "finStockLedgerMapper", mapper);
@@ -36,6 +41,19 @@ class FinSaleRecordServiceImplTest {
         service = new FinSaleRecordServiceImpl();
         inject(FinSaleRecordServiceImpl.class, service, "finStockLedgerService", stockLedgerService);
         inject(FinSaleRecordServiceImpl.class, service, "finStockLedgerMapper", mapper);
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.remove();
+    }
+
+    private void loginAsDept(Long deptId) {
+        SecurityContextHolder.setUserId("2");
+        LoginUser loginUser = new LoginUser();
+        loginUser.setUserid(2L);
+        loginUser.setDeptId(deptId);
+        SecurityContextHolder.set(SecurityConstants.LOGIN_USER, loginUser);
     }
 
     private static void inject(Class<?> clazz, Object target, String name, Object value) throws Exception {
@@ -191,6 +209,71 @@ class FinSaleRecordServiceImplTest {
         assertEquals("SALE_REVERSE", mapper.inserted.get(1).getChangeType());
         assertEquals(5, mapper.inserted.get(1).getChangeQuantity(), "删除销售单回补全部库存");
         assertEquals(20, mapper.position(1L, 100L));
+    }
+
+    @Test
+    void modifyingOnlySaleGift_writesDeltaAndDeleteRestoresGiftInclusiveTotal() {
+        seedStock(1L, 100L, 30);
+        FinSaleRecord original = saleWithGift(8009L, "SO-GIFT-1", 1L, 100L, "可乐", 8, 2);
+        service.applySaleStockOut(original);
+
+        FinSaleRecord modified = saleWithGift(8009L, "SO-GIFT-1", 1L, 100L, "可乐", 8, 5);
+        service.applySaleStockOut(modified);
+
+        assertEquals(-3, mapper.inserted.get(1).getChangeQuantity(), "赠品 2 -> 5 只应追加出库 3");
+        assertEquals(17, mapper.position(1L, 100L));
+
+        modified.setUpdateBy("admin");
+        service.reverseSaleStock(modified);
+
+        assertEquals(13, mapper.inserted.get(2).getChangeQuantity(), "删除应回补销售 8 + 赠品 5");
+        assertEquals(30, mapper.position(1L, 100L));
+    }
+
+    @Test
+    void saleAndGiftQuantityOverflow_failsClosedWithoutLedger() {
+        seedStock(1L, 100L, 30);
+        FinSaleRecord sale = saleWithGift(8010L, "SO-GIFT-OVERFLOW", 1L, 100L, "可乐",
+                Integer.MAX_VALUE, 1);
+
+        ServiceException error = assertThrows(ServiceException.class, () -> service.applySaleStockOut(sale));
+
+        assertEquals("销售出库失败：销售数量与赠品数量合计超出允许范围", error.getMessage());
+        assertTrue(mapper.inserted.isEmpty(), "整数溢出必须在写流水前失败关闭");
+    }
+
+    @Test
+    void saleFromUnauthorizedDept_failsClosedWithoutLedger() {
+        seedStock(1L, 100L, 20);
+        mapper.inserted.clear();
+        FinSaleRecord sale = saleWithGift(8011L, "SO-OTHER-DEPT", 2L, 100L, "可乐", 3, 2);
+
+        ServiceException error = assertThrows(ServiceException.class, () -> service.applySaleStockOut(sale));
+
+        assertEquals("无权操作该门店的销售库存", error.getMessage());
+        assertTrue(mapper.inserted.isEmpty());
+    }
+
+    @Test
+    void saleFromAnotherAuthorizedDept_isAllowed() throws Exception {
+        inject(FinSaleRecordServiceImpl.class, service, "authorizedDeptIdsOverride", java.util.Arrays.asList(1L, 2L));
+        seedStock(2L, 100L, 20);
+        mapper.inserted.clear();
+        FinSaleRecord sale = saleWithGift(8012L, "SO-AUTHORIZED-DEPT", 2L, 100L, "可乐", 3, 2);
+
+        service.applySaleStockOut(sale);
+
+        assertEquals(15, mapper.position(2L, 100L));
+    }
+
+    @Test
+    void adminSaleWithMissingDept_failsClosed() {
+        SecurityContextHolder.setUserId("1");
+        FinSaleRecord sale = saleWithGift(8013L, "SO-NO-DEPT", null, 100L, "可乐", 3, 2);
+
+        ServiceException error = assertThrows(ServiceException.class, () -> service.applySaleStockOut(sale));
+
+        assertEquals("销售库存缺少门店上下文", error.getMessage());
     }
 
     private int position() {

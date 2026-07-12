@@ -7,6 +7,8 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.junsong.common.core.context.TenantContext;
+import com.junsong.common.core.constant.SecurityConstants;
+import com.junsong.common.core.domain.R;
 import com.junsong.common.core.exception.ServiceException;
 import com.junsong.common.core.utils.StringUtils;
 import com.junsong.common.security.utils.SecurityUtils;
@@ -20,6 +22,8 @@ import com.junsong.finance.service.IFinAccountingPeriodService;
 import com.junsong.finance.service.IFinPurchaseService;
 import com.junsong.finance.service.IFinStockLedgerService;
 import com.junsong.finance.util.CodeGenerator;
+import com.junsong.system.api.RemoteUserService;
+import com.junsong.system.api.domain.SysDept;
 
 /**
  * 进货单Service业务层处理
@@ -43,6 +47,11 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
 
     @Autowired
     private FinStockLedgerMapper finStockLedgerMapper;
+
+    @Autowired(required = false)
+    private RemoteUserService remoteUserService;
+
+    private List<Long> authorizedDeptIdsOverride;
 
     /**
      * 查询进货单
@@ -150,6 +159,7 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
             
             for (FinPurchaseDetail detail : details)
             {
+                normalizeIsGift(detail);
                 // 如果是赠品，金额设为0
                 if ("1".equals(detail.getIsGift()))
                 {
@@ -166,7 +176,14 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
                 // 不管是不是赠品，都计入总数量
                 if (detail.getQuantity() != null)
                 {
-                    totalQuantity += detail.getQuantity();
+                    try
+                    {
+                        totalQuantity = Math.addExact(totalQuantity, detail.getQuantity());
+                    }
+                    catch (ArithmeticException ex)
+                    {
+                        throw new ServiceException("进货单总数量超出允许范围");
+                    }
                 }
             }
             
@@ -217,6 +234,7 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
         {
             return;
         }
+        assertAuthorizedStockDept(finPurchase.getDeptId());
 
         boolean active = "1".equals(finPurchase.getStatus()) || "2".equals(finPurchase.getStatus());
 
@@ -233,9 +251,19 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
                     continue;
                 }
                 Long pid = detail.getProductId();
-                targetByProduct.merge(pid, detail.getQuantity(), Integer::sum);
+                try
+                {
+                    targetByProduct.merge(pid, detail.getQuantity(), Math::addExact);
+                }
+                catch (ArithmeticException ex)
+                {
+                    throw new ServiceException("采购入库失败：同商品普通数量与赠品数量合计超出允许范围");
+                }
                 nameByProduct.put(pid, detail.getProductName());
-                costByProduct.put(pid, detail.getPrice() != null ? detail.getPrice() : BigDecimal.ZERO);
+                if (!"1".equals(detail.getIsGift()))
+                {
+                    costByProduct.put(pid, detail.getPrice() != null ? detail.getPrice() : BigDecimal.ZERO);
+                }
             }
         }
 
@@ -275,6 +303,7 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
         {
             return;
         }
+        assertAuthorizedStockDept(deptId);
         List<Long> recordedProductIds = finStockLedgerMapper.selectRecordedProductIds(TenantContext.getTenantId(), "PURCHASE", purchaseId);
         if (recordedProductIds == null)
         {
@@ -285,6 +314,43 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
             finStockLedgerService.reconcilePurchaseStock(TenantContext.getTenantId(), deptId, productId, null, purchaseId, purchaseNo,
                     0, BigDecimal.ZERO, operator);
         }
+    }
+
+    private void assertAuthorizedStockDept(Long deptId)
+    {
+        if (deptId == null)
+        {
+            throw new ServiceException("进货库存缺少门店上下文");
+        }
+        if (!SecurityUtils.isAdmin() && !loadAuthorizedStockDeptIds().contains(deptId))
+        {
+            throw new ServiceException("无权操作该门店的进货库存");
+        }
+    }
+
+    private List<Long> loadAuthorizedStockDeptIds()
+    {
+        if (authorizedDeptIdsOverride != null)
+        {
+            return authorizedDeptIdsOverride;
+        }
+        try
+        {
+            R<List<SysDept>> result = remoteUserService == null ? null
+                    : remoteUserService.getUserDeptList(SecurityUtils.getUsername(), SecurityConstants.INNER);
+            if (result != null && result.getData() != null)
+            {
+                return result.getData().stream().map(SysDept::getDeptId)
+                        .filter(java.util.Objects::nonNull).toList();
+            }
+        }
+        catch (Exception ignored)
+        {
+            // Fail closed to the currently selected department when the authorization service is unavailable.
+        }
+        Long currentDeptId = SecurityUtils.getDeptId();
+        return currentDeptId == null ? java.util.Collections.emptyList()
+                : java.util.Collections.singletonList(currentDeptId);
     }
 
     /**

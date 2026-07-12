@@ -4,6 +4,11 @@ import com.junsong.finance.domain.FinPurchase;
 import com.junsong.finance.domain.FinPurchaseDetail;
 import com.junsong.finance.domain.FinStockLedger;
 import com.junsong.finance.mapper.FinStockLedgerMapper;
+import com.junsong.common.core.constant.SecurityConstants;
+import com.junsong.common.core.context.SecurityContextHolder;
+import com.junsong.common.core.exception.ServiceException;
+import com.junsong.system.api.model.LoginUser;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -29,6 +34,7 @@ class FinPurchaseServiceImplTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        loginAsDept(1L);
         mapper = new FakeStockLedgerMapper();
         stockLedgerService = new FinStockLedgerServiceImpl();
         inject(FinStockLedgerServiceImpl.class, stockLedgerService, "finStockLedgerMapper", mapper);
@@ -36,6 +42,19 @@ class FinPurchaseServiceImplTest {
         service = new FinPurchaseServiceImpl();
         inject(FinPurchaseServiceImpl.class, service, "finStockLedgerService", stockLedgerService);
         inject(FinPurchaseServiceImpl.class, service, "finStockLedgerMapper", mapper);
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.remove();
+    }
+
+    private void loginAsDept(Long deptId) {
+        SecurityContextHolder.setUserId("2");
+        LoginUser loginUser = new LoginUser();
+        loginUser.setUserid(2L);
+        loginUser.setDeptId(deptId);
+        SecurityContextHolder.set(SecurityConstants.LOGIN_USER, loginUser);
     }
 
     private static void inject(Class<?> clazz, Object target, String name, Object value) throws Exception {
@@ -61,6 +80,12 @@ class FinPurchaseServiceImplTest {
         d.setQuantity(quantity);
         d.setPrice(new BigDecimal(price));
         return d;
+    }
+
+    private FinPurchaseDetail giftDetail(Long productId, String name, int quantity) {
+        FinPurchaseDetail detail = detail(productId, name, quantity, "0.00");
+        detail.setIsGift("1");
+        return detail;
     }
 
     @Test
@@ -138,6 +163,98 @@ class FinPurchaseServiceImplTest {
 
         assertEquals(0, mapper.position(1L, 100L), "删除采购单应反向冲销库存到 0");
         assertEquals("PURCHASE_REVERSE", mapper.inserted.get(1).getChangeType());
+    }
+
+    @Test
+    void purchaseGift_increasesStockWithoutOverwritingPaidUnitCost() {
+        FinPurchase p = purchase(9007L, "PO-GIFT-1", 1L, "1",
+                detail(100L, "可乐", 10, "3.00"),
+                giftDetail(100L, "可乐", 2));
+
+        service.applyPurchaseStockIn(p);
+
+        assertEquals(12, mapper.position(1L, 100L), "普通 10 + 赠品 2 应共同入库");
+        assertEquals(new BigDecimal("3.00"), mapper.inserted.get(0).getUnitCost(),
+                "赠品零价不得覆盖同商品正常采购单价");
+    }
+
+    @Test
+    void modifyingOnlyPurchaseGift_writesDeltaAndDeleteReversesGiftInclusiveTotal() {
+        FinPurchase original = purchase(9008L, "PO-GIFT-2", 1L, "1",
+                detail(100L, "可乐", 10, "3.00"), giftDetail(100L, "可乐", 2));
+        service.applyPurchaseStockIn(original);
+
+        FinPurchase modified = purchase(9008L, "PO-GIFT-2", 1L, "1",
+                detail(100L, "可乐", 10, "3.00"), giftDetail(100L, "可乐", 5));
+        service.applyPurchaseStockIn(modified);
+
+        assertEquals(3, mapper.inserted.get(1).getChangeQuantity(), "赠品 2 -> 5 只应追加 +3");
+        assertEquals(15, mapper.position(1L, 100L));
+
+        service.reversePurchaseStock(9008L, "PO-GIFT-2", 1L, "admin");
+
+        assertEquals(-15, mapper.inserted.get(2).getChangeQuantity(), "删除应反向恢复含赠品的 15 件");
+        assertEquals(0, mapper.position(1L, 100L));
+    }
+
+    @Test
+    void acceptedGiftAlias_doesNotIncreasePurchaseAmount() throws Exception {
+        FinPurchaseDetail gift = detail(100L, "可乐", 2, "3.00");
+        gift.setIsGift("yes");
+        FinPurchase purchase = purchase(9009L, "PO-GIFT-ALIAS", 1L, "1", gift);
+
+        java.lang.reflect.Method calculate = FinPurchaseServiceImpl.class
+                .getDeclaredMethod("calculatePurchaseAmountAndQuantity", FinPurchase.class);
+        calculate.setAccessible(true);
+        calculate.invoke(service, purchase);
+
+        assertEquals("1", gift.getIsGift());
+        assertEquals(BigDecimal.ZERO, purchase.getTotalAmount(), "yes 赠品不得计入采购金额");
+        assertEquals(2, purchase.getTotalQuantity(), "赠品仍须计入实物总数量");
+    }
+
+    @Test
+    void purchaseQuantityOverflow_failsClosedWithoutLedger() {
+        FinPurchase purchase = purchase(9010L, "PO-GIFT-OVERFLOW", 1L, "1",
+                detail(100L, "可乐", Integer.MAX_VALUE, "3.00"), giftDetail(100L, "可乐", 1));
+
+        ServiceException error = assertThrows(ServiceException.class, () -> service.applyPurchaseStockIn(purchase));
+
+        assertEquals("采购入库失败：同商品普通数量与赠品数量合计超出允许范围", error.getMessage());
+        assertTrue(mapper.inserted.isEmpty());
+    }
+
+    @Test
+    void purchaseFromUnauthorizedDept_failsClosedWithoutLedger() {
+        FinPurchase purchase = purchase(9011L, "PO-OTHER-DEPT", 2L, "1",
+                detail(100L, "可乐", 10, "3.00"));
+
+        ServiceException error = assertThrows(ServiceException.class, () -> service.applyPurchaseStockIn(purchase));
+
+        assertEquals("无权操作该门店的进货库存", error.getMessage());
+        assertTrue(mapper.inserted.isEmpty());
+    }
+
+    @Test
+    void purchaseFromAnotherAuthorizedDept_isAllowed() throws Exception {
+        inject(FinPurchaseServiceImpl.class, service, "authorizedDeptIdsOverride", Arrays.asList(1L, 2L));
+        FinPurchase purchase = purchase(9012L, "PO-AUTHORIZED-DEPT", 2L, "1",
+                detail(100L, "可乐", 10, "3.00"));
+
+        service.applyPurchaseStockIn(purchase);
+
+        assertEquals(10, mapper.position(2L, 100L));
+    }
+
+    @Test
+    void adminPurchaseWithMissingDept_failsClosed() {
+        SecurityContextHolder.setUserId("1");
+        FinPurchase purchase = purchase(9013L, "PO-NO-DEPT", null, "1",
+                detail(100L, "可乐", 10, "3.00"));
+
+        ServiceException error = assertThrows(ServiceException.class, () -> service.applyPurchaseStockIn(purchase));
+
+        assertEquals("进货库存缺少门店上下文", error.getMessage());
     }
 
     private FinStockLedger ledgerOf(Long productId) {

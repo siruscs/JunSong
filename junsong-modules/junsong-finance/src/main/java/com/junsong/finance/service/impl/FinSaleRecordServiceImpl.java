@@ -26,6 +26,8 @@ import com.junsong.finance.constant.PaymentStatus;
 import com.junsong.finance.util.CodeGenerator;
 import com.junsong.member.api.RemoteMemberGrowthService;
 import com.junsong.member.api.domain.SaleGrowthAwardReq;
+import com.junsong.system.api.RemoteUserService;
+import com.junsong.system.api.domain.SysDept;
 
 /**
  * 销售记录Service业务层处理
@@ -55,6 +57,11 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
 
     @Autowired
     private RemoteMemberGrowthService remoteMemberGrowthService;
+
+    @Autowired(required = false)
+    private RemoteUserService remoteUserService;
+
+    private List<Long> authorizedDeptIdsOverride;
 
     /**
      * 查询销售记录
@@ -188,6 +195,7 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
         {
             return;
         }
+        assertAuthorizedStockDept(finSaleRecord.getDeptId());
         if (finSaleRecord.getProductId() == null)
         {
             throw new ServiceException("销售出库失败：销售记录缺少商品，无法扣减库存");
@@ -201,7 +209,15 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
         {
             throw new ServiceException("销售出库失败：赠品数量不能为负数");
         }
-        int outQuantity = finSaleRecord.getSaleQuantity() + giftQuantity;
+        int outQuantity;
+        try
+        {
+            outQuantity = Math.addExact(finSaleRecord.getSaleQuantity(), giftQuantity);
+        }
+        catch (ArithmeticException ex)
+        {
+            throw new ServiceException("销售出库失败：销售数量与赠品数量合计超出允许范围");
+        }
 
         // 并集：本次目标商品 + 该单历史已记录商品（换商品时旧商品历史 SALE_OUT 需目标 0 反向回补）
         Long currentProductId = finSaleRecord.getProductId();
@@ -240,6 +256,7 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
         {
             return;
         }
+        assertAuthorizedStockDept(old.getDeptId());
         finStockLedgerService.reconcileSaleStock(
                 TenantContext.getTenantId(),
                 old.getDeptId(),
@@ -250,6 +267,43 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
                 0,
                 old.getUpdateBy()
         );
+    }
+
+    private void assertAuthorizedStockDept(Long deptId)
+    {
+        if (deptId == null)
+        {
+            throw new ServiceException("销售库存缺少门店上下文");
+        }
+        if (!SecurityUtils.isAdmin() && !loadAuthorizedStockDeptIds().contains(deptId))
+        {
+            throw new ServiceException("无权操作该门店的销售库存");
+        }
+    }
+
+    private List<Long> loadAuthorizedStockDeptIds()
+    {
+        if (authorizedDeptIdsOverride != null)
+        {
+            return authorizedDeptIdsOverride;
+        }
+        try
+        {
+            R<List<SysDept>> result = remoteUserService == null ? null
+                    : remoteUserService.getUserDeptList(SecurityUtils.getUsername(), SecurityConstants.INNER);
+            if (result != null && result.getData() != null)
+            {
+                return result.getData().stream().map(SysDept::getDeptId)
+                        .filter(java.util.Objects::nonNull).toList();
+            }
+        }
+        catch (Exception ignored)
+        {
+            // Fail closed to the currently selected department when the authorization service is unavailable.
+        }
+        Long currentDeptId = SecurityUtils.getDeptId();
+        return currentDeptId == null ? java.util.Collections.emptyList()
+                : java.util.Collections.singletonList(currentDeptId);
     }
 
     private void fillCurrentPeriod(FinSaleRecord finSaleRecord)

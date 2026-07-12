@@ -90,4 +90,4 @@ mvn -Dtest=FinPurchaseServiceImplTest,FinSaleRecordServiceImplTest,FinStockLedge
 
 ## 提交与 staged 影响
 
-提交 SHA 在主复核、暂存检查和提交后补入。预期 staged 范围仅为上述 4 个 Java 文件和本报告；预期影响采购入库、采购冲销、销售出库、销售冲销及对应测试，不影响报表查询或快照任务。
+提交 SHA：`8e1c62b6`。实际 staged 范围仅为上述 4 个 Java 文件和本报告；影响采购入库、采购冲销、销售出库、销售冲销及对应测试，不影响报表查询或快照任务。

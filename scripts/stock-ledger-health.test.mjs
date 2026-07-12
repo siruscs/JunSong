@@ -21,12 +21,13 @@ test('stock ledger has reference fields for business traceability', () => {
   assert.match(sql, /reference_no/);
 });
 
-test('stock snapshot has unique daily dept product constraint', () => {
-  assert.match(sql, /unique key uk_stock_snapshot_date_dept_product\s*\(\s*snapshot_date,\s*dept_id,\s*product_id\s*\)/);
+test('stock snapshot has unique tenant daily dept product constraint', () => {
+  assert.match(sql, /unique key uk_stock_snapshot_tenant_date_dept_product\s*\(\s*tenant_id,\s*snapshot_date,\s*dept_id,\s*product_id\s*\)/);
 });
 
 test('stock ledger has required indexes', () => {
-  assert.match(sql, /key idx_stock_ledger_dept_product\s*\(/);
+  assert.match(sql, /key idx_stock_ledger_tenant_dept_product_time\s*\(/);
+  assert.match(sql, /key idx_stock_ledger_tenant_reference\s*\(/);
   assert.match(sql, /key idx_stock_ledger_type\s*\(/);
   assert.match(sql, /key idx_stock_ledger_create_time\s*\(/);
 });
@@ -35,6 +36,6 @@ const positionSql = readFileSync('sql/stock_position.sql', 'utf8').replace(/\s+/
 
 test('stock position table provides concurrency-safe current stock row', () => {
   assert.match(positionSql, /create table if not exists fin_stock_position/);
-  assert.match(positionSql, /unique key uk_stock_position_dept_product\s*\(\s*dept_id,\s*product_id\s*\)/);
+  assert.match(positionSql, /unique key uk_stock_position_tenant_dept_product\s*\(\s*tenant_id,\s*dept_id,\s*product_id\s*\)/);
   assert.match(positionSql, /quantity int/);
 });

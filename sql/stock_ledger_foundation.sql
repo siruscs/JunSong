@@ -5,6 +5,7 @@
 -- 库存流水表：记录每一笔库存变动
 CREATE TABLE IF NOT EXISTS fin_stock_ledger (
   ledger_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '流水ID',
+  tenant_id BIGINT NOT NULL COMMENT '租户ID',
   dept_id BIGINT NOT NULL COMMENT '门店ID',
   product_id BIGINT NOT NULL COMMENT '商品ID',
   product_name VARCHAR(128) DEFAULT NULL COMMENT '商品名称',
@@ -21,7 +22,8 @@ CREATE TABLE IF NOT EXISTS fin_stock_ledger (
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   del_flag CHAR(1) DEFAULT '0',
   PRIMARY KEY (ledger_id),
-  KEY idx_stock_ledger_dept_product (dept_id, product_id, del_flag),
+  KEY idx_stock_ledger_tenant_dept_product_time (tenant_id, dept_id, product_id, create_time),
+  KEY idx_stock_ledger_tenant_reference (tenant_id, dept_id, reference_type, reference_id, product_id),
   KEY idx_stock_ledger_type (change_type, del_flag),
   KEY idx_stock_ledger_create_time (create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='库存流水表';
@@ -29,6 +31,7 @@ CREATE TABLE IF NOT EXISTS fin_stock_ledger (
 -- 库存快照表：定期快照各门店商品库存
 CREATE TABLE IF NOT EXISTS fin_stock_snapshot (
   snapshot_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '快照ID',
+  tenant_id BIGINT NOT NULL COMMENT '租户ID',
   snapshot_date DATE NOT NULL COMMENT '快照日期',
   dept_id BIGINT NOT NULL COMMENT '门店ID',
   dept_name VARCHAR(128) DEFAULT NULL COMMENT '门店名称',
@@ -42,7 +45,7 @@ CREATE TABLE IF NOT EXISTS fin_stock_snapshot (
   total_value DECIMAL(18,2) DEFAULT NULL COMMENT '库存总值',
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (snapshot_id),
-  UNIQUE KEY uk_stock_snapshot_date_dept_product (snapshot_date, dept_id, product_id),
+  UNIQUE KEY uk_stock_snapshot_tenant_date_dept_product (tenant_id, snapshot_date, dept_id, product_id),
   KEY idx_stock_snapshot_date (snapshot_date),
   KEY idx_stock_snapshot_dept (dept_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='库存快照表';

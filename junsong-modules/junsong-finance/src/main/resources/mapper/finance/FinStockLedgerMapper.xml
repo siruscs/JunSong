@@ -6,6 +6,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <resultMap type="FinStockLedger" id="FinStockLedgerResult">
         <id     property="ledgerId"        column="ledger_id"        />
+        <result property="tenantId"        column="tenant_id"        />
         <result property="deptId"          column="dept_id"          />
         <result property="productId"       column="product_id"       />
         <result property="productName"     column="product_name"     />
@@ -24,26 +25,27 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <insert id="insertPositionIfAbsent">
-        insert ignore into fin_stock_position (dept_id, product_id, quantity)
-        values (#{deptId}, #{productId}, 0)
+        insert ignore into fin_stock_position (tenant_id, dept_id, product_id, quantity)
+        values (#{tenantId}, #{deptId}, #{productId}, 0)
     </insert>
 
     <select id="selectPositionQuantityForUpdate" resultType="java.lang.Integer">
         select quantity from fin_stock_position
-        where dept_id = #{deptId} and product_id = #{productId}
+        where tenant_id = #{tenantId} and dept_id = #{deptId} and product_id = #{productId}
         for update
     </select>
 
     <update id="updatePositionQuantity">
         update fin_stock_position
         set quantity = #{quantity}
-        where dept_id = #{deptId} and product_id = #{productId}
+        where tenant_id = #{tenantId} and dept_id = #{deptId} and product_id = #{productId}
     </update>
 
     <select id="sumRecordedNet" resultType="java.lang.Integer">
         select coalesce(sum(change_quantity), 0)
         from fin_stock_ledger
-        where reference_type = #{referenceType}
+        where tenant_id = #{tenantId}
+          and reference_type = #{referenceType}
           and reference_id = #{referenceId}
           and product_id = #{productId}
           and del_flag = '0'
@@ -52,7 +54,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectRecordedProductIds" resultType="java.lang.Long">
         select distinct product_id
         from fin_stock_ledger
-        where reference_type = #{referenceType}
+        where tenant_id = #{tenantId}
+          and reference_type = #{referenceType}
           and reference_id = #{referenceId}
           and del_flag = '0'
     </select>
@@ -60,6 +63,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <insert id="insertFinStockLedger" parameterType="FinStockLedger" useGeneratedKeys="true" keyProperty="ledgerId">
         insert into fin_stock_ledger
         <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="tenantId != null">tenant_id,</if>
             <if test="deptId != null">dept_id,</if>
             <if test="productId != null">product_id,</if>
             <if test="productName != null">product_name,</if>
@@ -77,6 +81,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="remark != null">remark,</if>
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="tenantId != null">#{tenantId},</if>
             <if test="deptId != null">#{deptId},</if>
             <if test="productId != null">#{productId},</if>
             <if test="productName != null">#{productName},</if>

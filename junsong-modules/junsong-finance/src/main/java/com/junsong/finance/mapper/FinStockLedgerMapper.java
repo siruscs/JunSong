@@ -23,7 +23,7 @@ public interface FinStockLedgerMapper {
      * @param productId 商品ID
      * @return 影响行数
      */
-    int insertPositionIfAbsent(@Param("deptId") Long deptId, @Param("productId") Long productId);
+    int insertPositionIfAbsent(@Param("tenantId") Long tenantId, @Param("deptId") Long deptId, @Param("productId") Long productId);
 
     /**
      * 加行锁查询当前库存数量（SELECT ... FOR UPDATE）。
@@ -32,7 +32,7 @@ public interface FinStockLedgerMapper {
      * @param productId 商品ID
      * @return 当前库存，行不存在时返回 null
      */
-    Integer selectPositionQuantityForUpdate(@Param("deptId") Long deptId, @Param("productId") Long productId);
+    Integer selectPositionQuantityForUpdate(@Param("tenantId") Long tenantId, @Param("deptId") Long deptId, @Param("productId") Long productId);
 
     /**
      * 更新当前库存数量。
@@ -42,7 +42,7 @@ public interface FinStockLedgerMapper {
      * @param quantity 新库存
      * @return 影响行数
      */
-    int updatePositionQuantity(@Param("deptId") Long deptId, @Param("productId") Long productId,
+    int updatePositionQuantity(@Param("tenantId") Long tenantId, @Param("deptId") Long deptId, @Param("productId") Long productId,
                                @Param("quantity") Integer quantity);
 
     /**
@@ -53,7 +53,8 @@ public interface FinStockLedgerMapper {
      * @param productId 商品ID
      * @return 已记录净额，无记录返回 0 或 null
      */
-    Integer sumRecordedNet(@Param("referenceType") String referenceType,
+    Integer sumRecordedNet(@Param("tenantId") Long tenantId,
+                           @Param("referenceType") String referenceType,
                            @Param("referenceId") Long referenceId,
                            @Param("productId") Long productId);
 
@@ -64,7 +65,8 @@ public interface FinStockLedgerMapper {
      * @param referenceId 关联单据ID
      * @return 商品ID列表
      */
-    List<Long> selectRecordedProductIds(@Param("referenceType") String referenceType,
+    List<Long> selectRecordedProductIds(@Param("tenantId") Long tenantId,
+                                        @Param("referenceType") String referenceType,
                                         @Param("referenceId") Long referenceId);
 
     /**

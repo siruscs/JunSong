@@ -44,12 +44,13 @@ public class FinStockLedgerServiceImpl implements IFinStockLedgerService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void reconcilePurchaseStock(Long deptId, Long productId, String productName, Long referenceId,
+    public void reconcilePurchaseStock(Long tenantId, Long deptId, Long productId, String productName, Long referenceId,
                                        String referenceNo, Integer targetQuantity, BigDecimal unitCost, String operator) {
+        assertTenantScope(tenantId, deptId, productId);
         assertNonNegative(targetQuantity);
-        finStockLedgerMapper.insertPositionIfAbsent(deptId, productId);
-        int current = nz(finStockLedgerMapper.selectPositionQuantityForUpdate(deptId, productId));
-        int recorded = nz(finStockLedgerMapper.sumRecordedNet(REF_PURCHASE, referenceId, productId));
+        finStockLedgerMapper.insertPositionIfAbsent(tenantId, deptId, productId);
+        int current = nz(finStockLedgerMapper.selectPositionQuantityForUpdate(tenantId, deptId, productId));
+        int recorded = nz(finStockLedgerMapper.sumRecordedNet(tenantId, REF_PURCHASE, referenceId, productId));
         int delta = targetQuantity - recorded;
         if (delta == 0) {
             return;
@@ -57,19 +58,21 @@ public class FinStockLedgerServiceImpl implements IFinStockLedgerService {
 
         String changeType = delta > 0 ? PURCHASE_IN : PURCHASE_REVERSE;
         int after = current + delta;
-        writeLedger(deptId, productId, productName, changeType, delta, current, after,
+        writeLedger(tenantId, deptId, productId, productName, changeType, delta, current, after,
                     unitCost, REF_PURCHASE, referenceId, referenceNo, operator);
-        finStockLedgerMapper.updatePositionQuantity(deptId, productId, after);
+        int affected = finStockLedgerMapper.updatePositionQuantity(tenantId, deptId, productId, after);
+        assertPositionUpdated(affected);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void reconcileSaleStock(Long deptId, Long productId, String productName, Long referenceId,
+    public void reconcileSaleStock(Long tenantId, Long deptId, Long productId, String productName, Long referenceId,
                                    String referenceNo, Integer targetQuantity, String operator) {
+        assertTenantScope(tenantId, deptId, productId);
         assertNonNegative(targetQuantity);
-        finStockLedgerMapper.insertPositionIfAbsent(deptId, productId);
-        int current = nz(finStockLedgerMapper.selectPositionQuantityForUpdate(deptId, productId));
-        int recorded = nz(finStockLedgerMapper.sumRecordedNet(REF_SALE, referenceId, productId));
+        finStockLedgerMapper.insertPositionIfAbsent(tenantId, deptId, productId);
+        int current = nz(finStockLedgerMapper.selectPositionQuantityForUpdate(tenantId, deptId, productId));
+        int recorded = nz(finStockLedgerMapper.sumRecordedNet(tenantId, REF_SALE, referenceId, productId));
         int targetNet = -targetQuantity;
         int delta = targetNet - recorded;
         if (delta == 0) {
@@ -83,21 +86,22 @@ public class FinStockLedgerServiceImpl implements IFinStockLedgerService {
         }
 
         String changeType;
-        BigDecimal unitCost = null;
         if (delta < 0) {
             changeType = SALE_OUT;
         } else {
             changeType = SALE_REVERSE;
         }
-        writeLedger(deptId, productId, productName, changeType, delta, current, after,
+        writeLedger(tenantId, deptId, productId, productName, changeType, delta, current, after,
                     null, REF_SALE, referenceId, referenceNo, operator);
-        finStockLedgerMapper.updatePositionQuantity(deptId, productId, after);
+        int affected = finStockLedgerMapper.updatePositionQuantity(tenantId, deptId, productId, after);
+        assertPositionUpdated(affected);
     }
 
-    private void writeLedger(Long deptId, Long productId, String productName, String changeType,
+    private void writeLedger(Long tenantId, Long deptId, Long productId, String productName, String changeType,
                              int delta, int before, int after, BigDecimal unitCost,
                              String refType, Long refId, String refNo, String operator) {
         FinStockLedger ledger = new FinStockLedger();
+        ledger.setTenantId(tenantId);
         ledger.setDeptId(deptId);
         ledger.setProductId(productId);
         ledger.setProductName(productName);
@@ -117,6 +121,18 @@ public class FinStockLedgerServiceImpl implements IFinStockLedgerService {
     private void assertNonNegative(Integer quantity) {
         if (quantity == null || quantity < 0) {
             throw new ServiceException("目标数量不能为负数");
+        }
+    }
+
+    private void assertTenantScope(Long tenantId, Long deptId, Long productId) {
+        if (tenantId == null || deptId == null || productId == null) {
+            throw new ServiceException("库存对账缺少租户/门店/商品上下文，拒绝处理");
+        }
+    }
+
+    private void assertPositionUpdated(int affected) {
+        if (affected != 1) {
+            throw new ServiceException("库存结存更新影响行数异常（" + affected + "），事务回滚");
         }
     }
 

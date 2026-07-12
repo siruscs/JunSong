@@ -7,10 +7,14 @@ package com.junsong.finance.domain.vo;
  */
 public class FinStockPositionView {
 
+    private Long tenantId;
     private Long deptId;
     private Long productId;
     private Integer quantity;
     private String productName;
+
+    public Long getTenantId() { return tenantId; }
+    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
 
     public Long getDeptId() { return deptId; }
     public void setDeptId(Long deptId) { this.deptId = deptId; }

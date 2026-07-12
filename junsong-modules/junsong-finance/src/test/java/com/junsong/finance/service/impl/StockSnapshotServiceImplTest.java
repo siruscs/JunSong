@@ -79,7 +79,7 @@ class StockSnapshotServiceImplTest {
         int firstUpdates = mapper.updateCount;
 
         // 模拟当日又有变动：position 与流水变化后重跑
-        mapper.updatePositionQuantity(DEPT_ID, 10L, 120);
+        mapper.updatePositionQuantity(1L, DEPT_ID, 10L, 120);
         mapper.putFlow(SNAPSHOT_DATE, DEPT_ID, 10L, 40, 20);
 
         int secondRun = service.rebuildDailySnapshot(SNAPSHOT_DATE, DEPT_ID);
@@ -175,10 +175,10 @@ class StockSnapshotServiceImplTest {
 
         // ---- 以下为非快照相关方法，提供桩实现 ----
         @Override
-        public int insertPositionIfAbsent(Long deptId, Long productId) { return 0; }
+        public int insertPositionIfAbsent(Long tenantId, Long deptId, Long productId) { return 0; }
 
         @Override
-        public Integer selectPositionQuantityForUpdate(Long deptId, Long productId) {
+        public Integer selectPositionQuantityForUpdate(Long tenantId, Long deptId, Long productId) {
             return positions.stream()
                     .filter(p -> p.getDeptId().equals(deptId) && p.getProductId().equals(productId))
                     .map(FinStockPositionView::getQuantity)
@@ -187,7 +187,7 @@ class StockSnapshotServiceImplTest {
         }
 
         @Override
-        public int updatePositionQuantity(Long deptId, Long productId, Integer quantity) {
+        public int updatePositionQuantity(Long tenantId, Long deptId, Long productId, Integer quantity) {
             for (FinStockPositionView p : positions) {
                 if (p.getDeptId().equals(deptId) && p.getProductId().equals(productId)) {
                     p.setQuantity(quantity);
@@ -198,10 +198,10 @@ class StockSnapshotServiceImplTest {
         }
 
         @Override
-        public Integer sumRecordedNet(String referenceType, Long referenceId, Long productId) { return 0; }
+        public Integer sumRecordedNet(Long tenantId, String referenceType, Long referenceId, Long productId) { return 0; }
 
         @Override
-        public List<Long> selectRecordedProductIds(String referenceType, Long referenceId) {
+        public List<Long> selectRecordedProductIds(Long tenantId, String referenceType, Long referenceId) {
             return new ArrayList<>();
         }
 

@@ -1,5 +1,6 @@
 package com.junsong.finance.service.impl;
 
+import com.junsong.common.core.context.TenantContext;
 import com.junsong.common.core.exception.ServiceException;
 import java.math.BigDecimal;
 import java.util.Date;
@@ -206,7 +207,7 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
         Long currentProductId = finSaleRecord.getProductId();
         java.util.Set<Long> productIds = new java.util.HashSet<>();
         productIds.add(currentProductId);
-        List<Long> recordedProductIds = finStockLedgerMapper.selectRecordedProductIds("SALE", finSaleRecord.getSaleId());
+        List<Long> recordedProductIds = finStockLedgerMapper.selectRecordedProductIds(TenantContext.getTenantId(), "SALE", finSaleRecord.getSaleId());
         if (recordedProductIds != null)
         {
             productIds.addAll(recordedProductIds);
@@ -218,6 +219,7 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
             int target = isCurrent ? outQuantity : 0;
             String productName = isCurrent ? finSaleRecord.getProductName() : null;
             finStockLedgerService.reconcileSaleStock(
+                    TenantContext.getTenantId(),
                     finSaleRecord.getDeptId(),
                     productId,
                     productName,
@@ -239,6 +241,7 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
             return;
         }
         finStockLedgerService.reconcileSaleStock(
+                TenantContext.getTenantId(),
                 old.getDeptId(),
                 old.getProductId(),
                 old.getProductName(),

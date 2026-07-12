@@ -9,6 +9,7 @@ public class FinStockLedger extends BaseEntity {
     private static final long serialVersionUID = 1L;
 
     private Long ledgerId;
+    private Long tenantId;
     private Long deptId;
     private Long productId;
     private String productName;
@@ -24,6 +25,9 @@ public class FinStockLedger extends BaseEntity {
 
     public Long getLedgerId() { return ledgerId; }
     public void setLedgerId(Long ledgerId) { this.ledgerId = ledgerId; }
+
+    public Long getTenantId() { return tenantId; }
+    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
 
     public Long getDeptId() { return deptId; }
     public void setDeptId(Long deptId) { this.deptId = deptId; }
@@ -65,6 +69,7 @@ public class FinStockLedger extends BaseEntity {
     public String toString() {
         return new ToStringBuilder(this, ToStringStyle.MULTI_LINE_STYLE)
             .append("ledgerId", getLedgerId())
+            .append("tenantId", getTenantId())
             .append("deptId", getDeptId())
             .append("productId", getProductId())
             .append("productName", getProductName())

@@ -15,6 +15,7 @@ public interface IFinStockLedgerService {
      * 采购入库对账：将某采购单对某商品的入库量对齐到 targetQuantity。
      * targetQuantity=0 表示该明细被删除或数量清零，将反向冲销已入库量。
      *
+     * @param tenantId 租户ID（不可为空，为空立即失败关闭）
      * @param deptId 门店ID
      * @param productId 商品ID
      * @param productName 商品名称
@@ -24,13 +25,14 @@ public interface IFinStockLedgerService {
      * @param unitCost 单位成本
      * @param operator 操作人
      */
-    void reconcilePurchaseStock(Long deptId, Long productId, String productName, Long referenceId,
+    void reconcilePurchaseStock(Long tenantId, Long deptId, Long productId, String productName, Long referenceId,
                                 String referenceNo, Integer targetQuantity, BigDecimal unitCost, String operator);
 
     /**
      * 销售出库对账：将某销售单对某商品的出库量对齐到 targetQuantity。
      * targetQuantity=0 表示该销售被删除或数量清零，将反向回补已出库量。
      *
+     * @param tenantId 租户ID（不可为空，为空立即失败关闭）
      * @param deptId 门店ID
      * @param productId 商品ID
      * @param productName 商品名称
@@ -39,6 +41,6 @@ public interface IFinStockLedgerService {
      * @param targetQuantity 目标出库数量（>=0）
      * @param operator 操作人
      */
-    void reconcileSaleStock(Long deptId, Long productId, String productName, Long referenceId,
+    void reconcileSaleStock(Long tenantId, Long deptId, Long productId, String productName, Long referenceId,
                             String referenceNo, Integer targetQuantity, String operator);
 }

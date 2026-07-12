@@ -23,6 +23,7 @@ public class FinStockSnapshot extends BaseEntity {
     private static final long serialVersionUID = 1L;
 
     private Long snapshotId;
+    private Long tenantId;
     private LocalDate snapshotDate;
     private Long deptId;
     private String deptName;
@@ -37,6 +38,9 @@ public class FinStockSnapshot extends BaseEntity {
 
     public Long getSnapshotId() { return snapshotId; }
     public void setSnapshotId(Long snapshotId) { this.snapshotId = snapshotId; }
+
+    public Long getTenantId() { return tenantId; }
+    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
 
     public LocalDate getSnapshotDate() { return snapshotDate; }
     public void setSnapshotDate(LocalDate snapshotDate) { this.snapshotDate = snapshotDate; }
@@ -75,6 +79,7 @@ public class FinStockSnapshot extends BaseEntity {
     public String toString() {
         return new ToStringBuilder(this, ToStringStyle.MULTI_LINE_STYLE)
             .append("snapshotId", getSnapshotId())
+            .append("tenantId", getTenantId())
             .append("snapshotDate", getSnapshotDate())
             .append("deptId", getDeptId())
             .append("deptName", getDeptName())

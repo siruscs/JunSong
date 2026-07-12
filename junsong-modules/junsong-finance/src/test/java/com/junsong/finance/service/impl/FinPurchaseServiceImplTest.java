@@ -154,7 +154,7 @@ class FinPurchaseServiceImplTest {
         final Map<String, Integer> positions = new HashMap<>();
 
         private String key(Long deptId, Long productId) {
-            return deptId + ":" + productId;
+            return 1L + ":" + deptId + ":" + productId;
         }
 
         int position(Long deptId, Long productId) {
@@ -162,27 +162,28 @@ class FinPurchaseServiceImplTest {
         }
 
         @Override
-        public int insertPositionIfAbsent(Long deptId, Long productId) {
-            positions.putIfAbsent(key(deptId, productId), 0);
+        public int insertPositionIfAbsent(Long tenantId, Long deptId, Long productId) {
+            positions.putIfAbsent(tenantId + ":" + deptId + ":" + productId, 0);
             return 1;
         }
 
         @Override
-        public Integer selectPositionQuantityForUpdate(Long deptId, Long productId) {
-            return positions.get(key(deptId, productId));
+        public Integer selectPositionQuantityForUpdate(Long tenantId, Long deptId, Long productId) {
+            return positions.get(tenantId + ":" + deptId + ":" + productId);
         }
 
         @Override
-        public int updatePositionQuantity(Long deptId, Long productId, Integer quantity) {
-            positions.put(key(deptId, productId), quantity);
+        public int updatePositionQuantity(Long tenantId, Long deptId, Long productId, Integer quantity) {
+            positions.put(tenantId + ":" + deptId + ":" + productId, quantity);
             return 1;
         }
 
         @Override
-        public Integer sumRecordedNet(String referenceType, Long referenceId, Long productId) {
+        public Integer sumRecordedNet(Long tenantId, String referenceType, Long referenceId, Long productId) {
             int sum = 0;
             for (FinStockLedger l : inserted) {
-                if (referenceType.equals(l.getReferenceType())
+                if (tenantId.equals(l.getTenantId())
+                        && referenceType.equals(l.getReferenceType())
                         && referenceId.equals(l.getReferenceId())
                         && productId.equals(l.getProductId())) {
                     sum += l.getChangeQuantity();
@@ -192,10 +193,11 @@ class FinPurchaseServiceImplTest {
         }
 
         @Override
-        public List<Long> selectRecordedProductIds(String referenceType, Long referenceId) {
+        public List<Long> selectRecordedProductIds(Long tenantId, String referenceType, Long referenceId) {
             List<Long> ids = new ArrayList<>();
             for (FinStockLedger l : inserted) {
-                if (referenceType.equals(l.getReferenceType())
+                if (tenantId.equals(l.getTenantId())
+                        && referenceType.equals(l.getReferenceType())
                         && referenceId.equals(l.getReferenceId())
                         && !ids.contains(l.getProductId())) {
                     ids.add(l.getProductId());

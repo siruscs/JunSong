@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.junsong.common.core.context.TenantContext;
 import com.junsong.common.core.exception.ServiceException;
 import com.junsong.common.core.utils.StringUtils;
 import com.junsong.common.security.utils.SecurityUtils;
@@ -240,7 +241,7 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
 
         // 并集：本次目标商品 + 该单历史已记录商品（历史有但本次没有 => 目标 0 反向冲销）
         java.util.Set<Long> productIds = new java.util.HashSet<>(targetByProduct.keySet());
-        List<Long> recordedProductIds = finStockLedgerMapper.selectRecordedProductIds("PURCHASE", finPurchase.getPurchaseId());
+        List<Long> recordedProductIds = finStockLedgerMapper.selectRecordedProductIds(TenantContext.getTenantId(), "PURCHASE", finPurchase.getPurchaseId());
         if (recordedProductIds != null)
         {
             productIds.addAll(recordedProductIds);
@@ -252,6 +253,7 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
             String productName = nameByProduct.get(productId);
             BigDecimal cost = costByProduct.getOrDefault(productId, BigDecimal.ZERO);
             finStockLedgerService.reconcilePurchaseStock(
+                    TenantContext.getTenantId(),
                     finPurchase.getDeptId(),
                     productId,
                     productName,
@@ -273,14 +275,14 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
         {
             return;
         }
-        List<Long> recordedProductIds = finStockLedgerMapper.selectRecordedProductIds("PURCHASE", purchaseId);
+        List<Long> recordedProductIds = finStockLedgerMapper.selectRecordedProductIds(TenantContext.getTenantId(), "PURCHASE", purchaseId);
         if (recordedProductIds == null)
         {
             return;
         }
         for (Long productId : recordedProductIds)
         {
-            finStockLedgerService.reconcilePurchaseStock(deptId, productId, null, purchaseId, purchaseNo,
+            finStockLedgerService.reconcilePurchaseStock(TenantContext.getTenantId(), deptId, productId, null, purchaseId, purchaseNo,
                     0, BigDecimal.ZERO, operator);
         }
     }

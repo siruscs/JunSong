@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.FinStockCostLayerMapper">
+
+    <resultMap id="FinStockCostLayerResult" type="com.junsong.finance.domain.FinStockCostLayer">
+        <id     property="costLayerId"   column="cost_layer_id"/>
+        <result property="tenantId"      column="tenant_id"/>
+        <result property="deptId"        column="dept_id"/>
+        <result property="productId"     column="product_id"/>
+        <result property="avgUnitCost"   column="avg_unit_cost"/>
+        <result property="stockQuantity" column="stock_quantity"/>
+        <result property="stockAmount"   column="stock_amount"/>
+        <result property="version"       column="version"/>
+        <result property="createBy"      column="create_by"/>
+        <result property="createTime"    column="create_time"/>
+        <result property="updateBy"      column="update_by"/>
+        <result property="updateTime"    column="update_time"/>
+    </resultMap>
+
+    <!-- 幂等创建成本层行 -->
+    <insert id="insertCostLayerIfAbsent">
+        INSERT IGNORE INTO fin_stock_cost_layer
+            (tenant_id, dept_id, product_id, avg_unit_cost, stock_quantity, stock_amount, version, create_by)
+        VALUES
+            (#{tenantId}, #{deptId}, #{productId}, 0.000000, 0, 0.00, 0, 'system')
+    </insert>
+
+    <!-- 加行锁查询成本层 -->
+    <select id="selectCostLayerForUpdate" resultMap="FinStockCostLayerResult">
+        SELECT cost_layer_id, tenant_id, dept_id, product_id,
+               avg_unit_cost, stock_quantity, stock_amount, version,
+               create_by, create_time, update_by, update_time
+        FROM fin_stock_cost_layer
+        WHERE tenant_id = #{tenantId}
+          AND dept_id = #{deptId}
+          AND product_id = #{productId}
+        FOR UPDATE
+    </select>
+
+    <!-- 乐观锁更新成本层 -->
+    <update id="updateCostLayer">
+        UPDATE fin_stock_cost_layer
+        SET avg_unit_cost = #{avgUnitCost},
+            stock_quantity = #{stockQuantity},
+            stock_amount = #{stockAmount},
+            version = version + 1,
+            update_by = #{updateBy},
+            update_time = NOW()
+        WHERE tenant_id = #{tenantId}
+          AND dept_id = #{deptId}
+          AND product_id = #{productId}
+          AND version = #{version}
+    </update>
+
+    <!-- 写入成本流水 -->
+    <insert id="insertCostLedger" parameterType="com.junsong.finance.domain.FinStockCostLedger" useGeneratedKeys="true" keyProperty="costLedgerId">
+        INSERT INTO fin_stock_cost_ledger (
+            tenant_id, dept_id, product_id, source_type, source_ledger_id,
+            cost_change_type, quantity, unit_cost, amount, period_id,
+            adjust_reason, operator, del_flag, create_by
+        ) VALUES (
+            #{tenantId}, #{deptId}, #{productId}, #{sourceType}, #{sourceLedgerId},
+            #{costChangeType}, #{quantity}, #{unitCost}, #{amount}, #{periodId},
+            #{adjustReason}, #{operator}, '0', #{createBy}
+        )
+    </insert>
+
+</mapper>

@@ -270,6 +270,7 @@ class FinStockLedgerServiceImplTest {
 
         @Override
         public int insertFinStockLedger(FinStockLedger ledger) {
+            ledger.setLedgerId((long) (inserted.size() + 1));
             inserted.add(ledger);
             return 1;
         }
@@ -299,6 +300,17 @@ class FinStockLedgerServiceImplTest {
                 }
             }
             return null;
+        }
+
+        @Override
+        public int updateLedgerUnitCost(Long ledgerId, java.math.BigDecimal unitCost) {
+            for (FinStockLedger l : inserted) {
+                if (ledgerId != null && ledgerId.equals(l.getLedgerId())) {
+                    l.setUnitCost(unitCost);
+                    return 1;
+                }
+            }
+            return 0;
         }
 
     }

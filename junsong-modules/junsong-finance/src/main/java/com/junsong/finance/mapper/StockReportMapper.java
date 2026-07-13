@@ -118,4 +118,16 @@ public interface StockReportMapper {
      */
     boolean existsCostLayerForTenant(@Param("tenantId") Long tenantId,
                                      @Param("deptIds") List<Long> deptIds);
+
+    /**
+     * 统计授权范围内有库存流水但缺少成本层的商品数量。
+     * 用于 costReady 覆盖校验：返回大于 0 表示部分商品未初始化成本层，
+     * 价值报表会遗漏这些商品，costReady 应为 false。
+     *
+     * @param tenantId 租户ID
+     * @param deptIds  授权门店ID集合
+     * @return 缺少成本层的商品数量（0 表示全覆盖）
+     */
+    int countStockProductsWithoutCostLayer(@Param("tenantId") Long tenantId,
+                                           @Param("deptIds") List<Long> deptIds);
 }

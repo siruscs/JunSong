@@ -295,8 +295,12 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
         vo.setGrossProfitRate(BigDecimal.ZERO);
         vo.setItems(Collections.emptyList());
 
-        // costReady 门禁：无成本层行时禁止展示金额，禁止用零值伪装未完成成本
-        boolean costReady = stockReportMapper.existsCostLayerForTenant(tenantId, query.getDeptIds());
+        // costReady 门禁：
+        // 1. 必须存在至少一条成本层记录（防止未初始化）
+        // 2. 授权范围内所有有库存流水的商品都必须有成本层（防止部分初始化导致报表遗漏）
+        boolean hasAnyCostLayer = stockReportMapper.existsCostLayerForTenant(tenantId, query.getDeptIds());
+        int missingCount = stockReportMapper.countStockProductsWithoutCostLayer(tenantId, query.getDeptIds());
+        boolean costReady = hasAnyCostLayer && missingCount == 0;
         if (!costReady) {
             return vo;
         }

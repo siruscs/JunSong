@@ -491,6 +491,11 @@ class FinanceStockReportServiceImplTest {
         public boolean existsCostLayerForTenant(Long tenantId, List<Long> deptIds) {
             return false;
         }
+
+        @Override
+        public int countStockProductsWithoutCostLayer(Long tenantId, List<Long> deptIds) {
+            return 0;
+        }
     }
 
     // ── Fake：IStockHealthService ──

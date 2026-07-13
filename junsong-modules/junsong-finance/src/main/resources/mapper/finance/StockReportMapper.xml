@@ -411,4 +411,28 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         )
     </select>
 
+    <!--
+        costReady 覆盖校验：统计有库存流水但缺少成本层的商品数量。
+        返回 > 0 表示部分商品未初始化成本层，价值报表会遗漏这些商品。
+        fin_stock_ledger 有 del_flag；fin_stock_cost_layer 无 del_flag。
+    -->
+    <select id="countStockProductsWithoutCostLayer" resultType="int">
+        SELECT COUNT(DISTINCT l.product_id)
+        FROM fin_stock_ledger l
+        WHERE l.tenant_id = #{tenantId}
+          AND l.del_flag = '0'
+          <if test="deptIds != null and deptIds.size() > 0">
+              AND l.dept_id IN
+              <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
+                  #{deptId}
+              </foreach>
+          </if>
+          AND NOT EXISTS (
+              SELECT 1 FROM fin_stock_cost_layer c
+              WHERE c.tenant_id = l.tenant_id
+                AND c.dept_id = l.dept_id
+                AND c.product_id = l.product_id
+          )
+    </select>
+
 </mapper>

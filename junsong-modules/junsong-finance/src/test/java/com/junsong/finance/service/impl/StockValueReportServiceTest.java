@@ -116,14 +116,28 @@ class StockValueReportServiceTest {
     @Test
     void costReady_trueWhenCostLayerExists() {
         stockReportMapper.costLayerExists = true;
+        stockReportMapper.missingCount = 0;
         stockReportMapper.valueSummary = buildSummary("200.00", "200.00", "166.67", "0.00", "233.33",
                 "400.00", "233.33", "58.33");
 
         StockValueReportVO vo = service.getStockValueReport(query(LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31), DEPT_1));
 
-        assertTrue(vo.isCostReady(), "存在成本层时 costReady 必须为 true");
+        assertTrue(vo.isCostReady(), "存在成本层且全覆盖时 costReady 必须为 true");
         assertEquals(new BigDecimal("200.00"), vo.getOpeningAmount());
         assertEquals(new BigDecimal("233.33"), vo.getClosingAmount());
+    }
+
+    @Test
+    void costReady_falseWhenPartialCostLayer() {
+        // 部分初始化：有成本层但部分商品缺少成本层记录
+        stockReportMapper.costLayerExists = true;
+        stockReportMapper.missingCount = 3;
+
+        StockValueReportVO vo = service.getStockValueReport(query(LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 31), DEPT_1));
+
+        assertFalse(vo.isCostReady(), "部分商品缺成本层时 costReady 必须为 false，防止报表遗漏");
+        assertEquals(BigDecimal.ZERO, vo.getClosingAmount());
+        assertTrue(vo.getItems() == null || vo.getItems().isEmpty(), "部分初始化时 items 必须为空");
     }
 
     // ==================== 恒等式 ====================
@@ -315,12 +329,18 @@ class StockValueReportServiceTest {
 
     static class FakeStockReportMapper implements StockReportMapper {
         boolean costLayerExists = false;
+        int missingCount = 0; // 缺少成本层的商品数量（0=全覆盖）
         StockValueReportVO valueSummary;
         List<StockValueReportItemVO> valueItems = Collections.emptyList();
 
         @Override
         public boolean existsCostLayerForTenant(Long tenantId, List<Long> deptIds) {
             return costLayerExists;
+        }
+
+        @Override
+        public int countStockProductsWithoutCostLayer(Long tenantId, List<Long> deptIds) {
+            return missingCount;
         }
 
         @Override

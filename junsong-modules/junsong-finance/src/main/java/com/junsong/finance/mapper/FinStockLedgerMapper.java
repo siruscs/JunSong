@@ -146,4 +146,13 @@ public interface FinStockLedgerMapper {
      * @return 门店ID列表
      */
     List<FinStockPositionView> selectAllTenantDeptScopesWithPosition();
+
+    /**
+     * 更新库存流水的单位成本字段（用于销售出库先写流水后固化成本的两步流程）。
+     *
+     * @param ledgerId 流水ID
+     * @param unitCost 固化的单位成本
+     * @return 影响行数
+     */
+    int updateLedgerUnitCost(@Param("ledgerId") Long ledgerId, @Param("unitCost") java.math.BigDecimal unitCost);
 }

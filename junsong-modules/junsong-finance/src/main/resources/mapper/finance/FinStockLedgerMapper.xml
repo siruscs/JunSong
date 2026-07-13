@@ -196,4 +196,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         order by ledger_id desc
         limit 1
     </select>
+
+    <!-- 更新流水单位成本（销售出库两步流程：先写流水获取ID，固化成本后回填） -->
+    <update id="updateLedgerUnitCost">
+        update fin_stock_ledger
+          set unit_cost = #{unitCost}
+        where ledger_id = #{ledgerId}
+    </update>
 </mapper>

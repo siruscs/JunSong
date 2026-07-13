@@ -325,6 +325,7 @@ class FinPurchaseServiceImplTest {
 
         @Override
         public int insertFinStockLedger(FinStockLedger ledger) {
+            ledger.setLedgerId((long) (inserted.size() + 1));
             inserted.add(ledger);
             return 1;
         }
@@ -345,6 +346,11 @@ class FinPurchaseServiceImplTest {
         @Override
         public java.math.BigDecimal selectSaleOutUnitCost(Long tenantId, Long referenceId, Long productId) {
             return null;
+        }
+
+        @Override
+        public int updateLedgerUnitCost(Long ledgerId, java.math.BigDecimal unitCost) {
+            return 0;
         }
 
     }

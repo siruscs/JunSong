@@ -875,18 +875,28 @@ export default {
       this.serverStatusLoading = true
       const token = getToken()
       const baseUrl = getBaseUrl()
+      const timeoutMs = 5000
       const services = await Promise.all(SERVICE_STATUS_TARGETS.map(async (target) => {
         try {
-          const res = await new Promise((resolve, reject) => {
-            uni.request({
-              url: baseUrl + target.url,
-              method: 'GET',
-              header: { Authorization: 'Bearer ' + token },
-              timeout: 5000,
-              success: (r) => resolve(r),
-              fail: (e) => reject(e)
+          const res = await Promise.race([
+            new Promise((resolve, reject) => {
+              try {
+                uni.request({
+                  url: baseUrl + target.url,
+                  method: 'GET',
+                  header: { Authorization: 'Bearer ' + token },
+                  timeout: timeoutMs,
+                  success: (r) => resolve(r),
+                  fail: (e) => reject(e)
+                })
+              } catch (syncErr) {
+                reject(syncErr)
+              }
+            }),
+            new Promise((_, reject) => {
+              setTimeout(() => reject(new Error('health check guard timeout')), timeoutMs + 500)
             })
-          })
+          ])
           const statusCode = res.statusCode
           const data = res.data || {}
           if (statusCode === 403) {
@@ -931,7 +941,9 @@ export default {
         }
         const current = resolveCurrentDept(this.deptList, this.currentDeptId)
         if (current) this.currentDeptId = current.id
-        this.loadServerStatus().catch(e => console.log('server status load failed', e))
+        setTimeout(() => {
+          this.loadServerStatus().catch(e => console.log('server status load failed', e))
+        }, 2000)
       } catch (e) {
         const cached = this.userInfo || {}
         this.deptList = normalizeDeptOptions(cached.depts || [])
@@ -1033,8 +1045,7 @@ export default {
         this.loadOverview(),
         this.loadPeriod(),
         this.loadSeckill(),
-        this.loadExpenseSummary(),
-        this.loadServerStatus()
+        this.loadExpenseSummary()
       ].map(p => p.catch(e => console.log('refresh request failed', e)))).finally(() => {
         this.refreshing = false
       })

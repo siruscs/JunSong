@@ -5,6 +5,16 @@ export default {
     if (!baseUrl) {
       uni.setStorageSync('baseUrl', 'https://www.junsong.vip/prod-api')
     }
+    if (typeof uni.onUnhandledRejection === 'function') {
+      uni.onUnhandledRejection((res) => {
+        console.warn('[unhandledRejection]', res?.reason || res)
+      })
+    }
+    if (typeof uni.onError === 'function') {
+      uni.onError((err) => {
+        console.warn('[appError]', err)
+      })
+    }
   }
 }
 </script>

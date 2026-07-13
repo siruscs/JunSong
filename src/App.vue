@@ -17,6 +17,10 @@ export default {
           console.warn('[appError] webapi_getwxaasyncsecinfo internal error (can safely ignore):', err)
           return
         }
+        if (errStr.includes('SystemError') && errStr.includes('access_token missing')) {
+          console.warn('[appError] SystemError access_token missing (WeChat internal):', err)
+          return
+        }
         console.warn('[appError]', err)
       })
     }

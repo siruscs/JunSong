@@ -1010,7 +1010,16 @@ export default {
     },
     onRefresh() {
       this.refreshing = true
-      Promise.all([this.refreshModules(), this.loadUserContext(), this.loadDashboard(), this.loadOverview(), this.loadPeriod(), this.loadSeckill(), this.loadExpenseSummary(), this.loadServerStatus()]).finally(() => {
+      Promise.all([
+        this.refreshModules(),
+        this.loadUserContext(),
+        this.loadDashboard(),
+        this.loadOverview(),
+        this.loadPeriod(),
+        this.loadSeckill(),
+        this.loadExpenseSummary(),
+        this.loadServerStatus()
+      ].map(p => p.catch(e => console.log('refresh request failed', e)))).finally(() => {
         this.refreshing = false
       })
     }

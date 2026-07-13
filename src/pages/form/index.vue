@@ -954,6 +954,7 @@ export default {
             url: baseUrl + '/file/upload',
             filePath,
             name: 'file',
+            timeout: 30000,
             header: { Authorization: 'Bearer ' + token },
             success: (r) => {
               try { resolve(JSON.parse(r.data)) } catch (e) { reject(e) }
@@ -1001,6 +1002,7 @@ export default {
             url: baseUrl + '/finance/expense/ocr',
             filePath,
             name: 'file',
+            timeout: 30000,
             header: { Authorization: 'Bearer ' + token },
             success: (r) => {
               try { resolve(JSON.parse(r.data)) } catch (e) { reject(e) }

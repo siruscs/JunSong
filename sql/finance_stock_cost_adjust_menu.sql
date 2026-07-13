@@ -11,7 +11,7 @@ SET NAMES utf8mb4;
 -- =====================================================================
 
 -- 以权限码为稳定键；menu_id 动态选择空闲 ID，避免不同环境已有菜单 ID 冲突
-SET @stock_cost_adjust_perm := 'finance:stock:costAdjust';
+SET @stock_cost_adjust_perm := CONVERT('finance:stock:costAdjust' USING utf8mb4) COLLATE utf8mb4_unicode_ci;
 SET @stock_cost_adjust_menu_id := (
     SELECT menu_id FROM sys_menu WHERE perms = @stock_cost_adjust_perm LIMIT 1
 );

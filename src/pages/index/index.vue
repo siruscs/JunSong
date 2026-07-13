@@ -367,7 +367,7 @@
 
 <script>
 import { groups, modules } from '@/config/modules.js'
-import { request, getToken } from '@/api/index.js'
+import { request, getToken, getBaseUrl } from '@/api/index.js'
 import { getMpDashboardOverview } from '@/api/dashboard.js'
 import { filterAuthorizedGroups, hasModulePermission, isAdmin } from '@/utils/permission.js'
 import { applySeckillStats } from '@/utils/seckillStats.js'
@@ -873,10 +873,26 @@ export default {
     async loadServerStatus() {
       if (!this.canViewServerStatus) return
       this.serverStatusLoading = true
+      const token = getToken()
+      const baseUrl = getBaseUrl()
       const services = await Promise.all(SERVICE_STATUS_TARGETS.map(async (target) => {
         try {
-          const res = await request({ url: target.url, method: 'GET', noRedirect: true, silent: true, timeout: 8000 })
-          return { ...target, status: res.status || res.code || 'OK', ok: res.status === 'UP' || res.code === 200 || res.status === undefined }
+          const res = await new Promise((resolve, reject) => {
+            uni.request({
+              url: baseUrl + target.url,
+              method: 'GET',
+              header: { Authorization: 'Bearer ' + token },
+              timeout: 5000,
+              success: (r) => resolve(r),
+              fail: (e) => reject(e)
+            })
+          })
+          const statusCode = res.statusCode
+          const data = res.data || {}
+          if (statusCode === 403) {
+            return { ...target, status: 'UP', ok: true }
+          }
+          return { ...target, status: data.status || data.code || 'OK', ok: data.status === 'UP' || data.code === 200 || data.status === undefined }
         } catch (e) {
           return { ...target, status: 'DOWN', ok: false }
         }

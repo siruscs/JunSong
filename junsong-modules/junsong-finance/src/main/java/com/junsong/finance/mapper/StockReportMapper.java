@@ -52,6 +52,17 @@ public interface StockReportMapper {
                                @Param("query") StockReportQuery query);
 
     /**
+     * 查询全部库存报表明细行（受 keyword/status 过滤，不含分页）。
+     * 仅供导出使用，不应暴露给分页查询。
+     *
+     * @param tenantId 租户ID
+     * @param query    查询参数
+     * @return 全部明细
+     */
+    List<StockReportItemVO> selectAllStockReportItems(@Param("tenantId") Long tenantId,
+                                                       @Param("query") StockReportQuery query);
+
+    /**
      * 查询某门店某商品在指定日期区间内的库存流水明细（下钻）。
      *
      * @param tenantId  租户ID

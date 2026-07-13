@@ -163,4 +163,27 @@ class StockReportMapperContractTest {
         assertFalse(xml.contains("<delete"), "经营库存报表 Mapper 不得包含 DELETE 语句");
         assertFalse(xml.contains("<insert"), "经营库存报表 Mapper 不得包含 INSERT 语句");
     }
+
+    @Test
+    void exportQuery_hasNoLimitClause() throws Exception {
+        String body = resolvedStatement(loadMapperXml(), "selectAllStockReportItems");
+        assertFalse(body.toLowerCase().contains("limit"),
+                "导出查询不得包含 LIMIT 子句，必须返回全部数据");
+    }
+
+    @Test
+    void exportQuery_filtersByTenant() throws Exception {
+        String body = resolvedStatement(loadMapperXml(), "selectAllStockReportItems");
+        assertTrue(collapse(body).contains("tenant_id = #{tenantId}"),
+                "导出查询必须包含 tenant_id = #{tenantId}");
+    }
+
+    @Test
+    void snapshotAnomalyStatusFiltersByReconciliationStatus() throws Exception {
+        String xml = loadMapperXml();
+        assertTrue(xml.contains("SNAPSHOT_ANOMALY"),
+                "状态筛选必须处理 SNAPSHOT_ANOMALY 特殊值");
+        assertTrue(xml.contains("reconciliationStatus = 'ANOMALY'"),
+                "SNAPSHOT_ANOMALY 应映射到 reconciliationStatus = 'ANOMALY'，而非 stockStatus");
+    }
 }

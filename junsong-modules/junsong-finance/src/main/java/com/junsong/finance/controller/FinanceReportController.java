@@ -77,11 +77,11 @@ public class FinanceReportController extends BaseController {
     @RequiresPermissions("finance:report:stock")
     @PostMapping("/stock/ledger/page")
     public AjaxResult getStockLedgerPage(@RequestBody StockLedgerQuery query) {
-        List<StockLedgerRowVO> rows = financeReportService.getStockLedgerPage(
+        java.util.Map<String, Object> result = financeReportService.getStockLedgerPage(
                 query.getDeptId(), query.getProductId(),
                 query.getStartDate(), query.getEndDate(),
                 query.getPageNum(), query.getPageSize());
-        return AjaxResult.success(rows);
+        return AjaxResult.success(result);
     }
 
     @RequiresPermissions("finance:report:stock:export")

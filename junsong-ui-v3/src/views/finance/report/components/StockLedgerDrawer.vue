@@ -107,7 +107,7 @@ function fetchLedger() {
   })
     .then((res: any) => {
       const data = res.data || {}
-      ledgerRows.value = data.rows || data.items || []
+      ledgerRows.value = data.rows || []
       total.value = data.total || 0
     })
     .catch(() => {

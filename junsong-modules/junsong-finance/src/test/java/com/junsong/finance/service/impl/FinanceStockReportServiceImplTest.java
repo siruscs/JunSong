@@ -248,7 +248,7 @@ class FinanceStockReportServiceImplTest {
                 makeItem(10L, 1L, "商品A"),
                 makeItem(10L, 2L, "商品B"),
                 makeItem(10L, 3L, "商品C"));
-        fakeMapper.itemsResult = items;
+        fakeMapper.allItemsResult = items;
 
         FinanceReportServiceImpl service = createService(fakeMapper,
                 new NoOpStockHealthService(), new ConfigurableRemoteUserService());
@@ -259,11 +259,7 @@ class FinanceStockReportServiceImplTest {
         List<StockReportItemVO> result = service.exportStockReport(query);
 
         assertEquals(3, result.size(), "导出应返回全部 3 条数据");
-        assertNotNull(fakeMapper.lastQuery);
-        assertEquals(1, fakeMapper.lastQuery.getPageNum(),
-                "导出应设置 pageNum=1");
-        assertEquals(200, fakeMapper.lastQuery.getPageSize(),
-                "导出应设置 pageSize=200（最大值，不分页）");
+        assertTrue(fakeMapper.selectAllCalled, "导出应调用 selectAllStockReportItems（不分页）");
     }
 
     // ── 对账委托给 stockHealthService ──
@@ -297,6 +293,7 @@ class FinanceStockReportServiceImplTest {
 
     @Test
     void ledgerPageValidatesRequiredParams() throws Exception {
+        setupAdmin();
         TenantContext.setTenantId(1L);
         FinanceReportServiceImpl service = createService(new FakeStockReportMapper(),
                 new NoOpStockHealthService(), new ConfigurableRemoteUserService());
@@ -314,10 +311,60 @@ class FinanceStockReportServiceImplTest {
                 "productId 为 null 时应抛出含'门店'或'商品'的 ServiceException");
     }
 
-    // ── 流水下钻返回正确数据 ──
+    // ── 流水下钻：非 admin 访问未授权门店 fail-closed ──
 
     @Test
-    void ledgerPageReturnsCorrectData() throws Exception {
+    void ledgerPage_unauthorizedDeptFailsClosed() throws Exception {
+        setupNonAdmin("store-mgr", 10L);
+        TenantContext.setTenantId(1L);
+        ConfigurableRemoteUserService remoteService = new ConfigurableRemoteUserService();
+        remoteService.deptListResponse = R.ok(Collections.singletonList(makeDept(10L)));
+
+        FinanceReportServiceImpl service = createService(new FakeStockReportMapper(),
+                new NoOpStockHealthService(), remoteService);
+
+        // deptId=99 不在授权 [10] 范围内
+        ServiceException ex = assertThrows(ServiceException.class,
+                () -> service.getStockLedgerPage(99L, 5L, null, null, 1, 20));
+        assertTrue(ex.getMessage().contains("授权") || ex.getMessage().contains("门店"),
+                "非 admin 访问未授权门店应 fail-closed");
+    }
+
+    // ── 流水下钻：非 admin 访问已授权门店成功 ──
+
+    @Test
+    void ledgerPage_authorizedDeptSucceeds() throws Exception {
+        setupNonAdmin("store-mgr", 10L);
+        TenantContext.setTenantId(1L);
+        ConfigurableRemoteUserService remoteService = new ConfigurableRemoteUserService();
+        remoteService.deptListResponse = R.ok(Arrays.asList(makeDept(10L), makeDept(20L)));
+
+        FakeStockReportMapper fakeMapper = new FakeStockReportMapper();
+        StockLedgerRowVO row = new StockLedgerRowVO();
+        row.setChangeType("PURCHASE_IN");
+        row.setChangeQuantity(10);
+        fakeMapper.ledgerResult = Collections.singletonList(row);
+
+        FinanceReportServiceImpl service = createService(fakeMapper,
+                new NoOpStockHealthService(), remoteService);
+
+        Map<String, Object> result = service.getStockLedgerPage(
+                20L, 5L, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), 1, 20);
+
+        assertNotNull(result);
+        assertEquals(20L, fakeMapper.lastDeptId, "应传入授权的 deptId=20");
+        assertEquals(5L, fakeMapper.lastProductId);
+        @SuppressWarnings("unchecked")
+        List<StockLedgerRowVO> rows = (List<StockLedgerRowVO>) result.get("rows");
+        assertEquals(1, rows.size());
+        assertEquals(1, result.get("total"));
+    }
+
+    // ── 流水下钻返回分页包装数据 ──
+
+    @Test
+    void ledgerPageReturnsPaginatedWrapper() throws Exception {
+        setupAdmin();
         TenantContext.setTenantId(1L);
 
         FakeStockReportMapper fakeMapper = new FakeStockReportMapper();
@@ -329,13 +376,17 @@ class FinanceStockReportServiceImplTest {
         FinanceReportServiceImpl service = createService(fakeMapper,
                 new NoOpStockHealthService(), new ConfigurableRemoteUserService());
 
-        List<StockLedgerRowVO> result = service.getStockLedgerPage(
+        Map<String, Object> result = service.getStockLedgerPage(
                 10L, 5L, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31), 1, 20);
 
-        assertEquals(1, result.size());
-        assertEquals("PURCHASE_IN", result.get(0).getChangeType());
-        assertEquals(10L, fakeMapper.lastDeptId);
-        assertEquals(5L, fakeMapper.lastProductId);
+        assertNotNull(result);
+        assertNotNull(result.get("rows"), "返回结果应包含 rows 字段");
+        assertNotNull(result.get("total"), "返回结果应包含 total 字段");
+        assertNotNull(result.get("pageNum"), "返回结果应包含 pageNum 字段");
+        assertNotNull(result.get("pageSize"), "返回结果应包含 pageSize 字段");
+        assertEquals(1, result.get("total"));
+        assertEquals(1, result.get("pageNum"));
+        assertEquals(20, result.get("pageSize"));
     }
 
     // ── 复合报表：getStockReport 组合 summary + items + total ──
@@ -373,8 +424,10 @@ class FinanceStockReportServiceImplTest {
     static class FakeStockReportMapper implements StockReportMapper {
         StockReportSummaryVO summaryResult;
         List<StockReportItemVO> itemsResult = Collections.emptyList();
+        List<StockReportItemVO> allItemsResult = Collections.emptyList();
         long countResult = 0;
         List<StockLedgerRowVO> ledgerResult = Collections.emptyList();
+        boolean selectAllCalled = false;
 
         StockReportQuery lastQuery;
         Long lastTenantId;
@@ -402,6 +455,14 @@ class FinanceStockReportServiceImplTest {
             lastTenantId = tenantId;
             lastQuery = query;
             return countResult;
+        }
+
+        @Override
+        public List<StockReportItemVO> selectAllStockReportItems(Long tenantId, StockReportQuery query) {
+            lastTenantId = tenantId;
+            lastQuery = query;
+            selectAllCalled = true;
+            return allItemsResult;
         }
 
         @Override

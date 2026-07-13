@@ -210,7 +210,7 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
     }
 
     @Override
-    public List<StockLedgerRowVO> getStockLedgerPage(Long deptId, Long productId,
+    public Map<String, Object> getStockLedgerPage(Long deptId, Long productId,
                                                       LocalDate startDate, LocalDate endDate,
                                                       Integer pageNum, Integer pageSize) {
         Long tenantId = TenantContext.getTenantId();
@@ -220,20 +220,34 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
         if (deptId == null || productId == null) {
             throw new ServiceException("门店ID和商品ID不能为空");
         }
+        // 授权门店校验：非 admin 必须确认 deptId 在授权范围内
+        assertDeptAuthorized(deptId);
+
         int page = pageNum == null || pageNum < 1 ? 1 : pageNum;
         int size = pageSize == null || pageSize < 1 ? 20 : Math.min(pageSize, 200);
 
         List<StockLedgerRowVO> allRows = stockReportMapper.selectStockLedgerRows(
                 tenantId, deptId, productId, startDate, endDate);
-        if (allRows == null || allRows.isEmpty()) {
-            return Collections.emptyList();
+        int total = allRows == null ? 0 : allRows.size();
+        List<StockLedgerRowVO> pageRows;
+        if (total == 0) {
+            pageRows = Collections.emptyList();
+        } else {
+            int start = (page - 1) * size;
+            if (start >= total) {
+                pageRows = Collections.emptyList();
+            } else {
+                int end = Math.min(start + size, total);
+                pageRows = new ArrayList<>(allRows.subList(start, end));
+            }
         }
-        int start = (page - 1) * size;
-        if (start >= allRows.size()) {
-            return Collections.emptyList();
-        }
-        int end = Math.min(start + size, allRows.size());
-        return new ArrayList<>(allRows.subList(start, end));
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("rows", pageRows);
+        result.put("total", total);
+        result.put("pageNum", page);
+        result.put("pageSize", size);
+        return result;
     }
 
     @Override
@@ -241,15 +255,7 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
         Long tenantId = TenantContext.getTenantId();
         applyStockDataScope(query);
         validateStockReportRequest(tenantId, query);
-        StockReportQuery exportQuery = new StockReportQuery();
-        exportQuery.setDeptIds(query.getDeptIds());
-        exportQuery.setStartDate(query.getStartDate());
-        exportQuery.setEndDate(query.getEndDate());
-        exportQuery.setKeyword(query.getKeyword());
-        exportQuery.setStatus(query.getStatus());
-        exportQuery.setPageNum(1);
-        exportQuery.setPageSize(200);
-        return stockReportMapper.selectStockReportItems(tenantId, exportQuery);
+        return stockReportMapper.selectAllStockReportItems(tenantId, query);
     }
 
     @Override
@@ -311,6 +317,29 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
             query.validate();
         } catch (IllegalArgumentException e) {
             throw new ServiceException(e.getMessage());
+        }
+    }
+
+    /**
+     * 校验单个门店是否在当前用户授权范围内。
+     * admin 可访问全部门店；非 admin 必须在 loadAllowedDeptIds 返回的列表中。
+     * 交集为空时 fail-closed 抛出 ServiceException。
+     */
+    private void assertDeptAuthorized(Long deptId) {
+        if (SecurityUtils.isAdmin()) {
+            return;
+        }
+        List<Long> allowed = loadAllowedDeptIds();
+        if (allowed.isEmpty()) {
+            Long currentDeptId = SecurityUtils.getDeptId();
+            if (currentDeptId != null) {
+                allowed = Collections.singletonList(currentDeptId);
+            } else {
+                throw new ServiceException("当前用户无授权门店，禁止查询库存流水");
+            }
+        }
+        if (!allowed.contains(deptId)) {
+            throw new ServiceException("该门店不在授权范围内，禁止查询库存流水");
         }
     }
 

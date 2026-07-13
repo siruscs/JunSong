@@ -180,8 +180,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 AND (p.productName LIKE CONCAT('%', #{query.keyword}, '%')
                      OR p.productCode LIKE CONCAT('%', #{query.keyword}, '%'))
             </if>
-            <if test="query.status != null and query.status != ''">
+            <if test="query.status != null and query.status != '' and query.status != 'SNAPSHOT_ANOMALY'">
                 AND p.stockStatus = #{query.status}
+            </if>
+            <if test="query.status == 'SNAPSHOT_ANOMALY'">
+                AND p.reconciliationStatus = 'ANOMALY'
             </if>
         </where>
         ORDER BY p.tenantId, p.deptId, p.productId
@@ -198,10 +201,33 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 AND (p.productName LIKE CONCAT('%', #{query.keyword}, '%')
                      OR p.productCode LIKE CONCAT('%', #{query.keyword}, '%'))
             </if>
-            <if test="query.status != null and query.status != ''">
+            <if test="query.status != null and query.status != '' and query.status != 'SNAPSHOT_ANOMALY'">
                 AND p.stockStatus = #{query.status}
             </if>
+            <if test="query.status == 'SNAPSHOT_ANOMALY'">
+                AND p.reconciliationStatus = 'ANOMALY'
+            </if>
         </where>
+    </select>
+
+    <!-- 全部明细（导出用，不含分页） -->
+    <select id="selectAllStockReportItems" resultType="com.junsong.finance.domain.vo.StockReportItemVO">
+        SELECT * FROM (
+            <include refid="stockReportPerProduct"/>
+        ) p
+        <where>
+            <if test="query.keyword != null and query.keyword != ''">
+                AND (p.productName LIKE CONCAT('%', #{query.keyword}, '%')
+                     OR p.productCode LIKE CONCAT('%', #{query.keyword}, '%'))
+            </if>
+            <if test="query.status != null and query.status != '' and query.status != 'SNAPSHOT_ANOMALY'">
+                AND p.stockStatus = #{query.status}
+            </if>
+            <if test="query.status == 'SNAPSHOT_ANOMALY'">
+                AND p.reconciliationStatus = 'ANOMALY'
+            </if>
+        </where>
+        ORDER BY p.tenantId, p.deptId, p.productId
     </select>
 
     <!-- 单商品库存流水下钻 -->

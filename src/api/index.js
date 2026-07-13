@@ -40,21 +40,49 @@ function buildHeader(header = {}) {
 export function request(options) {
   return new Promise((resolve, reject) => {
     const requestUrl = getBaseUrl() + options.url
+    const timeoutMs = options.timeout || REQUEST_TIMEOUT
+    const startTime = Date.now()
+    let completed = false
+    
+    const finish = (result, isSuccess) => {
+      if (completed) return
+      completed = true
+      const duration = Date.now() - startTime
+      if (duration > 5000) {
+        console.warn('[request] slow request:', requestUrl, 'duration:', duration + 'ms')
+      }
+      if (isSuccess) resolve(result)
+      else reject(result)
+    }
+    
+    const guardTimer = setTimeout(() => {
+      if (!completed) {
+        console.warn('[request] guard timeout:', requestUrl)
+        finish({
+          code: 'REQUEST_TIMEOUT',
+          msg: '请求超时（守护定时器触发）',
+          url: requestUrl,
+          errMsg: 'request:fail timeout (guard)',
+          detail: { errMsg: 'timeout' }
+        }, false)
+      }
+    }, timeoutMs + 2000)
+    
     uni.request({
       url: requestUrl,
       method: options.method || 'GET',
       data: options.data || {},
       header: buildHeader(options.header),
-      timeout: options.timeout || REQUEST_TIMEOUT,
+      timeout: timeoutMs,
       success: (res) => {
+        clearTimeout(guardTimer)
         const data = res.data || {}
         const ok = res.statusCode >= 200 && res.statusCode < 300
         const bizOk = data.code === undefined || data.code === 200
         if (ok && bizOk) {
-          resolve(data)
+          finish(data, true)
           return
         }
-        // 401 token 过期
         if (res.statusCode === 401) {
           if (!options.noRedirect) {
             setToken('')
@@ -63,16 +91,17 @@ export function request(options) {
             uni.removeStorageSync('permissions')
             uni.reLaunch({ url: '/pages/login/index' })
           }
-          reject(data)
+          finish(data, false)
           return
         }
         const message = data.msg || data.message || '请求失败'
         if (!options.silent) {
           uni.showToast({ title: message, icon: 'none' })
         }
-        reject(data)
+        finish(data, false)
       },
       fail: (err) => {
+        clearTimeout(guardTimer)
         const isTimeout = String(err?.errMsg || err?.message || '').includes('timeout')
         const isCertificate = String(err?.errMsg || '').includes('certificate') || String(err?.errMsg || '').includes('SSL')
         const isNetwork = String(err?.errMsg || '').includes('network')
@@ -95,7 +124,7 @@ export function request(options) {
             showCancel: false
           })
         }
-        reject(error)
+        finish(error, false)
       }
     })
   })

@@ -314,7 +314,8 @@ export const modules = {
       { key: 'unitPrice', label: '单价', type: 'number' },
       { key: 'paidAmount', label: '已缴金额', type: 'number', hidden: true },
       { key: 'saleDate', label: '销售日期', type: 'date', required: true },
-      { key: 'status', label: '状态', type: 'select', hidden: true, options: [{ label: '待缴款', value: '0' }, { label: '部分缴款', value: '1' }, { label: '已缴清', value: '2' }] }
+      { key: 'status', label: '状态', type: 'select', hidden: true, options: [{ label: '待缴款', value: '0' }, { label: '部分缴款', value: '1' }, { label: '已缴清', value: '2' }] },
+      { key: 'remark', label: '备注', type: 'textarea' }
     ],
     payment: true
   },

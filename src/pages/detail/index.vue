@@ -152,23 +152,23 @@
           <view class="payment-summary-row"><text>累计已缴</text><text>¥{{ moneyText(record?.paidAmount) }}</text></view>
           <view class="payment-summary-row remaining"><text>{{ isReturnSale ? '剩余应退' : '剩余应收' }}</text><text>¥{{ moneyText(remainingAmount) }}</text></view>
         </view>
-        <view class="payment-row">
+        <view class="payment-row payment-row-stack">
           <text class="payment-label">缴款日期</text>
           <picker mode="date" :value="paymentForm.paymentDate" @change="onPaymentDateChange">
             <view class="payment-picker">{{ paymentForm.paymentDate || '请选择' }}<text class="picker-arrow">▸</text></view>
           </picker>
         </view>
-        <view class="payment-row">
+        <view class="payment-row payment-row-stack">
           <text class="payment-label">缴款金额</text>
-          <input v-model="paymentForm.paymentAmount" type="text" class="payment-input" placeholder="请输入缴款金额" />
+          <input v-model="paymentForm.paymentAmount" type="digit" class="payment-input" placeholder="请输入缴款金额（支持正负数）" />
         </view>
-        <view class="payment-row">
+        <view class="payment-row payment-row-stack">
           <text class="payment-label">付款方式</text>
           <picker :range="paymentMethodLabels" :value="paymentForm.paymentMethodIndex" @change="onPaymentMethodChange">
             <view class="payment-picker">{{ selectedPaymentLabel || '请选择' }}<text class="picker-arrow">▸</text></view>
           </picker>
         </view>
-        <view class="payment-row">
+        <view class="payment-row payment-row-stack">
           <text class="payment-label">备注</text>
           <input v-model="paymentForm.remark" class="payment-input" placeholder="选填" />
         </view>
@@ -1168,6 +1168,41 @@ export default {
   align-items: center;
   padding: 18rpx 0;
   border-bottom: 1rpx solid #F0F4F8;
+}
+
+/* 上下排列变体：标签在上，控件在下，加宽点击区域 */
+.payment-row-stack {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 20rpx 0;
+}
+
+.payment-row-stack .payment-label {
+  width: auto;
+  margin-bottom: 12rpx;
+  font-size: 24rpx;
+  color: #5A6B7F;
+}
+
+.payment-row-stack .payment-input {
+  text-align: left;
+  padding: 16rpx 20rpx;
+  border: 1rpx solid #E2E8F0;
+  border-radius: 12rpx;
+  background: #F8FAFC;
+  font-size: 30rpx;
+  min-height: 72rpx;
+}
+
+.payment-row-stack .payment-picker {
+  text-align: left;
+  justify-content: space-between;
+  padding: 16rpx 20rpx;
+  border: 1rpx solid #E2E8F0;
+  border-radius: 12rpx;
+  background: #F8FAFC;
+  font-size: 30rpx;
+  min-height: 72rpx;
 }
 
 .payment-label {

@@ -24,7 +24,9 @@
     "pages/member/growth",
     "pages/member/actions",
     "pages/member/actionDetail",
-    "pages/member/points"
+    "pages/member/points",
+    "pages/verification-record/index",
+    "pages/verification-record/detail"
   ],
   "window": {
     "navigationBarTextStyle": "black",

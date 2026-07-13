@@ -1,11 +1,16 @@
 package com.junsong.finance.service.impl;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.junsong.common.core.exception.ServiceException;
 import com.junsong.finance.domain.vo.StockHealthIssueVO;
 import com.junsong.finance.domain.vo.StockHealthVO;
+import com.junsong.finance.domain.vo.StockReconciliationResultVO;
+import com.junsong.finance.domain.vo.StockReconciliationRowVO;
 import com.junsong.finance.mapper.StockHealthMapper;
 import com.junsong.finance.service.IStockHealthService;
 
@@ -22,6 +27,9 @@ import com.junsong.finance.service.IStockHealthService;
  * - HEALTHY：无阻断项且无告警项。
  * BLOCKED 优先级高于 WARN。
  *
+ * <p>对账方法 {@link #reconcileStock(Long, List)} 为只读，不修改任何数据。
+ * 所有读写均按 (tenantId, deptId, productId) 隔离；tenantId 为 null 时 fail-closed。</p>
+ *
  * @author junsong
  */
 @Service
@@ -31,13 +39,17 @@ public class StockHealthServiceImpl implements IStockHealthService {
     private StockHealthMapper stockHealthMapper;
 
     @Override
-    public StockHealthVO checkHealth() {
-        long ledgerCount = nz(stockHealthMapper.countLedger());
-        long snapshotCount = nz(stockHealthMapper.countSnapshot());
-        long negativeCount = nz(stockHealthMapper.countNegativeStockProducts());
-        long positionsWithoutLedger = nz(stockHealthMapper.countPositionsWithoutLedger());
-        long snapshotMissing = nz(stockHealthMapper.countPositionsMissingYesterdaySnapshot());
-        long snapshotMismatch = nz(stockHealthMapper.countSnapshotPositionMismatchToday());
+    public StockHealthVO checkHealth(Long tenantId, List<Long> deptIds) {
+        if (tenantId == null) {
+            throw new ServiceException("租户上下文缺失，禁止库存健康检查");
+        }
+
+        long ledgerCount = nz(stockHealthMapper.countLedger(tenantId, deptIds));
+        long snapshotCount = nz(stockHealthMapper.countSnapshot(tenantId, deptIds));
+        long negativeCount = nz(stockHealthMapper.countNegativeStockProducts(tenantId, deptIds));
+        long positionsWithoutLedger = nz(stockHealthMapper.countPositionsWithoutLedger(tenantId, deptIds));
+        long snapshotMissing = nz(stockHealthMapper.countPositionsMissingYesterdaySnapshot(tenantId, deptIds));
+        long snapshotMismatch = nz(stockHealthMapper.countSnapshotPositionMismatchToday(tenantId, deptIds));
 
         StockHealthVO vo = new StockHealthVO();
         vo.setLedgerCount(ledgerCount);
@@ -93,7 +105,36 @@ public class StockHealthServiceImpl implements IStockHealthService {
         return vo;
     }
 
+    @Override
+    public StockReconciliationResultVO reconcileStock(Long tenantId, List<Long> deptIds) {
+        if (tenantId == null) {
+            throw new ServiceException("租户上下文缺失，禁止库存对账");
+        }
+
+        List<StockReconciliationRowVO> rows = new ArrayList<>();
+        rows.addAll(nzList(stockHealthMapper.findPositionsWithoutLedger(tenantId, deptIds)));
+        rows.addAll(nzList(stockHealthMapper.findLedgerPositionMismatch(tenantId, deptIds)));
+        rows.addAll(nzList(stockHealthMapper.findSnapshotEquationMismatch(tenantId, deptIds)));
+        rows.addAll(nzList(stockHealthMapper.findLatestSnapshotMismatch(tenantId, deptIds)));
+
+        Map<String, Integer> anomalyCounts = new LinkedHashMap<>();
+        for (StockReconciliationRowVO row : rows) {
+            anomalyCounts.merge(row.getAnomalyCode(), 1, Integer::sum);
+        }
+
+        StockReconciliationResultVO result = new StockReconciliationResultVO();
+        result.setRows(rows);
+        result.setTotalAnomalyCount(rows.size());
+        result.setAnomalyCounts(anomalyCounts);
+        result.setStatus(rows.isEmpty() ? "HEALTHY" : "WARN");
+        return result;
+    }
+
     private long nz(Long value) {
         return value != null ? value : 0L;
+    }
+
+    private List<StockReconciliationRowVO> nzList(List<StockReconciliationRowVO> value) {
+        return value != null ? value : new ArrayList<>();
     }
 }

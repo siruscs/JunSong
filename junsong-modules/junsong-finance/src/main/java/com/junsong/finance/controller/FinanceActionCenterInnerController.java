@@ -2,6 +2,7 @@ package com.junsong.finance.controller;
 
 import java.util.*;
 import com.junsong.common.core.constant.SecurityConstants;
+import com.junsong.common.core.context.TenantContext;
 import com.junsong.common.core.domain.R;
 import com.junsong.common.security.annotation.InnerAuth;
 import com.junsong.finance.domain.FinanceReviewTask;
@@ -48,7 +49,11 @@ public class FinanceActionCenterInnerController {
             }
         }
 
-        StockHealthVO stockHealth = stockHealthService.checkHealth();
+        StockHealthVO stockHealth = null;
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId != null) {
+            stockHealth = stockHealthService.checkHealth(tenantId, null);
+        }
         if (stockHealth != null && stockHealth.getIssues() != null) {
             for (StockHealthIssueVO issue : stockHealth.getIssues()) {
                 ActionCenterSourceItem item = new ActionCenterSourceItem();

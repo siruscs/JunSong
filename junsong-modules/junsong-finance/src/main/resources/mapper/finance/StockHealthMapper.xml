@@ -4,56 +4,241 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.junsong.finance.mapper.StockHealthMapper">
 
+    <!-- ==================== 对账明细结果映射 ==================== -->
+    <resultMap type="com.junsong.finance.domain.vo.StockReconciliationRowVO" id="StockReconciliationRowResult">
+        <result property="tenantId"          column="tenant_id"          />
+        <result property="deptId"            column="dept_id"            />
+        <result property="deptName"          column="dept_name"          />
+        <result property="productId"         column="product_id"         />
+        <result property="productName"       column="product_name"       />
+        <result property="expectedQuantity"  column="expected_quantity"  />
+        <result property="actualQuantity"    column="actual_quantity"    />
+        <result property="diffQuantity"      column="diff_quantity"      />
+        <result property="anomalyCode"       column="anomaly_code"       />
+        <result property="safetyNote"        column="safety_note"        />
+    </resultMap>
+
+    <!-- ==================== 健康检查计数查询（只读） ==================== -->
+
     <select id="countLedger" resultType="java.lang.Long">
-        select count(1) from fin_stock_ledger where del_flag = '0'
+        select count(1) from fin_stock_ledger
+         where del_flag = '0'
+           and tenant_id = #{tenantId}
+        <if test="deptIds != null and deptIds.size() > 0">
+           and dept_id in
+           <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+        </if>
     </select>
 
     <select id="countSnapshot" resultType="java.lang.Long">
         select count(1) from fin_stock_snapshot
+         where tenant_id = #{tenantId}
+        <if test="deptIds != null and deptIds.size() > 0">
+           and dept_id in
+           <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+        </if>
     </select>
 
     <select id="countNegativeStockProducts" resultType="java.lang.Long">
         select count(distinct concat(dept_id, ':', product_id))
-        from fin_stock_ledger
-        where del_flag = '0'
-          and after_quantity &lt; 0
+          from fin_stock_ledger
+         where del_flag = '0'
+           and tenant_id = #{tenantId}
+           and after_quantity &lt; 0
+        <if test="deptIds != null and deptIds.size() > 0">
+           and dept_id in
+           <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+        </if>
     </select>
 
     <select id="countPositionsWithoutLedger" resultType="java.lang.Long">
         select count(1)
-        from fin_stock_position p
-        where p.quantity != 0
-          and not exists (
-            select 1 from fin_stock_ledger l
-            where l.dept_id = p.dept_id
-              and l.product_id = p.product_id
-              and l.del_flag = '0'
-          )
+          from fin_stock_position p
+         where p.tenant_id = #{tenantId}
+           and p.quantity != 0
+           and not exists (
+               select 1 from fin_stock_ledger l
+                where l.tenant_id = p.tenant_id
+                  and l.dept_id = p.dept_id
+                  and l.product_id = p.product_id
+                  and l.del_flag = '0'
+           )
+        <if test="deptIds != null and deptIds.size() > 0">
+           and p.dept_id in
+           <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+        </if>
     </select>
 
     <!-- SNAPSHOT_MISSING：昨日有结存(quantity != 0)但无昨日快照 -->
     <select id="countPositionsMissingYesterdaySnapshot" resultType="java.lang.Long">
         select count(1)
-        from fin_stock_position p
-        where p.quantity != 0
-          and not exists (
-            select 1 from fin_stock_snapshot s
-            where s.dept_id = p.dept_id
-              and s.product_id = p.product_id
-              and s.snapshot_date = date_sub(curdate(), interval 1 day)
-          )
+          from fin_stock_position p
+         where p.tenant_id = #{tenantId}
+           and p.quantity != 0
+           and not exists (
+               select 1 from fin_stock_snapshot s
+                where s.tenant_id = p.tenant_id
+                  and s.dept_id = p.dept_id
+                  and s.product_id = p.product_id
+                  and s.snapshot_date = date_sub(curdate(), interval 1 day)
+           )
+        <if test="deptIds != null and deptIds.size() > 0">
+           and p.dept_id in
+           <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+        </if>
     </select>
 
     <!-- SNAPSHOT_POSITION_MISMATCH：当日快照存在但 closing(quantity) 与 position.quantity 不一致 -->
     <select id="countSnapshotPositionMismatchToday" resultType="java.lang.Long">
         select count(1)
-        from fin_stock_position p
-        where exists (
-            select 1 from fin_stock_snapshot s
-            where s.dept_id = p.dept_id
-              and s.product_id = p.product_id
-              and s.snapshot_date = curdate()
-              and s.quantity != p.quantity
-          )
+          from fin_stock_position p
+         where p.tenant_id = #{tenantId}
+           and exists (
+               select 1 from fin_stock_snapshot s
+                where s.tenant_id = p.tenant_id
+                  and s.dept_id = p.dept_id
+                  and s.product_id = p.product_id
+                  and s.snapshot_date = curdate()
+                  and s.quantity != p.quantity
+           )
+        <if test="deptIds != null and deptIds.size() > 0">
+           and p.dept_id in
+           <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+        </if>
     </select>
+
+    <!-- ==================== 对账明细查询（只读） ==================== -->
+
+    <!-- POSITION_WITHOUT_LEDGER：结存存在(quantity != 0)但无任何流水记录 -->
+    <select id="findPositionsWithoutLedger" resultMap="StockReconciliationRowResult">
+        select p.tenant_id,
+               p.dept_id,
+               (select s.dept_name from fin_stock_snapshot s
+                 where s.tenant_id = p.tenant_id and s.dept_id = p.dept_id
+                 order by s.snapshot_date desc limit 1) as dept_name,
+               p.product_id,
+               coalesce(
+                   (select s.product_name from fin_stock_snapshot s
+                     where s.tenant_id = p.tenant_id and s.dept_id = p.dept_id and s.product_id = p.product_id
+                     order by s.snapshot_date desc limit 1),
+                   (select l.product_name from fin_stock_ledger l
+                     where l.tenant_id = p.tenant_id and l.dept_id = p.dept_id and l.product_id = p.product_id
+                       and l.del_flag = '0'
+                     order by l.create_time desc limit 1)
+               ) as product_name,
+               0 as expected_quantity,
+               p.quantity as actual_quantity,
+               p.quantity as diff_quantity,
+               'POSITION_WITHOUT_LEDGER' as anomaly_code,
+               '结存存在但无流水记录，结存来源不可追溯' as safety_note
+          from fin_stock_position p
+         where p.tenant_id = #{tenantId}
+           and p.quantity != 0
+           and not exists (
+               select 1 from fin_stock_ledger l
+                where l.tenant_id = p.tenant_id
+                  and l.dept_id = p.dept_id
+                  and l.product_id = p.product_id
+                  and l.del_flag = '0'
+           )
+        <if test="deptIds != null and deptIds.size() > 0">
+           and p.dept_id in
+           <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+        </if>
+         order by p.dept_id, p.product_id
+    </select>
+
+    <!-- LEDGER_POSITION_MISMATCH：流水累计 change_quantity 与结存 position.quantity 不一致 -->
+    <select id="findLedgerPositionMismatch" resultMap="StockReconciliationRowResult">
+        select p.tenant_id,
+               p.dept_id,
+               (select s.dept_name from fin_stock_snapshot s
+                 where s.tenant_id = p.tenant_id and s.dept_id = p.dept_id
+                 order by s.snapshot_date desc limit 1) as dept_name,
+               p.product_id,
+               coalesce(lg.product_name,
+                   (select s.product_name from fin_stock_snapshot s
+                     where s.tenant_id = p.tenant_id and s.dept_id = p.dept_id and s.product_id = p.product_id
+                     order by s.snapshot_date desc limit 1)) as product_name,
+               coalesce(lg.ledger_sum, 0) as expected_quantity,
+               p.quantity as actual_quantity,
+               (p.quantity - coalesce(lg.ledger_sum, 0)) as diff_quantity,
+               'LEDGER_POSITION_MISMATCH' as anomaly_code,
+               '流水累计与结存不一致' as safety_note
+          from fin_stock_position p
+          inner join (
+              select tenant_id, dept_id, product_id,
+                     sum(change_quantity) as ledger_sum,
+                     max(product_name) as product_name
+                from fin_stock_ledger
+               where del_flag = '0'
+                 and tenant_id = #{tenantId}
+               group by tenant_id, dept_id, product_id
+          ) lg on lg.tenant_id = p.tenant_id and lg.dept_id = p.dept_id and lg.product_id = p.product_id
+         where p.tenant_id = #{tenantId}
+           and p.quantity != coalesce(lg.ledger_sum, 0)
+        <if test="deptIds != null and deptIds.size() > 0">
+           and p.dept_id in
+           <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+        </if>
+         order by p.dept_id, p.product_id
+    </select>
+
+    <!-- SNAPSHOT_EQUATION_MISMATCH：快照恒等式不成立（opening + in - out != closing） -->
+    <select id="findSnapshotEquationMismatch" resultMap="StockReconciliationRowResult">
+        select s.tenant_id,
+               s.dept_id,
+               s.dept_name,
+               s.product_id,
+               s.product_name,
+               (s.opening_quantity + s.in_quantity - s.out_quantity) as expected_quantity,
+               s.quantity as actual_quantity,
+               (s.quantity - (s.opening_quantity + s.in_quantity - s.out_quantity)) as diff_quantity,
+               'SNAPSHOT_EQUATION_MISMATCH' as anomaly_code,
+               '快照恒等式不成立：期初+入-出 != 期末' as safety_note
+          from fin_stock_snapshot s
+         where s.tenant_id = #{tenantId}
+           and (s.opening_quantity + s.in_quantity - s.out_quantity) != s.quantity
+        <if test="deptIds != null and deptIds.size() > 0">
+           and s.dept_id in
+           <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+        </if>
+         order by s.snapshot_date, s.dept_id, s.product_id
+    </select>
+
+    <!-- LATEST_SNAPSHOT_MISMATCH：最新快照期末结存与当前结存 position.quantity 不一致 -->
+    <select id="findLatestSnapshotMismatch" resultMap="StockReconciliationRowResult">
+        select p.tenant_id,
+               p.dept_id,
+               latest.dept_name,
+               p.product_id,
+               latest.product_name,
+               latest.quantity as expected_quantity,
+               p.quantity as actual_quantity,
+               (p.quantity - latest.quantity) as diff_quantity,
+               'LATEST_SNAPSHOT_MISMATCH' as anomaly_code,
+               '最新快照期末结存与当前结存不一致' as safety_note
+          from fin_stock_position p
+          inner join (
+              select tenant_id, dept_id, product_id, quantity, product_name, dept_name
+                from (
+                    select s.tenant_id, s.dept_id, s.product_id, s.quantity, s.product_name, s.dept_name,
+                           row_number() over (partition by s.tenant_id, s.dept_id, s.product_id
+                                              order by s.snapshot_date desc) as rn
+                      from fin_stock_snapshot s
+                     where s.tenant_id = #{tenantId}
+                ) ranked
+               where rn = 1
+          ) latest on latest.tenant_id = p.tenant_id
+                   and latest.dept_id = p.dept_id
+                   and latest.product_id = p.product_id
+         where p.tenant_id = #{tenantId}
+           and latest.quantity != p.quantity
+        <if test="deptIds != null and deptIds.size() > 0">
+           and p.dept_id in
+           <foreach collection="deptIds" item="d" open="(" separator="," close=")">#{d}</foreach>
+        </if>
+         order by p.dept_id, p.product_id
+    </select>
+
 </mapper>

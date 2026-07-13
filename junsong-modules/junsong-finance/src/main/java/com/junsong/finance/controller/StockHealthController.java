@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.junsong.common.core.context.TenantContext;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -28,6 +29,6 @@ public class StockHealthController extends BaseController {
     @RequiresPermissions("finance:stock:health")
     @GetMapping("/health")
     public AjaxResult health() {
-        return success(stockHealthService.checkHealth());
+        return success(stockHealthService.checkHealth(TenantContext.getTenantId(), null));
     }
 }

@@ -91,6 +91,7 @@ public class FinSaleRecordController extends BaseController
     public AjaxResult add(@Validated @RequestBody FinSaleRecord finSaleRecord)
     {
         finSaleRecord.setDeptId(SecurityUtils.getDeptId());
+        finSaleRecord.setCreateBy(SecurityUtils.getUsername());
         if (!finSaleRecordService.checkSaleNoUnique(finSaleRecord))
         {
             return error("新增销售记录'" + finSaleRecord.getSaleNo() + "'失败，销售单号已存在");
@@ -107,6 +108,7 @@ public class FinSaleRecordController extends BaseController
     public AjaxResult edit(@Validated @RequestBody FinSaleRecord finSaleRecord)
     {
         finSaleRecord.setDeptId(SecurityUtils.getDeptId());
+        finSaleRecord.setUpdateBy(SecurityUtils.getUsername());
         if (!finSaleRecordService.checkSaleNoUnique(finSaleRecord))
         {
             return error("修改销售记录'" + finSaleRecord.getSaleNo() + "'失败，销售单号已存在");

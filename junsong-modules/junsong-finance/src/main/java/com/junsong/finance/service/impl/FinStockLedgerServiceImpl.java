@@ -6,6 +6,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.junsong.common.core.constant.CacheConstants;
 import com.junsong.common.core.exception.ServiceException;
+import com.junsong.common.core.utils.StringUtils;
+import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.common.redis.service.RedisService;
 import com.junsong.finance.domain.FinStockLedger;
 import com.junsong.finance.mapper.FinStockLedgerMapper;
@@ -176,9 +178,16 @@ public class FinStockLedgerServiceImpl implements IFinStockLedgerService {
         ledger.setReferenceId(refId);
         ledger.setReferenceNo(refNo);
         ledger.setDelFlag("0");
-        ledger.setCreateBy(operator);
+        ledger.setCreateBy(resolveOperator(operator));
         finStockLedgerMapper.insertFinStockLedger(ledger);
         return ledger.getLedgerId();
+    }
+
+    private String resolveOperator(String operator) {
+        if (StringUtils.isNotBlank(operator)) {
+            return operator;
+        }
+        return SecurityUtils.getUsername();
     }
 
     private void assertNonNegative(Integer quantity) {

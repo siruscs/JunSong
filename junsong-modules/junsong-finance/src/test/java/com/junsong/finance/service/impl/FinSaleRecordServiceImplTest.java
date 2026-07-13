@@ -50,8 +50,10 @@ class FinSaleRecordServiceImplTest {
 
     private void loginAsDept(Long deptId) {
         SecurityContextHolder.setUserId("2");
+        SecurityContextHolder.setUserName("sale-user");
         LoginUser loginUser = new LoginUser();
         loginUser.setUserid(2L);
+        loginUser.setUsername("sale-user");
         loginUser.setDeptId(deptId);
         SecurityContextHolder.set(SecurityConstants.LOGIN_USER, loginUser);
     }
@@ -112,6 +114,16 @@ class FinSaleRecordServiceImplTest {
         assertEquals(1, mapper.inserted.size());
         assertEquals(-5, mapper.inserted.get(0).getChangeQuantity(), "出库量 = sale(3) + gift(2)");
         assertEquals(15, mapper.position(1L, 100L));
+    }
+
+    @Test
+    void saleLedgerWithBlankOperator_fallsBackToCurrentUsername() {
+        seedStock(1L, 100L, 20);
+        FinSaleRecord s = sale(8001L, "SO-1", 1L, 100L, "可乐", 3);
+
+        service.applySaleStockOut(s);
+
+        assertEquals("sale-user", mapper.inserted.get(0).getCreateBy());
     }
 
     @Test

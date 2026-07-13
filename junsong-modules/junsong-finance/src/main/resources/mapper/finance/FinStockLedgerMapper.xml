@@ -202,5 +202,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         update fin_stock_ledger
           set unit_cost = #{unitCost}
         where ledger_id = #{ledgerId}
+          and del_flag = '0'
     </update>
 </mapper>

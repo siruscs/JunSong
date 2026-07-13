@@ -125,7 +125,10 @@ public class FinStockLedgerServiceImpl implements IFinStockLedgerService {
                 solidifiedCost = stockCostService.applySaleOutbound(tenantId, deptId, productId,
                         -delta, isAllowNegativeSaleOut(), ledgerId, operator);
                 // 回填固化成本到流水 unit_cost 字段，供后续冲销追溯
-                finStockLedgerMapper.updateLedgerUnitCost(ledgerId, solidifiedCost);
+                int costAffected = finStockLedgerMapper.updateLedgerUnitCost(ledgerId, solidifiedCost);
+                if (costAffected != 1) {
+                    throw new ServiceException("销售出库固化成本回填失败，拒绝回写库存流水");
+                }
             }
             return;
         } else {

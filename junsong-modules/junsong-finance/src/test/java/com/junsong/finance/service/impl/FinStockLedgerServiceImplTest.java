@@ -3,6 +3,7 @@ package com.junsong.finance.service.impl;
 import com.junsong.common.core.exception.ServiceException;
 import com.junsong.finance.domain.FinStockLedger;
 import com.junsong.finance.mapper.FinStockLedgerMapper;
+import com.junsong.finance.service.IStockCostService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -175,6 +176,20 @@ class FinStockLedgerServiceImplTest {
     }
 
     @Test
+    void saleOutCostBackfillAffectedZero_failsClosed() throws Exception {
+        Field costField = FinStockLedgerServiceImpl.class.getDeclaredField("stockCostService");
+        costField.setAccessible(true);
+        costField.set(service, new FakeStockCostService());
+        service.reconcilePurchaseStock(T1, 1L, 100L, "可乐", 9001L, "PO-1", 20, new BigDecimal("3.00"), "alice");
+        mapper.forceUnitCostUpdateZero = true;
+
+        ServiceException ex = assertThrows(ServiceException.class,
+                () -> service.reconcileSaleStock(T1, 1L, 100L, "可乐", 8001L, "SO-1", 3, "bob"));
+
+        assertTrue(ex.getMessage().contains("固化成本回填失败"));
+    }
+
+    @Test
     void negativeTargetQuantity_throws() {
         assertThrows(ServiceException.class,
                 () -> service.reconcilePurchaseStock(T1, 1L, 100L, "可乐", 9001L, "PO-1", -1, BigDecimal.ONE, "a"));
@@ -214,6 +229,7 @@ class FinStockLedgerServiceImplTest {
     static class FakeStockLedgerMapper implements FinStockLedgerMapper {
         final List<FinStockLedger> inserted = new ArrayList<>();
         final Map<String, Integer> positions = new HashMap<>();
+        boolean forceUnitCostUpdateZero;
 
         private String key(Long tenantId, Long deptId, Long productId) {
             return tenantId + ":" + deptId + ":" + productId;
@@ -304,6 +320,9 @@ class FinStockLedgerServiceImplTest {
 
         @Override
         public int updateLedgerUnitCost(Long ledgerId, java.math.BigDecimal unitCost) {
+            if (forceUnitCostUpdateZero) {
+                return 0;
+            }
             for (FinStockLedger l : inserted) {
                 if (ledgerId != null && ledgerId.equals(l.getLedgerId())) {
                     l.setUnitCost(unitCost);
@@ -313,5 +332,33 @@ class FinStockLedgerServiceImplTest {
             return 0;
         }
 
+    }
+
+    static class FakeStockCostService implements IStockCostService {
+        @Override
+        public void applyPurchaseInbound(Long tenantId, Long deptId, Long productId, int quantity,
+                                         BigDecimal amount, Long sourceLedgerId, String operator) {
+        }
+
+        @Override
+        public void reversePurchaseInbound(Long tenantId, Long deptId, Long productId, int quantity,
+                                           Long sourceLedgerId, String operator) {
+        }
+
+        @Override
+        public BigDecimal applySaleOutbound(Long tenantId, Long deptId, Long productId, int quantity,
+                                            boolean allowNegativeSale, Long sourceLedgerId, String operator) {
+            return new BigDecimal("3.00");
+        }
+
+        @Override
+        public void reverseSaleOutbound(Long tenantId, Long deptId, Long productId, int quantity,
+                                        BigDecimal unitCost, Long sourceLedgerId, String operator) {
+        }
+
+        @Override
+        public void applyCostAdjustment(Long tenantId, Long deptId, Long productId,
+                                        BigDecimal amount, String reason, String operator) {
+        }
     }
 }

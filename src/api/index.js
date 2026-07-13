@@ -1,5 +1,5 @@
 const DEFAULT_BASE_URL = 'https://www.junsong.vip/prod-api'
-const REQUEST_TIMEOUT = 20000
+const REQUEST_TIMEOUT = 30000
 
 export function getBaseUrl() {
   return uni.getStorageSync('baseUrl') || DEFAULT_BASE_URL

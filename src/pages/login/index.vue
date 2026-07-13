@@ -198,6 +198,7 @@ export default {
           url: '/auth/mp/login',
           method: 'POST',
           noRedirect: true,
+          timeout: 30000,
           data: {
             username: this.form.username,
             password: this.form.password
@@ -220,7 +221,8 @@ export default {
           const infoRes = await request({
             url: '/system/user/getInfo',
             method: 'GET',
-            noRedirect: true
+            noRedirect: true,
+            timeout: 30000
           })
           const info = infoRes || infoRes.data || {}
           const deptList = (info.depts || info.data?.depts || info.user?.depts || [])
@@ -261,6 +263,11 @@ export default {
         }
       } catch (e) {
         console.error('登录失败详情:', e)
+        const isTimeout = e?.code === 'REQUEST_TIMEOUT' || String(e?.errMsg || e?.msg || '').includes('timeout')
+        uni.showToast({
+          title: isTimeout ? '登录请求超时，请检查网络后重试' : (e?.msg || '登录失败'),
+          icon: 'none'
+        })
         this.loading = false
       }
     },

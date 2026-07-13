@@ -876,7 +876,7 @@ export default {
       this.serverStatusLoading = true
       const services = await Promise.all(SERVICE_STATUS_TARGETS.map(async (target) => {
         try {
-          const res = await request({ url: target.url, method: 'GET', noRedirect: true, silent: true, timeout: 3000 })
+          const res = await request({ url: target.url, method: 'GET', noRedirect: true, silent: true, timeout: 8000 })
           return { ...target, status: res.status || res.code || 'OK', ok: res.status === 'UP' || res.code === 200 || res.status === undefined }
         } catch (e) {
           return { ...target, status: 'DOWN', ok: false }

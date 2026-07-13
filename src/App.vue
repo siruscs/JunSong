@@ -12,6 +12,11 @@ export default {
     }
     if (typeof uni.onError === 'function') {
       uni.onError((err) => {
+        const errStr = String(err)
+        if (errStr.includes('webapi_getwxaasyncsecinfo')) {
+          console.warn('[appError] webapi_getwxaasyncsecinfo internal error (can safely ignore):', err)
+          return
+        }
         console.warn('[appError]', err)
       })
     }

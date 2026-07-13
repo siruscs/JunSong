@@ -34,10 +34,12 @@ public class StockCostServiceImpl implements IStockCostService {
 
     private static final String SOURCE_PURCHASE = "PURCHASE";
     private static final String SOURCE_SALE = "SALE";
+    private static final String SOURCE_ADJUST = "ADJUST";
     private static final String COST_IN = "COST_IN";
     private static final String COST_OUT = "COST_OUT";
     private static final String COST_REVERSE_IN = "COST_REVERSE_IN";
     private static final String COST_REVERSE_OUT = "COST_REVERSE_OUT";
+    private static final String COST_ADJUST = "COST_ADJUST";
 
     @Autowired
     private FinStockCostLayerMapper costLayerMapper;
@@ -166,6 +168,35 @@ public class StockCostServiceImpl implements IStockCostService {
                         quantity, originalCost, restoreAmount, operator);
     }
 
+    @Override
+    public void applyCostAdjustment(Long tenantId, Long deptId, Long productId,
+                                    BigDecimal amount, String reason, String operator) {
+        assertTenantScope(tenantId, deptId, productId);
+        if (amount == null || amount.signum() == 0) {
+            throw new ServiceException("成本调整金额不能为零");
+        }
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new ServiceException("成本调整必须填写原因");
+        }
+        BigDecimal adjustAmount = amount.setScale(AMOUNT_SCALE, ROUNDING);
+
+        costLayerMapper.insertCostLayerIfAbsent(tenantId, deptId, productId);
+        FinStockCostLayer layer = costLayerMapper.selectCostLayerForUpdate(tenantId, deptId, productId);
+        if (layer == null) {
+            throw new ServiceException("成本层行创建失败，拒绝处理");
+        }
+
+        int newQty = layer.getStockQuantity(); // 调整不改变数量
+        BigDecimal newAmount = layer.getStockAmount().add(adjustAmount).setScale(AMOUNT_SCALE, ROUNDING);
+        if (newAmount.signum() < 0) {
+            newAmount = BigDecimal.ZERO.setScale(AMOUNT_SCALE, ROUNDING);
+        }
+        BigDecimal newAvg = computeAvg(newAmount, newQty);
+
+        updateLayerWithVersion(layer, newAvg, newQty, newAmount, operator);
+        writeAdjustCostLedger(tenantId, deptId, productId, adjustAmount, newAvg, reason, operator);
+    }
+
     private BigDecimal computeAvg(BigDecimal amount, int qty) {
         if (qty == 0) {
             return BigDecimal.ZERO.setScale(UNIT_COST_SCALE, ROUNDING);
@@ -197,6 +228,26 @@ public class StockCostServiceImpl implements IStockCostService {
         cl.setQuantity(quantity);
         cl.setUnitCost(unitCost.setScale(UNIT_COST_SCALE, ROUNDING));
         cl.setAmount(amount.setScale(AMOUNT_SCALE, ROUNDING));
+        cl.setOperator(operator);
+        cl.setDelFlag("0");
+        cl.setCreateBy(operator);
+        costLayerMapper.insertCostLedger(cl);
+    }
+
+    private void writeAdjustCostLedger(Long tenantId, Long deptId, Long productId,
+                                       BigDecimal amount, BigDecimal avgUnitCost,
+                                       String reason, String operator) {
+        FinStockCostLedger cl = new FinStockCostLedger();
+        cl.setTenantId(tenantId);
+        cl.setDeptId(deptId);
+        cl.setProductId(productId);
+        cl.setSourceType(SOURCE_ADJUST);
+        cl.setSourceLedgerId(null);
+        cl.setCostChangeType(COST_ADJUST);
+        cl.setQuantity(0); // 调整不改变数量
+        cl.setUnitCost(avgUnitCost.setScale(UNIT_COST_SCALE, ROUNDING));
+        cl.setAmount(amount.setScale(AMOUNT_SCALE, ROUNDING));
+        cl.setAdjustReason(reason);
         cl.setOperator(operator);
         cl.setDelFlag("0");
         cl.setCreateBy(operator);

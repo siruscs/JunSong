@@ -9,6 +9,8 @@ import com.junsong.finance.domain.vo.StockLedgerRowVO;
 import com.junsong.finance.domain.vo.StockReportItemVO;
 import com.junsong.finance.domain.vo.StockReportQuery;
 import com.junsong.finance.domain.vo.StockReportSummaryVO;
+import com.junsong.finance.domain.vo.StockValueReportItemVO;
+import com.junsong.finance.domain.vo.StockValueReportVO;
 
 /**
  * 经营库存报表 Mapper。
@@ -77,4 +79,43 @@ public interface StockReportMapper {
                                                  @Param("productId") Long productId,
                                                  @Param("startDate") LocalDate startDate,
                                                  @Param("endDate") LocalDate endDate);
+
+    /**
+     * 查询库存价值报表汇总（第二期财务计价）。
+     * 聚合 fin_stock_cost_ledger 的成本流水：
+     *   期初金额 = startDate 之前所有成本变动的净累计；
+     *   入库金额 = COST_IN - COST_REVERSE_OUT（区间内）；
+     *   销售成本 = COST_OUT - COST_REVERSE_IN（区间内）；
+     *   调整 = COST_ADJUST（区间内）；
+     *   期末金额 = 期初 + 入库 - 销售成本 + 调整。
+     * 销售收入从 fin_sale_record 聚合（不含赠品收入）。
+     *
+     * @param tenantId 租户ID
+     * @param query    查询参数（deptIds / startDate / endDate）
+     * @return 价值汇总；金额字段在无成本流水时为 0
+     */
+    StockValueReportVO selectStockValueSummary(@Param("tenantId") Long tenantId,
+                                                @Param("query") StockReportQuery query);
+
+    /**
+     * 分页查询库存价值报表单商品行（第二期财务计价）。
+     * 每行包含期末数量、平均单位成本、期末金额、区间入库金额、销售成本、销售收入和毛利。
+     *
+     * @param tenantId 租户ID
+     * @param query    查询参数
+     * @return 单商品价值明细
+     */
+    List<StockValueReportItemVO> selectStockValueItems(@Param("tenantId") Long tenantId,
+                                                        @Param("query") StockReportQuery query);
+
+    /**
+     * 检查租户在指定门店范围内是否已初始化成本层。
+     * 用于服务层判定 costReady 标志：无成本层行时禁止展示金额。
+     *
+     * @param tenantId 租户ID
+     * @param deptIds  授权门店ID集合
+     * @return 存在至少一行成本层记录时返回 true
+     */
+    boolean existsCostLayerForTenant(@Param("tenantId") Long tenantId,
+                                     @Param("deptIds") List<Long> deptIds);
 }

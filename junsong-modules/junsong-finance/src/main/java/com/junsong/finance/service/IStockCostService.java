@@ -57,4 +57,16 @@ public interface IStockCostService {
     void reverseSaleOutbound(Long tenantId, Long deptId, Long productId,
                              int quantity, BigDecimal originalUnitCost,
                              Long sourceLedgerId, String operator);
+
+    /**
+     * 成本调整：在当前 ACTIVE 期间生成有原因的成本调整流水。
+     * 仅更新库存金额和平均成本，不改变库存数量；写入 COST_ADJUST 流水。
+     * 调用方必须先校验期间状态为 ACTIVE 并要求非空原因。
+     *
+     * @param amount 调整金额（正数调增，负数调减）
+     * @param reason 调整原因（非空）
+     * @param operator 操作者
+     */
+    void applyCostAdjustment(Long tenantId, Long deptId, Long productId,
+                             BigDecimal amount, String reason, String operator);
 }

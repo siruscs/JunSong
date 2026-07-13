@@ -475,6 +475,22 @@ class FinanceStockReportServiceImplTest {
             lastEndDate = endDate;
             return ledgerResult;
         }
+
+        // 第二期方法桩：本测试不覆盖价值报表，返回安全空值
+        @Override
+        public StockValueReportVO selectStockValueSummary(Long tenantId, StockReportQuery query) {
+            return new StockValueReportVO();
+        }
+
+        @Override
+        public List<StockValueReportItemVO> selectStockValueItems(Long tenantId, StockReportQuery query) {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public boolean existsCostLayerForTenant(Long tenantId, List<Long> deptIds) {
+            return false;
+        }
     }
 
     // ── Fake：IStockHealthService ──

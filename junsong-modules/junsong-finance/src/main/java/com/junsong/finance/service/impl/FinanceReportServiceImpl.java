@@ -18,6 +18,7 @@ import com.junsong.finance.mapper.FinProfitShareRecordMapper;
 import com.junsong.finance.mapper.FinSaleRecordMapper;
 import com.junsong.finance.mapper.StockReportMapper;
 import com.junsong.finance.service.IFinanceReportService;
+import com.junsong.finance.service.IStockCostService;
 import com.junsong.finance.service.IStockHealthService;
 import com.junsong.finance.service.diagnosis.FinanceDiagnosisContext;
 import com.junsong.finance.service.diagnosis.FinanceDiagnosisResult;
@@ -67,6 +68,12 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
 
     @Autowired
     private IStockHealthService stockHealthService;
+
+    /**
+     * 库存成本计价服务（第二期）。使用 required=false 保证第一期的测试和未启用计价的部署仍可运行。
+     */
+    @Autowired(required = false)
+    private IStockCostService stockCostService;
 
     /**
      * Diagnosis rule engine — NIGHT-P1-C refactoring.
@@ -264,6 +271,110 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
         applyStockDataScope(query);
         validateStockReportRequest(tenantId, query);
         return stockHealthService.reconcileStock(tenantId, query.getDeptIds());
+    }
+
+    @Override
+    public StockValueReportVO getStockValueReport(StockReportQuery query) {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null) {
+            throw new ServiceException("租户上下文缺失，禁止查询库存价值报表");
+        }
+        applyStockDataScope(query);
+        validateStockReportRequest(tenantId, query);
+
+        StockValueReportVO vo = new StockValueReportVO();
+        vo.setCostReady(false);
+        vo.setPeriodStatus(resolvePeriodStatus(query.getDeptIds()));
+        vo.setOpeningAmount(BigDecimal.ZERO);
+        vo.setInboundAmount(BigDecimal.ZERO);
+        vo.setSaleCost(BigDecimal.ZERO);
+        vo.setAdjustmentAmount(BigDecimal.ZERO);
+        vo.setClosingAmount(BigDecimal.ZERO);
+        vo.setSaleRevenue(BigDecimal.ZERO);
+        vo.setGrossProfit(BigDecimal.ZERO);
+        vo.setGrossProfitRate(BigDecimal.ZERO);
+        vo.setItems(Collections.emptyList());
+
+        // costReady 门禁：无成本层行时禁止展示金额，禁止用零值伪装未完成成本
+        boolean costReady = stockReportMapper.existsCostLayerForTenant(tenantId, query.getDeptIds());
+        if (!costReady) {
+            return vo;
+        }
+        vo.setCostReady(true);
+
+        StockValueReportVO summary = stockReportMapper.selectStockValueSummary(tenantId, query);
+        if (summary != null) {
+            vo.setOpeningAmount(nullSafe(summary.getOpeningAmount()));
+            vo.setInboundAmount(nullSafe(summary.getInboundAmount()));
+            vo.setSaleCost(nullSafe(summary.getSaleCost()));
+            vo.setAdjustmentAmount(nullSafe(summary.getAdjustmentAmount()));
+            vo.setClosingAmount(nullSafe(summary.getClosingAmount()));
+            vo.setSaleRevenue(nullSafe(summary.getSaleRevenue()));
+            BigDecimal grossProfit = nullSafe(summary.getSaleRevenue()).subtract(nullSafe(summary.getSaleCost()));
+            vo.setGrossProfit(grossProfit);
+            if (nullSafe(summary.getSaleRevenue()).compareTo(BigDecimal.ZERO) > 0) {
+                vo.setGrossProfitRate(grossProfit.multiply(new BigDecimal("100"))
+                        .divide(nullSafe(summary.getSaleRevenue()), 2, java.math.RoundingMode.HALF_UP));
+            }
+        }
+        List<StockValueReportItemVO> items = stockReportMapper.selectStockValueItems(tenantId, query);
+        vo.setItems(items != null ? items : Collections.emptyList());
+        return vo;
+    }
+
+    @Override
+    public void createCostAdjustment(StockReportQuery query, Long productId, BigDecimal amount, String reason) {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null) {
+            throw new ServiceException("租户上下文缺失，禁止成本调整");
+        }
+        if (productId == null) {
+            throw new ServiceException("成本调整缺少商品上下文");
+        }
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new ServiceException("成本调整必须填写原因");
+        }
+        if (amount == null || amount.signum() == 0) {
+            throw new ServiceException("成本调整金额不能为零");
+        }
+        applyStockDataScope(query);
+        validateStockReportRequest(tenantId, query);
+
+        // 期间控制：LOCKED(1) 或 CARRIED_FORWARD(2) 期间拒绝回写
+        String periodStatus = resolvePeriodStatus(query.getDeptIds());
+        if (!"ACTIVE".equals(periodStatus)) {
+            throw new ServiceException("当前会计期间为 " + periodStatus + "（LOCKED/CARRIED_FORWARD），拒绝回写成本调整");
+        }
+
+        // 调整必须在授权门店范围内执行；取第一个授权门店作为调整目标
+        if (query.getDeptIds() == null || query.getDeptIds().isEmpty()) {
+            throw new ServiceException("成本调整缺少门店上下文");
+        }
+        Long deptId = query.getDeptIds().get(0);
+        assertDeptAuthorized(deptId);
+
+        if (stockCostService == null) {
+            throw new ServiceException("成本计价服务未启用，拒绝成本调整");
+        }
+        String operator = SecurityUtils.getUsername();
+        stockCostService.applyCostAdjustment(tenantId, deptId, productId, amount, reason, operator);
+    }
+
+    /**
+     * 解析当前会计期间状态为标准化标签。
+     * '0' -> ACTIVE, '1' -> LOCKED, '2' -> CARRIED_FORWARD, null/其他 -> ACTIVE（默认开放）。
+     */
+    private String resolvePeriodStatus(List<Long> deptIds) {
+        String raw = finAccountingPeriodMapper.selectCurrentPeriodStatusByDeptIds(deptIds);
+        if (raw == null) {
+            return "ACTIVE";
+        }
+        switch (raw) {
+            case "0": return "ACTIVE";
+            case "1": return "LOCKED";
+            case "2": return "CARRIED_FORWARD";
+            default: return "ACTIVE";
+        }
     }
 
     /**

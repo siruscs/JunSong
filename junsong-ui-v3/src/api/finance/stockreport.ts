@@ -110,3 +110,52 @@ export function exportStockReport(query: StockReportQuery) {
 export function getStockReconciliation(query: StockReportQuery) {
   return request({ url: '/finance/report/stock/reconciliation', method: 'post', data: query })
 }
+
+// ==================== 库存价值报表（第二期财务计价） ====================
+
+export interface StockValueReportVO {
+  costReady: boolean
+  periodStatus: string // ACTIVE / LOCKED / CARRIED_FORWARD
+  openingAmount: number
+  inboundAmount: number
+  saleCost: number
+  adjustmentAmount: number
+  closingAmount: number
+  saleRevenue: number
+  grossProfit: number
+  grossProfitRate: number
+  items: StockValueReportItemVO[]
+}
+
+export interface StockValueReportItemVO {
+  tenantId: number
+  deptId: number
+  deptName: string
+  productId: number
+  productCode: string
+  productName: string
+  closingQuantity: number
+  avgUnitCost: number
+  closingAmount: number
+  inboundAmount: number
+  saleCost: number
+  saleRevenue: number
+  grossProfit: number
+}
+
+// 库存价值报表
+export function getStockValueReport(query: StockReportQuery) {
+  return request({ url: '/finance/report/stock/value', method: 'post', data: query })
+}
+
+// 成本调整
+export function createCostAdjustment(data: {
+  deptIds: number[]
+  startDate?: string
+  endDate?: string
+  productId: number
+  amount: number
+  reason: string
+}) {
+  return request({ url: '/finance/report/stock/cost-adjustment', method: 'post', data })
+}

@@ -258,4 +258,157 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         ORDER BY create_time ASC, ledger_id ASC
     </select>
 
+    <!--
+        ====================================================================
+        第二期：库存价值报表（财务计价）
+        ====================================================================
+        成本流水金额符号约定（fin_stock_cost_ledger.amount 始终为正数或零）：
+          COST_IN          → 增加 stock_amount（+amount）
+          COST_REVERSE_IN  → 增加 stock_amount（+amount，销售冲销回补）
+          COST_OUT         → 减少 stock_amount（-amount，销售出库）
+          COST_REVERSE_OUT → 减少 stock_amount（-amount，采购冲销）
+          COST_ADJUST      → 带符号（正调增/负调减）
+        恒等式：期初 + 入库 - 销售成本 + 调整 = 期末
+          入库金额   = SUM(COST_IN) - SUM(COST_REVERSE_OUT)
+          销售成本   = SUM(COST_OUT) - SUM(COST_REVERSE_IN)
+          期初金额   = SUM(signed amount) before startDate
+          期末金额   = 期初 + 入库 - 销售成本 + 调整
+        销售收入从 fin_sale_record 聚合（不含赠品收入；sale_amount 字段已不含赠品）。
+    -->
+
+    <!-- 成本层授权过滤片段（fin_stock_cost_ledger / fin_stock_cost_layer 有 tenant_id） -->
+    <sql id="CostLedgerAuthorizedBase">
+        tenant_id = #{tenantId}
+        AND del_flag = '0'
+        <if test="query.deptIds != null and query.deptIds.size() > 0">
+            AND dept_id IN
+            <foreach item="deptId" collection="query.deptIds" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+    </sql>
+
+    <!-- 销售记录授权过滤片段（fin_sale_record 无 tenant_id，依赖 dept_id 隔离） -->
+    <sql id="SaleRecordAuthorizedBase">
+        del_flag = '0'
+        <if test="query.deptIds != null and query.deptIds.size() > 0">
+            AND dept_id IN
+            <foreach item="deptId" collection="query.deptIds" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+    </sql>
+
+    <!-- 库存价值汇总 -->
+    <select id="selectStockValueSummary" resultType="com.junsong.finance.domain.vo.StockValueReportVO">
+        SELECT
+            opening.opening_amount AS openingAmount,
+            rng.inbound_amount AS inboundAmount,
+            rng.sale_cost AS saleCost,
+            rng.adjustment_amount AS adjustmentAmount,
+            (opening.opening_amount + rng.inbound_amount - rng.sale_cost + rng.adjustment_amount) AS closingAmount,
+            revenue.sale_revenue AS saleRevenue
+        FROM (SELECT 1) dummy
+        LEFT JOIN (
+            SELECT COALESCE(SUM(
+                CASE cost_change_type
+                    WHEN 'COST_IN' THEN amount
+                    WHEN 'COST_REVERSE_IN' THEN amount
+                    WHEN 'COST_OUT' THEN -amount
+                    WHEN 'COST_REVERSE_OUT' THEN -amount
+                    WHEN 'COST_ADJUST' THEN amount
+                    ELSE 0 END
+            ), 0) AS opening_amount
+            FROM fin_stock_cost_ledger
+            WHERE <include refid="CostLedgerAuthorizedBase"/>
+              AND create_time &lt; #{query.startDate}
+        ) opening ON 1 = 1
+        LEFT JOIN (
+            SELECT
+                COALESCE(SUM(CASE WHEN cost_change_type = 'COST_IN' THEN amount ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN cost_change_type = 'COST_REVERSE_OUT' THEN amount ELSE 0 END), 0) AS inbound_amount,
+                COALESCE(SUM(CASE WHEN cost_change_type = 'COST_OUT' THEN amount ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN cost_change_type = 'COST_REVERSE_IN' THEN amount ELSE 0 END), 0) AS sale_cost,
+                COALESCE(SUM(CASE WHEN cost_change_type = 'COST_ADJUST' THEN amount ELSE 0 END), 0) AS adjustment_amount
+            FROM fin_stock_cost_ledger
+            WHERE <include refid="CostLedgerAuthorizedBase"/>
+              AND create_time &gt;= #{query.startDate}
+              AND create_time &lt; DATE_ADD(#{query.endDate}, INTERVAL 1 DAY)
+        ) rng ON 1 = 1
+        LEFT JOIN (
+            SELECT COALESCE(SUM(sale_amount), 0) AS sale_revenue
+            FROM fin_sale_record
+            WHERE <include refid="SaleRecordAuthorizedBase"/>
+              AND sale_date &gt;= #{query.startDate}
+              AND sale_date &lt; DATE_ADD(#{query.endDate}, INTERVAL 1 DAY)
+        ) revenue ON 1 = 1
+    </select>
+
+    <!-- 库存价值单商品明细 -->
+    <select id="selectStockValueItems" resultType="com.junsong.finance.domain.vo.StockValueReportItemVO">
+        SELECT
+            layer.tenant_id AS tenantId,
+            layer.dept_id AS deptId,
+            dept.dept_name AS deptName,
+            layer.product_id AS productId,
+            prod.product_code AS productCode,
+            COALESCE(prod.product_name, '') AS productName,
+            layer.stock_quantity AS closingQuantity,
+            layer.avg_unit_cost AS avgUnitCost,
+            layer.stock_amount AS closingAmount,
+            COALESCE(rng.inbound_amount, 0) AS inboundAmount,
+            COALESCE(rng.sale_cost, 0) AS saleCost,
+            COALESCE(rev.sale_revenue, 0) AS saleRevenue,
+            (COALESCE(rev.sale_revenue, 0) - COALESCE(rng.sale_cost, 0)) AS grossProfit
+        FROM fin_stock_cost_layer layer
+        LEFT JOIN fin_product prod ON prod.product_id = layer.product_id AND prod.del_flag = '0'
+        LEFT JOIN sys_dept dept ON dept.dept_id = layer.dept_id
+        LEFT JOIN (
+            SELECT tenant_id, dept_id, product_id,
+                COALESCE(SUM(CASE WHEN cost_change_type = 'COST_IN' THEN amount ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN cost_change_type = 'COST_REVERSE_OUT' THEN amount ELSE 0 END), 0) AS inbound_amount,
+                COALESCE(SUM(CASE WHEN cost_change_type = 'COST_OUT' THEN amount ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN cost_change_type = 'COST_REVERSE_IN' THEN amount ELSE 0 END), 0) AS sale_cost
+            FROM fin_stock_cost_ledger
+            WHERE <include refid="CostLedgerAuthorizedBase"/>
+              AND create_time &gt;= #{query.startDate}
+              AND create_time &lt; DATE_ADD(#{query.endDate}, INTERVAL 1 DAY)
+            GROUP BY tenant_id, dept_id, product_id
+        ) rng ON rng.tenant_id = layer.tenant_id
+              AND rng.dept_id = layer.dept_id
+              AND rng.product_id = layer.product_id
+        LEFT JOIN (
+            SELECT dept_id, product_id, SUM(sale_amount) AS sale_revenue
+            FROM fin_sale_record
+            WHERE <include refid="SaleRecordAuthorizedBase"/>
+              AND sale_date &gt;= #{query.startDate}
+              AND sale_date &lt; DATE_ADD(#{query.endDate}, INTERVAL 1 DAY)
+            GROUP BY dept_id, product_id
+        ) rev ON rev.dept_id = layer.dept_id
+              AND rev.product_id = layer.product_id
+        WHERE layer.tenant_id = #{tenantId}
+          <if test="query.deptIds != null and query.deptIds.size() > 0">
+              AND layer.dept_id IN
+              <foreach item="deptId" collection="query.deptIds" open="(" separator="," close=")">
+                  #{deptId}
+              </foreach>
+          </if>
+        ORDER BY layer.tenant_id, layer.dept_id, layer.product_id
+    </select>
+
+    <!-- 检查租户在授权门店范围内是否已初始化成本层 -->
+    <select id="existsCostLayerForTenant" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1 FROM fin_stock_cost_layer
+            WHERE tenant_id = #{tenantId}
+              <if test="deptIds != null and deptIds.size() > 0">
+                  AND dept_id IN
+                  <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
+                      #{deptId}
+                  </foreach>
+              </if>
+            LIMIT 1
+        )
+    </select>
+
 </mapper>

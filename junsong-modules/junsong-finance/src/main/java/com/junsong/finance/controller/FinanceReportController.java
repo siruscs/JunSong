@@ -8,6 +8,7 @@ import com.junsong.finance.service.IFinanceReportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -98,6 +99,21 @@ public class FinanceReportController extends BaseController {
         return AjaxResult.success(result);
     }
 
+    @RequiresPermissions("finance:report:stock")
+    @PostMapping("/stock/value")
+    public AjaxResult getStockValueReport(@RequestBody StockReportQuery query) {
+        StockValueReportVO report = financeReportService.getStockValueReport(query);
+        return AjaxResult.success(report);
+    }
+
+    @RequiresPermissions("finance:stock:costAdjust")
+    @PostMapping("/stock/cost-adjustment")
+    public AjaxResult createCostAdjustment(@RequestBody CostAdjustmentRequest request) {
+        financeReportService.createCostAdjustment(
+                request.toQuery(), request.getProductId(), request.getAmount(), request.getReason());
+        return AjaxResult.success();
+    }
+
     /** 库存流水下钻查询参数。 */
     public static class StockLedgerQuery {
         private Long deptId;
@@ -124,6 +140,42 @@ public class FinanceReportController extends BaseController {
 
         public Integer getPageSize() { return pageSize; }
         public void setPageSize(Integer pageSize) { this.pageSize = pageSize; }
+    }
+
+    /** 成本调整请求参数。 */
+    public static class CostAdjustmentRequest {
+        private List<Long> deptIds;
+        private LocalDate startDate;
+        private LocalDate endDate;
+        private Long productId;
+        private BigDecimal amount;
+        private String reason;
+
+        public List<Long> getDeptIds() { return deptIds; }
+        public void setDeptIds(List<Long> deptIds) { this.deptIds = deptIds; }
+
+        public LocalDate getStartDate() { return startDate; }
+        public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
+
+        public LocalDate getEndDate() { return endDate; }
+        public void setEndDate(LocalDate endDate) { this.endDate = endDate; }
+
+        public Long getProductId() { return productId; }
+        public void setProductId(Long productId) { this.productId = productId; }
+
+        public BigDecimal getAmount() { return amount; }
+        public void setAmount(BigDecimal amount) { this.amount = amount; }
+
+        public String getReason() { return reason; }
+        public void setReason(String reason) { this.reason = reason; }
+
+        public StockReportQuery toQuery() {
+            StockReportQuery q = new StockReportQuery();
+            q.setDeptIds(deptIds);
+            q.setStartDate(startDate);
+            q.setEndDate(endDate);
+            return q;
+        }
     }
 
     @RequiresPermissions("finance:report:profit")

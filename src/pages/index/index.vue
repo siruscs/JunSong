@@ -673,13 +673,14 @@ export default {
     this.nickName = userInfo.nickName || userInfo.username || ''
     this.currentDeptId = userInfo.currentDeptId || userInfo.deptId || null
     this.modules = uni.getStorageSync('modules') || []
-    this.refreshModules()
-    this.loadUserContext()
-    this.loadDashboard()
-    this.loadOverview()
-    this.loadPeriod()
-    this.loadSeckill()
-    this.loadExpenseSummary()
+    const safe = (p) => p.catch(e => console.log('onShow request failed', e))
+    safe(this.refreshModules())
+    safe(this.loadUserContext())
+    safe(this.loadDashboard())
+    safe(this.loadOverview())
+    safe(this.loadPeriod())
+    safe(this.loadSeckill())
+    safe(this.loadExpenseSummary())
   },
   methods: {
     go(url) {
@@ -915,7 +916,7 @@ export default {
         }
         const current = resolveCurrentDept(this.deptList, this.currentDeptId)
         if (current) this.currentDeptId = current.id
-        this.loadServerStatus()
+        this.loadServerStatus().catch(e => console.log('server status load failed', e))
       } catch (e) {
         const cached = this.userInfo || {}
         this.deptList = normalizeDeptOptions(cached.depts || [])

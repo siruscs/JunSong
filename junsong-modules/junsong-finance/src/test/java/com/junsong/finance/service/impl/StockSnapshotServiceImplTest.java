@@ -3,34 +3,29 @@ package com.junsong.finance.service.impl;
 import com.junsong.finance.domain.FinStockLedger;
 import com.junsong.finance.domain.FinStockSnapshot;
 import com.junsong.finance.domain.vo.DailyFlowView;
-import com.junsong.finance.domain.vo.FinStockPositionView;
 import com.junsong.finance.mapper.FinStockLedgerMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * StockSnapshotServiceImpl 单元测试。使用手写 fake mapper（无 Mockito）。
- */
 class StockSnapshotServiceImplTest {
+    private static final long TENANT_1 = 1L;
+    private static final long TENANT_2 = 2L;
+    private static final long DEPT = 10L;
+    private static final long PRODUCT = 100L;
+    private static final LocalDate DAY = LocalDate.of(2026, 7, 1);
 
-    private FakeFinStockLedgerMapper mapper;
+    private FakeMapper mapper;
     private StockSnapshotServiceImpl service;
-
-    private static final LocalDate SNAPSHOT_DATE = LocalDate.of(2026, 7, 1);
-    private static final Long DEPT_ID = 1L;
 
     @BeforeEach
     void setUp() throws Exception {
-        mapper = new FakeFinStockLedgerMapper();
+        mapper = new FakeMapper();
         service = new StockSnapshotServiceImpl();
         Field field = StockSnapshotServiceImpl.class.getDeclaredField("finStockLedgerMapper");
         field.setAccessible(true);
@@ -38,174 +33,139 @@ class StockSnapshotServiceImplTest {
     }
 
     @Test
-    void rebuildCreatesSnapshotFromPosition() {
-        // 两个 position
-        mapper.addPosition(DEPT_ID, 10L, 100, "商品A");
-        mapper.addPosition(DEPT_ID, 20L, 50, "商品B");
-        // 商品A 当日入库30、出库10 → opening = 100 - 30 + 10 = 80
-        mapper.putFlow(SNAPSHOT_DATE, DEPT_ID, 10L, 30, 10);
-        // 商品B 当日无流水 → in/out=0，opening = 50
-        mapper.putFlow(SNAPSHOT_DATE, DEPT_ID, 20L, 0, 0);
+    void isolatesTenantsWithSameDepartmentAndProduct() {
+        mapper.addLedger(TENANT_1, DAY, DEPT, PRODUCT, "PURCHASE_IN", 12, 0, 12);
+        mapper.addLedger(TENANT_2, DAY, DEPT, PRODUCT, "PURCHASE_IN", 5, 0, 5);
 
-        int count = service.rebuildDailySnapshot(SNAPSHOT_DATE, DEPT_ID);
+        service.rebuildDailySnapshot(TENANT_1, DAY, DEPT);
+        service.rebuildDailySnapshot(TENANT_2, DAY, DEPT);
 
-        assertEquals(2, count, "快照条数应等于 position 行数");
-        assertEquals(2, mapper.snapshotStore.size(), "快照存储应有 2 条记录");
-        assertEquals(2, mapper.insertCount, "两条均为新增");
-
-        FinStockSnapshot a = mapper.snapshotStore.get(key(SNAPSHOT_DATE, DEPT_ID, 10L));
-        assertNotNull(a);
-        assertEquals(100, a.getQuantity(), "closing = position.quantity");
-        assertEquals(30, a.getInQuantity());
-        assertEquals(10, a.getOutQuantity());
-        assertEquals(80, a.getOpeningQuantity(), "opening = closing - in + out");
-        assertEquals("商品A", a.getProductName());
-
-        FinStockSnapshot b = mapper.snapshotStore.get(key(SNAPSHOT_DATE, DEPT_ID, 20L));
-        assertNotNull(b);
-        assertEquals(50, b.getQuantity());
-        assertEquals(0, b.getInQuantity());
-        assertEquals(0, b.getOutQuantity());
-        assertEquals(50, b.getOpeningQuantity(), "无流水时 opening = closing");
+        assertEquals(12, mapper.snapshot(TENANT_1, DAY, DEPT, PRODUCT).getQuantity());
+        assertEquals(5, mapper.snapshot(TENANT_2, DAY, DEPT, PRODUCT).getQuantity());
+        assertEquals(2, mapper.snapshots.size());
     }
 
     @Test
-    void rebuildSameDateUpdatesExistingNoDuplicate() {
-        mapper.addPosition(DEPT_ID, 10L, 100, "商品A");
-        mapper.putFlow(SNAPSHOT_DATE, DEPT_ID, 10L, 20, 5);
+    void carriesPreviousClosingAcrossNoFlowDayAndRebuildsChronologically() {
+        mapper.addLedger(TENANT_1, DAY, DEPT, PRODUCT, "PURCHASE_IN", 12, 0, 12);
+        service.rebuildDailySnapshot(TENANT_1, DAY, DEPT);
+        service.rebuildDailySnapshot(TENANT_1, DAY.plusDays(1), DEPT);
+        mapper.addLedger(TENANT_1, DAY.plusDays(2), DEPT, PRODUCT, "SALE_OUT", -10, 12, 2);
+        service.rebuildDailySnapshot(TENANT_1, DAY.plusDays(2), DEPT);
 
-        int firstRun = service.rebuildDailySnapshot(SNAPSHOT_DATE, DEPT_ID);
-        int firstInserts = mapper.insertCount;
-        int firstUpdates = mapper.updateCount;
-
-        // 模拟当日又有变动：position 与流水变化后重跑
-        mapper.updatePositionQuantity(1L, DEPT_ID, 10L, 120);
-        mapper.putFlow(SNAPSHOT_DATE, DEPT_ID, 10L, 40, 20);
-
-        int secondRun = service.rebuildDailySnapshot(SNAPSHOT_DATE, DEPT_ID);
-
-        assertEquals(1, firstRun, "首次生成 1 条快照");
-        assertEquals(1, secondRun, "重跑仍返回 1 条（position 行数不变）");
-        assertEquals(1, firstInserts, "首次全部为新增");
-        assertEquals(0, firstUpdates, "首次无更新");
-        assertEquals(1, mapper.snapshotStore.size(), "重跑不产生重复行，仍为 1 条");
-        assertTrue(mapper.insertCount >= 1 && mapper.updateCount >= 1, "存在新增与更新两种 upsert 结果");
-
-        FinStockSnapshot updated = mapper.snapshotStore.get(key(SNAPSHOT_DATE, DEPT_ID, 10L));
-        assertNotNull(updated);
-        assertEquals(120, updated.getQuantity(), "重跑后 closing 被更新为最新 position.quantity");
-        assertEquals(40, updated.getInQuantity());
-        assertEquals(20, updated.getOutQuantity());
-        assertEquals(100, updated.getOpeningQuantity(), "opening = 120 - 40 + 20");
+        FinStockSnapshot noFlow = mapper.snapshot(TENANT_1, DAY.plusDays(1), DEPT, PRODUCT);
+        assertEquals(12, noFlow.getOpeningQuantity());
+        assertEquals(12, noFlow.getQuantity());
+        FinStockSnapshot third = mapper.snapshot(TENANT_1, DAY.plusDays(2), DEPT, PRODUCT);
+        assertEquals(12, third.getOpeningQuantity());
+        assertEquals(10, third.getOutQuantity());
+        assertEquals(2, third.getQuantity());
     }
 
     @Test
-    void emptyPositionReturnsZero() {
-        // 不添加任何 position
-        int count = service.rebuildDailySnapshot(SNAPSHOT_DATE, DEPT_ID);
+    void includesGiftPhysicalQuantitiesAndClassifiesReversals() {
+        mapper.addLedger(TENANT_1, DAY, DEPT, PRODUCT, "PURCHASE_IN", 12, 0, 12); // 10 + gift 2
+        mapper.addLedger(TENANT_1, DAY, DEPT, PRODUCT, "SALE_OUT", -10, 12, 2); // 8 + gift 2
+        mapper.addLedger(TENANT_1, DAY, DEPT, PRODUCT, "SALE_REVERSE", 3, 2, 5);
+        mapper.addLedger(TENANT_1, DAY, DEPT, PRODUCT, "PURCHASE_REVERSE", -2, 5, 3);
 
-        assertEquals(0, count, "无 position 时返回 0 条快照");
-        assertTrue(mapper.snapshotStore.isEmpty(), "不应写入任何快照");
-        assertEquals(0, mapper.upsertCallCount, "不应调用 upsert");
+        service.rebuildDailySnapshot(TENANT_1, DAY, DEPT);
+
+        FinStockSnapshot snapshot = mapper.snapshot(TENANT_1, DAY, DEPT, PRODUCT);
+        assertEquals(0, snapshot.getOpeningQuantity());
+        assertEquals(15, snapshot.getInQuantity(), "purchase in and sale reversal are physical inbound");
+        assertEquals(12, snapshot.getOutQuantity(), "sale out and purchase reversal are physical outbound");
+        assertEquals(3, snapshot.getQuantity());
     }
 
-    private static String key(LocalDate date, Long deptId, Long productId) {
-        return date + "|" + deptId + "|" + productId;
+    @Test
+    void historicalDateNeverUsesCurrentPositionAsClosing() {
+        mapper.currentPosition = 999;
+        mapper.addLedger(TENANT_1, DAY, DEPT, PRODUCT, "PURCHASE_IN", 12, 0, 12);
+
+        service.rebuildDailySnapshot(TENANT_1, DAY, DEPT);
+
+        assertEquals(12, mapper.snapshot(TENANT_1, DAY, DEPT, PRODUCT).getQuantity());
+        assertFalse(mapper.positionRead, "historical rebuild must replay ledger, not current position");
     }
 
-    /**
-     * 手写 fake：实现 FinStockLedgerMapper 全部方法，仅快照相关方法有真实逻辑。
-     * upsertSnapshot 模拟唯一键 (snapshot_date, dept_id, product_id) 行为：
-     * 不存在则插入（返回1），存在则更新（返回2），保证不产生重复行。
-     */
-    static class FakeFinStockLedgerMapper implements FinStockLedgerMapper {
+    @Test
+    void usesLastLedgerClosingWhenPriorDayHasLedgerButNoSnapshotAndTargetDayHasNoFlow() {
+        mapper.addLedger(TENANT_1, DAY.minusDays(1), DEPT, PRODUCT, "PURCHASE_IN", 12, 0, 12);
 
-        final List<FinStockPositionView> positions = new ArrayList<>();
-        final Map<String, FinStockSnapshot> snapshotStore = new HashMap<>();
-        final Map<String, DailyFlowView> flowStore = new HashMap<>();
+        service.rebuildDailySnapshot(TENANT_1, DAY, DEPT);
 
-        int insertCount = 0;
-        int updateCount = 0;
-        int upsertCallCount = 0;
+        FinStockSnapshot snapshot = mapper.snapshot(TENANT_1, DAY, DEPT, PRODUCT);
+        assertEquals(12, snapshot.getOpeningQuantity());
+        assertEquals(12, snapshot.getQuantity());
+    }
 
-        void addPosition(Long deptId, Long productId, int quantity, String productName) {
-            FinStockPositionView p = new FinStockPositionView();
-            p.setDeptId(deptId);
-            p.setProductId(productId);
-            p.setQuantity(quantity);
-            p.setProductName(productName);
-            positions.add(p);
+    @Test
+    void rejectsMissingScope() {
+        assertThrows(IllegalArgumentException.class, () -> service.rebuildDailySnapshot(null, DAY, DEPT));
+        assertThrows(IllegalArgumentException.class, () -> service.rebuildDailySnapshot(TENANT_1, null, DEPT));
+        assertThrows(IllegalArgumentException.class, () -> service.rebuildDailySnapshot(TENANT_1, DAY, null));
+    }
+
+    static class FakeMapper implements FinStockLedgerMapper {
+        final List<FinStockLedger> ledgers = new ArrayList<>();
+        final Map<String, FinStockSnapshot> snapshots = new HashMap<>();
+        boolean positionRead;
+        int currentPosition;
+
+        void addLedger(long tenant, LocalDate date, long dept, long product, String type, int change, int before, int after) {
+            FinStockLedger row = new FinStockLedger();
+            row.setTenantId(tenant); row.setDeptId(dept); row.setProductId(product); row.setProductName("商品");
+            row.setChangeType(type); row.setChangeQuantity(change); row.setBeforeQuantity(before); row.setAfterQuantity(after);
+            row.setCreateTime(java.sql.Timestamp.valueOf(date.atTime(12, 0)));
+            ledgers.add(row);
         }
 
-        void putFlow(LocalDate date, Long deptId, Long productId, int inQty, int outQty) {
-            DailyFlowView v = new DailyFlowView();
-            v.setInQuantity(inQty);
-            v.setOutQuantity(outQty);
-            flowStore.put(date + "|" + deptId + "|" + productId, v);
+        FinStockSnapshot snapshot(long tenant, LocalDate date, long dept, long product) {
+            return snapshots.get(key(tenant, date, dept, product));
         }
 
-        @Override
-        public List<FinStockPositionView> selectPositionsByDept(Long deptId) {
-            return positions;
+        @Override public List<Long> selectSnapshotProductIds(Long tenantId, LocalDate date, Long deptId) {
+            Set<Long> ids = new TreeSet<>();
+            ledgers.stream().filter(l -> Objects.equals(tenantId,l.getTenantId()) && Objects.equals(deptId,l.getDeptId())
+                    && !((java.sql.Timestamp) l.getCreateTime()).toLocalDateTime().toLocalDate().isAfter(date)).forEach(l -> ids.add(l.getProductId()));
+            snapshots.values().stream().filter(s -> Objects.equals(tenantId,s.getTenantId()) && Objects.equals(deptId,s.getDeptId())
+                    && s.getSnapshotDate().isBefore(date)).forEach(s -> ids.add(s.getProductId()));
+            return new ArrayList<>(ids);
         }
-
-        @Override
-        public DailyFlowView sumDailyFlow(LocalDate snapshotDate, Long deptId, Long productId) {
-            return flowStore.get(snapshotDate + "|" + deptId + "|" + productId);
+        @Override public FinStockSnapshot selectPreviousSnapshot(Long tenantId, LocalDate date, Long deptId, Long productId) {
+            return snapshots.values().stream().filter(s -> Objects.equals(tenantId,s.getTenantId()) && Objects.equals(deptId,s.getDeptId())
+                    && Objects.equals(productId,s.getProductId()) && s.getSnapshotDate().isBefore(date))
+                    .max(Comparator.comparing(FinStockSnapshot::getSnapshotDate)).orElse(null);
         }
-
-        @Override
-        public int upsertSnapshot(FinStockSnapshot snapshot) {
-            upsertCallCount++;
-            String k = snapshot.getSnapshotDate() + "|" + snapshot.getDeptId() + "|" + snapshot.getProductId();
-            boolean existed = snapshotStore.containsKey(k);
-            snapshotStore.put(k, snapshot);
-            if (existed) {
-                updateCount++;
-                return 2;
+        @Override public FinStockLedger selectFirstDailyLedger(Long tenantId, LocalDate date, Long deptId, Long productId) {
+            return ledgers.stream().filter(l -> Objects.equals(tenantId,l.getTenantId()) && Objects.equals(deptId,l.getDeptId())
+                    && Objects.equals(productId,l.getProductId()) && ((java.sql.Timestamp) l.getCreateTime()).toLocalDateTime().toLocalDate().equals(date)).findFirst().orElse(null);
+        }
+        @Override public FinStockLedger selectLastLedgerBeforeDate(Long tenantId, LocalDate date, Long deptId, Long productId) {
+            return ledgers.stream().filter(l -> Objects.equals(tenantId,l.getTenantId()) && Objects.equals(deptId,l.getDeptId())
+                    && Objects.equals(productId,l.getProductId()) && ((java.sql.Timestamp) l.getCreateTime()).toLocalDateTime().toLocalDate().isBefore(date))
+                    .max(Comparator.comparing(FinStockLedger::getCreateTime)).orElse(null);
+        }
+        @Override public DailyFlowView sumDailyFlow(Long tenantId, LocalDate date, Long deptId, Long productId) {
+            int in = 0, out = 0;
+            for (FinStockLedger l : ledgers) if (Objects.equals(tenantId,l.getTenantId()) && Objects.equals(deptId,l.getDeptId())
+                    && Objects.equals(productId,l.getProductId()) && ((java.sql.Timestamp) l.getCreateTime()).toLocalDateTime().toLocalDate().equals(date)) {
+                if (Set.of("PURCHASE_IN","SALE_REVERSE").contains(l.getChangeType())) in += l.getChangeQuantity();
+                if (Set.of("SALE_OUT","PURCHASE_REVERSE").contains(l.getChangeType())) out += -l.getChangeQuantity();
             }
-            insertCount++;
-            return 1;
+            DailyFlowView result = new DailyFlowView(); result.setInQuantity(in); result.setOutQuantity(out); return result;
         }
+        @Override public int upsertSnapshot(FinStockSnapshot s) { snapshots.put(key(s.getTenantId(),s.getSnapshotDate(),s.getDeptId(),s.getProductId()),s); return 1; }
+        private static String key(long t, LocalDate d, long dept, long product) { return t+"|"+d+"|"+dept+"|"+product; }
 
-        @Override
-        public java.util.List<Long> selectAllDeptIdsWithPosition() {
-            return java.util.Collections.emptyList();
-        }
-
-        // ---- 以下为非快照相关方法，提供桩实现 ----
-        @Override
-        public int insertPositionIfAbsent(Long tenantId, Long deptId, Long productId) { return 0; }
-
-        @Override
-        public Integer selectPositionQuantityForUpdate(Long tenantId, Long deptId, Long productId) {
-            return positions.stream()
-                    .filter(p -> p.getDeptId().equals(deptId) && p.getProductId().equals(productId))
-                    .map(FinStockPositionView::getQuantity)
-                    .findFirst()
-                    .orElse(null);
-        }
-
-        @Override
-        public int updatePositionQuantity(Long tenantId, Long deptId, Long productId, Integer quantity) {
-            for (FinStockPositionView p : positions) {
-                if (p.getDeptId().equals(deptId) && p.getProductId().equals(productId)) {
-                    p.setQuantity(quantity);
-                    return 1;
-                }
-            }
-            return 0;
-        }
-
-        @Override
-        public Integer sumRecordedNet(Long tenantId, String referenceType, Long referenceId, Long productId) { return 0; }
-
-        @Override
-        public List<Long> selectRecordedProductIds(Long tenantId, String referenceType, Long referenceId) {
-            return new ArrayList<>();
-        }
-
-        @Override
-        public int insertFinStockLedger(FinStockLedger ledger) { return 0; }
+        @Override public int insertPositionIfAbsent(Long a,Long b,Long c){return 0;}
+        @Override public Integer selectPositionQuantityForUpdate(Long a,Long b,Long c){positionRead=true;return currentPosition;}
+        @Override public int updatePositionQuantity(Long a,Long b,Long c,Integer d){return 0;}
+        @Override public Integer sumRecordedNet(Long a,String b,Long c,Long d){return 0;}
+        @Override public List<Long> selectRecordedProductIds(Long a,String b,Long c){return List.of();}
+        @Override public int insertFinStockLedger(FinStockLedger l){return 0;}
+        @Override public List<com.junsong.finance.domain.vo.FinStockPositionView> selectAllTenantDeptScopesWithPosition(){return List.of();}
+        @Override public java.math.BigDecimal selectSaleOutUnitCost(Long a, Long b, Long c){return null;}
     }
 }

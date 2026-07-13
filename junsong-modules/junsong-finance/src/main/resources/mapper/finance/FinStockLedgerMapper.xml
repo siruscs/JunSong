@@ -101,24 +101,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </insert>
 
     <resultMap type="com.junsong.finance.domain.vo.FinStockPositionView" id="FinStockPositionViewResult">
+        <result property="tenantId"    column="tenant_id"    />
         <result property="deptId"      column="dept_id"      />
         <result property="productId"   column="product_id"   />
         <result property="quantity"    column="quantity"     />
         <result property="productName" column="product_name" />
     </resultMap>
-
-    <select id="selectPositionsByDept" resultMap="FinStockPositionViewResult">
-        select p.dept_id,
-               p.product_id,
-               p.quantity,
-               (select l.product_name from fin_stock_ledger l
-                 where l.dept_id = p.dept_id
-                   and l.product_id = p.product_id
-                   and l.del_flag = '0'
-                 order by l.create_time desc limit 1) as product_name
-        from fin_stock_position p
-        where p.dept_id = #{deptId}
-    </select>
 
     <resultMap type="com.junsong.finance.domain.vo.DailyFlowView" id="DailyFlowViewResult">
         <result property="inQuantity"  column="in_quantity"  />
@@ -126,21 +114,59 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <select id="sumDailyFlow" resultMap="DailyFlowViewResult">
-        select coalesce(sum(case when change_quantity &gt; 0 then change_quantity else 0 end), 0) as in_quantity,
-               coalesce(sum(case when change_quantity &lt; 0 then -change_quantity else 0 end), 0) as out_quantity
+        select coalesce(sum(case when change_type in ('PURCHASE_IN', 'SALE_REVERSE') then change_quantity else 0 end), 0) as in_quantity,
+               coalesce(sum(case when change_type in ('SALE_OUT', 'PURCHASE_REVERSE') then -change_quantity else 0 end), 0) as out_quantity
         from fin_stock_ledger
-        where dept_id = #{deptId}
+        where tenant_id = #{tenantId}
+          and dept_id = #{deptId}
           and product_id = #{productId}
           and del_flag = '0'
-          and date(create_time) = #{snapshotDate}
+          and create_time &gt;= #{snapshotDate}
+          and create_time &lt; date_add(#{snapshotDate}, interval 1 day)
+    </select>
+
+    <select id="selectSnapshotProductIds" resultType="java.lang.Long">
+        select product_id from (
+            select distinct product_id from fin_stock_ledger
+             where tenant_id = #{tenantId} and dept_id = #{deptId} and del_flag = '0'
+               and create_time &lt; date_add(#{snapshotDate}, interval 1 day)
+            union
+            select distinct product_id from fin_stock_snapshot
+             where tenant_id = #{tenantId} and dept_id = #{deptId} and snapshot_date &lt; #{snapshotDate}
+        ) products order by product_id
+    </select>
+
+    <select id="selectPreviousSnapshot" resultType="com.junsong.finance.domain.FinStockSnapshot">
+        select tenant_id tenantId, snapshot_date snapshotDate, dept_id deptId, product_id productId,
+               product_name productName, quantity, opening_quantity openingQuantity,
+               in_quantity inQuantity, out_quantity outQuantity
+          from fin_stock_snapshot
+         where tenant_id = #{tenantId} and dept_id = #{deptId} and product_id = #{productId}
+           and snapshot_date &lt; #{snapshotDate}
+         order by snapshot_date desc limit 1
+    </select>
+
+    <select id="selectFirstDailyLedger" resultMap="FinStockLedgerResult">
+        select * from fin_stock_ledger
+         where tenant_id = #{tenantId} and dept_id = #{deptId} and product_id = #{productId}
+           and del_flag = '0' and create_time &gt;= #{snapshotDate}
+           and create_time &lt; date_add(#{snapshotDate}, interval 1 day)
+         order by create_time, ledger_id limit 1
+    </select>
+
+    <select id="selectLastLedgerBeforeDate" resultMap="FinStockLedgerResult">
+        select * from fin_stock_ledger
+         where tenant_id = #{tenantId} and dept_id = #{deptId} and product_id = #{productId}
+           and del_flag = '0' and create_time &lt; #{snapshotDate}
+         order by create_time desc, ledger_id desc limit 1
     </select>
 
     <insert id="upsertSnapshot" parameterType="com.junsong.finance.domain.FinStockSnapshot">
         insert into fin_stock_snapshot
-            (snapshot_date, dept_id, dept_name, product_id, product_name,
+            (tenant_id, snapshot_date, dept_id, dept_name, product_id, product_name,
              quantity, opening_quantity, in_quantity, out_quantity, unit_cost, total_value)
         values
-            (#{snapshotDate}, #{deptId}, #{deptName}, #{productId}, #{productName},
+            (#{tenantId}, #{snapshotDate}, #{deptId}, #{deptName}, #{productId}, #{productName},
              #{quantity}, #{openingQuantity}, #{inQuantity}, #{outQuantity}, #{unitCost}, #{totalValue})
         on duplicate key update
              quantity          = values(quantity),
@@ -153,8 +179,21 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
              total_value       = values(total_value)
     </insert>
 
-    <!-- R21：查询所有有当前结存的门店ID列表（去重），供库存每日快照批量重建 -->
-    <select id="selectAllDeptIdsWithPosition" resultType="java.lang.Long">
-        select distinct dept_id from fin_stock_position
+    <select id="selectAllTenantDeptScopesWithPosition" resultMap="FinStockPositionViewResult">
+        select distinct tenant_id, dept_id from fin_stock_position order by tenant_id, dept_id
+    </select>
+
+    <!-- 查询某销售单对某商品的原 SALE_OUT 固化单位成本（供销售冲销按原成本回补） -->
+    <select id="selectSaleOutUnitCost" resultType="java.math.BigDecimal">
+        select unit_cost
+        from fin_stock_ledger
+        where tenant_id = #{tenantId}
+          and reference_type = 'SALE'
+          and reference_id = #{referenceId}
+          and product_id = #{productId}
+          and change_type = 'SALE_OUT'
+          and del_flag = '0'
+        order by ledger_id desc
+        limit 1
     </select>
 </mapper>

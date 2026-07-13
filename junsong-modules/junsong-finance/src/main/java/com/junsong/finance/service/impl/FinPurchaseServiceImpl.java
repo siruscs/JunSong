@@ -242,6 +242,7 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
         java.util.Map<Long, Integer> targetByProduct = new java.util.HashMap<>();
         java.util.Map<Long, String> nameByProduct = new java.util.HashMap<>();
         java.util.Map<Long, BigDecimal> costByProduct = new java.util.HashMap<>();
+        java.util.Map<Long, BigDecimal> amountByProduct = new java.util.HashMap<>();
         if (active && finPurchase.getDetails() != null)
         {
             for (FinPurchaseDetail detail : finPurchase.getDetails())
@@ -262,7 +263,11 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
                 nameByProduct.put(pid, detail.getProductName());
                 if (!"1".equals(detail.getIsGift()))
                 {
-                    costByProduct.put(pid, detail.getPrice() != null ? detail.getPrice() : BigDecimal.ZERO);
+                    BigDecimal price = detail.getPrice() != null ? detail.getPrice() : BigDecimal.ZERO;
+                    costByProduct.put(pid, price);
+                    // 累加非赠品明细的采购金额（单价 * 数量），赠品金额为 0 不计入成本池
+                    BigDecimal detailAmount = price.multiply(BigDecimal.valueOf(detail.getQuantity()));
+                    amountByProduct.merge(pid, detailAmount, BigDecimal::add);
                 }
             }
         }
@@ -280,6 +285,7 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
             int target = targetByProduct.getOrDefault(productId, 0);
             String productName = nameByProduct.get(productId);
             BigDecimal cost = costByProduct.getOrDefault(productId, BigDecimal.ZERO);
+            BigDecimal amount = amountByProduct.getOrDefault(productId, BigDecimal.ZERO);
             finStockLedgerService.reconcilePurchaseStock(
                     TenantContext.getTenantId(),
                     finPurchase.getDeptId(),
@@ -289,6 +295,7 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
                     finPurchase.getPurchaseNo(),
                     target,
                     cost,
+                    amount,
                     finPurchase.getCreateBy()
             );
         }
@@ -312,7 +319,7 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
         for (Long productId : recordedProductIds)
         {
             finStockLedgerService.reconcilePurchaseStock(TenantContext.getTenantId(), deptId, productId, null, purchaseId, purchaseNo,
-                    0, BigDecimal.ZERO, operator);
+                    0, BigDecimal.ZERO, BigDecimal.ZERO, operator);
         }
     }
 

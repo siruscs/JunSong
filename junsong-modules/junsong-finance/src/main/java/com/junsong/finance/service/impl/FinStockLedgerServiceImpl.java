@@ -10,6 +10,7 @@ import com.junsong.common.redis.service.RedisService;
 import com.junsong.finance.domain.FinStockLedger;
 import com.junsong.finance.mapper.FinStockLedgerMapper;
 import com.junsong.finance.service.IFinStockLedgerService;
+import com.junsong.finance.service.IStockCostService;
 
 /**
  * 库存流水写入服务实现。
@@ -20,6 +21,7 @@ import com.junsong.finance.service.IFinStockLedgerService;
  * 3. 计算 delta = target - 已记录净额
  * 4. delta != 0 才写流水，天然幂等
  * 5. 更新 position 到新结存
+ * 6. 联动 IStockCostService（如果注入）更新移动加权平均成本
  *
  * @author junsong
  */
@@ -40,12 +42,24 @@ public class FinStockLedgerServiceImpl implements IFinStockLedgerService {
     @Autowired(required = false)
     private RedisService redisService;
 
+    @Autowired(required = false)
+    private IStockCostService stockCostService;
+
     private Boolean allowNegativeSaleOutOverride;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void reconcilePurchaseStock(Long tenantId, Long deptId, Long productId, String productName, Long referenceId,
                                        String referenceNo, Integer targetQuantity, BigDecimal unitCost, String operator) {
+        reconcilePurchaseStock(tenantId, deptId, productId, productName, referenceId, referenceNo,
+                               targetQuantity, unitCost, null, operator);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void reconcilePurchaseStock(Long tenantId, Long deptId, Long productId, String productName, Long referenceId,
+                                       String referenceNo, Integer targetQuantity, BigDecimal unitCost,
+                                       BigDecimal inboundAmount, String operator) {
         assertTenantScope(tenantId, deptId, productId);
         assertNonNegative(targetQuantity);
         finStockLedgerMapper.insertPositionIfAbsent(tenantId, deptId, productId);
@@ -62,6 +76,18 @@ public class FinStockLedgerServiceImpl implements IFinStockLedgerService {
                     unitCost, REF_PURCHASE, referenceId, referenceNo, operator);
         int affected = finStockLedgerMapper.updatePositionQuantity(tenantId, deptId, productId, after);
         assertPositionUpdated(affected);
+
+        // 联动成本层（仅在成本服务注入时）
+        if (stockCostService != null) {
+            if (delta > 0) {
+                BigDecimal amount = inboundAmount != null
+                        ? inboundAmount
+                        : (unitCost != null ? unitCost.multiply(BigDecimal.valueOf(delta)) : BigDecimal.ZERO);
+                stockCostService.applyPurchaseInbound(tenantId, deptId, productId, delta, amount, referenceId, operator);
+            } else {
+                stockCostService.reversePurchaseInbound(tenantId, deptId, productId, -delta, referenceId, operator);
+            }
+        }
     }
 
     @Override
@@ -86,13 +112,28 @@ public class FinStockLedgerServiceImpl implements IFinStockLedgerService {
         }
 
         String changeType;
+        BigDecimal solidifiedCost = null;
         if (delta < 0) {
             changeType = SALE_OUT;
+            // 销售出库：先固化成本，再写流水（流水 unit_cost 记录固化成本供后续冲销）
+            if (stockCostService != null) {
+                solidifiedCost = stockCostService.applySaleOutbound(tenantId, deptId, productId,
+                        -delta, isAllowNegativeSaleOut(), referenceId, operator);
+            }
         } else {
             changeType = SALE_REVERSE;
+            // 销售冲销：查询原 SALE_OUT 固化成本，按原成本回补
+            if (stockCostService != null) {
+                BigDecimal originalCost = finStockLedgerMapper.selectSaleOutUnitCost(tenantId, referenceId, productId);
+                if (originalCost != null) {
+                    stockCostService.reverseSaleOutbound(tenantId, deptId, productId, delta, originalCost,
+                            referenceId, operator);
+                    solidifiedCost = originalCost;
+                }
+            }
         }
         writeLedger(tenantId, deptId, productId, productName, changeType, delta, current, after,
-                    null, REF_SALE, referenceId, referenceNo, operator);
+                    solidifiedCost, REF_SALE, referenceId, referenceNo, operator);
         int affected = finStockLedgerMapper.updatePositionQuantity(tenantId, deptId, productId, after);
         assertPositionUpdated(affected);
     }

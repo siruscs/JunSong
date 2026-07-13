@@ -29,6 +29,17 @@ public interface IFinStockLedgerService {
                                 String referenceNo, Integer targetQuantity, BigDecimal unitCost, String operator);
 
     /**
+     * 采购入库对账（含显式入库金额）：与上方法相同，但显式传入入库总金额。
+     * 用于同商品混合普通+赠品明细时，传入剔除赠品后的真实采购金额，
+     * 保证赠品数量进入库存但金额不进入成本池。
+     *
+     * @param inboundAmount 入库总金额（2位小数，赠品金额为0），null 时回退为 unitCost * targetQuantity
+     */
+    void reconcilePurchaseStock(Long tenantId, Long deptId, Long productId, String productName, Long referenceId,
+                                String referenceNo, Integer targetQuantity, BigDecimal unitCost,
+                                BigDecimal inboundAmount, String operator);
+
+    /**
      * 销售出库对账：将某销售单对某商品的出库量对齐到 targetQuantity。
      * targetQuantity=0 表示该销售被删除或数量清零，将反向回补已出库量。
      *

@@ -275,16 +275,12 @@ class FinStockLedgerServiceImplTest {
         }
 
         // ---- R7-E 快照相关方法桩实现（本测试不涉及，仅为满足接口契约） ----
-        @Override
-        public java.util.List<com.junsong.finance.domain.vo.FinStockPositionView> selectPositionsByDept(Long deptId) {
-            return new java.util.ArrayList<>();
-        }
-
-        @Override
-        public com.junsong.finance.domain.vo.DailyFlowView sumDailyFlow(java.time.LocalDate snapshotDate,
-                                                                          Long deptId, Long productId) {
-            return null;
-        }
+        @Override public com.junsong.finance.domain.vo.DailyFlowView sumDailyFlow(Long tenantId, java.time.LocalDate date, Long deptId, Long productId) { return null; }
+        @Override public java.util.List<Long> selectSnapshotProductIds(Long tenantId, java.time.LocalDate date, Long deptId) { return java.util.List.of(); }
+        @Override public com.junsong.finance.domain.FinStockSnapshot selectPreviousSnapshot(Long tenantId, java.time.LocalDate date, Long deptId, Long productId) { return null; }
+        @Override public FinStockLedger selectFirstDailyLedger(Long tenantId, java.time.LocalDate date, Long deptId, Long productId) { return null; }
+        @Override public FinStockLedger selectLastLedgerBeforeDate(Long tenantId, java.time.LocalDate date, Long deptId, Long productId) { return null; }
+        @Override public java.util.List<com.junsong.finance.domain.vo.FinStockPositionView> selectAllTenantDeptScopesWithPosition() { return java.util.List.of(); }
 
         @Override
         public int upsertSnapshot(com.junsong.finance.domain.FinStockSnapshot snapshot) {
@@ -292,8 +288,18 @@ class FinStockLedgerServiceImplTest {
         }
 
         @Override
-        public java.util.List<Long> selectAllDeptIdsWithPosition() {
-            return java.util.Collections.emptyList();
+        public java.math.BigDecimal selectSaleOutUnitCost(Long tenantId, Long referenceId, Long productId) {
+            for (FinStockLedger l : inserted) {
+                if (tenantId.equals(l.getTenantId())
+                        && "SALE".equals(l.getReferenceType())
+                        && referenceId.equals(l.getReferenceId())
+                        && productId.equals(l.getProductId())
+                        && "SALE_OUT".equals(l.getChangeType())) {
+                    return l.getUnitCost();
+                }
+            }
+            return null;
         }
+
     }
 }

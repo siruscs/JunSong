@@ -84,8 +84,6 @@ public interface FinStockLedgerMapper {
      * @param deptId 门店ID
      * @return 结存行列表
      */
-    List<FinStockPositionView> selectPositionsByDept(@Param("deptId") Long deptId);
-
     /**
      * 汇总某门店某商品某日的入库/出库数量（取自 fin_stock_ledger）。
      * 正向流水计入 inQuantity，反向流水绝对值计入 outQuantity。
@@ -96,12 +94,32 @@ public interface FinStockLedgerMapper {
      * @param productId 商品ID
      * @return 当日流水量视图
      */
-    DailyFlowView sumDailyFlow(@Param("snapshotDate") LocalDate snapshotDate,
+    DailyFlowView sumDailyFlow(@Param("tenantId") Long tenantId,
+                                @Param("snapshotDate") LocalDate snapshotDate,
                                 @Param("deptId") Long deptId,
                                 @Param("productId") Long productId);
 
+    List<Long> selectSnapshotProductIds(@Param("tenantId") Long tenantId,
+                                         @Param("snapshotDate") LocalDate snapshotDate,
+                                         @Param("deptId") Long deptId);
+
+    FinStockSnapshot selectPreviousSnapshot(@Param("tenantId") Long tenantId,
+                                             @Param("snapshotDate") LocalDate snapshotDate,
+                                             @Param("deptId") Long deptId,
+                                             @Param("productId") Long productId);
+
+    FinStockLedger selectFirstDailyLedger(@Param("tenantId") Long tenantId,
+                                           @Param("snapshotDate") LocalDate snapshotDate,
+                                           @Param("deptId") Long deptId,
+                                           @Param("productId") Long productId);
+
+    FinStockLedger selectLastLedgerBeforeDate(@Param("tenantId") Long tenantId,
+                                               @Param("snapshotDate") LocalDate snapshotDate,
+                                               @Param("deptId") Long deptId,
+                                               @Param("productId") Long productId);
+
     /**
-     * 幂等写入库存快照：基于唯一键 (snapshot_date, dept_id, product_id) 做 upsert。
+     * 幂等写入库存快照：基于唯一键 (tenant_id, snapshot_date, dept_id, product_id) 做 upsert。
      * 同日同门店同商品重复执行将 UPDATE 而非产生重复行。
      *
      * @param snapshot 库存快照
@@ -110,9 +128,22 @@ public interface FinStockLedgerMapper {
     int upsertSnapshot(FinStockSnapshot snapshot);
 
     /**
+     * 查询某销售单对某商品的原 SALE_OUT 流水固化的单位成本。
+     * 用于销售冲销时按原成本回补成本层。
+     *
+     * @param tenantId 租户ID
+     * @param referenceId 销售单ID
+     * @param productId 商品ID
+     * @return 原固化单位成本，无记录返回 null
+     */
+    java.math.BigDecimal selectSaleOutUnitCost(@Param("tenantId") Long tenantId,
+                                                @Param("referenceId") Long referenceId,
+                                                @Param("productId") Long productId);
+
+    /**
      * R21：查询所有有当前结存的门店ID列表（去重），供库存每日快照批量重建。
      *
      * @return 门店ID列表
      */
-    List<Long> selectAllDeptIdsWithPosition();
+    List<FinStockPositionView> selectAllTenantDeptScopesWithPosition();
 }

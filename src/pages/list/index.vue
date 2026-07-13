@@ -139,10 +139,10 @@
           <view class="expense-body">
             <view class="expense-row1">
               <text class="expense-content">{{ item.expenseContent || displayField('expenseType', item.expenseType) || '-' }}</text>
-              <text class="expense-amount">{{ expenseAmountText(item) }}</text>
+              <text class="expense-amount" :class="{ income: isIncomeExpense(item) }">{{ expenseAmountText(item) }}</text>
             </view>
             <view class="expense-row2">
-              <text class="expense-meta">支出</text>
+              <text class="expense-meta">{{ item.expenseType || '-' }}</text>
               <text class="expense-meta">{{ displayField('paymentMethod', item.paymentMethod) || '-' }}</text>
               <text class="expense-meta date">{{ item.expenseDate || '-' }}</text>
               <text class="expense-status" :class="expenseStatusClass(item.status)">{{ expenseStatusText(item.status) }}</text>
@@ -404,8 +404,11 @@ export default {
       return String(val ?? '0') === '1' ? 'status-verified' : 'status-pending'
     },
     expenseAmountText(item) {
-      const amount = Math.abs(Number(item.expenseAmount) || 0)
-      return `¥${amount}`
+      const amount = Number(item.expenseAmount) || 0
+      return `¥${amount.toFixed(2)}`
+    },
+    isIncomeExpense(item) {
+      return item.expenseType === '收入' || Number(item.expenseAmount) < 0
     },
     canClaim(item) {
       const remaining = Number(item.remainingShares ?? item.shares ?? 0)
@@ -1581,6 +1584,10 @@ export default {
   font-weight: 800;
   color: #C65A4A;
   flex-shrink: 0;
+}
+
+.expense-amount.income {
+  color: #059669;
 }
 
 .expense-row2 {

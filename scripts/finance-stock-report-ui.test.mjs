@@ -80,6 +80,7 @@ test('StockLedgerDrawer.vue exists and calls the ledger API', () => {
   assert.match(ledgerDrawer, /el-drawer/, 'drawer must render an el-drawer')
   assert.match(ledgerDrawer, /el-pagination/, 'drawer must have its own pagination')
   assert.match(ledgerDrawer, /\.catch\(/, 'drawer must handle errors')
+  assert.doesNotMatch(ledgerDrawer, /@open=/, 'drawer must not fetch both on open event and visible watcher')
 })
 
 test('StockLedgerDrawer.vue renders the required ledger columns', () => {
@@ -92,4 +93,11 @@ test('StockLedgerDrawer.vue renders the required ledger columns', () => {
   assert.match(ledgerDrawer, /来源单号/)
   assert.match(ledgerDrawer, /操作人/)
   assert.match(ledgerDrawer, /备注/)
+})
+
+test('StockLedgerDrawer.vue formats time and source type for operators', () => {
+  assert.match(ledgerDrawer, /parseTime/)
+  assert.match(ledgerDrawer, /referenceTypeLabel/)
+  assert.match(ledgerDrawer, /PURCHASE:\s*'采购单'/)
+  assert.match(ledgerDrawer, /SALE:\s*'销售单'/)
 })

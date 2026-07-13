@@ -296,6 +296,7 @@ const ledgerDrawer = read('junsong-ui-v3/src/views/finance/report/components/Sto
 
 test('StockLedgerDrawer.vue 调用 getStockLedgerPage', () => {
   assert.match(ledgerDrawer, /getStockLedgerPage/)
+  assert.doesNotMatch(ledgerDrawer, /@open=/, '抽屉打开时不能同时由 open 事件和 visible watcher 重复请求')
 })
 
 test('StockLedgerDrawer.vue 渲染流水下钻所需列', () => {
@@ -313,6 +314,8 @@ test('StockLedgerDrawer.vue 渲染流水下钻所需列', () => {
   for (const col of expectedCols) {
     assert.match(ledgerDrawer, new RegExp(col), `缺少列 ${col}`)
   }
+  assert.match(ledgerDrawer, /parseTime/, '流水变动时间应格式化展示，避免 ISO T 分隔符')
+  assert.match(ledgerDrawer, /referenceTypeLabel/, '来源类型应展示中文标签')
 })
 
 // =====================================================================

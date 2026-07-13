@@ -126,7 +126,9 @@
         <el-card class="section-card" shadow="never">
           <template #header><span>库存明细</span></template>
           <el-table v-loading="loading" :data="items" stripe border style="width: 100%" empty-text="暂无数据">
-            <el-table-column prop="deptName" label="门店" min-width="120" show-overflow-tooltip />
+            <el-table-column label="门店" min-width="120" show-overflow-tooltip>
+              <template #default="{ row }">{{ row.deptName || deptNameById(row.deptId) }}</template>
+            </el-table-column>
             <el-table-column prop="productCode" label="商品编码" min-width="120" show-overflow-tooltip />
             <el-table-column prop="productName" label="商品名称" min-width="140" show-overflow-tooltip />
             <el-table-column prop="unit" label="单位" width="70" align="center" />
@@ -135,8 +137,12 @@
             <el-table-column prop="purchaseNetInQuantity" label="采购净入库" width="100" align="right" />
             <el-table-column prop="saleNetOutQuantity" label="销售净出库" width="100" align="right" />
             <el-table-column prop="closingQuantity" label="期末" width="80" align="right" />
-            <el-table-column prop="lastInboundTime" label="最近入库" min-width="150" />
-            <el-table-column prop="lastOutboundTime" label="最近出库" min-width="150" />
+            <el-table-column label="最近入库" min-width="150">
+              <template #default="{ row }">{{ formatDateTime(row.lastInboundTime) }}</template>
+            </el-table-column>
+            <el-table-column label="最近出库" min-width="150">
+              <template #default="{ row }">{{ formatDateTime(row.lastOutboundTime) }}</template>
+            </el-table-column>
             <el-table-column prop="daysWithoutSale" label="无出库天数" width="100" align="right" />
             <el-table-column label="库存状态" width="100" align="center">
               <template #default="{ row }">
@@ -294,6 +300,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { saveAs } from 'file-saver'
+import { parseTime } from '@/utils/junsong'
 import {
   getStockReport,
   exportStockReport,
@@ -407,6 +414,17 @@ function syncDateRange() {
 function formatQty(val: number | undefined | null) {
   if (val === null || val === undefined) return '-'
   return Number(val)
+}
+
+function formatDateTime(val: string | undefined | null): string {
+  if (!val) return '-'
+  return parseTime(val, '{y}-{m}-{d} {h}:{i}:{s}') || val.replace('T', ' ')
+}
+
+function deptNameById(deptId: number | undefined | null): string {
+  if (!deptId) return '-'
+  const dept = depts.value.find((item: any) => Number(item.deptId) === Number(deptId))
+  return dept?.deptName || `门店${deptId}`
 }
 
 function formatAmount(val: number | undefined | null): string {

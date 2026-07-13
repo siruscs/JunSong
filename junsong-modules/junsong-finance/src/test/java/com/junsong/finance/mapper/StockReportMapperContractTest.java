@@ -128,6 +128,8 @@ class StockReportMapperContractTest {
         assertTrue(body.contains("purchase_net_in"), "汇总必须包含采购净入库口径 purchase_net_in");
         assertTrue(body.contains("'PURCHASE_IN'"), "PURCHASE_IN 必须计入采购净入库");
         assertTrue(body.contains("'PURCHASE_REVERSE'"), "PURCHASE_REVERSE 必须计入采购净入库");
+        assertTrue(collapse(body).contains("WHEN 'PURCHASE_REVERSE' THEN change_quantity"),
+                "采购冲销流水 change_quantity 已为负数，采购净入库不得二次取反");
     }
 
     @Test
@@ -136,6 +138,17 @@ class StockReportMapperContractTest {
         assertTrue(body.contains("sale_net_out"), "汇总必须包含销售净出库口径 sale_net_out");
         assertTrue(body.contains("'SALE_OUT'"), "SALE_OUT 必须计入销售净出库");
         assertTrue(body.contains("'SALE_REVERSE'"), "SALE_REVERSE 必须计入销售净出库");
+        assertTrue(collapse(body).contains("WHEN 'SALE_OUT' THEN -change_quantity"),
+                "销售出库流水 change_quantity 已为负数，销售净出库展示应转为正向出库量");
+        assertTrue(collapse(body).contains("WHEN 'SALE_REVERSE' THEN -change_quantity"),
+                "销售冲销流水 change_quantity 已为正数，销售净出库应负向抵减");
+    }
+
+    @Test
+    void openingQuantityUsesSignedLedgerDeltaDirectly() throws Exception {
+        String body = resolvedStatement(loadMapperXml(), "selectStockReportSummary");
+        assertTrue(collapse(body).contains("COALESCE(SUM(change_quantity), 0) AS opening_quantity"),
+                "期初数量应直接累加带符号的库存流水 change_quantity");
     }
 
     @Test

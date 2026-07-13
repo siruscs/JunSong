@@ -103,7 +103,7 @@
 </template>
 
 <script>
-import { request, setToken, getToken, getBaseUrl } from '@/api/index.js'
+import { request, setToken, getToken } from '@/api/index.js'
 
 export default {
   data() {
@@ -127,35 +127,8 @@ export default {
   onLoad() {
     const sysInfo = uni.getSystemInfoSync()
     this.statusBarHeight = sysInfo.statusBarHeight || 20
-    this.testConnection()
   },
   methods: {
-    async testConnection() {
-      this.connStatus = 'testing'
-      this.connText = '正在检测连接...'
-      try {
-        const [err, res] = await new Promise((resolve) => {
-          uni.request({
-            url: getBaseUrl() + '/auth/mp/login',
-            method: 'POST',
-            data: {},
-            header: { 'Content-Type': 'application/json' },
-            complete: (r) => resolve([null, r]),
-            fail: (e) => resolve([e, null])
-          })
-        })
-        if (res && res.statusCode) {
-          this.connStatus = 'ok'
-          this.connText = '后端连接正常 · ' + getBaseUrl()
-        } else {
-          this.connStatus = 'fail'
-          this.connText = '连接失败 · 点击重试或检查设置'
-        }
-      } catch (e) {
-        this.connStatus = 'fail'
-        this.connText = '连接失败 · 点击重试或检查设置'
-      }
-    },
     pickDept(dept) {
       this.selectedDeptId = dept.deptId || dept.id
     },

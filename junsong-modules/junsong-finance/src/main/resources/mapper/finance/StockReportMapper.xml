@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.StockReportMapper">
+
+    <!--
+        授权库存基础过滤：租户 + 授权门店集合。
+        作为每个子查询 WHERE 的起始片段，调用处形如：
+            WHERE <include refid="AuthorizedStockBase"/> AND ...
+        日期条件因语义不同（区间内 / 区间前 / 区间末快照）由各查询内联，不放入本片段。
+    -->
+    <sql id="AuthorizedStockBase">
+        tenant_id = #{tenantId}
+        <if test="query.deptIds != null and query.deptIds.size() > 0">
+            AND dept_id IN
+            <foreach item="deptId" collection="query.deptIds" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+    </sql>
+
+    <!--
+        单商品维度计算核心：期初 / 采购净入库 / 销售净出库 / 期末 / 最近出入库时间 /
+        无出库天数 / 库存状态 / 对账状态。
+        期初优先取 startDate 之前最近一次 fin_stock_snapshot 的期末数量；
+        若无快照则回退为 startDate 之前 fin_stock_ledger 净累加。
+        期末 = 期初 + 采购净入库 - 销售净出库。
+        对账状态：将流水推算的期末与 endDate 当日快照对比，不一致记为 ANOMALY。
+    -->
+    <sql id="stockReportPerProduct">
+        SELECT
+            base.tenant_id AS tenantId,
+            base.dept_id AS deptId,
+            snap.dept_name AS deptName,
+            base.product_id AS productId,
+            prod.product_code AS productCode,
+            COALESCE(prod.product_name, snap.product_name) AS productName,
+            prod.unit AS unit,
+            prod.min_stock AS minStock,
+            COALESCE(snap.quantity, led_open.opening_quantity, 0) AS openingQuantity,
+            COALESCE(rng.purchase_net_in, 0) AS purchaseNetInQuantity,
+            COALESCE(rng.sale_net_out, 0) AS saleNetOutQuantity,
+            COALESCE(snap.quantity, led_open.opening_quantity, 0)
+                + COALESCE(rng.purchase_net_in, 0)
+                - COALESCE(rng.sale_net_out, 0) AS closingQuantity,
+            rng.last_inbound_time AS lastInboundTime,
+            rng.last_outbound_time AS lastOutboundTime,
+            CASE WHEN rng.last_outbound_time IS NULL
+                 THEN NULL
+                 ELSE DATEDIFF(#{query.endDate}, rng.last_outbound_time)
+            END AS daysWithoutSale,
+            CASE
+                WHEN COALESCE(snap.quantity, led_open.opening_quantity, 0)
+                     + COALESCE(rng.purchase_net_in, 0)
+                     - COALESCE(rng.sale_net_out, 0) &lt; 0 THEN 'NEGATIVE_STOCK'
+                WHEN COALESCE(snap.quantity, led_open.opening_quantity, 0)
+                     + COALESCE(rng.purchase_net_in, 0)
+                     - COALESCE(rng.sale_net_out, 0) = 0 THEN 'ZERO_STOCK'
+                WHEN prod.min_stock IS NOT NULL
+                     AND COALESCE(snap.quantity, led_open.opening_quantity, 0)
+                     + COALESCE(rng.purchase_net_in, 0)
+                     - COALESCE(rng.sale_net_out, 0) &lt; prod.min_stock THEN 'LOW_STOCK'
+                WHEN rng.last_outbound_time IS NULL
+                     OR DATEDIFF(#{query.endDate}, rng.last_outbound_time) &gt; 30 THEN 'STALE'
+                ELSE 'NORMAL'
+            END AS stockStatus,
+            CASE
+                WHEN snap_end.end_snapshot_quantity IS NOT NULL
+                     AND snap_end.end_snapshot_quantity &lt;&gt;
+                     COALESCE(snap.quantity, led_open.opening_quantity, 0)
+                     + COALESCE(rng.purchase_net_in, 0)
+                     - COALESCE(rng.sale_net_out, 0) THEN 'ANOMALY'
+                ELSE 'OK'
+            END AS reconciliationStatus
+        FROM (
+            SELECT DISTINCT tenant_id, dept_id, product_id
+            FROM fin_stock_ledger
+            WHERE <include refid="AuthorizedStockBase"/>
+              AND del_flag = '0'
+            UNION
+            SELECT DISTINCT tenant_id, dept_id, product_id
+            FROM fin_stock_snapshot
+            WHERE <include refid="AuthorizedStockBase"/>
+        ) base
+        LEFT JOIN fin_product prod
+            ON prod.product_id = base.product_id
+            AND prod.del_flag = '0'
+        LEFT JOIN (
+            SELECT s.tenant_id, s.dept_id, s.product_id, s.quantity, s.dept_name, s.product_name
+            FROM fin_stock_snapshot s
+            INNER JOIN (
+                SELECT tenant_id, dept_id, product_id, MAX(snapshot_date) AS max_date
+                FROM fin_stock_snapshot
+                WHERE <include refid="AuthorizedStockBase"/>
+                  AND snapshot_date &lt; #{query.startDate}
+                GROUP BY tenant_id, dept_id, product_id
+            ) lm ON lm.tenant_id = s.tenant_id
+                 AND lm.dept_id = s.dept_id
+                 AND lm.product_id = s.product_id
+                 AND lm.max_date = s.snapshot_date
+            WHERE <include refid="AuthorizedStockBase"/>
+              AND s.snapshot_date &lt; #{query.startDate}
+        ) snap ON snap.tenant_id = base.tenant_id
+              AND snap.dept_id = base.dept_id
+              AND snap.product_id = base.product_id
+        LEFT JOIN (
+            SELECT tenant_id, dept_id, product_id,
+                COALESCE(SUM(CASE change_type
+                        WHEN 'PURCHASE_IN' THEN change_quantity
+                        WHEN 'SALE_REVERSE' THEN change_quantity
+                        WHEN 'SALE_OUT' THEN -change_quantity
+                        WHEN 'PURCHASE_REVERSE' THEN -change_quantity
+                        ELSE 0 END), 0) AS opening_quantity
+            FROM fin_stock_ledger
+            WHERE <include refid="AuthorizedStockBase"/>
+              AND del_flag = '0'
+              AND create_time &lt; #{query.startDate}
+            GROUP BY tenant_id, dept_id, product_id
+        ) led_open ON led_open.tenant_id = base.tenant_id
+                  AND led_open.dept_id = base.dept_id
+                  AND led_open.product_id = base.product_id
+        LEFT JOIN (
+            SELECT tenant_id, dept_id, product_id,
+                SUM(CASE change_type
+                        WHEN 'PURCHASE_IN' THEN change_quantity
+                        WHEN 'PURCHASE_REVERSE' THEN -change_quantity
+                        ELSE 0 END) AS purchase_net_in,
+                SUM(CASE change_type
+                        WHEN 'SALE_OUT' THEN change_quantity
+                        WHEN 'SALE_REVERSE' THEN -change_quantity
+                        ELSE 0 END) AS sale_net_out,
+                MAX(CASE WHEN change_type IN ('PURCHASE_IN','SALE_REVERSE') THEN create_time END) AS last_inbound_time,
+                MAX(CASE WHEN change_type IN ('SALE_OUT','PURCHASE_REVERSE') THEN create_time END) AS last_outbound_time
+            FROM fin_stock_ledger
+            WHERE <include refid="AuthorizedStockBase"/>
+              AND del_flag = '0'
+              AND create_time &gt;= #{query.startDate}
+              AND create_time &lt; DATE_ADD(#{query.endDate}, INTERVAL 1 DAY)
+            GROUP BY tenant_id, dept_id, product_id
+        ) rng ON rng.tenant_id = base.tenant_id
+              AND rng.dept_id = base.dept_id
+              AND rng.product_id = base.product_id
+        LEFT JOIN (
+            SELECT tenant_id, dept_id, product_id, quantity AS end_snapshot_quantity
+            FROM fin_stock_snapshot
+            WHERE <include refid="AuthorizedStockBase"/>
+              AND snapshot_date = #{query.endDate}
+        ) snap_end ON snap_end.tenant_id = base.tenant_id
+                  AND snap_end.dept_id = base.dept_id
+                  AND snap_end.product_id = base.product_id
+    </sql>
+
+    <!-- 汇总指标：覆盖全部授权范围内商品，不受 keyword/status 过滤 -->
+    <select id="selectStockReportSummary" resultType="com.junsong.finance.domain.vo.StockReportSummaryVO">
+        SELECT
+            COALESCE(SUM(p.openingQuantity), 0) AS openingQuantity,
+            COALESCE(SUM(p.purchaseNetInQuantity), 0) AS purchaseNetInQuantity,
+            COALESCE(SUM(p.saleNetOutQuantity), 0) AS saleNetOutQuantity,
+            0 AS otherAdjustmentNetQuantity,
+            COALESCE(SUM(p.closingQuantity), 0) AS closingQuantity,
+            SUM(CASE WHEN p.stockStatus = 'NEGATIVE_STOCK' THEN 1 ELSE 0 END) AS negativeStockCount,
+            SUM(CASE WHEN p.stockStatus = 'LOW_STOCK' THEN 1 ELSE 0 END) AS lowStockCount,
+            SUM(CASE WHEN p.stockStatus = 'ZERO_STOCK' THEN 1 ELSE 0 END) AS zeroStockCount,
+            SUM(CASE WHEN p.stockStatus = 'STALE' THEN 1 ELSE 0 END) AS staleStockCount,
+            SUM(CASE WHEN p.reconciliationStatus = 'ANOMALY' THEN 1 ELSE 0 END) AS anomalyCount
+        FROM (
+            <include refid="stockReportPerProduct"/>
+        ) p
+    </select>
+
+    <!-- 分页明细：受 keyword/status 过滤 -->
+    <select id="selectStockReportItems" resultType="com.junsong.finance.domain.vo.StockReportItemVO">
+        <bind name="offset" value="(query.pageNum - 1) * query.pageSize"/>
+        SELECT * FROM (
+            <include refid="stockReportPerProduct"/>
+        ) p
+        <where>
+            <if test="query.keyword != null and query.keyword != ''">
+                AND (p.productName LIKE CONCAT('%', #{query.keyword}, '%')
+                     OR p.productCode LIKE CONCAT('%', #{query.keyword}, '%'))
+            </if>
+            <if test="query.status != null and query.status != ''">
+                AND p.stockStatus = #{query.status}
+            </if>
+        </where>
+        ORDER BY p.tenantId, p.deptId, p.productId
+        LIMIT #{offset}, #{query.pageSize}
+    </select>
+
+    <!-- 明细总数：受 keyword/status 过滤，不含分页 -->
+    <select id="countStockReportItems" resultType="long">
+        SELECT COUNT(*) FROM (
+            <include refid="stockReportPerProduct"/>
+        ) p
+        <where>
+            <if test="query.keyword != null and query.keyword != ''">
+                AND (p.productName LIKE CONCAT('%', #{query.keyword}, '%')
+                     OR p.productCode LIKE CONCAT('%', #{query.keyword}, '%'))
+            </if>
+            <if test="query.status != null and query.status != ''">
+                AND p.stockStatus = #{query.status}
+            </if>
+        </where>
+    </select>
+
+    <!-- 单商品库存流水下钻 -->
+    <select id="selectStockLedgerRows" resultType="com.junsong.finance.domain.vo.StockLedgerRowVO">
+        SELECT
+            ledger_id AS ledgerId,
+            tenant_id AS tenantId,
+            dept_id AS deptId,
+            product_id AS productId,
+            product_name AS productName,
+            change_type AS changeType,
+            change_quantity AS changeQuantity,
+            before_quantity AS beforeQuantity,
+            after_quantity AS afterQuantity,
+            reference_type AS referenceType,
+            reference_id AS referenceId,
+            reference_no AS referenceNo,
+            create_by AS createBy,
+            create_time AS createTime,
+            remark
+        FROM fin_stock_ledger
+        WHERE tenant_id = #{tenantId}
+          AND dept_id = #{deptId}
+          AND product_id = #{productId}
+          AND del_flag = '0'
+          AND create_time &gt;= #{startDate}
+          AND create_time &lt; DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+        ORDER BY create_time ASC, ledger_id ASC
+    </select>
+
+</mapper>

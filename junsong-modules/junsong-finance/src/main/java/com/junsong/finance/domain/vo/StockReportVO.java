@@ -1,61 +1,69 @@
 package com.junsong.finance.domain.vo;
 
-import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 
 /**
- * 库存报表 VO
+ * 经营库存报表复合 VO。
+ *
+ * <p>由汇总指标 {@link StockReportSummaryVO}、分页明细 {@link StockReportItemVO}
+ * 与分页元信息组成。</p>
+ *
+ * @author junsong
  */
 public class StockReportVO {
-    /** 总库存 */
-    private Integer totalStock = 0;
-    /** 库存金额 */
-    private BigDecimal totalValue = BigDecimal.ZERO;
-    /** 低库存商品数 */
-    private Integer lowStockCount = 0;
-    /** 门店统计 */
-    private List<Map<String, Object>> deptStats;
-    /** 分类统计 */
-    private List<Map<String, Object>> categoryStats;
 
-    public Integer getTotalStock() {
-        return totalStock;
+    /** 汇总指标 */
+    private StockReportSummaryVO summary;
+
+    /** 分页明细行 */
+    private List<StockReportItemVO> items;
+
+    /** 分页前总条数 */
+    private long total;
+
+    /** 当前页码（1基） */
+    private int pageNum;
+
+    /** 每页大小 */
+    private int pageSize;
+
+    public StockReportSummaryVO getSummary() {
+        return summary;
     }
 
-    public void setTotalStock(Integer totalStock) {
-        this.totalStock = totalStock;
+    public void setSummary(StockReportSummaryVO summary) {
+        this.summary = summary;
     }
 
-    public BigDecimal getTotalValue() {
-        return totalValue;
+    public List<StockReportItemVO> getItems() {
+        return items;
     }
 
-    public void setTotalValue(BigDecimal totalValue) {
-        this.totalValue = totalValue;
+    public void setItems(List<StockReportItemVO> items) {
+        this.items = items;
     }
 
-    public Integer getLowStockCount() {
-        return lowStockCount;
+    public long getTotal() {
+        return total;
     }
 
-    public void setLowStockCount(Integer lowStockCount) {
-        this.lowStockCount = lowStockCount;
+    public void setTotal(long total) {
+        this.total = total;
     }
 
-    public List<Map<String, Object>> getDeptStats() {
-        return deptStats;
+    public int getPageNum() {
+        return pageNum;
     }
 
-    public void setDeptStats(List<Map<String, Object>> deptStats) {
-        this.deptStats = deptStats;
+    public void setPageNum(int pageNum) {
+        this.pageNum = pageNum;
     }
 
-    public List<Map<String, Object>> getCategoryStats() {
-        return categoryStats;
+    public int getPageSize() {
+        return pageSize;
     }
 
-    public void setCategoryStats(List<Map<String, Object>> categoryStats) {
-        this.categoryStats = categoryStats;
+    public void setPageSize(int pageSize) {
+        this.pageSize = pageSize;
     }
 }

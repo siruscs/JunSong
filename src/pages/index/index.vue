@@ -411,7 +411,7 @@ const QUICK_ACTIONS = [
 export default {
   data() {
     return {
-      stats: null,
+      stats: {},
       overview: null,
       period: null,
       expenseSummary: null,
@@ -779,15 +779,14 @@ export default {
           params.deptId = this.currentDeptId
         }
         const res = await request({ url: '/member/mp/dashboard/stats', method: 'GET', data: params })
-        this.stats = res.data || res
+        const data = res.data || res
+        this.stats = data && typeof data === 'object' ? data : {}
       } catch (e) {
         console.log('dashboard load failed', e)
-        if (!this.stats) {
-          this.stats = {
-            todayMembers: 0, totalMembers: 0, activeMembers: 0,
-            todaySale: 0, todayExpense: 0, totalSale: 0, totalExpense: 0,
-            totalPurchase: 0, pointsExchangeCount: 0
-          }
+        this.stats = {
+          todayMembers: 0, totalMembers: 0, activeMembers: 0,
+          todaySale: 0, todayExpense: 0, totalSale: 0, totalExpense: 0,
+          totalPurchase: 0, pointsExchangeCount: 0
         }
       } finally {
         this.loading = false

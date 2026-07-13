@@ -661,8 +661,12 @@ export default {
       uni.reLaunch({ url: '/pages/login/index' })
       return
     }
-    const systemInfo = uni.getSystemInfoSync()
-    this.statusBarH = systemInfo.statusBarHeight || 20
+    try {
+      const sysInfo = uni.getSystemInfoSync()
+      this.statusBarH = sysInfo.statusBarHeight || 20
+    } catch (e) {
+      this.statusBarH = 20
+    }
     try {
       this.menuButton = uni.getMenuButtonBoundingClientRect()
     } catch (e) {
@@ -674,13 +678,17 @@ export default {
     this.currentDeptId = userInfo.currentDeptId || userInfo.deptId || null
     this.modules = uni.getStorageSync('modules') || []
     const safe = (p) => p.catch(e => console.log('onShow request failed', e))
-    safe(this.refreshModules())
     safe(this.loadUserContext())
     safe(this.loadDashboard())
-    safe(this.loadOverview())
-    safe(this.loadPeriod())
-    safe(this.loadSeckill())
-    safe(this.loadExpenseSummary())
+    setTimeout(() => {
+      safe(this.loadOverview())
+      safe(this.loadPeriod())
+    }, 200)
+    setTimeout(() => {
+      safe(this.refreshModules())
+      safe(this.loadSeckill())
+      safe(this.loadExpenseSummary())
+    }, 600)
   },
   methods: {
     go(url) {
@@ -941,9 +949,6 @@ export default {
         }
         const current = resolveCurrentDept(this.deptList, this.currentDeptId)
         if (current) this.currentDeptId = current.id
-        setTimeout(() => {
-          this.loadServerStatus().catch(e => console.log('server status load failed', e))
-        }, 2000)
       } catch (e) {
         const cached = this.userInfo || {}
         this.deptList = normalizeDeptOptions(cached.depts || [])
@@ -1038,15 +1043,22 @@ export default {
     },
     onRefresh() {
       this.refreshing = true
+      const safe = (p) => p.catch(e => console.log('refresh request failed', e))
       Promise.all([
-        this.refreshModules(),
-        this.loadUserContext(),
-        this.loadDashboard(),
-        this.loadOverview(),
-        this.loadPeriod(),
-        this.loadSeckill(),
-        this.loadExpenseSummary()
-      ].map(p => p.catch(e => console.log('refresh request failed', e)))).finally(() => {
+        safe(this.loadUserContext()),
+        safe(this.loadDashboard())
+      ]).then(() => {
+        return Promise.all([
+          safe(this.loadOverview()),
+          safe(this.loadPeriod())
+        ])
+      }).then(() => {
+        return Promise.all([
+          safe(this.refreshModules()),
+          safe(this.loadSeckill()),
+          safe(this.loadExpenseSummary())
+        ])
+      }).finally(() => {
         this.refreshing = false
       })
     }

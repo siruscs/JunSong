@@ -41,13 +41,14 @@
           v-for="(field, fIdx) in secondaryFields"
           :key="fIdx"
           class="field-row"
-          :class="{ 'phone-callable': isPhoneField(field), 'sensitive-toggle': field.sensitive, 'image-field-row': field.type === 'image' }"
+          :class="{ 'phone-callable': isPhoneField(field), 'sensitive-toggle': field.sensitive, 'image-field-row': field.type === 'image', 'textarea-field-row': field.type === 'textarea' }"
           @tap="onFieldTap(field)"
         >
           <view class="field-label">{{ field.label }}</view>
           <view v-if="field.type === 'image' && field.rawValue" class="field-image-wrap">
             <image class="field-image" :src="resolveImageUrl(field.rawValue)" mode="aspectFit" @tap="previewImage(field.rawValue)" />
           </view>
+          <view v-else-if="field.type === 'textarea'" class="field-value field-value-textarea">{{ field.value }}</view>
           <view v-else class="field-value" :class="field.class">{{ field.value }}</view>
         </view>
       </view>
@@ -1088,6 +1089,23 @@ export default {
   flex-direction: column;
   align-items: flex-start;
   gap: 12rpx;
+}
+
+/* textarea 字段：上下排列，保留换行格式 */
+.textarea-field-row {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8rpx;
+}
+
+.field-value-textarea {
+  width: 100%;
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.6;
+  font-weight: 400;
+  color: #2C3E50;
 }
 
 .field-image-wrap {

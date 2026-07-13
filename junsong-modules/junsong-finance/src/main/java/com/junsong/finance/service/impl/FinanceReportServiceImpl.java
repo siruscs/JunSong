@@ -2,7 +2,9 @@ package com.junsong.finance.service.impl;
 
 
 import com.junsong.common.core.constant.SecurityConstants;
+import com.junsong.common.core.context.TenantContext;
 import com.junsong.common.core.domain.R;
+import com.junsong.common.core.exception.ServiceException;
 import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.finance.domain.FinAccountingPeriod;
 import com.junsong.finance.domain.vo.*;
@@ -14,7 +16,9 @@ import com.junsong.finance.mapper.FinExpenseMapper;
 import com.junsong.finance.mapper.FinProfitShareDetailMapper;
 import com.junsong.finance.mapper.FinProfitShareRecordMapper;
 import com.junsong.finance.mapper.FinSaleRecordMapper;
+import com.junsong.finance.mapper.StockReportMapper;
 import com.junsong.finance.service.IFinanceReportService;
+import com.junsong.finance.service.IStockHealthService;
 import com.junsong.finance.service.diagnosis.FinanceDiagnosisContext;
 import com.junsong.finance.service.diagnosis.FinanceDiagnosisResult;
 import com.junsong.finance.service.diagnosis.FinanceDiagnosisRule;
@@ -57,6 +61,12 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
 
     @Autowired
     private FinAccountingPeriodMapper finAccountingPeriodMapper;
+
+    @Autowired
+    private StockReportMapper stockReportMapper;
+
+    @Autowired
+    private IStockHealthService stockHealthService;
 
     /**
      * Diagnosis rule engine — NIGHT-P1-C refactoring.
@@ -169,8 +179,139 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
     }
 
     @Override
-    public StockReportVO getStockReport(ReportQueryParams params) {
-        throw new com.junsong.common.core.exception.ServiceException("库存报表数据口径尚未稳定，暂不开放");
+    public StockReportVO getStockReport(StockReportQuery query) {
+        StockReportSummaryVO summary = getStockReportSummary(query);
+        List<StockReportItemVO> items = getStockReportPage(query);
+        long total = stockReportMapper.countStockReportItems(TenantContext.getTenantId(), query);
+
+        StockReportVO vo = new StockReportVO();
+        vo.setSummary(summary);
+        vo.setItems(items);
+        vo.setTotal(total);
+        vo.setPageNum(query.getPageNum() != null ? query.getPageNum() : 1);
+        vo.setPageSize(query.getPageSize() != null ? query.getPageSize() : 20);
+        return vo;
+    }
+
+    @Override
+    public StockReportSummaryVO getStockReportSummary(StockReportQuery query) {
+        Long tenantId = TenantContext.getTenantId();
+        applyStockDataScope(query);
+        validateStockReportRequest(tenantId, query);
+        return stockReportMapper.selectStockReportSummary(tenantId, query);
+    }
+
+    @Override
+    public List<StockReportItemVO> getStockReportPage(StockReportQuery query) {
+        Long tenantId = TenantContext.getTenantId();
+        applyStockDataScope(query);
+        validateStockReportRequest(tenantId, query);
+        return stockReportMapper.selectStockReportItems(tenantId, query);
+    }
+
+    @Override
+    public List<StockLedgerRowVO> getStockLedgerPage(Long deptId, Long productId,
+                                                      LocalDate startDate, LocalDate endDate,
+                                                      Integer pageNum, Integer pageSize) {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null) {
+            throw new ServiceException("租户上下文缺失，禁止查询库存流水");
+        }
+        if (deptId == null || productId == null) {
+            throw new ServiceException("门店ID和商品ID不能为空");
+        }
+        int page = pageNum == null || pageNum < 1 ? 1 : pageNum;
+        int size = pageSize == null || pageSize < 1 ? 20 : Math.min(pageSize, 200);
+
+        List<StockLedgerRowVO> allRows = stockReportMapper.selectStockLedgerRows(
+                tenantId, deptId, productId, startDate, endDate);
+        if (allRows == null || allRows.isEmpty()) {
+            return Collections.emptyList();
+        }
+        int start = (page - 1) * size;
+        if (start >= allRows.size()) {
+            return Collections.emptyList();
+        }
+        int end = Math.min(start + size, allRows.size());
+        return new ArrayList<>(allRows.subList(start, end));
+    }
+
+    @Override
+    public List<StockReportItemVO> exportStockReport(StockReportQuery query) {
+        Long tenantId = TenantContext.getTenantId();
+        applyStockDataScope(query);
+        validateStockReportRequest(tenantId, query);
+        StockReportQuery exportQuery = new StockReportQuery();
+        exportQuery.setDeptIds(query.getDeptIds());
+        exportQuery.setStartDate(query.getStartDate());
+        exportQuery.setEndDate(query.getEndDate());
+        exportQuery.setKeyword(query.getKeyword());
+        exportQuery.setStatus(query.getStatus());
+        exportQuery.setPageNum(1);
+        exportQuery.setPageSize(200);
+        return stockReportMapper.selectStockReportItems(tenantId, exportQuery);
+    }
+
+    @Override
+    public StockReconciliationResultVO getStockReconciliation(StockReportQuery query) {
+        Long tenantId = TenantContext.getTenantId();
+        applyStockDataScope(query);
+        validateStockReportRequest(tenantId, query);
+        return stockHealthService.reconcileStock(tenantId, query.getDeptIds());
+    }
+
+    /**
+     * 库存报表数据权限：admin 可见全部门店；非 admin 取请求部门与授权部门的交集，
+     * 交集为空时 fail-closed 抛出 ServiceException。
+     */
+    private void applyStockDataScope(StockReportQuery query) {
+        if (SecurityUtils.isAdmin()) {
+            return;
+        }
+        List<Long> allowed = loadAllowedDeptIds();
+        if (allowed.isEmpty()) {
+            Long currentDeptId = SecurityUtils.getDeptId();
+            if (currentDeptId != null) {
+                allowed = Collections.singletonList(currentDeptId);
+            } else {
+                throw new ServiceException("当前用户无授权门店，禁止查询库存报表");
+            }
+        }
+        List<Long> requested = query.getDeptIds();
+        if (requested == null || requested.isEmpty()) {
+            query.setDeptIds(new ArrayList<>(allowed));
+            return;
+        }
+        List<Long> finalAllowed = allowed;
+        List<Long> filtered = requested.stream()
+                .filter(finalAllowed::contains)
+                .collect(Collectors.toList());
+        if (filtered.isEmpty()) {
+            throw new ServiceException("请求的门店均不在授权范围内");
+        }
+        query.setDeptIds(filtered);
+    }
+
+    /**
+     * 校验库存报表请求：租户上下文必填、查询参数必填、pageSize 1..200、日期区间最长 366 天。
+     * 将 IllegalArgumentException 转为 ServiceException 以返回安全业务提示。
+     */
+    static void validateStockReportRequest(Long tenantId, StockReportQuery query) {
+        if (tenantId == null) {
+            throw new ServiceException("租户上下文缺失，禁止查询库存报表");
+        }
+        if (query == null) {
+            throw new ServiceException("查询参数不能为空");
+        }
+        Integer pageSize = query.getPageSize();
+        if (pageSize != null && (pageSize < 1 || pageSize > 200)) {
+            throw new ServiceException("每页大小必须在1-200之间");
+        }
+        try {
+            query.validate();
+        } catch (IllegalArgumentException e) {
+            throw new ServiceException(e.getMessage());
+        }
     }
 
     @Override

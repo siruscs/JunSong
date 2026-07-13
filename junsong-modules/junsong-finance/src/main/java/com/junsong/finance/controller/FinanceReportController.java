@@ -8,6 +8,9 @@ import com.junsong.finance.service.IFinanceReportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.util.List;
+
 @RestController
 @RequestMapping("/report")
 public class FinanceReportController extends BaseController {
@@ -52,9 +55,75 @@ public class FinanceReportController extends BaseController {
 
     @RequiresPermissions("finance:report:stock")
     @PostMapping("/stock")
-    public AjaxResult getStockReport(@RequestBody ReportQueryParams params) {
-        StockReportVO report = financeReportService.getStockReport(params);
+    public AjaxResult getStockReport(@RequestBody StockReportQuery query) {
+        StockReportVO report = financeReportService.getStockReport(query);
         return AjaxResult.success(report);
+    }
+
+    @RequiresPermissions("finance:report:stock")
+    @PostMapping("/stock/summary")
+    public AjaxResult getStockReportSummary(@RequestBody StockReportQuery query) {
+        StockReportSummaryVO summary = financeReportService.getStockReportSummary(query);
+        return AjaxResult.success(summary);
+    }
+
+    @RequiresPermissions("finance:report:stock")
+    @PostMapping("/stock/page")
+    public AjaxResult getStockReportPage(@RequestBody StockReportQuery query) {
+        List<StockReportItemVO> items = financeReportService.getStockReportPage(query);
+        return AjaxResult.success(items);
+    }
+
+    @RequiresPermissions("finance:report:stock")
+    @PostMapping("/stock/ledger/page")
+    public AjaxResult getStockLedgerPage(@RequestBody StockLedgerQuery query) {
+        List<StockLedgerRowVO> rows = financeReportService.getStockLedgerPage(
+                query.getDeptId(), query.getProductId(),
+                query.getStartDate(), query.getEndDate(),
+                query.getPageNum(), query.getPageSize());
+        return AjaxResult.success(rows);
+    }
+
+    @RequiresPermissions("finance:report:stock:export")
+    @PostMapping("/stock/export")
+    public AjaxResult exportStockReport(@RequestBody StockReportQuery query) {
+        List<StockReportItemVO> items = financeReportService.exportStockReport(query);
+        return AjaxResult.success(items);
+    }
+
+    @RequiresPermissions("finance:stock:reconciliation")
+    @PostMapping("/stock/reconciliation")
+    public AjaxResult getStockReconciliation(@RequestBody StockReportQuery query) {
+        StockReconciliationResultVO result = financeReportService.getStockReconciliation(query);
+        return AjaxResult.success(result);
+    }
+
+    /** 库存流水下钻查询参数。 */
+    public static class StockLedgerQuery {
+        private Long deptId;
+        private Long productId;
+        private LocalDate startDate;
+        private LocalDate endDate;
+        private Integer pageNum;
+        private Integer pageSize;
+
+        public Long getDeptId() { return deptId; }
+        public void setDeptId(Long deptId) { this.deptId = deptId; }
+
+        public Long getProductId() { return productId; }
+        public void setProductId(Long productId) { this.productId = productId; }
+
+        public LocalDate getStartDate() { return startDate; }
+        public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
+
+        public LocalDate getEndDate() { return endDate; }
+        public void setEndDate(LocalDate endDate) { this.endDate = endDate; }
+
+        public Integer getPageNum() { return pageNum; }
+        public void setPageNum(Integer pageNum) { this.pageNum = pageNum; }
+
+        public Integer getPageSize() { return pageSize; }
+        public void setPageSize(Integer pageSize) { this.pageSize = pageSize; }
     }
 
     @RequiresPermissions("finance:report:profit")

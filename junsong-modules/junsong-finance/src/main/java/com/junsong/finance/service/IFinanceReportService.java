@@ -2,6 +2,7 @@ package com.junsong.finance.service;
 
 import com.junsong.finance.domain.vo.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface IFinanceReportService {
@@ -10,7 +11,12 @@ public interface IFinanceReportService {
     ProfitShareReportVO getProfitShareReport(ReportQueryParams params);
     SaleReportVO getSaleReport(ReportQueryParams params);
     ProfitReportVO getProfitReport(ReportQueryParams params);
-    StockReportVO getStockReport(ReportQueryParams params);
+    StockReportVO getStockReport(StockReportQuery query);
+    StockReportSummaryVO getStockReportSummary(StockReportQuery query);
+    List<StockReportItemVO> getStockReportPage(StockReportQuery query);
+    List<StockLedgerRowVO> getStockLedgerPage(Long deptId, Long productId, LocalDate startDate, LocalDate endDate, Integer pageNum, Integer pageSize);
+    List<StockReportItemVO> exportStockReport(StockReportQuery query);
+    StockReconciliationResultVO getStockReconciliation(StockReportQuery query);
     FinanceOperationDashboardVO getOperationDashboard(ReportQueryParams params);
     OperatingProfitReportVO getOperatingProfitReport(ReportQueryParams params);
     ExpenseAnomalyReportVO getExpenseAnomalyReport(ReportQueryParams params);

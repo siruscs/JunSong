@@ -134,6 +134,11 @@ test('StockReportMapper.xml 流水下钻按 create_time ASC, ledger_id ASC 确�
   assert.match(block, /ORDER BY create_time ASC, ledger_id ASC/i)
 })
 
+test('StockReportMapper.xml 快照 JOIN 外层使用带别名的授权过滤，避免 tenant_id 歧义', () => {
+  assert.match(stockReportXml, /<sql id="AuthorizedStockBaseS">[\s\S]*?s\.tenant_id = #\{tenantId\}/)
+  assert.match(stockReportXml, /WHERE\s+<include refid="AuthorizedStockBaseS"\/>[\s\S]*?AND s\.snapshot_date &lt; #\{query\.startDate\}/)
+})
+
 // =====================================================================
 // 3. 后端 FinanceReportController 契约
 // =====================================================================
@@ -142,9 +147,9 @@ const controller = read(
   'junsong-modules/junsong-finance/src/main/java/com/junsong/finance/controller/FinanceReportController.java',
 )
 
-test('Controller 暴露 6 个库存相关端点', () => {
+test('Controller 暴露 8 个库存相关端点', () => {
   const stockEndpoints = controller.match(/@PostMapping\s*\(\s*"\/stock[^"]*"\s*\)/g) || []
-  assert.equal(stockEndpoints.length, 6, `期望 6 个库存端点，实际 ${stockEndpoints.length}`)
+  assert.equal(stockEndpoints.length, 8, `期望 8 个库存端点，实际 ${stockEndpoints.length}`)
 })
 
 test('Controller 库存查看端点使用 finance:report:stock 权限', () => {

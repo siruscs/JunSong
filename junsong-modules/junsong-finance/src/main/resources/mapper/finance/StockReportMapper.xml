@@ -20,6 +20,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </if>
     </sql>
 
+    <sql id="AuthorizedStockBaseS">
+        s.tenant_id = #{tenantId}
+        <if test="query.deptIds != null and query.deptIds.size() > 0">
+            AND s.dept_id IN
+            <foreach item="deptId" collection="query.deptIds" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+    </sql>
+
     <!--
         单商品维度计算核心：期初 / 采购净入库 / 销售净出库 / 期末 / 最近出入库时间 /
         无出库天数 / 库存状态 / 对账状态。
@@ -99,7 +109,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                  AND lm.dept_id = s.dept_id
                  AND lm.product_id = s.product_id
                  AND lm.max_date = s.snapshot_date
-            WHERE <include refid="AuthorizedStockBase"/>
+            WHERE <include refid="AuthorizedStockBaseS"/>
               AND s.snapshot_date &lt; #{query.startDate}
         ) snap ON snap.tenant_id = base.tenant_id
               AND snap.dept_id = base.dept_id

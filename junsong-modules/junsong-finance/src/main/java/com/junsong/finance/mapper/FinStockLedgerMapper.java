@@ -155,4 +155,13 @@ public interface FinStockLedgerMapper {
      * @return 影响行数
      */
     int updateLedgerUnitCost(@Param("ledgerId") Long ledgerId, @Param("unitCost") java.math.BigDecimal unitCost);
+
+    /**
+     * 按 reference_no 查询已存在的盘点流水数量（用于盘点幂等校验）。
+     *
+     * @param tenantId 租户ID
+     * @param referenceNo 盘点单号
+     * @return 已存在流水数量
+     */
+    int countByReferenceNo(@Param("tenantId") Long tenantId, @Param("referenceNo") String referenceNo);
 }

@@ -204,4 +204,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where ledger_id = #{ledgerId}
           and del_flag = '0'
     </update>
+
+    <!-- 按 reference_no 查询已存在盘点流水（幂等校验） -->
+    <select id="countByReferenceNo" resultType="int">
+        select count(*) from fin_stock_ledger
+        where tenant_id = #{tenantId}
+          and reference_no = #{referenceNo}
+          and del_flag = '0'
+    </select>
 </mapper>

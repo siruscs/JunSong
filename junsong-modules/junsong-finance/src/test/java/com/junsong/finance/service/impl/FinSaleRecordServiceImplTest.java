@@ -465,5 +465,10 @@ class FinSaleRecordServiceImplTest {
             return 0;
         }
 
+        @Override
+        public int countByReferenceNo(Long tenantId, String referenceNo) {
+            return 0;
+        }
+
     }
 }

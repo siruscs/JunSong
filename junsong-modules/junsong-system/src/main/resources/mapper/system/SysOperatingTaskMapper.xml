@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.system.mapper.SysOperatingTaskMapper">
+
+    <resultMap type="com.junsong.system.domain.SysOperatingTask" id="SysOperatingTaskResult">
+        <id property="taskId" column="task_id"/>
+        <result property="title" column="title"/>
+        <result property="reason" column="reason"/>
+        <result property="suggestion" column="suggestion"/>
+        <result property="sourceModule" column="source_module"/>
+        <result property="sourceType" column="source_type"/>
+        <result property="sourceId" column="source_id"/>
+        <result property="sourceRoute" column="source_route"/>
+        <result property="taskType" column="task_type"/>
+        <result property="status" column="status"/>
+        <result property="priority" column="priority"/>
+        <result property="severity" column="severity"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="deptName" column="dept_name"/>
+        <result property="assigneeId" column="assignee_id"/>
+        <result property="assigneeName" column="assignee_name"/>
+        <result property="creatorId" column="creator_id"/>
+        <result property="dueTime" column="due_time"/>
+        <result property="occurTime" column="occur_time"/>
+        <result property="impactAmount" column="impact_amount"/>
+        <result property="idempotencyKey" column="idempotency_key"/>
+        <result property="handlerNote" column="handler_note"/>
+        <result property="rejectReason" column="reject_reason"/>
+        <result property="reopenCount" column="reopen_count"/>
+        <result property="version" column="version"/>
+        <result property="delFlag" column="del_flag"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <sql id="selectOperatingTaskVo">
+        select task_id, title, reason, suggestion, source_module, source_type, source_id, source_route,
+               task_type, status, priority, severity, dept_id, dept_name, assignee_id, assignee_name,
+               creator_id, due_time, occur_time, impact_amount, idempotency_key, handler_note, reject_reason,
+               reopen_count, version, del_flag, tenant_id, create_by, create_time, update_by, update_time, remark
+        from sys_operating_task
+    </sql>
+
+    <select id="selectOperatingTaskList" parameterType="java.util.Map" resultMap="SysOperatingTaskResult">
+        <include refid="selectOperatingTaskVo"/>
+        <where>
+            del_flag = '0'
+            <if test="status != null and status != ''">and status = #{status}</if>
+            <if test="assigneeId != null">and assignee_id = #{assigneeId}</if>
+            <if test="sourceModule != null and sourceModule != ''">and source_module = #{sourceModule}</if>
+            <if test="sourceType != null and sourceType != ''">and source_type = #{sourceType}</if>
+            <if test="priority != null and priority != ''">and priority = #{priority}</if>
+            <if test="deptIds != null and deptIds.size() > 0">
+                and dept_id in
+                <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">
+                    #{deptId}
+                </foreach>
+            </if>
+        </where>
+        order by
+            case priority
+                when 'URGENT' then 0
+                when 'HIGH' then 1
+                when 'MEDIUM' then 2
+                when 'LOW' then 3
+                else 4
+            end,
+            due_time asc,
+            occur_time desc
+    </select>
+
+    <select id="selectOperatingTaskById" parameterType="Long" resultMap="SysOperatingTaskResult">
+        <include refid="selectOperatingTaskVo"/>
+        <where>
+            task_id = #{taskId} and del_flag = '0'
+        </where>
+    </select>
+
+    <select id="selectByIdempotencyKey" resultMap="SysOperatingTaskResult">
+        <include refid="selectOperatingTaskVo"/>
+        <where>
+            idempotency_key = #{idempotencyKey} and del_flag = '0'
+        </where>
+    </select>
+
+    <insert id="insertOperatingTask" parameterType="com.junsong.system.domain.SysOperatingTask"
+            useGeneratedKeys="true" keyProperty="taskId">
+        insert into sys_operating_task
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            tenant_id,
+            title,
+            <if test="reason != null">reason,</if>
+            <if test="suggestion != null">suggestion,</if>
+            source_module,
+            source_type,
+            <if test="sourceId != null">source_id,</if>
+            <if test="sourceRoute != null">source_route,</if>
+            task_type,
+            status,
+            priority,
+            <if test="severity != null">severity,</if>
+            dept_id,
+            <if test="deptName != null">dept_name,</if>
+            <if test="assigneeId != null">assignee_id,</if>
+            <if test="assigneeName != null">assignee_name,</if>
+            <if test="creatorId != null">creator_id,</if>
+            <if test="dueTime != null">due_time,</if>
+            <if test="occurTime != null">occur_time,</if>
+            <if test="impactAmount != null">impact_amount,</if>
+            idempotency_key,
+            <if test="handlerNote != null">handler_note,</if>
+            <if test="rejectReason != null">reject_reason,</if>
+            del_flag,
+            <if test="createBy != null">create_by,</if>
+            create_time,
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="remark != null">remark,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            #{tenantId},
+            #{title},
+            <if test="reason != null">#{reason},</if>
+            <if test="suggestion != null">#{suggestion},</if>
+            #{sourceModule},
+            #{sourceType},
+            <if test="sourceId != null">#{sourceId},</if>
+            <if test="sourceRoute != null">#{sourceRoute},</if>
+            #{taskType},
+            #{status},
+            #{priority},
+            <if test="severity != null">#{severity},</if>
+            #{deptId},
+            <if test="deptName != null">#{deptName},</if>
+            <if test="assigneeId != null">#{assigneeId},</if>
+            <if test="assigneeName != null">#{assigneeName},</if>
+            <if test="creatorId != null">#{creatorId},</if>
+            <if test="dueTime != null">#{dueTime},</if>
+            <if test="occurTime != null">#{occurTime},</if>
+            <if test="impactAmount != null">#{impactAmount},</if>
+            #{idempotencyKey},
+            <if test="handlerNote != null">#{handlerNote},</if>
+            <if test="rejectReason != null">#{rejectReason},</if>
+            '0',
+            <if test="createBy != null">#{createBy},</if>
+            NOW(),
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="remark != null">#{remark},</if>
+        </trim>
+    </insert>
+
+    <!-- 条件更新状态：WHERE task_id=? AND status=? AND version=? -->
+    <!-- tenant_id 条件由 TenantSqlInterceptor 自动注入，不手写 -->
+    <update id="conditionalUpdateStatus">
+        update sys_operating_task
+        set status = #{newStatus},
+            version = version + 1,
+            update_time = NOW()
+            <if test="assigneeId != null">, assignee_id = #{assigneeId}</if>
+            <if test="assigneeName != null">, assignee_name = #{assigneeName}</if>
+            <if test="handlerNote != null">, handler_note = #{handlerNote}</if>
+            <if test="rejectReason != null">, reject_reason = #{rejectReason}</if>
+            <if test="reopenCount != null">, reopen_count = #{reopenCount}</if>
+        where task_id = #{taskId}
+          and status = #{oldStatus}
+          and version = #{oldVersion}
+          and del_flag = '0'
+    </update>
+
+    <update id="updateOperatingTask" parameterType="com.junsong.system.domain.SysOperatingTask">
+        update sys_operating_task
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="title != null">title = #{title},</if>
+            <if test="reason != null">reason = #{reason},</if>
+            <if test="suggestion != null">suggestion = #{suggestion},</if>
+            <if test="sourceModule != null">source_module = #{sourceModule},</if>
+            <if test="sourceType != null">source_type = #{sourceType},</if>
+            <if test="sourceId != null">source_id = #{sourceId},</if>
+            <if test="sourceRoute != null">source_route = #{sourceRoute},</if>
+            <if test="taskType != null">task_type = #{taskType},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="priority != null">priority = #{priority},</if>
+            <if test="severity != null">severity = #{severity},</if>
+            <if test="deptId != null">dept_id = #{deptId},</if>
+            <if test="deptName != null">dept_name = #{deptName},</if>
+            <if test="assigneeId != null">assignee_id = #{assigneeId},</if>
+            <if test="assigneeName != null">assignee_name = #{assigneeName},</if>
+            <if test="creatorId != null">creator_id = #{creatorId},</if>
+            <if test="dueTime != null">due_time = #{dueTime},</if>
+            <if test="occurTime != null">occur_time = #{occurTime},</if>
+            <if test="impactAmount != null">impact_amount = #{impactAmount},</if>
+            <if test="handlerNote != null">handler_note = #{handlerNote},</if>
+            <if test="rejectReason != null">reject_reason = #{rejectReason},</if>
+            <if test="reopenCount != null">reopen_count = #{reopenCount},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = NOW(),
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where task_id = #{taskId} and del_flag = '0'
+    </update>
+
+    <select id="countByStatusAndDept" resultType="int">
+        select count(*)
+        from sys_operating_task
+        <where>
+            del_flag = '0' and status = #{status}
+            <if test="deptIds != null and deptIds.size() > 0">
+                and dept_id in
+                <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">
+                    #{deptId}
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <select id="countPendingByAssigneeOrDept" resultType="int">
+        select count(*)
+        from sys_operating_task
+        <where>
+            del_flag = '0'
+            and status in ('PENDING', 'IN_PROGRESS', 'REOPENED')
+            and (
+                assignee_id = #{assigneeId}
+                <if test="deptIds != null and deptIds.size() > 0">
+                    or dept_id in
+                    <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">
+                        #{deptId}
+                    </foreach>
+                </if>
+            )
+        </where>
+    </select>
+
+</mapper>

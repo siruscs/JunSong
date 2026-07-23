@@ -168,5 +168,6 @@ class StockSnapshotServiceImplTest {
         @Override public List<com.junsong.finance.domain.vo.FinStockPositionView> selectAllTenantDeptScopesWithPosition(){return List.of();}
         @Override public java.math.BigDecimal selectSaleOutUnitCost(Long a, Long b, Long c){return null;}
         @Override public int updateLedgerUnitCost(Long a, java.math.BigDecimal b){return 0;}
+        @Override public int countByReferenceNo(Long a, String b){return 0;}
     }
 }

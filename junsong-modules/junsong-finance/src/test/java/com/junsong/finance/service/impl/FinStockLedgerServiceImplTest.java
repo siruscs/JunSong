@@ -332,6 +332,11 @@ class FinStockLedgerServiceImplTest {
             return 0;
         }
 
+        @Override
+        public int countByReferenceNo(Long tenantId, String referenceNo) {
+            return 0;
+        }
+
     }
 
     static class FakeStockCostService implements IStockCostService {

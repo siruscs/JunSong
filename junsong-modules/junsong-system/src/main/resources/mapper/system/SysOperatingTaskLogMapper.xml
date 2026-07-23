@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.system.mapper.SysOperatingTaskLogMapper">
+
+    <resultMap type="com.junsong.system.domain.SysOperatingTaskLog" id="SysOperatingTaskLogResult">
+        <id property="logId" column="log_id"/>
+        <result property="taskId" column="task_id"/>
+        <result property="action" column="action"/>
+        <result property="oldStatus" column="old_status"/>
+        <result property="newStatus" column="new_status"/>
+        <result property="operatorId" column="operator_id"/>
+        <result property="operatorName" column="operator_name"/>
+        <result property="note" column="note"/>
+        <result property="createTime" column="create_time"/>
+        <result property="tenantId" column="tenant_id"/>
+    </resultMap>
+
+    <insert id="insertTaskLog" parameterType="com.junsong.system.domain.SysOperatingTaskLog"
+            useGeneratedKeys="true" keyProperty="logId">
+        insert into sys_operating_task_log
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            tenant_id,
+            task_id,
+            action,
+            <if test="oldStatus != null">old_status,</if>
+            <if test="newStatus != null">new_status,</if>
+            <if test="operatorId != null">operator_id,</if>
+            <if test="operatorName != null">operator_name,</if>
+            <if test="note != null">note,</if>
+            create_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            #{tenantId},
+            #{taskId},
+            #{action},
+            <if test="oldStatus != null">#{oldStatus},</if>
+            <if test="newStatus != null">#{newStatus},</if>
+            <if test="operatorId != null">#{operatorId},</if>
+            <if test="operatorName != null">#{operatorName},</if>
+            <if test="note != null">#{note},</if>
+            NOW(),
+        </trim>
+    </insert>
+
+    <select id="selectLogsByTaskId" parameterType="Long" resultMap="SysOperatingTaskLogResult">
+        select log_id, task_id, action, old_status, new_status, operator_id, operator_name, note, create_time, tenant_id
+        from sys_operating_task_log
+        where task_id = #{taskId}
+        order by create_time asc, log_id asc
+    </select>
+
+</mapper>

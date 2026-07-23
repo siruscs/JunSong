@@ -262,7 +262,7 @@ export default {
 <style scoped>
 .page {
   min-height: 100vh;
-  background: #F0F4F8;
+  background: #E8EEF5;
   padding-bottom: env(safe-area-inset-bottom);
 }
 
@@ -293,7 +293,7 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #173B57, #2A6F97, #3A8DB8);
+  background: linear-gradient(135deg, #123F73, #087CF0, #5AA9E8);
 }
 
 .hero-content {
@@ -327,7 +327,7 @@ export default {
   background: #FFFFFF;
   border-radius: 22rpx;
   padding: 28rpx 32rpx;
-  box-shadow: 0 2rpx 16rpx rgba(42, 111, 151, 0.06);
+  box-shadow: 0 2rpx 16rpx rgba(8, 124, 240, 0.06);
 }
 
 .section-title {
@@ -336,7 +336,7 @@ export default {
   color: #1A2332;
   margin-bottom: 18rpx;
   padding-left: 16rpx;
-  border-left: 4rpx solid #2A6F97;
+  border-left: 4rpx solid #087CF0;
 }
 
 .field-row {
@@ -345,7 +345,7 @@ export default {
   align-items: flex-start;
   gap: 24rpx;
   padding: 16rpx 0;
-  border-bottom: 1rpx solid #F0F4F8;
+  border-bottom: 1rpx solid #E8EEF5;
 }
 
 .field-row:last-child {
@@ -383,7 +383,7 @@ export default {
   padding: 16rpx 28rpx;
   padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
   background: #FFFFFF;
-  box-shadow: 0 -2rpx 16rpx rgba(42, 111, 151, 0.08);
+  box-shadow: 0 -2rpx 16rpx rgba(8, 124, 240, 0.08);
   z-index: 100;
 }
 
@@ -405,9 +405,9 @@ export default {
 }
 
 .approve-btn {
-  background: linear-gradient(135deg, #2A6F97, #3A8DB8);
+  background: linear-gradient(135deg, #087CF0, #5AA9E8);
   color: #FFFFFF;
-  box-shadow: 0 6rpx 18rpx rgba(42, 111, 151, 0.25);
+  box-shadow: 0 6rpx 18rpx rgba(8, 124, 240, 0.25);
 }
 
 .reject-btn {
@@ -539,7 +539,7 @@ export default {
 }
 
 .panel-confirm.approve {
-  background: linear-gradient(135deg, #2A6F97, #3A8DB8);
+  background: linear-gradient(135deg, #087CF0, #5AA9E8);
   color: #FFFFFF;
 }
 

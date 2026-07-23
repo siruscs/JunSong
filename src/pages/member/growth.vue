@@ -90,7 +90,7 @@ export default {
       signInList: [],
       loading: false,
       refreshing: false,
-      barColors: ['#2A6F97', '#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EC4899']
+      barColors: ['#087CF0', '#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EC4899']
     }
   },
   computed: {
@@ -165,7 +165,7 @@ export default {
 <style scoped>
 .page {
   min-height: 100vh;
-  background: #F0F4F8;
+  background: #E8EEF5;
 }
 
 .hero {
@@ -201,7 +201,7 @@ export default {
   border-radius: 20rpx;
   padding: 28rpx;
   margin-bottom: 24rpx;
-  box-shadow: 0 2rpx 16rpx rgba(42, 111, 151, 0.06);
+  box-shadow: 0 2rpx 16rpx rgba(8, 124, 240, 0.06);
 }
 
 .section-header {
@@ -251,7 +251,7 @@ export default {
   color: #1A2332;
 }
 
-.stat-value.primary { color: #2A6F97; }
+.stat-value.primary { color: #087CF0; }
 .stat-value.success { color: #10B981; }
 
 .stat-label {
@@ -286,7 +286,7 @@ export default {
   flex: 1;
   min-width: 0;
   height: 24rpx;
-  background: #F0F4F8;
+  background: #E8EEF5;
   border-radius: 12rpx;
   overflow: hidden;
 }

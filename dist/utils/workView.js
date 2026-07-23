@@ -1,0 +1,1 @@
+"use strict";const e=new Set(["accountingPeriod","profitShare","costAccounting","verificationRecord","userManage","deptManage","wfTodo"]);exports.deriveWorkView=function({depts:t=[],modules:o=[]}={}){return t.length>1||o.some(t=>e.has(t))?{key:"management",label:"财务运营",homeTitle:"经营管理"}:{key:"store",label:"门店经营",homeTitle:"门店工作"}};

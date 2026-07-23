@@ -70,7 +70,7 @@
 
     <view class="bottom-bar">
       <button class="btn-cancel" @tap="goBack">取消</button>
-      <button class="btn-submit" @tap="submitForm">保存</button>
+      <button class="btn-submit" :disabled="saving" @tap="submitForm">{{ saving ? '保存中' : '保存' }}</button>
     </view>
   </view>
 </template>
@@ -85,6 +85,7 @@ export default {
       deptId: null,
       isAdd: true,
       parentOptions: [],
+      saving: false,
       form: {
         parentId: 0,
         deptName: '',
@@ -160,12 +161,14 @@ export default {
       return true
     },
     async submitForm() {
+      if (this.saving) return
       if (!this.validateForm()) return
       if (!this.hasPermission()) {
         uni.showToast({ title: '暂无权限', icon: 'none' })
         return
       }
 
+      this.saving = true
       try {
         const data = {
           ...this.form,
@@ -185,6 +188,8 @@ export default {
       } catch (e) {
         console.error('保存失败', e)
         uni.showToast({ title: '保存失败', icon: 'none' })
+      } finally {
+        this.saving = false
       }
     },
     hasPermission() {
@@ -202,7 +207,7 @@ export default {
 <style scoped>
 .page {
   min-height: 100vh;
-  background: #F0F4F8;
+  background: #E8EEF5;
   padding: 24rpx 28rpx;
   padding-bottom: 160rpx;
   box-sizing: border-box;
@@ -212,7 +217,7 @@ export default {
   background: #FFFFFF;
   border-radius: 24rpx;
   padding: 28rpx;
-  box-shadow: 0 2rpx 16rpx rgba(42, 111, 151, 0.06);
+  box-shadow: 0 2rpx 16rpx rgba(8, 124, 240, 0.06);
 }
 
 .form-header {
@@ -309,7 +314,7 @@ export default {
 }
 
 .radio-item.active {
-  background: rgba(42, 111, 151, 0.08);
+  background: rgba(8, 124, 240, 0.08);
 }
 
 .radio-dot {
@@ -321,7 +326,7 @@ export default {
 }
 
 .radio-item.active .radio-dot {
-  border-color: #2A6F97;
+  border-color: #087CF0;
 }
 
 .radio-item.active .radio-dot::after {
@@ -332,7 +337,7 @@ export default {
   transform: translate(-50%, -50%);
   width: 16rpx;
   height: 16rpx;
-  background: #2A6F97;
+  background: #087CF0;
   border-radius: 50%;
 }
 
@@ -370,7 +375,7 @@ export default {
 }
 
 .btn-submit {
-  background: linear-gradient(135deg, #2A6F97, #3A8DB8);
+  background: linear-gradient(135deg, #087CF0, #5AA9E8);
   color: #FFFFFF;
 }
 </style>

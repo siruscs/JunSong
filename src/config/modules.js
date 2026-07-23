@@ -37,7 +37,7 @@ export const modules = {
     searchKeys: ['memberName', 'memberNo'],
     summary: ['memberNo', 'phone', 'cardType', 'availablePoints', 'growthValue'],
     fields: [
-      { key: 'memberNo', label: '会员编号', required: true },
+      { key: 'memberNo', label: '会员编号', serverGenerated: true },
       { key: 'memberName', label: '会员姓名', required: true },
       { key: 'phone', label: '手机号码', type: 'phone' },
       { key: 'age', label: '年龄', type: 'number' },
@@ -305,7 +305,7 @@ export const modules = {
     summary: ['saleNo', 'saleQuantity', 'saleAmount', 'paidAmount', 'status'],
     fields: [
       { key: 'saleNo', label: '销售单号', hidden: true },
-      { key: 'productId', label: '商品', type: 'select', remoteUrl: '/finance/product/list', remoteLabel: 'productName', remoteValue: 'productId', remoteFilterDept: true, required: true },
+      { key: 'productId', label: '商品', type: 'select', remoteUrl: '/finance/product/list', remoteLabel: 'productName', remoteValue: 'productId', remoteFilterDept: true, required: true, formatter: (record) => record.productName || record.productId || '-' },
       { key: 'productName', label: '商品名称', hidden: true },
       { key: 'saleQuantity', label: '销售数量', type: 'number', required: true },
       { key: 'giftQuantity', label: '赠品数量', type: 'number' },
@@ -525,7 +525,7 @@ export const modules = {
   // ===== 移动办公 =====
   wfTodo: {
     group: '移动办公',
-    title: '待办任务',
+    title: '任务中心',
     customPage: '/pages/workflow/todo',
     permissions: { view: ['workflow:mobile:todo'] }
   },

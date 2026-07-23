@@ -148,7 +148,7 @@ export default {
 <style scoped>
 .page {
   min-height: 100vh;
-  background: #F0F4F8;
+  background: #E8EEF5;
 }
 
 .hero {
@@ -179,7 +179,7 @@ export default {
   background: #FFFFFF;
   border-radius: 16rpx;
   padding: 6rpx;
-  box-shadow: 0 2rpx 12rpx rgba(42, 111, 151, 0.06);
+  box-shadow: 0 2rpx 12rpx rgba(8, 124, 240, 0.06);
 }
 
 .tab-item {
@@ -193,7 +193,7 @@ export default {
 }
 
 .tab-item.active {
-  background: #2A6F97;
+  background: #087CF0;
   color: #FFFFFF;
   font-weight: 700;
 }
@@ -214,7 +214,7 @@ export default {
   padding: 24rpx;
   background: #FFFFFF;
   border-radius: 16rpx;
-  box-shadow: 0 2rpx 12rpx rgba(42, 111, 151, 0.05);
+  box-shadow: 0 2rpx 12rpx rgba(8, 124, 240, 0.05);
 }
 
 .batch-top {

@@ -39,7 +39,10 @@ export function normalizeDeptOptions(list = [], level = 0) {
 
 export function resolveCurrentDept(depts = [], currentDeptId) {
   if (!Array.isArray(depts) || depts.length === 0) return null
-  return depts.find((dept) => String(dept.id) === String(currentDeptId)) || depts[0]
+  if (currentDeptId !== undefined && currentDeptId !== null && currentDeptId !== '') {
+    return depts.find((dept) => String(dept.id) === String(currentDeptId)) || null
+  }
+  return depts[0]
 }
 
 export function normalizeServerStatus(list = []) {

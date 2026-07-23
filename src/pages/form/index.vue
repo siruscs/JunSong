@@ -120,7 +120,7 @@
             <text class="image-picker-text">上传图片</text>
           </view>
         </view>
-        <input v-else class="control input" v-model="form[field.key]" :type="inputType(field)" :disabled="isReadonlyField(field)" :placeholder="'请输入' + field.label" @input="onFieldInput(field.key, $event.detail.value)" />
+        <input v-else class="control input" v-model="form[field.key]" :type="inputType(field)" :disabled="isReadonlyField(field)" :placeholder="fieldPlaceholder(field)" @input="onFieldInput(field.key, $event.detail.value)" />
       </view>
     </view>
 
@@ -167,7 +167,7 @@
           </view>
           <view class="detail-row">
             <text class="detail-label">赠品</text>
-            <switch :checked="detail.isGift === '1'" @change="toggleGift(index, $event.detail.value)" color="#2A6F97" />
+            <switch :checked="detail.isGift === '1'" @change="toggleGift(index, $event.detail.value)" color="#087CF0" />
           </view>
         </view>
       </view>
@@ -226,7 +226,7 @@
             <text class="image-picker-text">上传图片</text>
           </view>
         </view>
-        <input v-else class="control input" v-model="form[field.key]" :type="inputType(field)" :disabled="isReadonlyField(field)" :placeholder="'请输入' + field.label" @input="onFieldInput(field.key, $event.detail.value)" />
+        <input v-else class="control input" v-model="form[field.key]" :type="inputType(field)" :disabled="isReadonlyField(field)" :placeholder="fieldPlaceholder(field)" @input="onFieldInput(field.key, $event.detail.value)" />
       </view>
     </view>
 
@@ -248,18 +248,22 @@
         <text class="btn-icon">◉</text> 预览
       </button>
       <button class="btn-primary" v-if="canSubmit" :disabled="submitting" @tap="submit">
-        <text class="btn-icon">✓</text> {{ mode === 'preview' ? '生成核算' : '保存' }}
+        <text class="btn-icon">✓</text> {{ submitting ? '保存中' : (mode === 'preview' ? '生成核算' : '保存') }}
       </button>
     </view>
   </view>
 </template>
 
 <script>
+import miniProgramShare from '@/mixins/miniProgramShare.js'
 import { getModule, displayValue } from '@/config/modules.js'
 import { getData, addData, updateData, request } from '@/api/index.js'
 import { hasActionPermission, requireModulePermission } from '@/utils/permission.js'
+import { isUnknownWriteOutcome } from '@/utils/operationState.js'
+import { validateMemberContact } from '@/utils/memberWorkflow.js'
 
 export default {
+  mixins: [miniProgramShare],
   data() {
     return {
       moduleKey: '',
@@ -353,7 +357,6 @@ export default {
         this.form.status = '0'
       }
       if (this.moduleKey === 'member' && !this.id) {
-        this.loadNextMemberNo()
         this.form.joinDate = this.todayStr()
         this.form.status = '0'
       }
@@ -442,7 +445,12 @@ export default {
       return false
     },
     isReadonlyField(field) {
+      if (this.moduleKey === 'member' && !this.id && field.serverGenerated) return true
       return this.isSeckillRecordCreate && field.key === 'totalAmount'
+    },
+    fieldPlaceholder(field) {
+      if (this.moduleKey === 'member' && !this.id && field.serverGenerated) return '系统自动生成'
+      return '请输入' + field.label
     },
     onFieldInput(key, value) {
       this.form[key] = value
@@ -512,15 +520,6 @@ export default {
         if (this.pointsCalc.insufficient) {
           this.form.extraAmount = this.pointsCalc.extra
         }
-      }
-    },
-    async loadNextMemberNo() {
-      try {
-        const res = await request({ url: '/member/member/nextNo', method: 'GET' })
-        const no = res.msg || res.data || ''
-        this.form.memberNo = no
-      } catch (e) {
-        console.log('获取会员编号失败', e)
       }
     },
     async loadDictOptions() {
@@ -755,6 +754,13 @@ export default {
         uni.showToast({ title: '请先选择会员', icon: 'none' })
         return false
       }
+      if (this.moduleKey === 'member') {
+        const contactError = validateMemberContact(this.form)
+        if (contactError) {
+          uni.showToast({ title: contactError, icon: 'none' })
+          return false
+        }
+      }
       const missing = this.config.fields.find((field) => field.required && !this.shouldHideFormField(field) && !this.form[field.key] && this.form[field.key] !== 0)
       if (missing) {
         uni.showToast({ title: '请填写' + missing.label, icon: 'none' })
@@ -795,6 +801,7 @@ export default {
       if (this.moduleKey === 'investRecord' && !this.id) {
         data.deptId = this.getCurrentDeptId()
       }
+      if (this.moduleKey === 'member' && !this.id) delete data.memberNo
       return data
     },
     async submit() {
@@ -832,7 +839,13 @@ export default {
           }
         }
       } catch (e) {
-        console.error('保存失败', e)
+        if (isUnknownWriteOutcome(e)) {
+          uni.showModal({
+            title: '保存结果待确认',
+            content: '网络中断，系统暂时无法确认是否保存成功。请返回列表刷新核对后，再决定是否重新提交。',
+            showCancel: false
+          })
+        }
       } finally {
         this.submitting = false
       }
@@ -1035,7 +1048,7 @@ export default {
 .page {
   min-height: 100vh;
   padding: 0 0 160rpx;
-  background: #F0F4F8;
+  background: #E8EEF5;
 }
 
 .hero-card {
@@ -1043,7 +1056,8 @@ export default {
   align-items: center;
   gap: 24rpx;
   padding: 36rpx 28rpx;
-  background: linear-gradient(135deg, #2A6F97, #3A8DB8, #8EC8D2);
+  background: linear-gradient(135deg, #C7DCF2 0%, #EAF3FC 100%);
+  border-top: 1rpx solid #B7D1EB;
   border-radius: 0 0 24rpx 24rpx;
 }
 
@@ -1069,13 +1083,13 @@ export default {
 .hero-title {
   font-size: 34rpx;
   font-weight: 700;
-  color: #FFFFFF;
+  color: #1F2D3D;
 }
 
 .hero-meta {
   margin-top: 6rpx;
   font-size: 22rpx;
-  color: rgba(255, 255, 255, 0.7);
+  color: #6E8197;
 }
 
 .section-card,
@@ -1084,7 +1098,8 @@ export default {
   padding: 28rpx;
   background: #FFFFFF;
   border-radius: 20rpx;
-  box-shadow: 0 2rpx 16rpx rgba(42, 111, 151, 0.06);
+  border: 1rpx solid #D5E0EC;
+  box-shadow: 0 5rpx 18rpx rgba(45, 72, 98, 0.07);
 }
 
 .section-header {
@@ -1098,7 +1113,7 @@ export default {
   width: 8rpx;
   height: 8rpx;
   border-radius: 50%;
-  background: #2A6F97;
+  background: #087CF0;
 }
 
 .section-dot.required {
@@ -1288,11 +1303,11 @@ export default {
 
 .form-item {
   padding-top: 20rpx;
-  border-top: 1rpx solid #F0F4F8;
+  border-top: 1rpx solid #E8EEF5;
 }
 
 .form-item + .form-item {
-  border-top: 1rpx solid #F0F4F8;
+  border-top: 1rpx solid #E8EEF5;
   padding-top: 20rpx;
 }
 
@@ -1329,7 +1344,7 @@ export default {
 }
 
 .control:focus {
-  border-color: #2A6F97;
+  border-color: #087CF0;
   background: #FFFFFF;
 }
 
@@ -1420,9 +1435,9 @@ export default {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #2A6F97, #3A8DB8);
+  background: linear-gradient(135deg, #087CF0, #5AA9E8);
   color: #FFFFFF;
-  box-shadow: 0 6rpx 20rpx rgba(42, 111, 151, 0.25);
+  box-shadow: 0 6rpx 20rpx rgba(8, 124, 240, 0.25);
 }
 
 .btn-secondary {
@@ -1441,7 +1456,7 @@ export default {
   gap: 6rpx;
   margin-left: auto;
   padding: 6rpx 16rpx;
-  background: #2A6F97;
+  background: #087CF0;
   border-radius: 999rpx;
 }
 
@@ -1556,13 +1571,13 @@ export default {
 
 .add-detail-icon {
   font-size: 28rpx;
-  color: #2A6F97;
+  color: #087CF0;
   font-weight: 700;
 }
 
 .add-detail-text {
   font-size: 22rpx;
-  color: #2A6F97;
+  color: #087CF0;
   font-weight: 500;
 }
 
@@ -1620,7 +1635,7 @@ export default {
 }
 
 .detail-value-text.amount {
-  color: #2A6F97;
+  color: #087CF0;
   font-weight: 700;
 }
 
@@ -1643,7 +1658,7 @@ export default {
 }
 
 .detail-control.has-value {
-  border-color: #2A6F97;
+  border-color: #087CF0;
 }
 
 .detail-picker-text {
@@ -1695,6 +1710,6 @@ export default {
 .detail-summary-value {
   font-size: 28rpx;
   font-weight: 700;
-  color: #2A6F97;
+  color: #087CF0;
 }
 </style>

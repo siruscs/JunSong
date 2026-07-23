@@ -42,12 +42,17 @@
           <text class="notice-content">{{ noticeContent(item) }}</text>
           <view class="notice-foot">
             <text class="notice-time">{{ item.createTime || '-' }}</text>
-            <text class="notice-arrow" v-if="item.taskId || item.businessId">查看详情 ›</text>
+            <text class="notice-arrow" v-if="notificationTarget(item)">去处理 ›</text>
           </view>
         </view>
       </view>
 
-      <view class="empty" v-if="!loading && rows.length === 0">
+      <view class="load-error" v-if="!loading && loadError">
+        <view class="empty-title">通知加载失败</view>
+        <view class="empty-subtitle">{{ loadError }}</view>
+        <button class="retry-button" @tap="refresh">重新加载</button>
+      </view>
+      <view class="empty" v-if="!loading && !loadError && rows.length === 0">
         <view class="empty-mark">邮</view>
         <view class="empty-title">暂无通知</view>
         <view class="empty-subtitle">新的消息会在这里提醒你</view>
@@ -60,6 +65,8 @@
 
 <script>
 import { getNotifications, getUnreadCount, markRead, markAllRead } from '@/api/workflow.js'
+import { hasExactPermission, hasModulePermission } from '@/utils/permission.js'
+import { resolveNotificationTarget } from '@/utils/notificationTarget.js'
 
 export default {
   data() {
@@ -71,7 +78,11 @@ export default {
       refreshing: false,
       finished: false,
       unreadCount: 0,
-      markingAll: false
+      markingAll: false,
+      loadError: '',
+      requestVersion: 0,
+      unreadVersion: 0,
+      markingReadIds: {}
     }
   },
   onShow() {
@@ -79,7 +90,7 @@ export default {
   },
   methods: {
     isUnread(item) {
-      return String(item.readStatus ?? item.status ?? '0') === '0'
+      return String(item.isRead ?? item.readStatus ?? item.status ?? '0') === '0'
     },
     noticeTitle(item) {
       return item.title || item.notificationTitle || item.taskName || '系统通知'
@@ -88,63 +99,100 @@ export default {
       return item.content || item.notificationContent || item.message || ''
     },
     noticeTypeText(item) {
-      const type = String(item.notificationType ?? item.type ?? '0')
-      const map = { '0': '系统', '1': '审批', '2': '待办', '3': '催办' }
+      const type = String(item.type ?? item.notificationType ?? '0')
+      const map = {
+        '0': '系统', '1': '审批', '2': '待办', '3': '催办',
+        wf_todo: '待办', wf_timeout_urge: '催办', wf_timeout_transfer: '转办',
+        wf_finished: '已办结', wf_rejected: '已驳回', finance_alert: '经营提醒'
+      }
       return map[type] || '通知'
     },
     noticeTypeClass(item) {
-      const type = String(item.notificationType ?? item.type ?? '0')
-      const map = { '0': 'type-system', '1': 'type-approve', '2': 'type-todo', '3': 'type-urgent' }
+      const type = String(item.type ?? item.notificationType ?? '0')
+      const map = {
+        '0': 'type-system', '1': 'type-approve', '2': 'type-todo', '3': 'type-urgent',
+        wf_todo: 'type-todo', wf_timeout_urge: 'type-urgent', wf_timeout_transfer: 'type-urgent',
+        wf_finished: 'type-approve', wf_rejected: 'type-urgent', finance_alert: 'type-urgent'
+      }
       return map[type] || 'type-system'
+    },
+    notificationTarget(item) {
+      return resolveNotificationTarget(item, {
+        workflowTodo: hasModulePermission('wfTodo') && hasExactPermission('workflow:task:list'),
+        workflowDone: hasModulePermission('wfDone') && hasExactPermission('workflow:task:list'),
+        expenseList: hasModulePermission('expense') && hasExactPermission('finance:expense:list')
+      })
     },
     async refresh() {
       this.pageNum = 1
       this.finished = false
       this.refreshing = true
+      const requestVersion = this.requestVersion + 1
       await this.fetchList(true)
-      this.refreshing = false
-      this.loadUnreadCount()
+      if (requestVersion === this.requestVersion) {
+        this.refreshing = false
+        this.loadUnreadCount()
+      }
     },
     async loadMore() {
       if (this.loading || this.finished) return
+      const previousPage = this.pageNum
+      const requestVersion = this.requestVersion + 1
       this.pageNum += 1
-      await this.fetchList(false)
+      const loaded = await this.fetchList(false)
+      if (!loaded && requestVersion === this.requestVersion) this.pageNum = previousPage
     },
     async fetchList(reset) {
+      const requestVersion = ++this.requestVersion
       this.loading = true
+      if (reset) this.loadError = ''
       try {
         const res = await getNotifications({ pageNum: this.pageNum, pageSize: this.pageSize })
         const list = res.rows || res.data || []
+        if (requestVersion !== this.requestVersion) return false
+        if (!Array.isArray(list)) throw new Error('通知数据格式异常')
         this.rows = reset ? list : this.rows.concat(list)
         this.finished = list.length < this.pageSize
+        return true
       } catch (e) {
-        console.error('加载通知失败', e)
+        if (requestVersion !== this.requestVersion) return false
+        if (reset) this.loadError = e?.msg || e?.message || '请检查网络后重试'
+        else uni.showToast({ title: '加载更多失败，请重试', icon: 'none' })
+        return false
       } finally {
-        this.loading = false
+        if (requestVersion === this.requestVersion) this.loading = false
       }
     },
     async loadUnreadCount() {
+      const unreadVersion = ++this.unreadVersion
       try {
         const res = await getUnreadCount()
+        if (unreadVersion !== this.unreadVersion) return
         const count = res.data
         this.unreadCount = Number(count === undefined || count === null ? 0 : count) || 0
       } catch (e) {
-        console.log('获取未读数失败', e)
+        // 列表中的未读状态仍可继续使用。
       }
     },
     async openNotice(item) {
-      if (this.isUnread(item) && item.id) {
+      const target = this.notificationTarget(item)
+      if (this.isUnread(item) && item.id && !this.markingReadIds[item.id]) {
+        this.markingReadIds[item.id] = true
         try {
           await markRead(item.id)
-          item.readStatus = '1'
+          this.unreadVersion += 1
+          item.isRead = '1'
           this.unreadCount = Math.max(0, this.unreadCount - 1)
         } catch (e) {
-          console.log('标记已读失败', e)
+          uni.showToast({ title: '已读状态暂未同步', icon: 'none' })
+        } finally {
+          delete this.markingReadIds[item.id]
         }
       }
-      const taskId = item.taskId || item.businessId
-      if (taskId) {
-        uni.navigateTo({ url: '/pages/workflow/detail?taskId=' + taskId })
+      if (target) {
+        uni.navigateTo({ url: target })
+      } else {
+        uni.showToast({ title: '暂无可打开的移动端页面', icon: 'none' })
       }
     },
     handleMarkAllRead() {
@@ -160,7 +208,8 @@ export default {
           this.markingAll = true
           try {
             await markAllRead()
-            this.rows.forEach((item) => { item.readStatus = '1' })
+            this.unreadVersion += 1
+            this.rows.forEach((item) => { item.isRead = '1' })
             this.unreadCount = 0
             uni.showToast({ title: '已全部标记已读', icon: 'success' })
           } catch (e) {
@@ -178,7 +227,7 @@ export default {
 <style scoped>
 .page {
   min-height: 100vh;
-  background: #F0F4F8;
+  background: #E8EEF5;
   width: 100vw;
   max-width: 100vw;
   overflow-x: hidden;
@@ -188,9 +237,10 @@ export default {
 .hero {
   margin: 24rpx 28rpx 0;
   padding: 36rpx 30rpx;
-  background: linear-gradient(135deg, #173B57, #2A6F97);
+  background: linear-gradient(135deg, #C7DCF2 0%, #EAF3FC 100%);
+  border: 1rpx solid #B7D1EB;
   border-radius: 24rpx;
-  box-shadow: 0 20rpx 54rpx rgba(42, 111, 151, 0.18);
+  box-shadow: 0 8rpx 24rpx rgba(45, 72, 98, 0.08);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -203,7 +253,7 @@ export default {
 
 .eyebrow {
   font-size: 22rpx;
-  color: rgba(255, 255, 255, 0.72);
+  color: #5F7893;
   font-weight: 600;
   letter-spacing: 2rpx;
 }
@@ -212,14 +262,15 @@ export default {
   margin-top: 8rpx;
   font-size: 42rpx;
   font-weight: 800;
-  color: #FFFFFF;
+  color: #1F2D3D;
 }
 
 .hero-badge {
   width: 110rpx;
   height: 110rpx;
   border-radius: 28rpx;
-  background: rgba(255, 255, 255, 0.14);
+  background: #EEF5FF;
+  border: 1rpx solid #CFE0F8;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -230,13 +281,13 @@ export default {
 .hero-badge-num {
   font-size: 40rpx;
   font-weight: 800;
-  color: #FFFFFF;
+  color: #087CF0;
 }
 
 .hero-badge-label {
   margin-top: 2rpx;
   font-size: 20rpx;
-  color: rgba(255, 255, 255, 0.66);
+  color: #6E86A0;
 }
 
 .action-bar {
@@ -257,12 +308,12 @@ export default {
   line-height: 64rpx;
   padding: 0 28rpx;
   background: #FFFFFF;
-  color: #2A6F97;
+  color: #087CF0;
   font-size: 24rpx;
   font-weight: 700;
   border-radius: 999rpx;
-  border: 1rpx solid rgba(42, 111, 151, 0.18);
-  box-shadow: 0 2rpx 12rpx rgba(42, 111, 151, 0.06);
+  border: 1rpx solid rgba(8, 124, 240, 0.18);
+  box-shadow: 0 2rpx 12rpx rgba(8, 124, 240, 0.06);
 }
 
 .read-all-btn::after {
@@ -290,7 +341,7 @@ export default {
   padding: 26rpx 28rpx;
   background: #FFFFFF;
   border-radius: 22rpx;
-  box-shadow: 0 8rpx 26rpx rgba(42, 111, 151, 0.07);
+  box-shadow: 0 8rpx 26rpx rgba(8, 124, 240, 0.07);
   border: 1rpx solid rgba(226, 232, 240, 0.9);
   box-sizing: border-box;
   overflow: hidden;
@@ -393,13 +444,27 @@ export default {
 
 .notice-arrow {
   font-size: 22rpx;
-  color: #2A6F97;
+  color: #087CF0;
   font-weight: 700;
 }
 
-.empty {
+.empty,
+.load-error {
   padding: 100rpx 40rpx;
   text-align: center;
+}
+
+.retry-button {
+  width: 220rpx;
+  height: 72rpx;
+  margin: 28rpx auto 0;
+  padding: 0;
+  border: 1rpx solid #B8D4F0;
+  border-radius: 8rpx;
+  background: #E8F3FF;
+  color: #087CF0;
+  font-size: 26rpx;
+  line-height: 72rpx;
 }
 
 .empty-mark {
@@ -409,7 +474,7 @@ export default {
   margin: 0 auto 22rpx;
   border-radius: 28rpx;
   background: #ECF4F7;
-  color: #2A6F97;
+  color: #087CF0;
   font-size: 36rpx;
   font-weight: 800;
 }

@@ -95,6 +95,22 @@
         </view>
       </view>
 
+      <!-- 销售缴款记录 -->
+      <view v-if="moduleKey === 'sale' && record.payments && record.payments.length" class="section-card payment-history-section">
+        <view class="section-title">缴款记录</view>
+        <view v-for="payment in record.payments" :key="payment.paymentId" class="payment-history-item">
+          <view class="payment-history-main">
+            <text class="payment-history-no">{{ payment.paymentNo || '-' }}</text>
+            <text class="payment-history-amount">¥{{ moneyText(payment.paymentAmount) }}</text>
+          </view>
+          <view class="payment-history-meta">
+            <text>{{ paymentDateText(payment.paymentDate) }}</text>
+            <text>{{ paymentMethodText(payment.paymentMethod) }}</text>
+          </view>
+          <view v-if="payment.remark" class="payment-history-remark">备注：{{ payment.remark }}</view>
+        </view>
+      </view>
+
       <!-- 底部占位 -->
       <view class="footer-placeholder"></view>
     </template>
@@ -175,7 +191,7 @@
         </view>
         <view class="claim-panel-actions">
           <button class="claim-cancel" @tap="closePayment">取消</button>
-          <button class="claim-confirm" @tap="submitPayment">确认缴款</button>
+          <button class="claim-confirm" :disabled="paymentSubmitting" @tap="submitPayment">{{ paymentSubmitting ? '提交中' : '确认缴款' }}</button>
         </view>
       </view>
     </view>
@@ -196,7 +212,7 @@
         <textarea class="claim-remark" v-model="claimForm.remark" placeholder="备注，可不填" />
         <view class="claim-panel-actions">
           <button class="claim-cancel" @tap="closeClaim">取消</button>
-          <button class="claim-confirm" @tap="submitClaim">确认领取</button>
+          <button class="claim-confirm" :disabled="claimSubmitting" @tap="submitClaim">{{ claimSubmitting ? '领取中' : '确认领取' }}</button>
         </view>
       </view>
     </view>
@@ -239,11 +255,14 @@
 </template>
 
 <script>
+import miniProgramShare from '@/mixins/miniProgramShare.js'
 import { getModule, displayValue, formatDisplayValue, getValueTone } from '@/config/modules.js'
 import { getData, deleteData, request, actionRequest, getBaseUrl } from '@/api/index.js'
 import { hasActionPermission, requireModulePermission } from '@/utils/permission.js'
+import { isUnknownWriteOutcome } from '@/utils/operationState.js'
 
 export default {
+  mixins: [miniProgramShare],
   data() {
     return {
       moduleKey: '',
@@ -253,6 +272,7 @@ export default {
       config: null,
       sensitiveVisible: {},
       paymentPanelOpen: false,
+      paymentSubmitting: false,
       paymentForm: {
         paymentDate: '',
         paymentAmount: '',
@@ -260,6 +280,7 @@ export default {
         remark: ''
       },
       claimPanelOpen: false,
+      claimSubmitting: false,
       claimForm: {
         claimShares: '',
         claimDate: '',
@@ -336,7 +357,7 @@ export default {
     // 主要字段（summary 配置中的字段）
     primaryFields() {
       if (!this.record || !this.config || !this.config.summary) return []
-      return this.config.summary.map(key => {
+      const fields = this.config.summary.filter(key => !(this.moduleKey === 'sale' && key === 'status')).map(key => {
         const field = this.config.fields.find(f => f.key === key) || { key, label: key, options: [] }
         const rawValue = this.record[key]
         const isSensitive = field.sensitive
@@ -361,6 +382,26 @@ export default {
             class: this.getStatusClass(field)
           }
       })
+      if (this.moduleKey === 'sale') {
+        fields.push({
+          key: 'status',
+          label: '缴款状态',
+          value: this.salePaymentStatusText,
+          rawValue: this.record.status,
+          type: 'select',
+          sensitive: false,
+          class: this.salePaymentStatusClass
+        }, {
+          key: 'giftUnitPrice',
+          label: '加赠单价',
+          value: this.giftUnitPriceText,
+          rawValue: null,
+          type: 'number',
+          sensitive: false,
+          class: ''
+        })
+      }
+      return fields
     },
     // 次要字段（fields 中排除 summary 和 hidden 的字段）
     secondaryFields() {
@@ -375,6 +416,8 @@ export default {
           let displayVal
           if (isSensitive && !isVisible) {
             displayVal = this.maskValue(field.type, rawValue)
+          } else if (typeof field.formatter === 'function') {
+            displayVal = field.formatter(this.record) || '-'
           } else if (rawValue === undefined || rawValue === null || rawValue === '') {
             displayVal = ''
           } else {
@@ -393,9 +436,12 @@ export default {
     },
     remainingAmount() {
       if (this.moduleKey !== 'sale' || !this.record) return 0
-      const saleAbs = Math.abs(Math.round(Number(this.record.saleAmount || 0) * 100))
-      const paidAbs = Math.abs(Math.round(Number(this.record.paidAmount || 0) * 100))
-      return Math.max(saleAbs - paidAbs, 0) / 100
+      const saleAmount = Number(this.record.saleAmount || 0)
+      const paidAmount = Number(this.record.paidAmount || 0)
+      if (saleAmount < 0) {
+        return -(Math.abs(saleAmount) - Math.abs(paidAmount))
+      }
+      return saleAmount - paidAmount
     },
     isReturnSale() {
       return this.moduleKey === 'sale' && Number(this.record?.saleAmount || 0) < 0
@@ -403,10 +449,9 @@ export default {
     canPayment() {
       if (this.moduleKey !== 'sale' || !this.record) return false
       const saleAbs = Math.abs(Number(this.record.saleAmount || 0))
-      const paidAbs = Math.abs(Number(this.record.paidAmount || 0))
-      return String(this.record?.status) !== '2'
-        && saleAbs > 0
-        && paidAbs < saleAbs
+      const remainingCents = Math.round(Math.abs(Number(this.remainingAmount)) * 100)
+      return saleAbs > 0
+        && remainingCents > 0
         && hasActionPermission(this.moduleKey, 'payment')
     },
     // 投资人返款锁定判断
@@ -453,6 +498,24 @@ export default {
     purchaseDetails() {
       if (!this.record || !this.record.details) return []
       return this.record.details
+    },
+    giftUnitPriceText() {
+      if (!this.record) return '-'
+      const totalQuantity = Number(this.record.saleQuantity || 0) + Number(this.record.giftQuantity || 0)
+      return totalQuantity > 0
+        ? `¥${(Number(this.record.saleAmount || 0) / totalQuantity).toFixed(2)}`
+        : '-'
+    },
+    salePaymentStatusText() {
+      if (!this.record || this.moduleKey !== 'sale') return '-'
+      const field = this.config?.fields?.find(item => item.key === 'status') || { key: 'status', type: 'select', options: [] }
+      return formatDisplayValue(field, this.record.status, this.record)
+    },
+    salePaymentStatusClass() {
+      const status = String(this.record?.status ?? '')
+      if (status === '2') return 'status-ok'
+      if (status === '1') return 'status-info'
+      return 'status-warn'
     }
   },
   onLoad(options) {
@@ -523,14 +586,39 @@ export default {
         await request({
           url: `/finance/expense/unverify/${pending.batchId}`,
           method: 'PUT',
-          data: { reason: pending.reason, requestId: pending.requestId }
+          data: { reason: pending.reason, requestId: pending.requestId },
+          silent: true
         })
         this.reverseRequestId = ''
         this.pendingUnverify = null
         uni.showToast({ title: '反核销成功', icon: 'success' })
         await this.loadDetail()
       } catch (error) {
-        console.error('反核销失败', error)
+        if (isUnknownWriteOutcome(error)) {
+          const modal = await new Promise((resolve) => uni.showModal({
+            title: '确认反核销结果',
+            content: '网络中断，无法确认反核销结果。再次确认将复用同一请求编号，不会重复处理。',
+            confirmText: '确认结果',
+            cancelText: '刷新详情',
+            success: resolve,
+            fail: () => resolve({ confirm: false })
+          }))
+          if (modal.confirm) {
+            this.unverifySubmitting = false
+            await this.openExpenseUnverify()
+            return
+          }
+          await this.loadDetail()
+          if (!this.canUnverifyExpense) {
+            this.pendingUnverify = null
+            this.reverseRequestId = ''
+          }
+          return
+        }
+        this.pendingUnverify = null
+        this.reverseRequestId = ''
+        uni.showToast({ title: error?.msg || error?.message || '反核销失败', icon: 'none' })
+        await this.loadDetail()
       } finally {
         this.unverifySubmitting = false
       }
@@ -783,11 +871,13 @@ export default {
       this.claimForm.claimTime = e.detail.value
     },
     async submitClaim() {
+      if (this.claimSubmitting) return
       const claimShares = Number(this.claimForm.claimShares)
       if (!claimShares || claimShares <= 0) {
         uni.showToast({ title: '请输入领取数量', icon: 'none' })
         return
       }
+      this.claimSubmitting = true
       try {
         uni.showLoading({ title: '领取中...' })
         await request({
@@ -807,6 +897,8 @@ export default {
         uni.hideLoading()
         console.error('领取失败', e)
         uni.showToast({ title: '领取失败', icon: 'none' })
+      } finally {
+        this.claimSubmitting = false
       }
     },
     openPayment() {
@@ -814,11 +906,9 @@ export default {
         uni.showToast({ title: '当前销售单无需缴款或暂无权限', icon: 'none' })
         return
       }
-      // 退货销售（金额为负）时缴款金额也为负
-      const sign = this.isReturnSale ? -1 : 1
       this.paymentForm = {
         paymentDate: this.todayStr(),
-        paymentAmount: (this.remainingAmount * sign).toFixed(2),
+        paymentAmount: this.remainingAmount.toFixed(2),
         paymentMethodIndex: -1,
         remark: ''
       }
@@ -832,14 +922,23 @@ export default {
       const amount = Number(value || 0)
       return Number.isFinite(amount) ? amount.toFixed(2) : '0.00'
     },
+    paymentDateText(value) {
+      if (!value) return '-'
+      return String(value).replace('T', ' ').replace(/\.\d{3}Z?$/, '').replace(/Z$/, '')
+    },
+    paymentMethodText(value) {
+      if (!value) return '-'
+      return this.dictPaymentMethods.find((item) => String(item.dictValue) === String(value))?.dictLabel || value
+    },
     async submitPayment() {
+      if (this.paymentSubmitting) return
       const paymentAmount = Number(this.paymentForm.paymentAmount)
       if (!paymentAmount || paymentAmount === 0) {
         return uni.showToast({ title: '缴款金额不能为0', icon: 'none' })
       }
       // 用绝对值校验：|缴款金额| 不能超过 |剩余额度|
       const paymentAbs = Math.abs(Math.round(paymentAmount * 100))
-      const remainingCents = Math.round(this.remainingAmount * 100)
+      const remainingCents = Math.abs(Math.round(this.remainingAmount * 100))
       if (paymentAbs > remainingCents) {
         return uni.showToast({ title: '缴款金额超过剩余额度', icon: 'none' })
       }
@@ -858,6 +957,7 @@ export default {
         return uni.showToast({ title: '请选择付款方式', icon: 'none' })
       }
       const method = this.dictPaymentMethods[this.paymentForm.paymentMethodIndex]?.dictValue || ''
+      this.paymentSubmitting = true
       try {
         uni.showLoading({ title: '提交中...' })
         await request({
@@ -876,8 +976,19 @@ export default {
         await this.loadDetail()
       } catch (e) {
         uni.hideLoading()
-        console.error('缴款失败', e)
-        uni.showToast({ title: '缴款失败', icon: 'none' })
+        if (isUnknownWriteOutcome(e)) {
+          this.closePayment()
+          uni.showModal({
+            title: '缴款结果待确认',
+            content: '网络中断，正在刷新销售详情确认缴款结果，请勿重复提交。',
+            showCancel: false
+          })
+          await this.loadDetail()
+        } else {
+          uni.showToast({ title: e?.msg || '缴款失败', icon: 'none' })
+        }
+      } finally {
+        this.paymentSubmitting = false
       }
     }
   }
@@ -897,7 +1008,7 @@ export default {
 }
 .detail-page {
   min-height: 100vh;
-  background-color: #F0F4F8;
+  background-color: #E8EEF5;
   padding-bottom: env(safe-area-inset-bottom);
 }
 
@@ -929,7 +1040,7 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #2A6F97, #3A8DB8, #8EC8D2);
+  background: linear-gradient(135deg, #087CF0, #5AA9E8, #A8C7E5);
   border-radius: 20rpx;
 }
 
@@ -973,7 +1084,7 @@ export default {
   background: #FFFFFF;
   border-radius: 20rpx;
   padding: 28rpx 32rpx;
-  box-shadow: 0 2rpx 16rpx rgba(42, 111, 151, 0.06);
+  box-shadow: 0 2rpx 16rpx rgba(8, 124, 240, 0.06);
 }
 
 .section-title {
@@ -982,7 +1093,7 @@ export default {
   color: #1A2332;
   margin-bottom: 20rpx;
   padding-left: 16rpx;
-  border-left: 4rpx solid #2A6F97;
+  border-left: 4rpx solid #087CF0;
 }
 
 /* 高亮网格 */
@@ -1018,7 +1129,7 @@ export default {
 
 .phone-callable .highlight-value,
 .phone-callable .field-value {
-  color: #2A6F97;
+  color: #087CF0;
   font-weight: 800;
 }
 
@@ -1063,7 +1174,7 @@ export default {
 
 .highlight-value.tone-points,
 .field-value.tone-points {
-  color: #2A6F97;
+  color: #087CF0;
 }
 
 .highlight-value.tone-percent,
@@ -1082,7 +1193,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 14rpx 0;
-  border-bottom: 1rpx solid #F0F4F8;
+  border-bottom: 1rpx solid #E8EEF5;
 }
 
 .image-field-row {
@@ -1185,7 +1296,7 @@ export default {
   display: flex;
   align-items: center;
   padding: 18rpx 0;
-  border-bottom: 1rpx solid #F0F4F8;
+  border-bottom: 1rpx solid #E8EEF5;
 }
 
 /* 上下排列变体：标签在上，控件在下，加宽点击区域 */
@@ -1255,7 +1366,7 @@ export default {
 }
 
 .payment-action-btn {
-  background: #2A6F97;
+  background: #087CF0;
   color: #FFFFFF;
 }
 
@@ -1277,7 +1388,7 @@ export default {
   padding: 16rpx 24rpx;
   padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
   background: #FFFFFF;
-  box-shadow: 0 -2rpx 16rpx rgba(42, 111, 151, 0.06);
+  box-shadow: 0 -2rpx 16rpx rgba(8, 124, 240, 0.06);
   z-index: 100;
 }
 
@@ -1299,8 +1410,8 @@ export default {
 }
 
 .edit-btn {
-  background: #F0F4F8;
-  color: #2A6F97;
+  background: #E8EEF5;
+  color: #087CF0;
 }
 
 .delete-btn {
@@ -1310,7 +1421,7 @@ export default {
 
 .custom-btn {
   background: #EFF6FF;
-  color: #2A6F97;
+  color: #087CF0;
 }
 
 .claim-mask {
@@ -1526,7 +1637,7 @@ export default {
   height: 80rpx;
   line-height: 80rpx;
   border-radius: 999rpx;
-  background: #2A6F97;
+  background: #087CF0;
   color: #FFFFFF;
   font-size: 28rpx;
   font-weight: 600;
@@ -1565,6 +1676,22 @@ export default {
   padding: 12rpx 0;
 }
 
+.sale-status-price-row {
+  gap: 24rpx;
+}
+
+.sale-status-cell {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.sale-status-cell .detail-label {
+  width: auto;
+  margin-right: 16rpx;
+}
+
 .detail-label {
   width: 140rpx;
   font-size: 26rpx;
@@ -1580,7 +1707,7 @@ export default {
 
 .detail-value-text.amount {
   font-weight: 700;
-  color: #2A6F97;
+  color: #087CF0;
 }
 
 .detail-summary {
@@ -1604,7 +1731,57 @@ export default {
 
 .detail-summary-value {
   font-size: 32rpx;
-  color: #2A6F97;
+  color: #087CF0;
   font-weight: 700;
+}
+
+.payment-history-item {
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #E2E8F0;
+}
+
+.payment-history-item:last-child {
+  border-bottom: 0;
+}
+
+.payment-history-main,
+.payment-history-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.payment-history-no,
+.payment-history-meta,
+.payment-history-remark {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.payment-history-no {
+  color: #1A2332;
+  font-size: 27rpx;
+  font-weight: 600;
+}
+
+.payment-history-amount {
+  color: #087CF0;
+  font-size: 30rpx;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.payment-history-meta {
+  margin-top: 10rpx;
+  color: #64748B;
+  font-size: 24rpx;
+}
+
+.payment-history-remark {
+  margin-top: 10rpx;
+  color: #475569;
+  font-size: 25rpx;
+  white-space: pre-wrap;
 }
 </style>

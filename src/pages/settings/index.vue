@@ -113,7 +113,7 @@ export default {
 .page {
   min-height: 100vh;
   padding: 0 0 40rpx;
-  background: #F0F4F8;
+  background: #E8EEF5;
 }
 
 /* 头部 */
@@ -122,7 +122,7 @@ export default {
   align-items: center;
   gap: 24rpx;
   padding: 36rpx 28rpx;
-  background: linear-gradient(135deg, #2A6F97, #3A8DB8, #8EC8D2);
+  background: linear-gradient(135deg, #087CF0, #5AA9E8, #A8C7E5);
   border-radius: 0 0 24rpx 24rpx;
 }
 
@@ -163,7 +163,7 @@ export default {
   padding: 28rpx;
   background: #FFFFFF;
   border-radius: 20rpx;
-  box-shadow: 0 2rpx 16rpx rgba(42, 111, 151, 0.06);
+  box-shadow: 0 2rpx 16rpx rgba(8, 124, 240, 0.06);
 }
 
 .section-header {
@@ -177,7 +177,7 @@ export default {
   width: 8rpx;
   height: 8rpx;
   border-radius: 50%;
-  background: #2A6F97;
+  background: #087CF0;
 }
 
 .section-title {
@@ -189,14 +189,14 @@ export default {
 /* 当前地址展示 */
 .current-url-box {
   padding: 18rpx 24rpx;
-  background: #F0F4F8;
+  background: #E8EEF5;
   border: 1rpx solid #E2E8F0;
   border-radius: 12rpx;
 }
 
 .current-url {
   font-size: 26rpx;
-  color: #2A6F97;
+  color: #087CF0;
   word-break: break-all;
 }
 
@@ -238,13 +238,13 @@ export default {
   margin-top: 12rpx;
   height: 88rpx;
   line-height: 88rpx;
-  background: linear-gradient(135deg, #2A6F97, #3A8DB8);
+  background: linear-gradient(135deg, #087CF0, #5AA9E8);
   color: #FFFFFF;
   font-size: 28rpx;
   font-weight: 600;
   border-radius: 999rpx;
   text-align: center;
-  box-shadow: 0 6rpx 20rpx rgba(42, 111, 151, 0.25);
+  box-shadow: 0 6rpx 20rpx rgba(8, 124, 240, 0.25);
   border: none;
   padding: 0;
 }
@@ -262,10 +262,10 @@ export default {
   height: 80rpx;
   line-height: 80rpx;
   background: #FFFFFF;
-  color: #2A6F97;
+  color: #087CF0;
   font-size: 28rpx;
   font-weight: 600;
-  border: 2rpx solid #2A6F97;
+  border: 2rpx solid #087CF0;
   border-radius: 999rpx;
   text-align: center;
   padding: 0;

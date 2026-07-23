@@ -12,6 +12,7 @@
           <view class="header-right">
             <view v-if="currentDeptName" class="dept-switch-inline" @tap="openDeptPicker">
               <text class="dept-name-inline">{{ currentDeptName }}</text>
+              <text class="work-view-label">{{ workView.label }}</text>
               <text v-if="canSwitchDept" class="dept-arrow-inline">▼</text>
             </view>
           </view>
@@ -50,7 +51,7 @@
       <!-- 店面回本情况 -->
       <view class="section-card fade-in-up" style="animation-delay:0.12s" v-if="period || periodFallback">
         <view class="section-header">
-          <view class="section-dot" style="background:#2A6F97"></view>
+          <view class="section-dot" style="background:#087CF0"></view>
           <text class="section-title">店面回本情况</text>
           <text class="section-badge" v-if="periodStatusText" :class="periodStatusClass">{{ periodStatusText }}</text>
         </view>
@@ -315,18 +316,6 @@
         </view>
       </view>
 
-      <view class="quick-section fade-in-up" style="animation-delay:0.34s" v-if="filteredQuickActions.length">
-        <text class="section-label">常用操作</text>
-        <view class="quick-grid">
-          <view class="quick-item" hover-class="quick-item--active" v-for="action in filteredQuickActions" :key="action.key" @tap="openModule(action.key)">
-            <view class="quick-icon" :style="{ background: getQuickBg(action.key) }">
-              <text class="quick-icon-text" :style="{ color: getQuickColor(action.key) }">{{ getQuickLetter(action.key) }}</text>
-            </view>
-            <text class="quick-name">{{ action.name }}</text>
-          </view>
-        </view>
-      </view>
-
       <view class="empty" v-if="!stats && !loading">
         <text class="empty-title">暂无数据</text>
         <text class="empty-sub">请检查网络或重新登录</text>
@@ -366,15 +355,20 @@
 </template>
 
 <script>
+import miniProgramShare from '@/mixins/miniProgramShare.js'
 import { groups, modules } from '@/config/modules.js'
 import { request, getToken, getBaseUrl } from '@/api/index.js'
-import { getMpDashboardOverview } from '@/api/dashboard.js'
 import { filterAuthorizedGroups, hasModulePermission, isAdmin } from '@/utils/permission.js'
 import { applySeckillStats } from '@/utils/seckillStats.js'
 import { SERVICE_STATUS_TARGETS, buildSystemHealthItems, normalizeDeptOptions, resolveCurrentDept, normalizeServerStatus, isSystemAdminUser } from '@/utils/homeControl.js'
+import { getStatusBarHeight } from '@/utils/systemInfo.js'
+import { resolveDeptCollection, workContext } from '@/utils/workContext.js'
+import { refreshForegroundSession } from '@/utils/foregroundSession.js'
+import { deriveWorkView } from '@/utils/workView.js'
+import { recordRecent } from '@/utils/workbenchPersonalization.js'
 
 const MODULE_BG = {
-  member: 'rgba(42,111,151,0.08)', pointsGoods: 'rgba(59,130,246,0.08)', pointsRecord: 'rgba(42,111,151,0.08)',
+  member: 'rgba(8, 124, 240,0.08)', pointsGoods: 'rgba(59,130,246,0.08)', pointsRecord: 'rgba(8, 124, 240,0.08)',
   pointsExchange: 'rgba(139,92,246,0.08)', seckill: 'rgba(249,115,22,0.08)', seckillRecord: 'rgba(234,88,12,0.08)',
   expense: 'rgba(239,68,68,0.08)', advance: 'rgba(139,92,246,0.08)', product: 'rgba(59,130,246,0.08)',
   supplier: 'rgba(107,114,128,0.08)', purchase: 'rgba(249,115,22,0.08)', sale: 'rgba(16,185,129,0.08)',
@@ -393,7 +387,7 @@ const MODULE_LETTER = {
 }
 
 const MODULE_ICON_COLOR = {
-  member: '#2A6F97', pointsGoods: '#3B82F6', pointsRecord: '#2A6F97',
+  member: '#087CF0', pointsGoods: '#3B82F6', pointsRecord: '#087CF0',
   pointsExchange: '#8B5CF6', seckill: '#F97316', seckillRecord: '#EA580C',
   expense: '#EF4444', advance: '#8B5CF6', product: '#3B82F6',
   supplier: '#6B7280', purchase: '#F97316', sale: '#10B981',
@@ -402,13 +396,8 @@ const MODULE_ICON_COLOR = {
   costAccounting: '#06B6D4', userManage: '#6366F1'
 }
 
-const QUICK_ACTIONS = [
-  { key: 'member', name: '会员记录' },
-  { key: 'seckillRecord', name: '秒杀记录' },
-  { key: 'expense', name: '费用记录' }
-]
-
 export default {
+  mixins: [miniProgramShare],
   data() {
     return {
       stats: {},
@@ -429,7 +418,7 @@ export default {
       switchingDept: false,
       statusBarH: 0,
       menuButton: null,
-      barColors: ['#2A6F97', '#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EC4899'],
+      barColors: ['#087CF0', '#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EC4899'],
       showDeptPicker: false,
       allDepts: [],
       pendingDeptId: null
@@ -444,8 +433,13 @@ export default {
       if (h < 18) return '下午好'
       return '晚上好'
     },
-    filteredQuickActions() {
-      return QUICK_ACTIONS.filter(a => hasModulePermission(a.key, this.modules))
+    workView() {
+      const context = workContext.snapshot()
+      const authorizedModules = this.modules.filter(key => hasModulePermission(key, this.modules))
+      return deriveWorkView({
+        depts: context.depts,
+        modules: authorizedModules
+      })
     },
     adminUser() {
       return isAdmin(this.modules) || isSystemAdminUser(this.userInfo, this.systemPermissions)
@@ -656,28 +650,34 @@ export default {
       return this.showMemberSection && this.overviewLevelDistribution.length > 0
     }
   },
-  onShow() {
+  async onShow() {
     if (!getToken()) {
       uni.reLaunch({ url: '/pages/login/index' })
       return
     }
     try {
-      const sysInfo = uni.getSystemInfoSync()
-      this.statusBarH = sysInfo.statusBarHeight || 20
-    } catch (e) {
-      this.statusBarH = 20
+      await refreshForegroundSession()
+    } catch (_) {
+      if (!getToken()) return
     }
+    this.statusBarH = getStatusBarHeight()
     try {
       this.menuButton = uni.getMenuButtonBoundingClientRect()
     } catch (e) {
       this.menuButton = null
     }
-    const userInfo = uni.getStorageSync('userInfo') || {}
-    this.userInfo = userInfo
-    this.nickName = userInfo.nickName || userInfo.username || ''
-    this.currentDeptId = userInfo.currentDeptId || userInfo.deptId || null
+    const context = workContext.snapshot()
+    if (context.user || context.depts.length) {
+      this.applyWorkContext(context)
+    } else {
+      const userInfo = uni.getStorageSync('userInfo') || {}
+      this.userInfo = userInfo
+      this.nickName = userInfo.nickName || userInfo.username || ''
+      this.currentDeptId = userInfo.currentDeptId || userInfo.deptId || null
+      this.deptList = normalizeDeptOptions(userInfo.depts || [])
+    }
     this.modules = uni.getStorageSync('modules') || []
-    const safe = (p) => p.catch(e => console.log('onShow request failed', e))
+    const safe = (p) => p.catch(e => this.logRequestFailure('onShow request failed', e))
     safe(this.loadUserContext())
     safe(this.loadDashboard())
     setTimeout(() => {
@@ -691,6 +691,25 @@ export default {
     }, 600)
   },
   methods: {
+    applyWorkContext(context) {
+      const user = context.user || {}
+      this.userInfo = {
+        ...this.userInfo,
+        ...user,
+        depts: context.depts,
+        deptId: context.currentDeptId,
+        currentDeptId: context.currentDeptId,
+        deptName: context.currentDept?.name || user.deptName || this.userInfo.deptName || ''
+      }
+      this.nickName = user.nickName || user.userName || user.username || this.nickName
+      this.currentDeptId = context.currentDeptId
+      this.deptList = normalizeDeptOptions(context.depts)
+      uni.setStorageSync('userInfo', this.userInfo)
+    },
+    logRequestFailure(label, error) {
+      const message = error?.msg || error?.errMsg || error?.message || String(error || '')
+      console.warn(label + ': ' + message)
+    },
     go(url) {
       uni.navigateTo({ url })
     },
@@ -699,6 +718,8 @@ export default {
         uni.showToast({ title: '暂无该功能权限', icon: 'none' })
         return
       }
+      const recent = uni.getStorageSync('miniProgramRecent') || []
+      uni.setStorageSync('miniProgramRecent', recordRecent(recent, key, this.modules))
       if (key === 'userManage') {
         uni.navigateTo({ url: '/pages/user/index' })
       } else {
@@ -754,15 +775,6 @@ export default {
     getModuleColor(key) {
       return MODULE_ICON_COLOR[key] || '#94A3B8'
     },
-    getQuickBg(key) {
-      return MODULE_BG[key] || 'rgba(148,163,184,0.08)'
-    },
-    getQuickLetter(key) {
-      return MODULE_LETTER[key] || key.charAt(0).toUpperCase()
-    },
-    getQuickColor(key) {
-      return MODULE_ICON_COLOR[key] || '#94A3B8'
-    },
     fmtMoney(val) {
       if (!val && val !== 0) return '0'
       const n = Number(val)
@@ -786,11 +798,19 @@ export default {
         if (this.currentDeptId !== null && this.currentDeptId !== undefined) {
           params.deptId = this.currentDeptId
         }
-        const res = await request({ url: '/member/mp/dashboard/stats', method: 'GET', data: params })
+        const res = await request({
+          url: '/member/mp/dashboard/stats',
+          method: 'GET',
+          data: params,
+          silent: true,
+          timeout: 12000,
+          withContextMeta: true
+        })
+        if (res.contextMeta?.staleContext) return
         const data = res.data || res
         this.stats = data && typeof data === 'object' ? data : {}
       } catch (e) {
-        console.log('dashboard load failed', e)
+        this.logRequestFailure('dashboard load failed', e)
         this.stats = {
           todayMembers: 0, totalMembers: 0, activeMembers: 0,
           todaySale: 0, todayExpense: 0, totalSale: 0, totalExpense: 0,
@@ -811,13 +831,21 @@ export default {
         if (this.currentDeptId !== null && this.currentDeptId !== undefined) {
           params.deptId = this.currentDeptId
         }
-        const res = await getMpDashboardOverview(params)
+        const res = await request({
+          url: '/member/mp/dashboard/overview',
+          method: 'GET',
+          data: params,
+          silent: true,
+          timeout: 12000,
+          withContextMeta: true
+        })
+        if (res.contextMeta?.staleContext) return
         const data = res.data || res
         if (data && typeof data === 'object') {
           this.overview = data
         }
       } catch (e) {
-        console.log('overview load failed', e)
+        this.logRequestFailure('overview load failed', e)
       }
     },
     async loadPeriod() {
@@ -826,10 +854,18 @@ export default {
         if (this.currentDeptId !== null && this.currentDeptId !== undefined) {
           params.deptId = this.currentDeptId
         }
-        const res = await request({ url: '/finance/accountingPeriod/current', method: 'GET', data: params })
+        const res = await request({
+          url: '/finance/accountingPeriod/current',
+          method: 'GET',
+          data: params,
+          silent: true,
+          timeout: 12000,
+          withContextMeta: true
+        })
+        if (res.contextMeta?.staleContext) return
         this.period = res.data || res || null
       } catch (e) {
-        console.log('period load failed', e)
+        this.logRequestFailure('period load failed', e)
         // 占位数据
         this.period = {
           status: '0', totalSalePayment: 0, totalVerifiedExpense: 0,
@@ -844,10 +880,18 @@ export default {
         if (this.currentDeptId !== null && this.currentDeptId !== undefined) {
           params.deptId = this.currentDeptId
         }
-        const res = await request({ url: '/finance/expense/summary', method: 'GET', data: params })
+        const res = await request({
+          url: '/finance/expense/summary',
+          method: 'GET',
+          data: params,
+          silent: true,
+          timeout: 12000,
+          withContextMeta: true
+        })
+        if (res.contextMeta?.staleContext) return
         this.expenseSummary = res.data || res || null
       } catch (e) {
-        console.log('expense summary load failed', e)
+        this.logRequestFailure('expense summary load failed', e)
         this.expenseSummary = null
       }
     },
@@ -857,24 +901,42 @@ export default {
         if (this.currentDeptId !== null && this.currentDeptId !== undefined) {
           params.deptId = this.currentDeptId
         }
-        const res = await request({ url: '/member/seckill/list', method: 'GET', data: params })
+        const res = await request({
+          url: '/member/seckill/list',
+          method: 'GET',
+          data: params,
+          silent: true,
+          timeout: 12000,
+          withContextMeta: true
+        })
+        if (res.contextMeta?.staleContext) return
         const list = res.data || res || []
         const activities = Array.isArray(list) ? list : (list.rows || [])
-        this.seckillList = await Promise.all(activities.map(async (item) => {
+        const results = await Promise.all(activities.map(async (item) => {
           try {
             const statsParams = { seckillId: item.seckillId }
             if (this.currentDeptId !== null && this.currentDeptId !== undefined) {
               statsParams.deptId = this.currentDeptId
             }
-            const statsRes = await request({ url: '/member/seckillRecord/statistics', method: 'GET', data: statsParams })
+            const statsRes = await request({
+              url: '/member/seckillRecord/statistics',
+              method: 'GET',
+              data: statsParams,
+              silent: true,
+              timeout: 12000,
+              withContextMeta: true
+            })
+            if (statsRes.contextMeta?.staleContext) return null
             return applySeckillStats(item, statsRes.data || statsRes || {})
           } catch (e) {
-            console.log('seckill statistics load failed', e)
+            this.logRequestFailure('seckill statistics load failed', e)
             return applySeckillStats(item, {})
           }
         }))
+        if (results.some(item => item === null)) return
+        this.seckillList = results
       } catch (e) {
-        console.log('seckill load failed', e)
+        this.logRequestFailure('seckill load failed', e)
         this.seckillList = []
       }
     },
@@ -918,32 +980,52 @@ export default {
       this.serverStatus = normalizeServerStatus(services)
       this.serverStatusLoading = false
     },
+    clearModuleAccess() {
+      this.modules = []
+      uni.setStorageSync('modules', [])
+    },
     async refreshModules() {
       try {
-        const res = await request({ url: '/member/mp/modules', method: 'GET' })
+        const res = await request({
+          url: '/member/mp/modules',
+          method: 'GET',
+          silent: true,
+          timeout: 12000,
+          withContextMeta: true
+        })
+        if (res.contextMeta?.staleContext) return
         const modules = res.data || res || []
         const moduleList = Array.isArray(modules) ? modules : []
         this.modules = moduleList.length || !this.adminUser ? moduleList : ['member', 'seckillRecord', 'expense', 'userManage']
         uni.setStorageSync('modules', this.modules)
       } catch (e) {
-        console.log('modules refresh failed', e)
+        this.logRequestFailure('modules refresh failed', e)
       }
     },
     async loadUserContext() {
       try {
-        const res = await request({ url: '/system/user/getInfo', method: 'GET', noRedirect: true })
+        const res = await request({
+          url: '/system/user/getInfo',
+          method: 'GET',
+          noRedirect: true,
+          silent: true,
+          timeout: 12000,
+          withContextMeta: true
+        })
+        if (res.contextMeta?.staleContext) return
         const user = res.user || {}
-        const depts = res.depts || res.data?.depts || res.user?.depts || []
+        const depts = resolveDeptCollection(res, this.userInfo)
         this.systemPermissions = res.permissions || []
-        this.userInfo = { ...this.userInfo, ...user, depts, currentDeptId: res.currentDeptId }
-        this.nickName = user.nickName || user.userName || user.username || this.nickName
-        this.currentDeptId = res.currentDeptId || user.deptId || this.currentDeptId
+        workContext.hydrate({
+          user,
+          depts,
+          currentDeptId: res.currentDeptId ?? user.currentDeptId ?? user.deptId ?? this.currentDeptId
+        })
+        this.applyWorkContext(workContext.snapshot())
         if (this.adminUser && (!this.modules || this.modules.length === 0)) {
           this.modules = ['member', 'seckillRecord', 'expense', 'userManage']
           uni.setStorageSync('modules', this.modules)
         }
-        uni.setStorageSync('userInfo', this.userInfo)
-        this.deptList = normalizeDeptOptions(depts)
         if (this.adminUser) {
           await this.loadAllDepts()
         }
@@ -956,11 +1038,17 @@ export default {
     },
     async loadAllDepts() {
       try {
-        const res = await request({ url: '/system/user/deptTree', method: 'GET', noRedirect: true })
+        const res = await request({
+          url: '/system/user/deptTree',
+          method: 'GET',
+          noRedirect: true,
+          silent: true,
+          timeout: 12000
+        })
         const list = normalizeDeptOptions(res.data || res.depts || [])
         if (list.length) this.deptList = list
       } catch (e) {
-        console.log('dept tree load failed', e)
+        this.logRequestFailure('dept tree load failed', e)
       }
     },
     async onDeptChange(e) {
@@ -970,10 +1058,16 @@ export default {
       this.switchingDept = true
       uni.showLoading({ title: '切换中' })
       try {
-        await request({ url: `/system/user/switchDept/${target.id}`, method: 'POST' })
-        this.currentDeptId = target.id
-        this.userInfo = { ...this.userInfo, deptId: target.id, currentDeptId: target.id, deptName: target.name }
-        uni.setStorageSync('userInfo', this.userInfo)
+        await request({
+          url: `/system/user/switchDept/${target.id}`,
+          method: 'POST',
+          silent: true,
+          timeout: 12000
+        })
+        workContext.selectDept(target.id)
+        this.applyWorkContext(workContext.snapshot())
+        this.clearModuleAccess()
+        await this.refreshModules()
         await Promise.all([this.loadDashboard(), this.loadOverview(), this.loadPeriod(), this.loadSeckill(), this.loadExpenseSummary()])
         uni.showToast({ title: '已切换部门', icon: 'success' })
       } catch (err) {
@@ -993,7 +1087,13 @@ export default {
       }
       try {
         uni.showLoading({ title: '加载部门...' })
-        const res = await request({ url: '/system/user/getInfo', method: 'GET', noRedirect: true })
+        const res = await request({
+          url: '/system/user/getInfo',
+          method: 'GET',
+          noRedirect: true,
+          silent: true,
+          timeout: 12000
+        })
         const deptList = (res.depts || res.data?.depts || res.user?.depts || [])
         uni.hideLoading()
         if (deptList.length <= 1) {
@@ -1006,7 +1106,8 @@ export default {
         this.showDeptPicker = true
       } catch (e) {
         uni.hideLoading()
-        console.error('获取部门列表失败', e)
+        this.logRequestFailure('获取部门列表失败', e)
+        uni.showToast({ title: '加载部门失败，请重试', icon: 'none' })
       }
     },
     pickDept(dept) {
@@ -1026,12 +1127,17 @@ export default {
       this.switchingDept = true
       uni.showLoading({ title: '切换中' })
       try {
-        await request({ url: `/system/user/switchDept/${this.pendingDeptId}`, method: 'POST' })
-        const target = this.allDepts.find(d => String(d.deptId || d.id) === String(this.pendingDeptId))
-        this.currentDeptId = this.pendingDeptId
-        this.userInfo = { ...this.userInfo, deptId: this.pendingDeptId, currentDeptId: this.pendingDeptId, deptName: target?.deptName || target?.name || '' }
-        uni.setStorageSync('userInfo', this.userInfo)
+        await request({
+          url: `/system/user/switchDept/${this.pendingDeptId}`,
+          method: 'POST',
+          silent: true,
+          timeout: 12000
+        })
+        workContext.selectDept(this.pendingDeptId)
+        this.applyWorkContext(workContext.snapshot())
         this.closeDeptPicker()
+        this.clearModuleAccess()
+        await this.refreshModules()
         await Promise.all([this.loadDashboard(), this.loadOverview(), this.loadPeriod(), this.loadSeckill(), this.loadExpenseSummary()])
         uni.showToast({ title: '已切换部门', icon: 'success' })
       } catch (err) {
@@ -1043,7 +1149,7 @@ export default {
     },
     onRefresh() {
       this.refreshing = true
-      const safe = (p) => p.catch(e => console.log('refresh request failed', e))
+      const safe = (p) => p.catch(e => this.logRequestFailure('refresh request failed', e))
       Promise.all([
         safe(this.loadUserContext()),
         safe(this.loadDashboard())
@@ -1074,7 +1180,7 @@ export default {
   width: 100vw;
   max-width: 750rpx;
   margin: 0 auto;
-  background: #F0F4F8;
+  background: linear-gradient(180deg, #E6EEF6 0%, #F3F6FA 42%, #E8EEF5 100%);
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -1084,35 +1190,49 @@ export default {
   position: relative;
   overflow: hidden;
   flex-shrink: 0;
+  background: linear-gradient(180deg, #C7DCF2 0%, #E1ECF8 100%);
+  border-bottom: 2rpx solid #AFCBE7;
 }
 
 .header-bg {
   position: absolute;
   inset: 0;
-  background: linear-gradient(160deg, #173B57 0%, #2A6F97 40%, #3A8DB8 80%, #8EC8D2 100%);
+  background: linear-gradient(135deg, rgba(255,255,255,.58) 0%, rgba(202,224,246,.9) 100%);
+  border-bottom: 1rpx solid rgba(8,124,240,.08);
+}
+
+.header-bg::before {
+  content: '';
+  position: absolute;
+  width: 300rpx;
+  height: 300rpx;
+  right: -160rpx;
+  top: -170rpx;
+  border: 22rpx solid rgba(8,124,240,.05);
+  border-radius: 50%;
 }
 
 .header-bg::after {
   content: '';
   position: absolute;
-  bottom: -40rpx;
-  left: -10%;
-  right: -10%;
-  height: 100rpx;
-  background: #F0F4F8;
-  border-radius: 50% 50% 0 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2rpx;
+  background: #A8C7E5;
+  border-radius: 0;
 }
 
 .header-content {
   position: relative;
   z-index: 2;
-  padding: 0 28rpx 60rpx;
+  padding: 0 30rpx 42rpx;
   box-sizing: border-box;
 }
 
 .header-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16rpx;
 }
@@ -1126,10 +1246,10 @@ export default {
 }
 
 .header-title {
-  font-size: 38rpx;
+  font-size: 36rpx;
   font-weight: 700;
   line-height: 1.2;
-  color: #ffffff;
+  color: #1F2D3D;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1138,8 +1258,8 @@ export default {
 .header-sub {
   font-size: 24rpx;
   line-height: 1.4;
-  color: rgba(255, 255, 255, 0.72);
-  margin-top: 8rpx;
+  color: #8190A1;
+  margin-top: 10rpx;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1159,9 +1279,10 @@ export default {
   justify-content: center;
   padding: 16rpx 24rpx;
   min-height: 60rpx;
-  border-radius: 24rpx;
-  background: rgba(255, 255, 255, 0.22);
-  border: 1rpx solid rgba(255, 255, 255, 0.3);
+  border-radius: 16rpx;
+  background: #F1F6FF;
+  border: 1rpx solid #CFE0F8;
+  box-shadow: none;
 }
 
 .dept-switch-inline {
@@ -1182,7 +1303,7 @@ export default {
 .dept-name-inline {
   font-size: 26rpx;
   font-weight: 600;
-  color: #ffffff;
+  color: #087CF0;
   margin-right: 8rpx;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1192,7 +1313,7 @@ export default {
 
 .dept-arrow-inline {
   font-size: 20rpx;
-  color: rgba(255, 255, 255, 0.85);
+  color: #6C8DB4;
   margin-left: 2rpx;
 }
 
@@ -1228,7 +1349,7 @@ export default {
 .dept-mark-text {
   font-size: 22rpx;
   font-weight: 900;
-  color: #2A6F97;
+  color: #087CF0;
 }
 
 .dept-copy {
@@ -1279,7 +1400,7 @@ export default {
 /* ===== KPI卡片行（浮在波浪上） ===== */
 .kpi-row-wrap {
   padding: 0 28rpx;
-  margin-top: -20rpx;
+  margin-top: -16rpx;
   position: relative;
   z-index: 2;
   flex-shrink: 0;
@@ -1297,7 +1418,7 @@ export default {
   flex: 1;
   width: 100%;
   min-height: 0;
-  padding: 20rpx 28rpx 40rpx;
+  padding: 18rpx 28rpx 40rpx;
   box-sizing: border-box;
   overflow-x: hidden;
 }
@@ -1321,7 +1442,8 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  box-shadow: 0 2rpx 16rpx rgba(42, 111, 151, 0.06);
+  border: 1rpx solid #D5E0EC;
+  box-shadow: 0 5rpx 18rpx rgba(45, 72, 98, 0.08);
   position: relative;
 }
 
@@ -1335,7 +1457,7 @@ export default {
   white-space: nowrap;
 }
 
-.kpi-value.primary { color: #2A6F97; }
+.kpi-value.primary { color: #087CF0; }
 .kpi-value.success { color: #10B981; }
 .kpi-value.warning { color: #F59E0B; }
 .kpi-value.info { color: #3B82F6; }
@@ -1375,7 +1497,8 @@ export default {
   border-radius: 20rpx;
   padding: 28rpx;
   margin-top: 24rpx;
-  box-shadow: 0 2rpx 16rpx rgba(42, 111, 151, 0.06);
+  border: 1rpx solid #D5E0EC;
+  box-shadow: 0 5rpx 18rpx rgba(45, 72, 98, 0.07);
   width: 100%;
   box-sizing: border-box;
   overflow: hidden;
@@ -1410,8 +1533,8 @@ export default {
 }
 
 .section-badge.running {
-  color: #2A6F97;
-  background: rgba(42, 111, 151, 0.1);
+  color: #087CF0;
+  background: rgba(8, 124, 240, 0.1);
 }
 
 .section-badge.done {
@@ -1470,8 +1593,8 @@ export default {
   inset: 0;
   border-radius: 50%;
   border: 16rpx solid transparent;
-  border-top-color: #2A6F97;
-  border-right-color: #2A6F97;
+  border-top-color: #087CF0;
+  border-right-color: #087CF0;
   transform: rotate(calc(var(--progress) * 3.6deg - 90deg));
   transition: transform 0.8s ease-out;
 }
@@ -1479,7 +1602,7 @@ export default {
 /* 用 conic-gradient 实现精确进度 */
 .ring-outer {
   background: conic-gradient(
-    #2A6F97 calc(var(--progress) * 3.6deg),
+    #087CF0 calc(var(--progress) * 3.6deg),
     #E8F0F6 calc(var(--progress) * 3.6deg)
   );
   border-radius: 50%;
@@ -1507,7 +1630,7 @@ export default {
 .ring-percent {
   font-size: 44rpx;
   font-weight: 800;
-  color: #2A6F97;
+  color: #087CF0;
   line-height: 1;
 }
 
@@ -1550,7 +1673,7 @@ export default {
 }
 
 .be-value.accent {
-  color: #2A6F97;
+  color: #087CF0;
 }
 
 .be-value.positive {
@@ -1586,7 +1709,7 @@ export default {
   flex: 1;
   min-width: 0;
   height: 16rpx;
-  background: #F0F4F8;
+  background: #E8EEF5;
   border-radius: 8rpx;
   overflow: hidden;
 }
@@ -1598,7 +1721,7 @@ export default {
 }
 
 .mini-bar-fill.sale {
-  background: linear-gradient(90deg, #2A6F97, #8EC8D2);
+  background: linear-gradient(90deg, #087CF0, #A8C7E5);
 }
 
 .mini-bar-fill.expense {
@@ -1643,7 +1766,7 @@ export default {
   white-space: nowrap;
 }
 
-.ms-value.primary { color: #2A6F97; }
+.ms-value.primary { color: #087CF0; }
 .ms-value.success { color: #10B981; }
 .ms-value.warning { color: #F59E0B; }
 
@@ -1685,7 +1808,7 @@ export default {
   flex: 1;
   min-width: 0;
   height: 24rpx;
-  background: #F0F4F8;
+  background: #E8EEF5;
   border-radius: 12rpx;
   overflow: hidden;
 }
@@ -1776,7 +1899,7 @@ export default {
 }
 
 .sk-info-value.accent {
-  color: #2A6F97;
+  color: #087CF0;
 }
 
 .sk-footer {
@@ -1798,7 +1921,7 @@ export default {
   flex: 1;
   min-width: 0;
   height: 12rpx;
-  background: #F0F4F8;
+  background: #E8EEF5;
   border-radius: 6rpx;
   overflow: hidden;
 }
@@ -1888,7 +2011,7 @@ export default {
   padding: 28rpx;
   border-radius: 28rpx;
   background: #FFFFFF;
-  box-shadow: 0 12rpx 32rpx rgba(42, 111, 151, 0.08);
+  box-shadow: 0 12rpx 32rpx rgba(8, 124, 240, 0.08);
   border: 1rpx solid rgba(226, 232, 240, 0.92);
 }
 
@@ -1960,7 +2083,7 @@ export default {
   margin-top: 24rpx;
   padding: 22rpx;
   border-radius: 22rpx;
-  background: linear-gradient(135deg, rgba(42, 111, 151, 0.06), rgba(248, 250, 252, 0.96));
+  background: linear-gradient(135deg, rgba(8, 124, 240, 0.06), rgba(248, 250, 252, 0.96));
   box-sizing: border-box;
 }
 
@@ -2107,68 +2230,14 @@ export default {
   color: #EF4444;
 }
 
-/* ===== 常用操作 ===== */
-.quick-section {
-  margin-top: 28rpx;
-}
-
-.section-label {
-  font-size: 26rpx;
-  font-weight: 600;
-  color: #5A6B7F;
-  margin-bottom: 20rpx;
-  padding-left: 4rpx;
-  display: block;
-}
-
-.quick-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.quick-item {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  max-width: 100%;
-  padding: 0 22rpx;
-  height: 80rpx;
-  background: #ffffff;
-  border-radius: 999rpx;
-  box-shadow: 0 2rpx 8rpx rgba(42, 111, 151, 0.04);
-  box-sizing: border-box;
-}
-
-.quick-item--active {
-  transform: scale(0.96);
-  opacity: 0.8;
-}
-
-.quick-icon {
-  width: 48rpx;
-  height: 48rpx;
-  border-radius: 12rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.quick-icon-text {
-  font-size: 22rpx;
-  font-weight: 700;
-}
-
-.quick-name {
-  font-size: 26rpx;
-  color: #1A2332;
-  font-weight: 500;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.work-view-label {
+  flex-shrink: 0;
+  padding: 4rpx 10rpx;
+  border-radius: 6rpx;
+  background: #DCEBFA;
+  color: #35658F;
+  font-size: 20rpx;
+  line-height: 1.3;
 }
 
 /* ===== 空状态 ===== */
@@ -2254,14 +2323,14 @@ export default {
 
 .dept-list-item.active {
   background: #EAF4F8;
-  border: 2rpx solid #2A6F97;
+  border: 2rpx solid #087CF0;
 }
 
 .dept-item-mark {
   width: 72rpx;
   height: 72rpx;
   border-radius: 50%;
-  background: linear-gradient(135deg, #2A6F97, #3A8DB8);
+  background: linear-gradient(135deg, #087CF0, #5AA9E8);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2295,7 +2364,7 @@ export default {
 
 .dept-item-check {
   font-size: 32rpx;
-  color: #2A6F97;
+  color: #087CF0;
   font-weight: 700;
   flex-shrink: 0;
   width: 44rpx;
@@ -2330,7 +2399,7 @@ export default {
 }
 
 .dept-btn-confirm {
-  background: linear-gradient(135deg, #2A6F97, #3A8DB8);
+  background: linear-gradient(135deg, #087CF0, #5AA9E8);
   color: #FFFFFF;
 }
 

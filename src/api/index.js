@@ -1,3 +1,9 @@
+import { createAuthSession, isAuthExpiredResponse } from '@/utils/authSession.js'
+import { shouldRecoverAuth } from '@/utils/authSession.js'
+import { workContext } from '@/utils/workContext.js'
+import { mergePersistedUser, resolveDeptCollection } from '@/utils/workContext.js'
+import { classifyRequestError } from '@/utils/requestPolicy.js'
+
 const DEFAULT_BASE_URL = 'https://www.junsong.vip/prod-api'
 const REQUEST_TIMEOUT = 30000
 
@@ -16,6 +22,25 @@ export function getToken() {
 export function setToken(token) {
   uni.setStorageSync('token', token || '')
 }
+
+export function clearSession() {
+  setToken('')
+  workContext.clear()
+  uni.removeStorageSync('userInfo')
+  uni.removeStorageSync('modules')
+  uni.removeStorageSync('permissions')
+}
+
+const authSession = createAuthSession({
+  recover: async () => {
+    clearSession()
+    uni.showToast({ title: '登录已超时，请重新登录', icon: 'none' })
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    await new Promise((resolve) => {
+      uni.reLaunch({ url: '/pages/login/index', complete: resolve })
+    })
+  }
+})
 
 function buildHeader(header = {}) {
   const token = getToken()
@@ -41,8 +66,12 @@ export function request(options) {
   return new Promise((resolve, reject) => {
     const requestUrl = getBaseUrl() + options.url
     const timeoutMs = options.timeout || REQUEST_TIMEOUT
+    const requestToken = getToken()
+    const contextSnapshot = workContext.snapshot()
+    const contextVersion = contextSnapshot.version
     const startTime = Date.now()
     let completed = false
+    let requestTask = null
     
     const finish = (result, isSuccess) => {
       if (completed) return
@@ -58,6 +87,7 @@ export function request(options) {
     const guardTimer = setTimeout(() => {
       if (!completed) {
         console.warn('[request] guard timeout:', requestUrl)
+        requestTask?.abort?.()
         finish({
           code: 'REQUEST_TIMEOUT',
           msg: '请求超时（守护定时器触发）',
@@ -66,30 +96,39 @@ export function request(options) {
           detail: { errMsg: 'timeout' }
         }, false)
       }
-    }, timeoutMs + 2000)
+    }, timeoutMs)
     
-    uni.request({
+    requestTask = uni.request({
       url: requestUrl,
       method: options.method || 'GET',
       data: options.data || {},
       header: buildHeader(options.header),
-      timeout: timeoutMs,
+      timeout: timeoutMs + 5000,
       success: (res) => {
         clearTimeout(guardTimer)
         const data = res.data || {}
         const ok = res.statusCode >= 200 && res.statusCode < 300
         const bizOk = data.code === undefined || data.code === 200
         if (ok && bizOk) {
-          finish(data, true)
+          const result = options.withContextMeta
+            ? {
+                ...data,
+                contextMeta: {
+                  contextVersion,
+                  currentDeptId: contextSnapshot.currentDeptId,
+                  staleContext: !workContext.isCurrent(contextVersion)
+                }
+              }
+            : data
+          finish(result, true)
           return
         }
-        if (res.statusCode === 401) {
-          if (!options.noRedirect) {
-            setToken('')
-            uni.removeStorageSync('userInfo')
-            uni.removeStorageSync('modules')
-            uni.removeStorageSync('permissions')
-            uni.reLaunch({ url: '/pages/login/index' })
+        // 网关 AuthFilter 返回 HTTP 200 + {"code": 401}（非标准 HTTP 401），
+        // 后端 HeaderInterceptor 验证失败也可能返回业务码 401。
+        // 同时检查 HTTP 状态码和业务码，确保两种情况都能正确处理。
+        if (isAuthExpiredResponse(res.statusCode, data)) {
+          if (!options.noRedirect && shouldRecoverAuth(requestToken, getToken())) {
+            authSession.recoverOnce().catch(() => {})
           }
           finish(data, false)
           return
@@ -102,15 +141,15 @@ export function request(options) {
       },
       fail: (err) => {
         clearTimeout(guardTimer)
-        const isTimeout = String(err?.errMsg || err?.message || '').includes('timeout')
         const isCertificate = String(err?.errMsg || '').includes('certificate') || String(err?.errMsg || '').includes('SSL')
-        const isNetwork = String(err?.errMsg || '').includes('network')
-        let message = '网络请求失败'
-        if (isTimeout) message = '请求超时，请检查网络'
-        if (isCertificate) message = '证书验证失败，请检查SSL配置'
-        if (isNetwork) message = '网络连接失败，请检查网络'
+        const classified = classifyRequestError(err)
+        const codeByKind = {
+          timeout: 'REQUEST_TIMEOUT',
+          network: 'NETWORK_ERROR'
+        }
+        const message = isCertificate ? '证书验证失败，请检查SSL配置' : classified.message
         const error = {
-          code: isTimeout ? 'REQUEST_TIMEOUT' : (isCertificate ? 'SSL_ERROR' : (isNetwork ? 'NETWORK_ERROR' : 'REQUEST_FAIL')),
+          code: isCertificate ? 'SSL_ERROR' : (codeByKind[classified.kind] || 'REQUEST_FAIL'),
           msg: message,
           url: requestUrl,
           errMsg: err?.errMsg || err?.message || '',
@@ -128,6 +167,48 @@ export function request(options) {
       }
     })
   })
+}
+
+export function refreshAuthSession(options = {}) {
+  if (!getToken()) return Promise.resolve(null)
+  return request({
+    url: '/auth/refresh',
+    method: 'POST',
+    noRedirect: options.noRedirect === true,
+    silent: true,
+    timeout: options.timeout || 8000,
+    header: { isToken: true }
+  })
+}
+
+export async function refreshWorkContext(options = {}) {
+  if (!getToken()) return null
+
+  const response = await request({
+    url: '/system/user/getInfo',
+    method: 'GET',
+    noRedirect: options.noRedirect === true,
+    silent: true,
+    withContextMeta: true,
+    timeout: options.timeout || 12000
+  })
+  if (response?.contextMeta?.staleContext) return workContext.snapshot()
+
+  const { contextMeta: _contextMeta, ...payload } = response || {}
+  const info = payload?.data && typeof payload.data === 'object' ? payload.data : payload
+  const user = info?.user || {}
+  const storedUser = uni.getStorageSync('userInfo') || {}
+  const depts = resolveDeptCollection(info, storedUser)
+  const currentDeptId = info?.currentDeptId ?? user.deptId ?? storedUser.currentDeptId ?? storedUser.deptId ?? null
+  const mergedUser = { ...storedUser, ...user, currentDeptId, deptId: currentDeptId }
+  const snapshot = workContext.hydrate({
+    user: mergedUser,
+    depts: depts,
+    currentDeptId: currentDeptId
+  })
+  const persistedUser = mergePersistedUser(storedUser, user, snapshot)
+  uni.setStorageSync('userInfo', persistedUser)
+  return snapshot
 }
 
 export function listData(path, params) {

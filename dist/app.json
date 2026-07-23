@@ -26,19 +26,21 @@
     "pages/member/actionDetail",
     "pages/member/points",
     "pages/verification-record/index",
-    "pages/verification-record/detail"
+    "pages/verification-record/detail",
+    "pages/wechat-bind/index",
+    "pages/legal/index"
   ],
   "window": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "松·云助手",
-    "navigationBarBackgroundColor": "#ffffff",
-    "backgroundColor": "#f5f7fa"
+    "navigationBarBackgroundColor": "#F8FAFC",
+    "backgroundColor": "#E8EEF5"
   },
   "tabBar": {
     "color": "#94a3b8",
-    "selectedColor": "#2A6F97",
-    "backgroundColor": "#ffffff",
-    "borderStyle": "white",
+    "selectedColor": "#087CF0",
+    "backgroundColor": "#F8FAFC",
+    "borderStyle": "black",
     "list": [
       {
         "pagePath": "pages/index/index",

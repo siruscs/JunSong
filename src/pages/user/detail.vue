@@ -10,14 +10,15 @@
       <view class="hero-card">
         <view class="hero-bg"></view>
         <view class="hero-content">
-          <view class="hero-avatar" :style="{ background: avatarColor(user.userName) }">
-            {{ firstChar(user.userName) }}
+          <view class="hero-avatar" :style="{ background: avatarUrl(user.avatar) ? '#F1F5F9' : avatarColor(user.userName) }">
+            <image v-if="avatarUrl(user.avatar)" class="hero-avatar-img" :src="avatarUrl(user.avatar)" mode="aspectFill" />
+            <text v-else class="avatar-fallback">{{ firstChar(user.userName) }}</text>
           </view>
           <view class="hero-main">
             <view class="hero-name">{{ user.userName || '-' }}</view>
             <view class="hero-nick">{{ user.nickName || '-' }}</view>
             <view class="hero-meta-row">
-              <text class="hero-dept" v-if="user.dept">{{ user.dept.deptName || '-' }}</text>
+              <text class="hero-dept">{{ deptNames(user) }}</text>
               <view class="hero-status" :class="user.status === '0' ? 'status-ok' : 'status-disabled'">
                 {{ user.status === '0' ? '正常' : '停用' }}
               </view>
@@ -55,6 +56,21 @@
             {{ user.status === '0' ? '正常' : '停用' }}
           </view>
         </view>
+        <view class="field-row">
+          <text class="field-label">所属部门</text>
+          <text class="field-value">{{ deptNames(user) }}</text>
+        </view>
+      </view>
+
+      <!-- 微信绑定 -->
+      <view class="section-card">
+        <view class="section-title">微信绑定</view>
+        <view class="field-row">
+          <text class="field-label">绑定状态</text>
+          <view class="status-pill" :class="mpBindingActive ? 'status-ok' : 'status-disabled'">
+            {{ mpBindingText }}
+          </view>
+        </view>
       </view>
 
       <!-- 角色信息 -->
@@ -85,7 +101,7 @@
 </template>
 
 <script>
-import { request, deleteData } from '@/api/index.js'
+import { request, deleteData, getBaseUrl } from '@/api/index.js'
 import { isAdmin } from '@/utils/permission.js'
 
 export default {
@@ -93,7 +109,18 @@ export default {
     return {
       userId: '',
       loading: true,
-      user: null
+      user: null,
+      mpBindings: []
+    }
+  },
+  computed: {
+    mpBindingActive() {
+      return this.mpBindings.some(item => item.status === 'ACTIVE')
+    },
+    mpBindingText() {
+      const count = this.mpBindings.filter(item => item.status === 'ACTIVE').length
+      if (!count) return '未绑定'
+      return count > 1 ? `已绑定${count}个微信` : '已绑定'
     }
   },
   onLoad(options) {
@@ -119,7 +146,7 @@ export default {
       return name.charAt(0).toUpperCase()
     },
     avatarColor(name) {
-      const colors = ['#2A6F97', '#3A8DB8', '#8EC8D2', '#059669', '#0284c7', '#7c3aed', '#db2777', '#ea580c']
+      const colors = ['#087CF0', '#5AA9E8', '#A8C7E5', '#059669', '#0284c7', '#7c3aed', '#db2777', '#ea580c']
       if (!name) return colors[0]
       let hash = 0
       for (let i = 0; i < name.length; i++) {
@@ -127,15 +154,67 @@ export default {
       }
       return colors[Math.abs(hash) % colors.length]
     },
+    avatarUrl(avatar) {
+      if (!avatar) return ''
+      if (/^(https?:)?\/\//.test(avatar) || avatar.startsWith('data:') || avatar.startsWith('wxfile://')) {
+        return avatar
+      }
+      const baseUrl = getBaseUrl().replace(/\/$/, '')
+      if (avatar.startsWith('/statics/')) {
+        return baseUrl.replace(/\/prod-api$/, '').replace(/\/dev-api$/, '') + avatar
+      }
+      const path = avatar.startsWith('/') ? avatar : `/${avatar}`
+      return `${baseUrl}${path}`
+    },
+    deptNames(user) {
+      const depts = user.depts || user.deptList || []
+      if (Array.isArray(depts) && depts.length) {
+        return depts.map(dept => dept.deptName || dept.label || dept.name).filter(Boolean).join('、') || '-'
+      }
+      if (user.deptId && user.deptName) return user.deptName
+      if (user.deptName) return user.deptName
+      return user.dept && user.dept.deptName ? user.dept.deptName : '-'
+    },
     sexText(val) {
       const map = { '0': '男', '1': '女', '2': '未知' }
       return map[val] || '-'
+    },
+    normalizeMpBindings(res) {
+      const data = res.data || res.rows || res || []
+      return Array.isArray(data) ? data : []
+    },
+    firstNonEmptyArray(...values) {
+      return values.find(value => Array.isArray(value) && value.length) || []
+    },
+    async loadMpBindingStatus() {
+      try {
+        const res = await request({
+          url: `/system/user/${this.userId}/mp-binding`,
+          method: 'GET',
+          noRedirect: true,
+          silent: true,
+          timeout: 8000
+        })
+        this.mpBindings = this.normalizeMpBindings(res)
+      } catch (e) {
+        this.mpBindings = []
+      }
     },
     async loadUser() {
       this.loading = true
       try {
         const res = await request({ url: `/system/user/${this.userId}`, method: 'GET' })
-        this.user = res.data || res
+        const data = res.data || res
+        const deptIds = this.firstNonEmptyArray(data.deptIds, res.deptIds, data.deptId ? [data.deptId] : [])
+        const depts = this.firstNonEmptyArray(data.depts, res.depts, data.dept ? [data.dept] : [])
+        this.user = {
+          ...data,
+          deptIds,
+          depts,
+          deptId: data.deptId || res.deptId || '',
+          deptName: data.deptName || res.deptName || (data.dept && data.dept.deptName) || ''
+        }
+        await this.loadMpBindingStatus()
       } catch (e) {
         console.error('加载用户详情失败', e)
         uni.showToast({ title: '加载失败', icon: 'none' })
@@ -170,7 +249,7 @@ export default {
 <style scoped>
 .detail-page {
   min-height: 100vh;
-  background: #F0F4F8;
+  background: #E8EEF5;
   padding-bottom: env(safe-area-inset-bottom);
 }
 
@@ -202,7 +281,7 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #2A6F97, #3A8DB8, #8EC8D2);
+  background: linear-gradient(135deg, #087CF0, #5AA9E8, #A8C7E5);
   border-radius: 20rpx;
 }
 
@@ -227,6 +306,17 @@ export default {
   color: #FFFFFF;
   background: rgba(255, 255, 255, 0.25);
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.hero-avatar-img {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+}
+
+.avatar-fallback {
+  color: #FFFFFF;
 }
 
 .hero-main {
@@ -281,7 +371,7 @@ export default {
   background: #FFFFFF;
   border-radius: 20rpx;
   padding: 28rpx 32rpx;
-  box-shadow: 0 2rpx 16rpx rgba(42, 111, 151, 0.06);
+  box-shadow: 0 2rpx 16rpx rgba(8, 124, 240, 0.06);
 }
 
 .section-title {
@@ -290,7 +380,7 @@ export default {
   color: #1A2332;
   margin-bottom: 20rpx;
   padding-left: 16rpx;
-  border-left: 4rpx solid #2A6F97;
+  border-left: 4rpx solid #087CF0;
 }
 
 /* 字段列表 */
@@ -299,7 +389,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 14rpx 0;
-  border-bottom: 1rpx solid #F0F4F8;
+  border-bottom: 1rpx solid #E8EEF5;
 }
 
 .field-row:last-child {
@@ -348,7 +438,7 @@ export default {
 .role-tag {
   padding: 8rpx 22rpx;
   background: #E0F2FE;
-  color: #2A6F97;
+  color: #087CF0;
   font-size: 24rpx;
   font-weight: 500;
   border-radius: 999rpx;
@@ -373,7 +463,7 @@ export default {
   padding: 16rpx 24rpx;
   padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
   background: #FFFFFF;
-  box-shadow: 0 -2rpx 16rpx rgba(42, 111, 151, 0.06);
+  box-shadow: 0 -2rpx 16rpx rgba(8, 124, 240, 0.06);
   z-index: 100;
 }
 
@@ -395,8 +485,8 @@ export default {
 }
 
 .edit-btn {
-  background: #F0F4F8;
-  color: #2A6F97;
+  background: #E8EEF5;
+  color: #087CF0;
 }
 
 .delete-btn {

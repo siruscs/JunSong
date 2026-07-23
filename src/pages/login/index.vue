@@ -50,6 +50,25 @@
           <text v-if="!loading">进入工作台</text>
           <text v-else>{{ loadingText }}</text>
         </button>
+        <view class="privacy-consent" @tap="privacyAgreed = !privacyAgreed">
+          <view class="consent-box" :class="{ checked: privacyAgreed }">{{ privacyAgreed ? '✓' : '' }}</view>
+          <text>我已阅读并同意</text>
+          <text class="link" @tap.stop="openLegal('service')">《用户服务协议》</text>
+          <text>和</text>
+          <text class="link" @tap.stop="openLegal('privacy')">《隐私政策》</text>
+        </view>
+
+        <view v-if="wechatLoginEnabled" class="wechat-login-section">
+          <view class="divider">
+            <view class="divider-line"></view>
+            <text class="divider-text">或</text>
+            <view class="divider-line"></view>
+          </view>
+          <button class="btn-wechat" hover-class="btn-wechat--active" :disabled="loading" @tap="handleWechatLogin">
+            <text class="btn-wechat-icon">微</text>
+            <text>微信快捷登录</text>
+          </button>
+        </view>
 
         <view class="trust-row">
           <view class="trust-item">
@@ -103,9 +122,20 @@
 </template>
 
 <script>
-import { request, setToken, getToken } from '@/api/index.js'
+import { request, setToken, getToken, clearSession, refreshAuthSession, refreshWorkContext } from '@/api/index.js'
+import { getStatusBarHeight } from '@/utils/systemInfo.js'
+import { mergePersistedUser } from '@/utils/workContext.js'
+import miniProgramShare from '@/mixins/miniProgramShare.js'
 
 export default {
+  mixins: [miniProgramShare],
+  onShareAppMessage() {
+    return {
+      title: '松·云助手｜连锁门店经营管理平台',
+      path: '/pages/login/index',
+      imageUrl: '/static/logo.png'
+    }
+  },
   data() {
     return {
       statusBarHeight: 0,
@@ -121,14 +151,126 @@ export default {
       loading: false,
       loadingText: '正在登录...',
       connStatus: 'idle',
-      connText: '点击检测后端连接'
+      connText: '点击检测后端连接',
+      wechatLoginEnabled: false,
+      redirecting: false,
+      privacyAgreed: false
     }
   },
-  onLoad() {
-    const sysInfo = uni.getSystemInfoSync()
-    this.statusBarHeight = sysInfo.statusBarHeight || 20
+  async onLoad() {
+    this.privacyAgreed = uni.getStorageSync('privacyAgreed') === true
+    this.statusBarHeight = getStatusBarHeight()
+    // 冷启动入口页检查：已有 token 时先向后端续期校验，避免本地旧 token 直接进入首页。
+    if (getToken()) {
+      this.redirecting = true
+      try {
+        await refreshAuthSession({ noRedirect: true, timeout: 8000 })
+        await refreshWorkContext({ noRedirect: true, timeout: 12000 })
+        uni.reLaunch({
+          url: '/pages/index/index',
+          fail: () => {
+            this.redirecting = false
+            this.loadCapabilities()
+          }
+        })
+        return
+      } catch (e) {
+        this.logRequestFailure('登录态刷新失败', e)
+        this.clearSession()
+        this.redirecting = false
+      }
+    }
+    this.loadCapabilities()
   },
   methods: {
+    openLegal(type) {
+      uni.navigateTo({ url: `/pages/legal/index?type=${type}` })
+    },
+    clearSession() {
+      clearSession()
+    },
+    async loadCapabilities() {
+      // 查询当前租户是否启用微信登录（fail-closed：异常时默认 false）
+      // isToken:false — 公开接口不带 token，避免旧 token 触发 HeaderInterceptor 会话校验
+      try {
+        const res = await request({
+          url: '/member/mp/capabilities',
+          method: 'GET',
+          noRedirect: true,
+          silent: true,
+          timeout: 8000,
+          header: { isToken: false }
+        })
+        const data = res.data || res
+        this.wechatLoginEnabled = data && data.wechatLoginEnabled === true
+      } catch (e) {
+        // fail-closed：接口失败时隐藏微信登录按钮
+        this.wechatLoginEnabled = false
+      }
+    },
+    async handleWechatLogin() {
+      if (this.loading) return
+      if (!this.privacyAgreed) {
+        uni.showToast({ title: '请先阅读并同意隐私政策', icon: 'none' })
+        return
+      }
+      uni.setStorageSync('privacyAgreed', true)
+      this.loading = true
+      this.loadingText = '微信登录中...'
+      try {
+        // 1. 调用 wx.login 获取临时 code
+        const loginResult = await new Promise((resolve, reject) => {
+          wx.login({
+            success: resolve,
+            fail: reject
+          })
+        })
+        const code = loginResult.code
+        if (!code) {
+          uni.showToast({ title: '微信授权失败，请重试', icon: 'none' })
+          this.loading = false
+          return
+        }
+
+        // 2. 调用后端微信快捷登录接口
+        // isToken:false — 公开接口不带 token，避免旧 token 触发会话校验
+        const loginRes = await request({
+          url: '/auth/mp/wechat/login',
+          method: 'POST',
+          noRedirect: true,
+          silent: true,
+          timeout: 30000,
+          header: { isToken: false },
+          data: { code }
+        })
+        const tokenData = loginRes.data || loginRes
+        const accessToken = tokenData.access_token
+        if (!accessToken) {
+          uni.showToast({ title: '登录返回数据异常', icon: 'none' })
+          this.loading = false
+          return
+        }
+        setToken(accessToken)
+        this.tempToken = accessToken
+        await this.completeLogin()
+      } catch (e) {
+        this.logRequestFailure('微信登录失败', e)
+        const msg = e?.msg || e?.errMsg || ''
+        // 未绑定时跳转到绑定页面（不传 code，绑定页会重新调用 wx.login 获取新 code）
+        if (msg.includes('未绑定')) {
+          uni.navigateTo({
+            url: '/pages/wechat-bind/index'
+          })
+        } else {
+          uni.showToast({ title: msg || '微信登录失败', icon: 'none' })
+        }
+        this.loading = false
+      }
+    },
+    logRequestFailure(label, error) {
+      const message = error?.msg || error?.errMsg || error?.message || String(error || '')
+      console.warn(label + ': ' + message)
+    },
     pickDept(dept) {
       this.selectedDeptId = dept.deptId || dept.id
     },
@@ -147,27 +289,39 @@ export default {
         await request({
           url: '/system/user/switchDept/' + this.selectedDeptId,
           method: 'POST',
-          noRedirect: true
+          noRedirect: true,
+          silent: true,
+          timeout: 12000
         })
         this.showDeptPicker = false
         await this.completeLogin()
       } catch (e) {
-        console.error('切换部门失败', e)
+        this.logRequestFailure('切换部门失败', e)
+        uni.showToast({ title: '切换门店失败，请重试', icon: 'none' })
         this.loading = false
       }
     },
     async completeLogin() {
       try {
-        const userRes = await request({ url: '/member/mp/userinfo', method: 'GET' })
+        const userRes = await request({
+          url: '/member/mp/userinfo',
+          method: 'GET',
+          noRedirect: true,
+          silent: true,
+          timeout: 12000
+        })
         const userInfo = userRes.data || userRes
-        uni.setStorageSync('userInfo', userInfo)
-        uni.setStorageSync('modules', userInfo.modules || [])
-        uni.setStorageSync('permissions', userInfo.permissions || [])
+        const storedUser = uni.getStorageSync('userInfo') || {}
+        const persistedUser = mergePersistedUser(storedUser, userInfo)
+        uni.setStorageSync('userInfo', persistedUser)
+        uni.setStorageSync('modules', persistedUser.modules || [])
+        uni.setStorageSync('permissions', persistedUser.permissions || [])
+        await refreshWorkContext()
       } catch (e) {
-        console.log('获取用户信息失败', e)
-        uni.setStorageSync('userInfo', { username: this.form.username, deptId: this.selectedDeptId })
-        uni.setStorageSync('modules', [])
-        uni.setStorageSync('permissions', [])
+        this.logRequestFailure('获取小程序用户信息失败', e)
+        uni.showToast({ title: '加载用户信息失败，请重试', icon: 'none' })
+        this.loading = false
+        return
       }
 
       uni.showToast({ title: '登录成功' })
@@ -177,6 +331,11 @@ export default {
       this.loading = false
     },
     async handleLogin() {
+      if (!this.privacyAgreed) {
+        uni.showToast({ title: '请先阅读并同意隐私政策', icon: 'none' })
+        return
+      }
+      uni.setStorageSync('privacyAgreed', true)
       if (!this.form.username) {
         uni.showToast({ title: '请输入用户名', icon: 'none' })
         return
@@ -194,11 +353,14 @@ export default {
 
       try {
         // 第一步：用户名密码登录（小程序专用接口 /auth/mp/login，已在网关白名单）
+        // isToken:false — 公开接口不带 token，避免旧 token 触发会话校验
         const loginRes = await request({
           url: '/auth/mp/login',
           method: 'POST',
           noRedirect: true,
+          silent: true,
           timeout: 30000,
+          header: { isToken: false },
           data: {
             username: this.form.username,
             password: this.form.password
@@ -222,7 +384,8 @@ export default {
             url: '/system/user/getInfo',
             method: 'GET',
             noRedirect: true,
-            timeout: 30000
+            silent: true,
+            timeout: 12000
           })
           const info = infoRes || infoRes.data || {}
           const deptList = (info.depts || info.data?.depts || info.user?.depts || [])
@@ -233,6 +396,7 @@ export default {
           const baseInfo = {
             username: this.form.username,
             nickName: userObj.nickName || userObj.userName || this.form.username,
+            depts: deptList,
             deptId: currentDeptId,
             currentDeptId: currentDeptId
           }
@@ -251,18 +415,12 @@ export default {
             this.showDeptPicker = true
           }
         } catch (e) {
-          console.log('获取用户信息失败，直接进入', e)
-          uni.setStorageSync('userInfo', { username: this.form.username })
-          uni.setStorageSync('modules', [])
-          uni.setStorageSync('permissions', [])
-          uni.showToast({ title: '登录成功' })
-          setTimeout(() => {
-            uni.reLaunch({ url: '/pages/index/index' })
-          }, 500)
+          this.logRequestFailure('获取用户信息失败', e)
+          uni.showToast({ title: '加载用户信息失败，请重试', icon: 'none' })
           this.loading = false
         }
       } catch (e) {
-        console.error('登录失败详情:', e)
+        this.logRequestFailure('登录失败详情', e)
         const isTimeout = e?.code === 'REQUEST_TIMEOUT' || String(e?.errMsg || e?.msg || '').includes('timeout')
         uni.showToast({
           title: isTimeout ? '登录请求超时，请检查网络后重试' : (e?.msg || '登录失败'),
@@ -334,7 +492,7 @@ export default {
   height: 720rpx;
   top: -180rpx;
   right: -260rpx;
-  background: radial-gradient(circle, rgba(42, 111, 151, 0.24), rgba(42, 111, 151, 0));
+  background: radial-gradient(circle, rgba(8, 124, 240, 0.24), rgba(8, 124, 240, 0));
 }
 
 .halo-b {
@@ -351,7 +509,7 @@ export default {
   left: 44rpx;
   right: 44rpx;
   height: 1rpx;
-  background: rgba(42, 111, 151, 0.08);
+  background: rgba(8, 124, 240, 0.08);
 }
 
 .l1 { top: 260rpx; }
@@ -408,7 +566,7 @@ export default {
   border-radius: 28rpx;
   background: rgba(255, 255, 255, 0.68);
   border: 1rpx solid rgba(255, 255, 255, 0.86);
-  box-shadow: 0 16rpx 48rpx rgba(42, 111, 151, 0.1);
+  box-shadow: 0 16rpx 48rpx rgba(8, 124, 240, 0.1);
   display: flex;
   align-items: flex-start;
   gap: 20rpx;
@@ -436,7 +594,7 @@ export default {
   padding: 8rpx 16rpx;
   border-radius: 999rpx;
   background: #DCEFF4;
-  color: #2A6F97;
+  color: #087CF0;
   font-size: 22rpx;
   font-weight: 600;
 }
@@ -468,7 +626,7 @@ export default {
 .settings-pill {
   padding: 10rpx 18rpx;
   border-radius: 999rpx;
-  background: #F0F4F8;
+  background: #E8EEF5;
 }
 
 .settings-text {
@@ -492,16 +650,16 @@ export default {
 }
 
 .input-wrap:focus-within {
-  border-color: #2A6F97;
+  border-color: #087CF0;
   background: #FFFFFF;
-  box-shadow: 0 0 0 4rpx rgba(42, 111, 151, 0.1);
+  box-shadow: 0 0 0 4rpx rgba(8, 124, 240, 0.1);
 }
 
 .input-icon-wrap {
   width: 48rpx;
   height: 48rpx;
   border-radius: 16rpx;
-  background: rgba(42, 111, 151, 0.08);
+  background: rgba(8, 124, 240, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -512,7 +670,7 @@ export default {
 .input-icon-text {
   font-size: 22rpx;
   font-weight: 700;
-  color: #2A6F97;
+  color: #087CF0;
 }
 
 .input-field {
@@ -531,14 +689,14 @@ export default {
   margin-top: 30rpx;
   height: 96rpx;
   line-height: 96rpx;
-  background: linear-gradient(135deg, #173B57, #2A6F97);
+  background: linear-gradient(135deg, #123F73, #087CF0);
   color: #FFFFFF;
   font-size: 30rpx;
   font-weight: 600;
   letter-spacing: 1rpx;
   border-radius: 999rpx;
   text-align: center;
-  box-shadow: 0 8rpx 24rpx rgba(42, 111, 151, 0.3);
+  box-shadow: 0 8rpx 24rpx rgba(8, 124, 240, 0.3);
   border: none;
   padding: 0;
   position: relative;
@@ -548,7 +706,7 @@ export default {
 .btn-login--active,
 .btn-login:active {
   transform: scale(0.97);
-  box-shadow: 0 4rpx 16rpx rgba(42, 111, 151, 0.2);
+  box-shadow: 0 4rpx 16rpx rgba(8, 124, 240, 0.2);
 }
 
 .btn-login::after {
@@ -558,6 +716,70 @@ export default {
 .btn-login[disabled] {
   opacity: 0.5;
   box-shadow: none;
+}
+
+/* 微信快捷登录 */
+.wechat-login-section {
+  margin-top: 28rpx;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+
+.divider-line {
+  flex: 1;
+  height: 1rpx;
+  background: #E2E8F0;
+}
+
+.divider-text {
+  padding: 0 20rpx;
+  font-size: 22rpx;
+  color: #94A3B8;
+}
+
+.btn-wechat {
+  height: 88rpx;
+  line-height: 88rpx;
+  background: #07C160;
+  color: #FFFFFF;
+  font-size: 28rpx;
+  font-weight: 600;
+  border-radius: 999rpx;
+  text-align: center;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+}
+
+.btn-wechat::after {
+  border: none;
+}
+
+.btn-wechat--active,
+.btn-wechat:active {
+  opacity: 0.85;
+}
+
+.btn-wechat[disabled] {
+  opacity: 0.5;
+}
+
+.btn-wechat-icon {
+  width: 40rpx;
+  height: 40rpx;
+  line-height: 40rpx;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+  font-size: 20rpx;
+  font-weight: 700;
 }
 
 .conn-bar {
@@ -618,7 +840,7 @@ export default {
   display: block;
   font-size: 24rpx;
   font-weight: 700;
-  color: #173B57;
+  color: #123F73;
 }
 
 .trust-label {
@@ -701,7 +923,7 @@ export default {
 
 .dept-list-item.active {
   background: #EAF4F8;
-  border-color: #2A6F97;
+  border-color: #087CF0;
 }
 
 .dept-item-mark {
@@ -719,7 +941,7 @@ export default {
 .dept-item-mark-text {
   font-size: 22rpx;
   font-weight: 700;
-  color: #2A6F97;
+  color: #087CF0;
 }
 
 .dept-item-body {
@@ -744,7 +966,7 @@ export default {
 .dept-item-check {
   font-size: 32rpx;
   font-weight: 700;
-  color: #2A6F97;
+  color: #087CF0;
   margin-left: 16rpx;
   margin-right: 4rpx;
   flex-shrink: 0;
@@ -771,12 +993,12 @@ export default {
 }
 
 .btn-secondary {
-  background: #F0F4F8;
+  background: #E8EEF5;
   color: #5A6B7F;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #173B57, #2A6F97);
+  background: linear-gradient(135deg, #123F73, #087CF0);
   color: #FFFFFF;
 }
 

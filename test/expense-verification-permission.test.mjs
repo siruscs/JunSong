@@ -36,7 +36,7 @@ test('expense verification page validates input and uses batch API with advances
   assert.match(page, /submitting/)
   assert.match(page, /differenceExplanation/)
   assert.match(page, /生成未核销节余借支单/)
-  assert.match(page, /hasActionPermission\('advance',\s*'list'\)/)
+  assert.doesNotMatch(page, /hasActionPermission\('advance',\s*'list'\)/)
   assert.match(page, /advancePermissionNotice/)
   assert.match(page, /!advancePermissionNotice\s*&&\s*!loading/)
   assert.match(page, /returnedIds/)
@@ -70,6 +70,7 @@ test('verification page loads expenses only through scoped verification candidat
   assert.doesNotMatch(page, /getData\('\/finance\/expense', id\)/)
   assert.match(page, /url: '\/finance\/expense\/unverifiedAdvances'[^]*method: 'GET'/)
   assert.doesNotMatch(page, /unverifiedAdvances'[^]*data: deptId/)
+  assert.doesNotMatch(page, /hasActionPermission\('advance',\s*'list'\)/)
 })
 
 test('expense verification page is registered', () => {

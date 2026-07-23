@@ -185,7 +185,7 @@ export default {
 <style scoped>
 .page {
   min-height: 100vh;
-  background: #F0F4F8;
+  background: #E8EEF5;
   padding: 24rpx 28rpx 46rpx;
   box-sizing: border-box;
 }
@@ -205,7 +205,7 @@ export default {
   background: #FFFFFF;
   border-radius: 20rpx;
   padding: 28rpx 24rpx;
-  box-shadow: 0 2rpx 16rpx rgba(42, 111, 151, 0.06);
+  box-shadow: 0 2rpx 16rpx rgba(8, 124, 240, 0.06);
   margin-bottom: 24rpx;
 }
 
@@ -369,7 +369,7 @@ export default {
   background: #FFFFFF;
   border-radius: 14rpx;
   padding: 20rpx 22rpx;
-  box-shadow: 0 1rpx 8rpx rgba(42, 111, 151, 0.04);
+  box-shadow: 0 1rpx 8rpx rgba(8, 124, 240, 0.04);
 }
 
 .detail-top {

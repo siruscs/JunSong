@@ -1,5 +1,13 @@
 <template>
   <view class="page">
+    <view class="load-state" v-if="loading">正在加载核销数据...</view>
+    <view class="load-error" v-else-if="loadError">
+      <text class="load-error-title">核销数据加载失败</text>
+      <text class="load-error-message">{{ loadError }}</text>
+      <button class="retry" @tap="loadData">重新加载</button>
+    </view>
+
+    <template v-else>
     <view class="summary-card">
       <view class="title">核销汇总</view>
       <view class="row"><text>费用（{{ expenses.length }}笔）</text><text>¥{{ money(expenseTotal) }}</text></view>
@@ -26,12 +34,14 @@
     <button class="submit" :disabled="loading || submitting || !verificationReady" @tap="submitVerify">
       {{ submitting ? '提交中…' : '确认核销' }}
     </button>
+    </template>
   </view>
 </template>
 
 <script>
 import { request } from '@/api/index.js'
 import { hasActionPermission } from '@/utils/permission.js'
+import { isUnknownWriteOutcome } from '@/utils/operationState.js'
 
 export default {
   data() {
@@ -41,9 +51,11 @@ export default {
       advances: [],
       selectedAdvanceIds: [],
       requestId: '',
+      pendingVerifyPayload: null,
       advancePermissionNotice: '',
       verificationReady: false,
       loading: true,
+      loadError: '',
       submitting: false
     }
   },
@@ -87,10 +99,11 @@ export default {
     },
     async loadData() {
       this.loading = true
+      this.loadError = ''
       this.verificationReady = false
       try {
         this.expenses = await Promise.all(this.expenseIds.map(async (id) => {
-          const response = await request({ url: `/finance/expense/${id}/verificationCandidate`, method: 'GET' })
+          const response = await request({ url: `/finance/expense/${id}/verificationCandidate`, method: 'GET', silent: true })
           return response.data || response
         }))
         const user = uni.getStorageSync('userInfo') || {}
@@ -107,20 +120,21 @@ export default {
           throw new Error('选择中包含不可核销费用')
         }
         this.advancePermissionNotice = ''
-        if (!hasActionPermission('advance', 'list')) {
-          this.advances = []
-          this.advancePermissionNotice = '暂无借支单查看权限，可不选择借支单直接核销。'
-        } else try {
-          const response = await request({ url: '/finance/expense/unverifiedAdvances', method: 'GET' })
+        try {
+          const response = await request({ url: '/finance/expense/unverifiedAdvances', method: 'GET', silent: true })
           const data = response.data || response
           this.advances = Array.isArray(data) ? data : (data.rows || [])
         } catch (permErr) {
+          const permissionDenied = Number(permErr?.code) === 403 || /权限|无权/.test(String(permErr?.msg || permErr?.message || ''))
+          if (!permissionDenied) throw permErr
           this.advances = []
           this.advancePermissionNotice = '暂无借支单查看权限，可不选择借支单直接核销。'
         }
+        const availableAdvanceIds = new Set(this.advances.map((item) => Number(item.advanceId)))
+        this.selectedAdvanceIds = this.selectedAdvanceIds.filter((id) => availableAdvanceIds.has(Number(id)))
         this.verificationReady = true
       } catch (error) {
-        uni.showToast({ title: error?.message || error?.msg || '加载核销数据失败', icon: 'none' })
+        this.loadError = error?.message || error?.msg || '加载核销数据失败'
       } finally {
         this.loading = false
       }
@@ -136,18 +150,43 @@ export default {
     },
     async submitVerify() {
       if (this.submitting || !this.verificationReady) return
+      this.pendingVerifyPayload = this.pendingVerifyPayload || {
+        expenseIds: [...this.expenseIds],
+        advanceIds: [...this.selectedAdvanceIds],
+        requestId: this.requestId
+      }
       this.submitting = true
       try {
         await request({
           url: '/finance/expense/batchVerify',
           method: 'PUT',
-          data: { expenseIds: this.expenseIds, advanceIds: this.selectedAdvanceIds, requestId: this.requestId }
+          data: this.pendingVerifyPayload,
+          silent: true
         })
+        this.pendingVerifyPayload = null
         uni.showToast({ title: '核销成功', icon: 'success' })
         setTimeout(() => uni.navigateBack(), 500)
       } catch (error) {
-        // requestId and selections intentionally remain stable for a safe retry.
-        console.error('费用核销失败', error)
+        if (isUnknownWriteOutcome(error)) {
+          const modal = await new Promise((resolve) => uni.showModal({
+            title: '确认核销结果',
+            content: '网络中断，无法确认核销结果。再次确认将复用同一请求编号，不会重复核销。',
+            confirmText: '确认结果',
+            cancelText: '返回核对',
+            success: resolve,
+            fail: () => resolve({ confirm: false })
+          }))
+          if (modal.confirm) {
+            this.submitting = false
+            await this.submitVerify()
+            return
+          }
+          uni.navigateBack()
+          return
+        }
+        this.pendingVerifyPayload = null
+        this.requestId = this.createRequestId()
+        uni.showToast({ title: error?.msg || error?.message || '核销失败', icon: 'none' })
       } finally {
         this.submitting = false
       }
@@ -160,13 +199,53 @@ export default {
 .page {
   min-height: 100vh;
   padding: 28rpx 28rpx 120rpx;
-  background: #F0F4F8;
+  background: #E8EEF5;
   color: #1A2332;
   box-sizing: border-box;
 }
 
+.load-state,
+.load-error {
+  margin-top: 120rpx;
+  padding: 48rpx 32rpx;
+  border: 1rpx solid #D5E0EC;
+  border-radius: 8rpx;
+  background: #FFFFFF;
+  text-align: center;
+}
+
+.load-error-title,
+.load-error-message {
+  display: block;
+}
+
+.load-error-title {
+  color: #1A2332;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.load-error-message {
+  margin-top: 14rpx;
+  color: #64748B;
+  font-size: 25rpx;
+  line-height: 1.5;
+}
+
+.retry {
+  width: 220rpx;
+  height: 72rpx;
+  margin: 28rpx auto 0;
+  border: 1rpx solid #B8D4F0;
+  border-radius: 8rpx;
+  background: #E8F3FF;
+  color: #087CF0;
+  font-size: 26rpx;
+  line-height: 72rpx;
+}
+
 .summary-card {
-  background: linear-gradient(135deg, #173B57 0%, #2A6F97 100%);
+  background: linear-gradient(135deg, #123F73 0%, #087CF0 72%, #5AA9E8 100%);
   border-radius: 20rpx;
   padding: 32rpx;
   margin-bottom: 28rpx;
@@ -243,7 +322,8 @@ export default {
   padding: 28rpx 24rpx;
   border-radius: 16rpx;
   background: #FFFFFF;
-  box-shadow: 0 2rpx 8rpx rgba(42, 111, 151, 0.04);
+  border: 1rpx solid #D5E0EC;
+  box-shadow: 0 4rpx 14rpx rgba(45, 72, 98, 0.06);
 }
 
 .card .grow {
@@ -271,7 +351,7 @@ export default {
 .card > text:last-child {
   font-size: 30rpx;
   font-weight: 700;
-  color: #2A6F97;
+  color: #087CF0;
   flex-shrink: 0;
 }
 
@@ -295,14 +375,14 @@ export default {
 }
 
 .card.selectable.selected {
-  border: 2rpx solid #2A6F97;
+  border: 2rpx solid #087CF0;
   background: #F0F7FA;
 }
 
 .card.selectable.selected .check {
   color: #FFFFFF;
-  background: #2A6F97;
-  border-color: #2A6F97;
+  background: #087CF0;
+  border-color: #087CF0;
 }
 
 .submit {
@@ -313,11 +393,11 @@ export default {
   height: 88rpx;
   line-height: 88rpx;
   color: #fff;
-  background: #2A6F97;
+  background: #087CF0;
   border-radius: 44rpx;
   font-size: 30rpx;
   font-weight: 600;
-  box-shadow: 0 8rpx 24rpx rgba(42, 111, 151, 0.3);
+  box-shadow: 0 8rpx 24rpx rgba(8, 124, 240, 0.3);
 }
 
 .submit[disabled] {

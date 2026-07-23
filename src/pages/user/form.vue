@@ -107,12 +107,20 @@
         <view class="section-dot"></view>
         <text class="section-title">所属部门</text>
       </view>
-      <picker :range="deptLabels" @change="onDeptChange">
-        <view class="control picker" :class="{ 'has-value': form.deptId }">
-          <text class="picker-text">{{ deptLabel || '请选择部门' }}</text>
-          <text class="picker-arrow">›</text>
+      <view class="section-subtitle">{{ deptSummary }}</view>
+      <view class="checkbox-group dept-checkbox-group">
+        <view
+          class="checkbox-item dept-checkbox-item"
+          v-for="dept in depts"
+          :key="dept.id || dept.deptId"
+          @tap="toggleDept(dept.id || dept.deptId)"
+        >
+          <view class="checkbox-box" :class="{ checked: isDeptSelected(dept.id || dept.deptId) }">
+            <text class="checkbox-icon" v-if="isDeptSelected(dept.id || dept.deptId)">✓</text>
+          </view>
+          <text class="checkbox-label">{{ dept.displayLabel || dept.label || dept.deptName }}</text>
         </view>
-      </picker>
+      </view>
     </view>
 
     <!-- 底部占位 -->
@@ -120,8 +128,8 @@
 
     <!-- 固定底部 -->
     <view class="footer">
-      <button class="btn-primary" @tap="submit">
-        <text class="btn-icon">✓</text> 保存
+      <button class="btn-primary" :disabled="saving" @tap="submit">
+        <text class="btn-icon">✓</text> {{ saving ? '保存中' : '保存' }}
       </button>
     </view>
   </view>
@@ -144,10 +152,12 @@ export default {
         sex: '',
         status: '0',
         roleIds: [],
-        deptId: ''
+        deptId: '',
+        deptIds: []
       },
       roles: [],
       depts: [],
+      saving: false,
       sexOptions: [
         { label: '男', value: '0' },
         { label: '女', value: '1' },
@@ -174,12 +184,13 @@ export default {
       const opt = this.statusOptions.find(o => o.value === this.form.status)
       return opt ? opt.label : ''
     },
-    deptLabels() {
-      return this.depts.map(d => d.displayLabel || d.label || d.deptName)
-    },
-    deptLabel() {
-      const dept = this.depts.find(d => String(d.id || d.deptId) === String(this.form.deptId))
-      return dept ? (dept.displayLabel || dept.label || dept.deptName) : ''
+    deptSummary() {
+      if (!this.form.deptIds.length) return '请选择所属部门'
+      const names = this.depts
+        .filter(d => this.isDeptSelected(d.id || d.deptId))
+        .map(d => d.label || d.deptName)
+      if (names.length <= 2) return names.join('、')
+      return `已选择${names.length}个部门`
     }
   },
   onLoad(options) {
@@ -206,11 +217,17 @@ export default {
     onStatusChange(e) {
       this.form.status = this.statusOptions[e.detail.value].value
     },
-    onDeptChange(e) {
-      const dept = this.depts[e.detail.value]
-      if (dept) {
-        this.form.deptId = dept.id || dept.deptId
+    isDeptSelected(deptId) {
+      return this.form.deptIds.some(id => String(id) === String(deptId))
+    },
+    toggleDept(deptId) {
+      const idx = this.form.deptIds.findIndex(id => String(id) === String(deptId))
+      if (idx >= 0) {
+        this.form.deptIds.splice(idx, 1)
+      } else {
+        this.form.deptIds.push(deptId)
       }
+      this.form.deptId = this.form.deptIds[0] || ''
     },
     toggleRole(roleId) {
       const idx = this.form.roleIds.indexOf(roleId)
@@ -253,6 +270,9 @@ export default {
         console.error('加载部门列表失败', e)
       }
     },
+    firstNonEmptyArray(...values) {
+      return values.find(value => Array.isArray(value) && value.length) || []
+    },
     async loadUser() {
       try {
         const res = await request({ url: `/system/user/${this.id}`, method: 'GET' })
@@ -263,8 +283,10 @@ export default {
         this.form.email = data.email || ''
         this.form.sex = data.sex || ''
         this.form.status = data.status || '0'
-        this.form.deptId = data.deptId || ''
-        this.form.roleIds = (data.roles || []).map(r => r.roleId)
+        const deptIds = this.firstNonEmptyArray(data.deptIds, res.deptIds, data.deptId ? [data.deptId] : [])
+        this.form.deptIds = deptIds
+        this.form.deptId = data.deptId || this.form.deptIds[0] || ''
+        this.form.roleIds = res.roleIds || (data.roles || []).map(r => r.roleId)
       } catch (e) {
         console.error('加载用户信息失败', e)
         uni.showToast({ title: '加载失败', icon: 'none' })
@@ -283,9 +305,14 @@ export default {
         uni.showToast({ title: '请填写密码', icon: 'none' })
         return false
       }
+      if (!this.form.deptIds.length) {
+        uni.showToast({ title: '请选择所属部门', icon: 'none' })
+        return false
+      }
       return true
     },
     async submit() {
+      if (this.saving) return
       if (!this.validate()) return
 
       const payload = {
@@ -296,9 +323,11 @@ export default {
         sex: this.form.sex,
         status: this.form.status,
         roleIds: this.form.roleIds,
-        deptId: this.form.deptId
+        deptId: this.form.deptId || this.form.deptIds[0] || '',
+        deptIds: this.form.deptIds
       }
 
+      this.saving = true
       try {
         if (this.id) {
           payload.userId = this.id
@@ -311,6 +340,8 @@ export default {
         setTimeout(() => uni.navigateBack(), 500)
       } catch (e) {
         console.error('保存失败', e)
+      } finally {
+        this.saving = false
       }
     }
   }
@@ -321,7 +352,7 @@ export default {
 .page {
   min-height: 100vh;
   padding: 0 0 140rpx;
-  background: #F0F4F8;
+  background: #E8EEF5;
 }
 
 .hero-card {
@@ -329,7 +360,7 @@ export default {
   align-items: center;
   gap: 24rpx;
   padding: 34rpx 28rpx;
-  background: linear-gradient(135deg, #2A6F97, #3A8DB8, #8EC8D2);
+  background: linear-gradient(135deg, #087CF0, #5AA9E8, #A8C7E5);
   border-radius: 0 0 24rpx 24rpx;
 }
 
@@ -366,7 +397,7 @@ export default {
   padding: 28rpx;
   background: #FFFFFF;
   border-radius: 20rpx;
-  box-shadow: 0 2rpx 16rpx rgba(42, 111, 151, 0.06);
+  box-shadow: 0 2rpx 16rpx rgba(8, 124, 240, 0.06);
 }
 
 .section-header {
@@ -393,12 +424,19 @@ export default {
   color: #1A2332;
 }
 
+.section-subtitle {
+  margin-bottom: 18rpx;
+  font-size: 24rpx;
+  color: #64748B;
+  line-height: 1.4;
+}
+
 .form-item {
   padding-top: 22rpx;
 }
 
 .form-item + .form-item {
-  border-top: 1rpx solid #F0F4F8;
+  border-top: 1rpx solid #E8EEF5;
   padding-top: 22rpx;
 }
 
@@ -435,7 +473,7 @@ export default {
 }
 
 .control:focus {
-  border-color: #2A6F97;
+  border-color: #087CF0;
   background: #FFFFFF;
 }
 
@@ -490,8 +528,8 @@ export default {
 }
 
 .checkbox-box.checked {
-  background: #2A6F97;
-  border-color: #2A6F97;
+  background: #087CF0;
+  border-color: #087CF0;
 }
 
 .checkbox-icon {
@@ -503,6 +541,17 @@ export default {
 .checkbox-label {
   font-size: 26rpx;
   color: #334155;
+}
+
+.dept-checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.dept-checkbox-item {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* 底部占位 */
@@ -535,9 +584,9 @@ export default {
   align-items: center;
   justify-content: center;
   gap: 8rpx;
-  background: linear-gradient(135deg, #2A6F97, #3A8DB8);
+  background: linear-gradient(135deg, #087CF0, #5AA9E8);
   color: #FFFFFF;
-  box-shadow: 0 6rpx 20rpx rgba(42, 111, 151, 0.25);
+  box-shadow: 0 6rpx 20rpx rgba(8, 124, 240, 0.25);
 }
 
 .btn-icon {

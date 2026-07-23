@@ -57,6 +57,12 @@ test('administrator wildcard allows every configured action', () => {
   }
 })
 
+test('exact permission checks do not accept adjacent query permission', () => {
+  assert.equal(permission.hasExactPermission('finance:expense:list', ['finance:expense:list']), true)
+  assert.equal(permission.hasExactPermission('finance:expense:list', ['finance:expense:query']), false)
+  assert.equal(permission.hasExactPermission('finance:expense:list', ['*:*:*']), true)
+})
+
 test('action checks read permissions storage instead of modules storage by default', () => {
   assert.equal(permission.hasActionPermission('sale', 'edit'), false)
 })

@@ -12,7 +12,7 @@
     "bigPackageSizeSupport": true
   },
   "compileType": "miniprogram",
-  "libVersion": "",
+  "libVersion": "3.16.1",
   "appid": "wxe9f6685ec5de191f",
   "projectname": "峻松店记",
   "condition": {

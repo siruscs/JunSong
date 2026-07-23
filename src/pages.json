@@ -107,13 +107,21 @@
     {
       "path": "pages/verification-record/detail",
       "style": { "navigationBarTitleText": "核销批次详情" }
+    },
+    {
+      "path": "pages/wechat-bind/index",
+      "style": { "navigationBarTitleText": "绑定微信账号", "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/legal/index",
+      "style": { "navigationBarTitleText": "隐私政策" }
     }
   ],
   "tabBar": {
     "color": "#94a3b8",
-    "selectedColor": "#2A6F97",
-    "backgroundColor": "#ffffff",
-    "borderStyle": "white",
+    "selectedColor": "#087CF0",
+    "backgroundColor": "#F8FAFC",
+    "borderStyle": "black",
     "list": [
       {
         "pagePath": "pages/index/index",
@@ -138,7 +146,7 @@
   "globalStyle": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "松·云助手",
-    "navigationBarBackgroundColor": "#ffffff",
-    "backgroundColor": "#f5f7fa"
+    "navigationBarBackgroundColor": "#F8FAFC",
+    "backgroundColor": "#E8EEF5"
   }
 }

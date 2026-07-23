@@ -27,6 +27,12 @@
         <text class="menu-label">密码修改</text>
         <text class="menu-arrow">›</text>
       </view>
+      <view class="menu-item" @tap="handleWechatBinding" hover-class="menu-item--active">
+        <view class="menu-icon-wrap wechat-bg"><text class="menu-icon-text wechat-icon-color">微</text></view>
+        <text class="menu-label">微信账号</text>
+        <text class="menu-binding-status" v-if="wechatBound">已绑定</text>
+        <text class="menu-arrow">›</text>
+      </view>
       <view class="menu-item" v-if="isAdmin" @tap="goSettings" hover-class="menu-item--active">
         <view class="menu-icon-wrap settings-bg"><text class="menu-icon-text settings-icon-color">设</text></view>
         <text class="menu-label">接口设置</text>
@@ -41,21 +47,26 @@
 
     <!-- 版本 -->
     <view class="version">
-      <text class="version-text">松·云助手 v1.1.0</text>
+      <text class="version-text">松·云助手 v1.7.0</text>
     </view>
   </view>
 </template>
 
 <script>
+import miniProgramShare from '@/mixins/miniProgramShare.js'
 import { setToken } from '@/api/index.js'
+import { request } from '@/api/index.js'
 import { isAdmin } from '@/utils/permission.js'
+import { getStatusBarHeight } from '@/utils/systemInfo.js'
 
 export default {
+  mixins: [miniProgramShare],
   data() {
     return {
       userInfo: {},
       statusBarH: 0,
-      isAdmin: false
+      isAdmin: false,
+      wechatBound: false
     }
   },
   computed: {
@@ -78,10 +89,11 @@ export default {
     }
   },
   onShow() {
-    this.statusBarH = uni.getSystemInfoSync().statusBarHeight || 20
+    this.statusBarH = getStatusBarHeight()
     this.userInfo = uni.getStorageSync('userInfo') || {}
     const modules = uni.getStorageSync('modules') || []
     this.isAdmin = isAdmin(modules)
+    this.loadWechatBindingStatus()
   },
   methods: {
     goProfile() {
@@ -92,6 +104,67 @@ export default {
     },
     goSettings() {
       uni.navigateTo({ url: '/pages/settings/index' })
+    },
+    logRequestFailure(label, error) {
+      const message = error?.msg || error?.errMsg || error?.message || String(error || '')
+      console.warn(label + ': ' + message)
+    },
+    async loadWechatBindingStatus() {
+      try {
+        const res = await request({
+          url: '/auth/mp/wechat/binding',
+          method: 'GET',
+          noRedirect: true,
+          silent: true,
+          timeout: 10000
+        })
+        const data = res.data || res
+        const list = Array.isArray(data) ? data : (data.rows || data.list || [])
+        this.wechatBound = list.some(b => b.status === 'ACTIVE')
+      } catch (e) {
+        this.logRequestFailure('查询微信绑定状态失败', e)
+        this.wechatBound = false
+      }
+    },
+    handleWechatBinding() {
+      if (this.wechatBound) {
+        this.showUnbindConfirm()
+      } else {
+        uni.navigateTo({ url: '/pages/wechat-bind/index' })
+      }
+    },
+    showUnbindConfirm() {
+      uni.showModal({
+        title: '解绑微信',
+        content: '解绑后将无法使用微信快捷登录，确定要解绑吗？',
+        confirmText: '确认解绑',
+        confirmColor: '#EF4444',
+        success: (res) => {
+          if (res.confirm) {
+            this.doUnbind()
+          }
+        }
+      })
+    },
+    async doUnbind() {
+      uni.showLoading({ title: '解绑中...' })
+      try {
+        await request({
+          url: '/auth/mp/wechat/unbind',
+          method: 'POST',
+          noRedirect: true,
+          silent: true,
+          timeout: 15000
+        })
+        uni.hideLoading()
+        this.wechatBound = false
+        uni.showToast({ title: '解绑成功', icon: 'success' })
+      } catch (e) {
+        uni.hideLoading()
+        this.logRequestFailure('解绑失败', e)
+        const msg = e?.msg || e?.errMsg || ''
+        uni.showToast({ title: msg || '解绑失败，请重试', icon: 'none' })
+      }
     },
     handleLogout() {
       uni.showModal({
@@ -115,48 +188,63 @@ export default {
 <style scoped>
 .page {
   min-height: 100vh;
-  background: #F0F4F8;
+  background: linear-gradient(180deg, #E6EEF6 0%, #F3F6FA 46%, #E8EEF5 100%);
 }
 
 .profile-header {
   position: relative;
   overflow: hidden;
-  padding-bottom: 80rpx;
+  padding-bottom: 54rpx;
+  background: linear-gradient(180deg, #C7DCF2 0%, #E1ECF8 100%);
+  border-bottom: 2rpx solid #AFCBE7;
 }
 
 .profile-bg {
   position: absolute;
   inset: 0;
-  background: linear-gradient(160deg, #173B57 0%, #2A6F97 40%, #3A8DB8 80%, #8EC8D2 100%);
+  background: linear-gradient(135deg, rgba(255,255,255,.58) 0%, rgba(202,224,246,.9) 100%);
+  border-bottom: 1rpx solid rgba(8,124,240,.08);
+}
+
+.profile-bg::before {
+  content: '';
+  position: absolute;
+  width: 260rpx;
+  height: 260rpx;
+  right: -110rpx;
+  top: -130rpx;
+  border: 22rpx solid rgba(8,124,240,.05);
+  border-radius: 50%;
 }
 
 .profile-bg::after {
   content: '';
   position: absolute;
-  bottom: -60rpx;
-  left: -10%;
-  right: -10%;
-  height: 140rpx;
-  background: #F0F4F8;
-  border-radius: 50% 50% 0 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2rpx;
+  background: #A8C7E5;
+  border-radius: 0;
 }
 
 .profile-content {
   position: relative;
   display: flex;
   align-items: center;
-  padding: 32rpx 40rpx 0;
+  padding: 28rpx 32rpx 0;
 }
 
 .avatar {
-  width: 120rpx;
-  height: 120rpx;
+  width: 108rpx;
+  height: 108rpx;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  background: #EAF3FF;
+  border: 2rpx solid #CFE0F8;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8rpx 24rpx rgba(5, 53, 107, 0.18);
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -170,24 +258,24 @@ export default {
 .avatar-text {
   font-size: 48rpx;
   font-weight: 700;
-  color: #ffffff;
+  color: #087CF0;
 }
 
 .profile-info {
-  margin-left: 28rpx;
+  margin-left: 24rpx;
   display: flex;
   flex-direction: column;
 }
 
 .username {
-  font-size: 36rpx;
+  font-size: 34rpx;
   font-weight: 700;
-  color: #ffffff;
+  color: #1F2D3D;
 }
 
 .dept-name {
   font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.7);
+  color: #8190A1;
   margin-top: 8rpx;
 }
 
@@ -195,7 +283,8 @@ export default {
   margin: 0 28rpx;
   background: #ffffff;
   border-radius: 20rpx;
-  box-shadow: 0 2rpx 16rpx rgba(42, 111, 151, 0.06);
+  border: 1rpx solid #D5E0EC;
+  box-shadow: 0 5rpx 18rpx rgba(45, 72, 98, 0.07);
   overflow: hidden;
 }
 
@@ -203,7 +292,7 @@ export default {
   display: flex;
   align-items: center;
   padding: 32rpx 28rpx;
-  border-bottom: 1rpx solid #F0F4F8;
+  border-bottom: 1rpx solid #E8EEF5;
 }
 
 .menu-item:last-child {
@@ -226,7 +315,7 @@ export default {
 }
 
 .profile-menu-bg {
-  background: rgba(42, 111, 151, 0.08);
+  background: rgba(8, 124, 240, 0.08);
 }
 
 .password-bg {
@@ -234,7 +323,11 @@ export default {
 }
 
 .settings-bg {
-  background: rgba(42, 111, 151, 0.08);
+  background: rgba(8, 124, 240, 0.08);
+}
+
+.wechat-bg {
+  background: rgba(7, 193, 96, 0.08);
 }
 
 .admin-bg {
@@ -251,7 +344,7 @@ export default {
 }
 
 .profile-icon-color {
-  color: #2A6F97;
+  color: #087CF0;
 }
 
 .password-icon-color {
@@ -259,7 +352,17 @@ export default {
 }
 
 .settings-icon-color {
-  color: #2A6F97;
+  color: #087CF0;
+}
+
+.wechat-icon-color {
+  color: #07C160;
+}
+
+.menu-binding-status {
+  font-size: 22rpx;
+  color: #07C160;
+  margin-right: 8rpx;
 }
 
 .admin-icon-color {

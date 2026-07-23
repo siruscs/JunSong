@@ -22,8 +22,33 @@
       </view>
     </view>
 
-    <scroll-view scroll-y class="scroll" v-if="authorizedGroups.length || showMemberGrowthSection">
-      <view class="section" v-for="group in authorizedGroups" :key="group.name">
+    <view class="search-bar">
+      <text class="search-icon">⌕</text>
+      <input
+        v-model="searchQuery"
+        class="search-input"
+        type="text"
+        confirm-type="search"
+        placeholder="搜索功能"
+        @confirm="handleSearchConfirm"
+      />
+      <text v-if="searchQuery" class="search-clear" @tap="clearSearch">×</text>
+    </view>
+
+    <scroll-view scroll-y class="scroll" v-if="hasSearchResults">
+      <view class="compact-section" v-if="recentItems.length && !searchQuery">
+        <text class="compact-title">最近</text>
+        <scroll-view scroll-x class="compact-scroll" :show-scrollbar="false">
+          <view class="compact-row">
+            <view class="compact-item" v-for="item in recentItems" :key="item.key" @tap="openModule(item.key)">
+              <text class="compact-icon">{{ getModuleLetter(item.key) }}</text>
+              <text class="compact-label">{{ item.title }}</text>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+
+      <view class="section" v-for="group in filteredGroups" :key="group.name">
         <view class="section-header">
           <view>
             <text class="section-title">{{ group.name }}</text>
@@ -44,17 +69,17 @@
               <text class="tile-icon-text">{{ getModuleLetter(item.key) }}</text>
             </view>
             <text class="tile-title">{{ item.title }}</text>
-            <text class="tile-desc">{{ getModuleDesc(item.key) }}</text>
+            <text class="tile-desc">{{ item.desc }}</text>
           </view>
         </view>
       </view>
 
       <!-- 会员运营快捷入口（R1-R25 同步） -->
-      <view class="section" v-if="showMemberGrowthSection">
+      <view class="section" v-if="filteredMemberGrowthEntries.length">
         <view class="section-header">
           <view>
             <text class="section-title">会员运营</text>
-            <text class="section-sub">{{ memberGrowthEntries.length }} 个功能</text>
+            <text class="section-sub">{{ filteredMemberGrowthEntries.length }} 个功能</text>
           </view>
           <view class="section-mark" style="background:#8B5CF6"></view>
         </view>
@@ -62,7 +87,7 @@
           <view
             class="tile"
             hover-class="tile--active"
-            v-for="entry in memberGrowthEntries"
+            v-for="entry in filteredMemberGrowthEntries"
             :key="entry.key"
             @tap="openMemberPage(entry.key)"
           >
@@ -77,19 +102,26 @@
     </scroll-view>
 
     <view class="empty" v-else>
-      <view class="empty-mark">权</view>
-      <text class="empty-title">暂无可用功能</text>
-      <text class="empty-sub">请确认账号已分配小程序模块权限，或重新登录刷新权限。</text>
+      <view class="empty-mark">{{ searchQuery ? '搜' : '权' }}</view>
+      <text class="empty-title">{{ searchQuery ? '未找到匹配功能' : '暂无可用功能' }}</text>
+      <text class="empty-sub">{{ searchQuery ? '换个关键词试试' : '请确认账号已分配小程序模块权限，或重新登录刷新权限。' }}</text>
     </view>
   </view>
 </template>
 
 <script>
+import miniProgramShare from '@/mixins/miniProgramShare.js'
 import { groups, modules } from '@/config/modules.js'
 import { filterAuthorizedGroups, hasModulePermission } from '@/utils/permission.js'
+import {
+  filterEntries,
+  filterModuleGroups,
+  recordRecent,
+  sanitizeModuleKeys
+} from '@/utils/workbenchPersonalization.js'
 
 const MODULE_BG = {
-  member: 'rgba(42,111,151,0.08)', pointsGoods: 'rgba(59,130,246,0.08)', pointsRule: 'rgba(20,184,166,0.08)', pointsRecord: 'rgba(42,111,151,0.08)',
+  member: 'rgba(8, 124, 240,0.08)', pointsGoods: 'rgba(59,130,246,0.08)', pointsRule: 'rgba(20,184,166,0.08)', pointsRecord: 'rgba(8, 124, 240,0.08)',
   pointsExchange: 'rgba(139,92,246,0.08)', seckill: 'rgba(249,115,22,0.08)', seckillRecord: 'rgba(234,88,12,0.08)',
   expense: 'rgba(239,68,68,0.08)', advance: 'rgba(139,92,246,0.08)', product: 'rgba(59,130,246,0.08)',
   supplier: 'rgba(107,114,128,0.08)', purchase: 'rgba(249,115,22,0.08)', sale: 'rgba(16,185,129,0.08)',
@@ -110,7 +142,7 @@ const MODULE_LETTER = {
 }
 
 const MODULE_ICON_COLOR = {
-  member: '#2A6F97', pointsGoods: '#3B82F6', pointsRule: '#0F766E', pointsRecord: '#2A6F97',
+  member: '#087CF0', pointsGoods: '#3B82F6', pointsRule: '#0F766E', pointsRecord: '#087CF0',
   pointsExchange: '#8B5CF6', seckill: '#F97316', seckillRecord: '#EA580C',
   expense: '#EF4444', advance: '#8B5CF6', product: '#3B82F6',
   supplier: '#6B7280', purchase: '#F97316', sale: '#10B981',
@@ -150,7 +182,7 @@ const MODULE_DESC = {
 }
 
 const GROUP_COLOR = {
-  '会员服务': '#2A6F97',
+  '会员服务': '#087CF0',
   '财务管理': '#F59E0B',
   '系统管理': '#6366F1',
   '移动办公': '#10B981'
@@ -159,9 +191,12 @@ const GROUP_COLOR = {
 const FEATURED_KEYS = ['member', 'expense', 'sale', 'costAccounting', 'accountingPeriod', 'userManage', 'wfTodo']
 
 export default {
+  mixins: [miniProgramShare],
   data() {
     return {
       modules: [],
+      searchQuery: '',
+      recent: [],
       currentDate: '',
       quickStats: [
         { label: '今日待办', value: 0 },
@@ -172,7 +207,22 @@ export default {
   },
   computed: {
     authorizedGroups() {
-      return filterAuthorizedGroups(groups, this.modules)
+      return filterAuthorizedGroups(groups, this.modules).map((group) => ({
+        ...group,
+        items: group.items.map((item) => ({ ...item, desc: this.getModuleDesc(item.key) }))
+      }))
+    },
+    filteredGroups() {
+      return filterModuleGroups(this.authorizedGroups, this.searchQuery)
+    },
+    authorizedKeys() {
+      return this.authorizedGroups.flatMap((group) => group.items.map((item) => item.key))
+    },
+    authorizedItems() {
+      return this.authorizedGroups.flatMap((group) => group.items)
+    },
+    recentItems() {
+      return this.recent.map((key) => this.authorizedItems.find((item) => item.key === key)).filter(Boolean)
     },
     totalAuthorized() {
       return this.authorizedGroups.reduce((total, group) => total + group.items.length, 0)
@@ -183,7 +233,7 @@ export default {
     },
     memberGrowthEntries() {
       const entries = [
-        { key: 'dashboard', title: '会员运营看板', desc: '会员增长与分层洞察', bg: 'rgba(42,111,151,0.08)', color: '#2A6F97', letter: '📊' },
+        { key: 'dashboard', title: '会员运营看板', desc: '会员增长与分层洞察', bg: 'rgba(8, 124, 240,0.08)', color: '#087CF0', letter: '📊' },
         { key: 'growth', title: '成长体系', desc: '等级、成长值与签到', bg: 'rgba(139,92,246,0.08)', color: '#8B5CF6', letter: '🌟' },
         { key: 'actions', title: '增长动作', desc: '待执行与已完成动作', bg: 'rgba(14,165,233,0.08)', color: '#0EA5E9', letter: '🎯' }
       ]
@@ -192,10 +242,19 @@ export default {
         entries.push({ key: 'points', title: '积分运营', desc: '积分流水与待领取兑换', bg: 'rgba(245,158,11,0.08)', color: '#F59E0B', letter: '🎯' })
       }
       return entries
+    },
+    filteredMemberGrowthEntries() {
+      if (!this.showMemberGrowthSection) return []
+      return filterEntries(this.memberGrowthEntries, this.searchQuery)
+    },
+    hasSearchResults() {
+      return this.filteredGroups.length > 0 || this.filteredMemberGrowthEntries.length > 0
     }
   },
   onShow() {
     this.modules = uni.getStorageSync('modules') || []
+    this.recent = sanitizeModuleKeys(uni.getStorageSync('miniProgramRecent') || [], this.authorizedKeys)
+    uni.setStorageSync('miniProgramRecent', this.recent)
     this.loadQuickStats()
   },
   created() {
@@ -218,7 +277,7 @@ export default {
       ]
     },
     getGroupColor(name) {
-      return GROUP_COLOR[name] || '#2A6F97'
+      return GROUP_COLOR[name] || '#087CF0'
     },
     getModuleBg(key) {
       return MODULE_BG[key] || 'rgba(148,163,184,0.08)'
@@ -235,11 +294,17 @@ export default {
     isFeatured(key) {
       return FEATURED_KEYS.includes(key)
     },
+    handleSearchConfirm() {},
+    clearSearch() {
+      this.searchQuery = ''
+    },
     openModule(key) {
       if (!hasModulePermission(key, this.modules)) {
         uni.showToast({ title: '暂无该功能权限', icon: 'none' })
         return
       }
+      this.recent = recordRecent(this.recent, key, this.authorizedKeys)
+      uni.setStorageSync('miniProgramRecent', this.recent)
       const mod = modules[key]
       if (mod && mod.customPage) {
         uni.navigateTo({ url: mod.customPage })
@@ -272,16 +337,32 @@ export default {
 <style scoped>
 .page {
   min-height: 100vh;
-  background: #EAF2F4;
+  background: linear-gradient(180deg, #E8EEF5 0%, #F6F8FB 44%, #E8EEF5 100%);
   overflow: hidden;
 }
 
 .hero {
-  margin: 16rpx 20rpx 0;
-  padding: 20rpx 24rpx;
-  background: linear-gradient(135deg, #173B57, #2A6F97);
-  border-radius: 20rpx;
-  box-shadow: 0 12rpx 32rpx rgba(42, 111, 151, 0.12);
+  margin: 18rpx 24rpx 0;
+  padding: 18rpx 24rpx 16rpx;
+  background: linear-gradient(135deg, #D6E6F6 0%, #F1F6FC 100%);
+  border-radius: 22rpx;
+  border: 1rpx solid #B8D0E9;
+  box-shadow: 0 8rpx 24rpx rgba(45,72,98,.08);
+  border-left: 8rpx solid #087CF0;
+  border-top: 4rpx solid #E7F0FF;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  width: 210rpx;
+  height: 210rpx;
+  right: -120rpx;
+  top: -130rpx;
+  border: 22rpx solid rgba(8,124,240,.08);
+  border-radius: 50%;
 }
 
 .hero-top {
@@ -294,13 +375,13 @@ export default {
 .hero-title {
   font-size: 34rpx;
   font-weight: 600;
-  color: #FFFFFF;
+  color: #1F2D3D;
   display: block;
 }
 
 .hero-date {
   font-size: 20rpx;
-  color: rgba(255, 255, 255, 0.68);
+  color: #8190A1;
   margin-top: 4rpx;
   display: block;
 }
@@ -309,7 +390,8 @@ export default {
   width: 80rpx;
   height: 80rpx;
   border-radius: 18rpx;
-  background: rgba(255, 255, 255, 0.12);
+  background: #EEF5FF;
+  border: 1rpx solid #CBE0F8;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -320,21 +402,23 @@ export default {
 .hero-count-num {
   font-size: 28rpx;
   font-weight: 700;
-  color: #FFFFFF;
+  color: #087CF0;
 }
 
 .hero-count-label {
   margin-top: 1rpx;
   font-size: 16rpx;
-  color: rgba(255, 255, 255, 0.66);
+  color: #6A85A0;
 }
 
 .hero-note {
-  margin-top: 14rpx;
-  padding: 12rpx 16rpx;
+  display: none;
+  margin-top: 0;
+  padding: 0;
   border-radius: 12rpx;
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.75);
+  background: #F4F8FD;
+  border: 1rpx solid #D9E8F7;
+  color: #62778E;
   font-size: 20rpx;
   line-height: 28rpx;
 }
@@ -342,9 +426,9 @@ export default {
 .hero-stats {
   display: flex;
   justify-content: space-around;
-  margin-top: 14rpx;
-  padding-top: 14rpx;
-  border-top: 1rpx solid rgba(255, 255, 255, 0.12);
+  margin-top: 12rpx;
+  padding-top: 12rpx;
+  border-top: 1rpx solid #E1E9F2;
 }
 
 .hero-stat {
@@ -356,19 +440,101 @@ export default {
 .hero-stat-num {
   font-size: 28rpx;
   font-weight: 700;
-  color: #FFFFFF;
+  color: #087CF0;
 }
 
 .hero-stat-label {
   margin-top: 4rpx;
   font-size: 18rpx;
-  color: rgba(255, 255, 255, 0.65);
+  color: #8190A1;
+}
+
+.search-bar {
+  height: 76rpx;
+  margin: 16rpx 24rpx 0;
+  padding: 0 20rpx;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  background: #FFFFFF;
+  border: 1rpx solid #D7E0EA;
+  border-radius: 16rpx;
+}
+
+.search-icon {
+  font-size: 34rpx;
+  color: #708196;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  height: 76rpx;
+  font-size: 26rpx;
+  color: #1A2332;
+}
+
+.search-clear {
+  width: 44rpx;
+  height: 44rpx;
+  line-height: 42rpx;
+  text-align: center;
+  font-size: 34rpx;
+  color: #708196;
 }
 
 .scroll {
-  height: calc(100vh - 180rpx);
+  height: calc(100vh - 272rpx);
   padding: 20rpx 20rpx 40rpx;
   box-sizing: border-box;
+}
+
+.compact-section {
+  margin-bottom: 24rpx;
+}
+
+.compact-title {
+  display: block;
+  margin: 0 4rpx 12rpx;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #102A3A;
+}
+
+.compact-scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.compact-row {
+  display: inline-flex;
+  gap: 12rpx;
+}
+
+.compact-item {
+  width: 156rpx;
+  height: 72rpx;
+  padding: 0 16rpx;
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  box-sizing: border-box;
+  background: #FFFFFF;
+  border: 1rpx solid #DCE5EE;
+  border-radius: 14rpx;
+}
+
+.compact-icon {
+  font-size: 28rpx;
+}
+
+.compact-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 22rpx;
+  color: #1A2332;
 }
 
 .section {
@@ -406,26 +572,27 @@ export default {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 14rpx;
 }
 
 .tile {
-  min-height: 200rpx;
-  padding: 24rpx 16rpx 20rpx;
+  min-height: 182rpx;
+  padding: 20rpx 10rpx 16rpx;
   background: #ffffff;
   border-radius: 24rpx;
-  box-shadow: 0 8rpx 28rpx rgba(42, 111, 151, 0.08);
+  box-shadow: 0 8rpx 28rpx rgba(8, 124, 240, 0.08);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
+  position: relative;
 }
 
 .tile.featured {
   background: linear-gradient(180deg, #FFFFFF, #F7FBFC);
-  border: 1rpx solid rgba(42, 111, 151, 0.1);
+  border: 1rpx solid rgba(8, 124, 240, 0.1);
 }
 
 .tile--active {
@@ -434,17 +601,17 @@ export default {
 }
 
 .tile-icon {
-  width: 88rpx;
-  height: 88rpx;
-  border-radius: 24rpx;
+  width: 68rpx;
+  height: 68rpx;
+  border-radius: 20rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 16rpx;
+  margin-bottom: 12rpx;
 }
 
 .tile-icon-text {
-  font-size: 48rpx;
+  font-size: 38rpx;
   line-height: 1;
 }
 
@@ -453,14 +620,16 @@ export default {
   font-size: 24rpx;
   font-weight: 700;
   color: #1A2332;
-  line-height: 34rpx;
+  line-height: 32rpx;
+  min-height: 32rpx;
 }
 
 .tile-desc {
   display: block;
-  margin-top: 6rpx;
-  font-size: 20rpx;
-  line-height: 28rpx;
+  margin-top: 4rpx;
+  font-size: 18rpx;
+  line-height: 25rpx;
+  min-height: 25rpx;
   color: #94A3B8;
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -474,7 +643,7 @@ export default {
   border-radius: 28rpx;
   background: #FFFFFF;
   text-align: center;
-  box-shadow: 0 12rpx 36rpx rgba(42, 111, 151, 0.08);
+  box-shadow: 0 12rpx 36rpx rgba(8, 124, 240, 0.08);
 }
 
 .empty-mark {
@@ -484,7 +653,7 @@ export default {
   margin: 0 auto 22rpx;
   border-radius: 28rpx;
   background: #ECF4F7;
-  color: #2A6F97;
+  color: #087CF0;
   font-size: 36rpx;
   font-weight: 800;
 }

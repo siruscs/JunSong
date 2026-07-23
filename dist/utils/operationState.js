@@ -1,0 +1,1 @@
+"use strict";exports.isUnknownWriteOutcome=function(e={}){return"REQUEST_TIMEOUT"===(null==e?void 0:e.code)||"NETWORK_ERROR"===(null==e?void 0:e.code)},exports.resolveListState=function({loading:e=!1,error:t="",rows:n=[]}={}){return e&&0===n.length?"loading":t&&0===n.length?"error":0===n.length?"empty":"content"};

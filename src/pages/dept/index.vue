@@ -182,7 +182,7 @@ export default {
 <style scoped>
 .page {
   min-height: 100vh;
-  background: #F0F4F8;
+  background: #E8EEF5;
   width: 100vw;
   max-width: 100vw;
   overflow-x: hidden;
@@ -192,15 +192,15 @@ export default {
 .hero {
   padding: 36rpx 28rpx 24rpx;
   background: #FFFFFF;
-  border-left: 6rpx solid #2A6F97;
+  border-left: 6rpx solid #087CF0;
   margin: 24rpx 28rpx 0;
   border-radius: 20rpx;
-  box-shadow: 0 2rpx 16rpx rgba(42, 111, 151, 0.06);
+  box-shadow: 0 2rpx 16rpx rgba(8, 124, 240, 0.06);
 }
 
 .eyebrow {
   font-size: 22rpx;
-  color: #2A6F97;
+  color: #087CF0;
   font-weight: 600;
 }
 
@@ -233,7 +233,7 @@ export default {
   width: 108rpx;
   height: 80rpx;
   line-height: 80rpx;
-  background: linear-gradient(135deg, #2A6F97, #3A8DB8);
+  background: linear-gradient(135deg, #087CF0, #5AA9E8);
   color: #FFFFFF;
   font-size: 26rpx;
   border-radius: 999rpx;
@@ -255,7 +255,7 @@ export default {
 }
 
 .tree-node--active {
-  background: rgba(42, 111, 151, 0.08);
+  background: rgba(8, 124, 240, 0.08);
   border-radius: 12rpx;
 }
 
@@ -342,11 +342,11 @@ export default {
   width: 320rpx;
   height: 84rpx;
   line-height: 84rpx;
-  background: linear-gradient(135deg, #2A6F97, #3A8DB8);
+  background: linear-gradient(135deg, #087CF0, #5AA9E8);
   color: #FFFFFF;
   font-size: 28rpx;
   border-radius: 999rpx;
   text-align: center;
-  box-shadow: 0 6rpx 20rpx rgba(42, 111, 151, 0.25);
+  box-shadow: 0 6rpx 20rpx rgba(8, 124, 240, 0.25);
 }
 </style>

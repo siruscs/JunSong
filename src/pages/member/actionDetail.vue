@@ -42,7 +42,7 @@
       <!-- 候选会员列表 -->
       <view class="section-card">
         <view class="section-header">
-          <view class="section-dot" style="background:#2A6F97"></view>
+          <view class="section-dot" style="background:#087CF0"></view>
           <text class="section-title">候选会员</text>
           <text class="section-count">{{ members.length }} 人</text>
         </view>
@@ -246,7 +246,7 @@ export default {
 <style scoped>
 .page {
   min-height: 100vh;
-  background: #F0F4F8;
+  background: #E8EEF5;
 }
 
 .hero {
@@ -282,7 +282,7 @@ export default {
   border-radius: 20rpx;
   padding: 28rpx;
   margin-bottom: 24rpx;
-  box-shadow: 0 2rpx 16rpx rgba(42, 111, 151, 0.06);
+  box-shadow: 0 2rpx 16rpx rgba(8, 124, 240, 0.06);
 }
 
 .section-header {
@@ -315,7 +315,7 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 12rpx 0;
-  border-bottom: 1rpx solid #F0F4F8;
+  border-bottom: 1rpx solid #E8EEF5;
 }
 
 .info-label {
@@ -431,7 +431,7 @@ export default {
   font-size: 22rpx;
   font-weight: 600;
   color: #FFFFFF;
-  background: #2A6F97;
+  background: #087CF0;
   border-radius: 999rpx;
   padding: 4rpx 20rpx;
   line-height: 40rpx;
@@ -559,7 +559,7 @@ export default {
   flex: 1;
   padding: 16rpx 0;
   text-align: center;
-  background: #F0F4F8;
+  background: #E8EEF5;
   border-radius: 12rpx;
   font-size: 24rpx;
   color: #5A6B7F;
@@ -568,9 +568,9 @@ export default {
 }
 
 .form-option.active {
-  background: rgba(42, 111, 151, 0.08);
-  color: #2A6F97;
-  border-color: #2A6F97;
+  background: rgba(8, 124, 240, 0.08);
+  color: #087CF0;
+  border-color: #087CF0;
   font-weight: 700;
 }
 
@@ -606,17 +606,17 @@ export default {
 }
 
 .modal-btn.cancel {
-  background: #F0F4F8;
+  background: #E8EEF5;
   color: #5A6B7F;
 }
 
 .modal-btn.confirm {
-  background: #2A6F97;
+  background: #087CF0;
   color: #FFFFFF;
 }
 
 .modal-btn.confirm[disabled] {
-  background: rgba(42, 111, 151, 0.4);
+  background: rgba(8, 124, 240, 0.4);
   color: rgba(255, 255, 255, 0.8);
 }
 </style>

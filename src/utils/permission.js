@@ -61,6 +61,11 @@ export function hasActionPermission(moduleKey, action, grants) {
   })
 }
 
+export function hasExactPermission(permission, grants) {
+  grants = rawActionGrants(grants).map(normalizeGrant).filter(Boolean)
+  return grants.some((grant) => grant === '*:*:*' || grant === permission)
+}
+
 export function filterAuthorizedGroups(groups, grants) {
   return groups.map((group) => ({
     ...group,

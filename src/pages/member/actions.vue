@@ -44,7 +44,7 @@
       <!-- 动作任务列表 -->
       <view class="section-card">
         <view class="section-header">
-          <view class="section-dot" style="background:#2A6F97"></view>
+          <view class="section-dot" style="background:#087CF0"></view>
           <text class="section-title">任务列表</text>
           <text class="section-count">{{ recentActions.length }} 条</text>
         </view>
@@ -152,7 +152,7 @@ export default {
 <style scoped>
 .page {
   min-height: 100vh;
-  background: #F0F4F8;
+  background: #E8EEF5;
 }
 
 .hero {
@@ -188,7 +188,7 @@ export default {
   border-radius: 20rpx;
   padding: 28rpx;
   margin-bottom: 24rpx;
-  box-shadow: 0 2rpx 16rpx rgba(42, 111, 151, 0.06);
+  box-shadow: 0 2rpx 16rpx rgba(8, 124, 240, 0.06);
 }
 
 .section-header {
@@ -238,7 +238,7 @@ export default {
   color: #1A2332;
 }
 
-.stat-value.primary { color: #2A6F97; }
+.stat-value.primary { color: #087CF0; }
 .stat-value.success { color: #10B981; }
 .stat-value.warning { color: #F59E0B; }
 
@@ -279,7 +279,7 @@ export default {
   padding: 22rpx 24rpx;
   background: #F8FBFD;
   border-radius: 16rpx;
-  border: 1rpx solid rgba(42, 111, 151, 0.06);
+  border: 1rpx solid rgba(8, 124, 240, 0.06);
 }
 
 .action-top {
@@ -317,8 +317,8 @@ export default {
 }
 
 .action-status.primary {
-  background: rgba(42, 111, 151, 0.1);
-  color: #2A6F97;
+  background: rgba(8, 124, 240, 0.1);
+  color: #087CF0;
 }
 
 .action-status.success {
@@ -359,7 +359,7 @@ export default {
 
 .action-arrow {
   font-size: 22rpx;
-  color: #2A6F97;
+  color: #087CF0;
   font-weight: 600;
 }
 

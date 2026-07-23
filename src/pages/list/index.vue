@@ -7,6 +7,14 @@
       </view>
     </view>
 
+    <view class="work-scope">
+      <view class="work-scope-mark"></view>
+      <view class="work-scope-copy">
+        <text class="work-scope-label">{{ scopeLabel }}</text>
+        <text class="work-scope-name">{{ currentDeptName }}</text>
+      </view>
+    </view>
+
     <view class="filter-wrap" v-if="moduleKey === 'seckillRecord'">
       <picker class="filter-picker" :range="seckillOptions" range-key="seckillName" :value="selectedSeckillIndex" @change="onSeckillChange">
         <view class="filter-picker-box">
@@ -167,19 +175,28 @@
               </view>
             </view>
 
-            <view class="card-footer">
-              <text class="meta-text">{{ metaText(item) }}</text>
+            <view class="card-footer" :class="moduleKey === 'sale' ? `sale-footer-${saleStatusClass(item)}` : ''">
+              <view v-if="moduleKey === 'sale'" class="sale-footer-meta">
+                <text class="sale-footer-date">{{ saleDateText(item) }}</text>
+                <text class="sale-footer-status">{{ saleStatusText(item) }}</text>
+              </view>
+              <text v-else class="meta-text">{{ metaText(item) }}</text>
               <text class="arrow-icon">›</text>
             </view>
           </view>
         </view>
       </view>
 
-      <view class="empty" v-if="!loading && rows.length === 0">
+      <view class="load-error" v-if="listState === 'error'">
+        <text class="empty-title">加载失败</text>
+        <text class="empty-subtitle">{{ loadError }}</text>
+        <button class="retry-button" @tap="refresh">重新加载</button>
+      </view>
+      <view class="empty" v-if="listState === 'empty'">
         <view class="empty-title">暂无{{ config.title }}</view>
         <view class="empty-subtitle">{{ canAdd ? '点击右下角新增一条记录' : '暂无可查看数据' }}</view>
       </view>
-      <view class="loading" v-if="loading">加载中</view>
+      <view class="loading" v-if="listState === 'loading'">加载中</view>
       <view class="loading" v-if="finished && rows.length > 0">没有更多了</view>
     </scroll-view>
 
@@ -203,7 +220,7 @@
         <textarea class="claim-remark" v-model="claimForm.remark" placeholder="备注，可不填" />
         <view class="claim-panel-actions">
           <button class="claim-cancel" @tap="closeClaim">取消</button>
-          <button class="claim-confirm" @tap="submitClaim">确认领取</button>
+          <button class="claim-confirm" :disabled="claimSubmitting" @tap="submitClaim">{{ claimSubmitting ? '领取中' : '确认领取' }}</button>
         </view>
       </view>
     </view>
@@ -247,11 +264,17 @@
 </template>
 
 <script>
+import miniProgramShare from '@/mixins/miniProgramShare.js'
 import { getModule, formatDisplayValue, getValueTone } from '@/config/modules.js'
 import { listData, request } from '@/api/index.js'
 import { hasActionPermission, requireModulePermission } from '@/utils/permission.js'
+import { resolveListState } from '@/utils/operationState.js'
+import { resolveMemberSearchField } from '@/utils/memberWorkflow.js'
+import { workContext } from '@/utils/workContext.js'
+import { canRequestListScope, resolveListWorkScope, shouldRestoreListPage } from '@/utils/listWorkScope.js'
 
 export default {
+  mixins: [miniProgramShare],
   data() {
     return {
       moduleKey: '',
@@ -261,6 +284,8 @@ export default {
       pageSize: 10,
       rows: [],
       loading: false,
+      loadError: '',
+      refreshPending: false,
       refreshing: false,
       finished: false,
       expenseSummary: null,
@@ -270,6 +295,7 @@ export default {
       selectedSeckillId: '',
       claimRows: [],
       claimLoading: false,
+      claimSubmitting: false,
       claimPanelOpen: false,
       activeClaimRecord: null,
       claimForm: {
@@ -290,11 +316,17 @@ export default {
       paymentMethodOptions: [],
       paymentMethodDictLoaded: false,
       currentDeptId: null,
+      currentDeptName: '未选择部门',
+      scopeLabel: '暂无可用数据范围',
+      contextVersion: 0,
       batchSelecting: false,
       selectedExpenseIds: []
     }
   },
   computed: {
+    listState() {
+      return resolveListState({ loading: this.loading, error: this.loadError, rows: this.rows })
+    },
     canAdd() {
       if (this.moduleKey === 'seckillRecord') return hasActionPermission(this.moduleKey, 'add')
       return hasActionPermission(this.moduleKey, 'add') && !this.config?.addOnly
@@ -321,6 +353,7 @@ export default {
     },
     searchPlaceholder() {
       if (this.moduleKey === 'expense') return '搜索花销内容'
+      if (this.moduleKey === 'member') return '输入姓名、编号或手机号'
       if (this.config?.searchKeys && this.config.searchKeys.length > 1) return '输入姓名或编号搜索'
       return '搜索' + (this.config?.title || '')
     },
@@ -346,8 +379,7 @@ export default {
   async onLoad(options) {
     this.moduleKey = options.module
     this.config = getModule(this.moduleKey)
-    const userInfo = uni.getStorageSync('userInfo') || {}
-    this.currentDeptId = userInfo.currentDeptId || userInfo.deptId || null
+    this.syncWorkScope()
     if (this.config && requireModulePermission(this.moduleKey)) {
       uni.setNavigationBarTitle({ title: this.config.title })
       await this.loadDictOptions()
@@ -358,26 +390,52 @@ export default {
   },
   onShow() {
     if (this.config && this.moduleKey) {
+      this.syncWorkScope()
       this.resetBatchSelection()
       this.refresh()
       if (this.moduleKey === 'expense') this.loadExpenseSummary()
     }
   },
   methods: {
+    syncWorkScope() {
+      const scope = resolveListWorkScope(workContext.snapshot(), this.currentDeptId)
+      if (scope.departmentChanged) {
+        this.rows = []
+        this.totalRecords = 0
+        this.finished = false
+        this.expenseSummary = null
+        this.resetBatchSelection()
+      }
+      this.currentDeptId = scope.currentDeptId
+      this.currentDeptName = scope.currentDeptName
+      this.scopeLabel = scope.scopeLabel
+      this.contextVersion = scope.contextVersion
+      return scope
+    },
     resetBatchSelection() {
       this.batchSelecting = false
       this.selectedExpenseIds = []
     },
     async loadExpenseSummary() {
+      if (!canRequestListScope(this.currentDeptId)) {
+        this.expenseSummary = null
+        return false
+      }
+      const contextVersion = workContext.captureVersion()
+      const requestDeptId = this.currentDeptId
       try {
         const params = {}
         if (this.currentDeptId !== null && this.currentDeptId !== undefined) {
           params.deptId = this.currentDeptId
         }
         const res = await request({ url: '/finance/expense/summary', method: 'GET', data: params })
+        if (!workContext.isCurrent(contextVersion) || String(this.currentDeptId) !== String(requestDeptId)) return false
         this.expenseSummary = res.data || res || null
+        return true
       } catch (e) {
+        if (!workContext.isCurrent(contextVersion) || String(this.currentDeptId) !== String(requestDeptId)) return false
         console.log('加载费用统计失败', e)
+        return false
       }
     },
     statusText(val) {
@@ -508,6 +566,7 @@ export default {
       this.batchAllOpen = false
     },
     async submitBatchAll() {
+      if (this.batchAllLoading) return
       if (!this.batchAllForm.seckillId) {
         uni.showToast({ title: '请选择秒杀活动', icon: 'none' })
         return
@@ -549,6 +608,11 @@ export default {
     },
     // 展示某个字段的值（处理 select 类型）
     displayField(key, value, item) {
+      if (this.moduleKey === 'sale' && key === 'saleQuantity') {
+        const quantity = Number(value || 0)
+        const giftQuantity = Number(item?.giftQuantity || 0)
+        return giftQuantity > 0 ? `${quantity}+${giftQuantity}(赠)` : String(quantity)
+      }
       const field = this.fieldOf(key)
       if (typeof field.formatter === 'function') return field.formatter(item || {}) || '-'
       return formatDisplayValue(field, value, item)
@@ -580,8 +644,10 @@ export default {
         query.seckillId = this.selectedSeckillId
       }
       if (this.queryValue) {
-        if (this.config.searchKeys && this.config.searchKeys.length > 1) {
-          const val = this.queryValue.trim()
+        const val = this.queryValue.trim()
+        if (this.moduleKey === 'member') {
+          query[resolveMemberSearchField(val)] = val
+        } else if (this.config.searchKeys && this.config.searchKeys.length > 1) {
           const isNo = /^[A-Za-z0-9]/.test(val)
           query[isNo ? this.config.searchKeys[1] : this.config.searchKeys[0]] = val
         } else if (this.config.searchKey) {
@@ -606,37 +672,93 @@ export default {
       if (statusKey) return this.displayField(statusKey, item[statusKey])
       return ''
     },
+    saleDateText(item) {
+      const dateKey = this.config.fields.find((field) => field.type === 'date' && item[field.key])?.key
+      return dateKey ? this.displayField(dateKey, item[dateKey], item) : '-'
+    },
+    saleStatusText(item) {
+      return this.displayField('status', item.status, item)
+    },
+    saleStatusClass(item) {
+      const status = String(item?.status ?? '')
+      if (status === '2') return 'status-ok'
+      if (status === '1') return 'status-info'
+      return 'status-warn'
+    },
     async refresh() {
+      if (this.loading) {
+        this.refreshPending = true
+        return
+      }
       this.resetBatchSelection()
       this.pageNum = 1
       this.finished = false
       this.refreshing = true
-      await this.fetchList(true)
-      this.refreshing = false
+      try {
+        await this.fetchList(true)
+      } finally {
+        this.refreshing = false
+      }
     },
     async loadMore() {
       if (this.loading || this.finished) return
+      const contextVersion = workContext.captureVersion()
+      const previousPage = this.pageNum
       this.pageNum += 1
-      await this.fetchList(false)
+      const loaded = await this.fetchList(false)
+      if (shouldRestoreListPage(loaded, workContext.isCurrent(contextVersion))) this.pageNum = previousPage
     },
     async fetchList(reset) {
+      if (!canRequestListScope(this.currentDeptId)) {
+        this.rows = []
+        this.totalRecords = 0
+        this.finished = true
+        if (reset) this.loadError = '暂无可用部门，请返回首页刷新'
+        return false
+      }
+      const contextVersion = workContext.captureVersion()
+      const requestDeptId = this.currentDeptId
       this.loading = true
+      if (reset) this.loadError = ''
       try {
         if (this.moduleKey === 'seckillRecord' && !this.selectedSeckillId) {
           this.rows = []
           this.totalRecords = 0
           this.finished = true
           this.claimRows = []
-          return
+          return true
         }
-        const res = await listData(this.config.path, this.buildQuery())
-        const list = res.rows || res.data || []
+        const query = this.buildQuery()
+        let res = await listData(this.config.path, query)
+        if (!workContext.isCurrent(contextVersion) || String(this.currentDeptId) !== String(requestDeptId)) return false
+        if (this.refreshPending) return true
+        let list = res.rows || res.data || []
+        if (this.moduleKey === 'member' && query.phone && list.length === 0) {
+          const fallbackQuery = { ...query }
+          delete fallbackQuery.phone
+          fallbackQuery.memberNo = query.phone
+          res = await listData(this.config.path, fallbackQuery)
+          if (!workContext.isCurrent(contextVersion) || String(this.currentDeptId) !== String(requestDeptId)) return false
+          if (this.refreshPending) return true
+          list = res.rows || res.data || []
+        }
         this.rows = reset ? list : this.rows.concat(list)
         this.totalRecords = Number(res.total ?? this.rows.length) || 0
         this.finished = list.length < this.pageSize
         if (reset && this.moduleKey === 'seckillRecord') this.loadClaimRows()
+        return true
+      } catch (error) {
+        if (!workContext.isCurrent(contextVersion) || String(this.currentDeptId) !== String(requestDeptId)) return false
+        if (this.refreshPending) return true
+        if (reset) this.loadError = error?.msg || error?.message || '请检查网络后重试'
+        else uni.showToast({ title: '加载更多失败，请重试', icon: 'none' })
+        return false
       } finally {
         this.loading = false
+        if (this.refreshPending) {
+          this.refreshPending = false
+          await this.refresh()
+        }
       }
     },
     async loadClaimRows() {
@@ -682,12 +804,14 @@ export default {
       this.claimForm.claimTime = e.detail.value
     },
     async submitClaim() {
+      if (this.claimSubmitting) return
       const record = this.activeClaimRecord
       const claimShares = Number(this.claimForm.claimShares)
       if (!record || !claimShares || claimShares <= 0) {
         uni.showToast({ title: '请输入领取数量', icon: 'none' })
         return
       }
+      this.claimSubmitting = true
       try {
         await request({
           url: '/member/seckillRecord/claim/' + record.recordId,
@@ -703,6 +827,8 @@ export default {
         this.refresh()
       } catch (e) {
         console.error('领取失败', e)
+      } finally {
+        this.claimSubmitting = false
       }
     },
     openDetail(item) {
@@ -750,7 +876,7 @@ export default {
 <style scoped>
 .page {
   min-height: 100vh;
-  background: #F0F4F8;
+  background: #E8EEF5;
   width: 100vw;
   max-width: 100vw;
   overflow-x: hidden;
@@ -759,11 +885,12 @@ export default {
 
 .hero {
   padding: 36rpx 28rpx 24rpx;
-  background: #FFFFFF;
-  border-left: 6rpx solid #2A6F97;
+  background: linear-gradient(135deg, #D4E5F7 0%, #F7FAFD 100%);
+  border-left: 6rpx solid #087CF0;
+  border-top: 1rpx solid #C1D8EF;
   margin: 24rpx 28rpx 0;
   border-radius: 20rpx;
-  box-shadow: 0 2rpx 16rpx rgba(42, 111, 151, 0.06);
+  box-shadow: 0 6rpx 20rpx rgba(45, 72, 98, 0.08);
 }
 
 .hero--seckill-record {
@@ -777,7 +904,7 @@ export default {
 
 .eyebrow {
   font-size: 22rpx;
-  color: #2A6F97;
+  color: #087CF0;
   font-weight: 600;
 }
 
@@ -786,6 +913,44 @@ export default {
   font-size: 40rpx;
   font-weight: 700;
   color: #1A2332;
+}
+
+.work-scope {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin: 0 28rpx;
+  padding: 18rpx 4rpx 4rpx;
+}
+
+.work-scope-mark {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+  background: #087CF0;
+  flex-shrink: 0;
+}
+
+.work-scope-copy {
+  display: flex;
+  align-items: baseline;
+  gap: 12rpx;
+  min-width: 0;
+}
+
+.work-scope-label {
+  color: #708196;
+  font-size: 22rpx;
+  flex-shrink: 0;
+}
+
+.work-scope-name {
+  color: #1F2D3D;
+  font-size: 25rpx;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .filter-wrap {
@@ -822,7 +987,7 @@ export default {
   background: #FFFFFF;
   border: 2rpx solid #E2E8F0;
   border-radius: 999rpx;
-  box-shadow: 0 2rpx 16rpx rgba(42, 111, 151, 0.06);
+  box-shadow: 0 2rpx 16rpx rgba(8, 124, 240, 0.06);
   box-sizing: border-box;
 }
 
@@ -830,7 +995,7 @@ export default {
   flex-shrink: 0;
   font-size: 24rpx;
   font-weight: 700;
-  color: #2A6F97;
+  color: #087CF0;
 }
 
 .filter-picker-value {
@@ -856,7 +1021,7 @@ export default {
   background: #FFFFFF;
   border-radius: 20rpx;
   display: flex;
-  box-shadow: 0 2rpx 16rpx rgba(42, 111, 151, 0.06);
+  box-shadow: 0 2rpx 16rpx rgba(8, 124, 240, 0.06);
 }
 
 .stat-item {
@@ -912,7 +1077,7 @@ export default {
   width: 108rpx;
   height: 80rpx;
   line-height: 80rpx;
-  background: linear-gradient(135deg, #2A6F97, #3A8DB8);
+  background: linear-gradient(135deg, #087CF0, #5AA9E8);
   color: #FFFFFF;
   font-size: 26rpx;
   border-radius: 999rpx;
@@ -943,7 +1108,7 @@ export default {
   line-height: 72rpx;
   padding: 0 28rpx;
   background: #FFFFFF;
-  color: #2A6F97;
+  color: #087CF0;
   font-size: 26rpx;
   font-weight: 500;
   border: 2rpx solid #E2E8F0;
@@ -951,9 +1116,9 @@ export default {
 }
 
 .chip-button.primary {
-  background: #2A6F97;
+  background: #087CF0;
   color: #FFFFFF;
-  border-color: #2A6F97;
+  border-color: #087CF0;
 }
 
 .chip-button[disabled] {
@@ -972,12 +1137,12 @@ export default {
   margin: 16rpx 28rpx 0;
   padding: 24rpx 28rpx;
   border-radius: 24rpx;
-  background: linear-gradient(135deg, #173B57, #2A6F97);
+  background: linear-gradient(135deg, #123F73, #087CF0);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24rpx;
-  box-shadow: 0 14rpx 36rpx rgba(42, 111, 151, 0.18);
+  box-shadow: 0 14rpx 36rpx rgba(8, 124, 240, 0.18);
   box-sizing: border-box;
 }
 
@@ -1032,7 +1197,7 @@ export default {
   margin-bottom: 18rpx;
   background: #FFFFFF;
   border-radius: 24rpx;
-  box-shadow: 0 8rpx 28rpx rgba(42, 111, 151, 0.07);
+  box-shadow: 0 8rpx 28rpx rgba(8, 124, 240, 0.07);
   border: 1rpx solid rgba(226, 232, 240, 0.9);
   box-sizing: border-box;
   overflow: hidden;
@@ -1538,7 +1703,7 @@ export default {
   background: #FFFFFF;
   border-radius: 22rpx;
   border: 1rpx solid rgba(226, 232, 240, 0.9);
-  box-shadow: 0 8rpx 26rpx rgba(42, 111, 151, 0.06);
+  box-shadow: 0 8rpx 26rpx rgba(8, 124, 240, 0.06);
   overflow: hidden;
 }
 
@@ -1639,13 +1804,13 @@ export default {
   margin-bottom: 16rpx;
   background: #FFFFFF;
   border-radius: 20rpx;
-  box-shadow: 0 2rpx 16rpx rgba(42, 111, 151, 0.06);
+  box-shadow: 0 2rpx 16rpx rgba(8, 124, 240, 0.06);
   overflow: hidden;
 }
 
 .card-bar {
   width: 4rpx;
-  background: linear-gradient(180deg, #2A6F97, #8EC8D2);
+  background: linear-gradient(180deg, #087CF0, #A8C7E5);
   flex-shrink: 0;
 }
 
@@ -1671,7 +1836,7 @@ export default {
 
 .record-id {
   padding: 4rpx 14rpx;
-  background: #F0F4F8;
+  background: #E8EEF5;
   color: #5A6B7F;
   font-size: 20rpx;
   border-radius: 999rpx;
@@ -1708,7 +1873,7 @@ export default {
 }
 
 .summary-value.tone-points {
-  color: #2A6F97;
+  color: #087CF0;
   font-weight: 700;
 }
 
@@ -1739,12 +1904,55 @@ export default {
   align-items: center;
   margin-top: 16rpx;
   padding-top: 14rpx;
-  border-top: 1rpx solid #F0F4F8;
+  border-top: 1rpx solid #E8EEF5;
 }
 
 .meta-text {
   font-size: 24rpx;
   color: #94A3B8;
+}
+
+.sale-footer-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  flex: 1;
+}
+
+.sale-footer-date,
+.sale-footer-status {
+  font-size: 22rpx;
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+.sale-footer-status {
+  margin-left: auto;
+}
+
+.card-footer.sale-footer-status-ok {
+  padding: 12rpx 16rpx;
+  border-top: none;
+  border-radius: 12rpx;
+  background: #D1FAE5;
+  color: #065F46;
+}
+
+.card-footer.sale-footer-status-warn {
+  padding: 12rpx 16rpx;
+  border-top: none;
+  border-radius: 12rpx;
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.card-footer.sale-footer-status-info {
+  padding: 12rpx 16rpx;
+  border-top: none;
+  border-radius: 12rpx;
+  background: #E0F2FE;
+  color: #075985;
 }
 
 .arrow-icon {
@@ -1773,20 +1981,34 @@ export default {
   width: 320rpx;
   height: 84rpx;
   line-height: 84rpx;
-  background: linear-gradient(135deg, #2A6F97, #3A8DB8);
+  background: linear-gradient(135deg, #087CF0, #5AA9E8);
   color: #FFFFFF;
   font-size: 28rpx;
   border-radius: 999rpx;
   text-align: center;
-  box-shadow: 0 6rpx 20rpx rgba(42, 111, 151, 0.25);
+  box-shadow: 0 6rpx 20rpx rgba(8, 124, 240, 0.25);
 }
 
 .empty,
+.load-error,
 .loading {
   padding: 60rpx;
   text-align: center;
   color: #94A3B8;
   font-size: 26rpx;
+}
+
+.retry-button {
+  width: 220rpx;
+  height: 72rpx;
+  margin: 28rpx auto 0;
+  padding: 0;
+  border: 1rpx solid #B8D4F0;
+  border-radius: 8rpx;
+  background: #E8F3FF;
+  color: #087CF0;
+  font-size: 26rpx;
+  line-height: 72rpx;
 }
 
 .empty-title {

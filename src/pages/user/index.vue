@@ -12,6 +12,19 @@
       <button class="search-button" @tap="refresh">查询</button>
     </view>
 
+    <view class="action-wrap">
+      <view class="session-action-card">
+        <view class="session-copy">
+          <text class="session-title">微信会话管理</text>
+          <text class="session-subtitle">让全部微信登录会话重新校验</text>
+        </view>
+        <button class="session-button" @tap="revokeWechatSessions">
+          <text class="session-button-icon">↻</text>
+          <text>一键清除</text>
+        </button>
+      </view>
+    </view>
+
     <!-- 用户列表 -->
     <scroll-view
       scroll-y
@@ -28,8 +41,9 @@
         :key="item.userId"
         @tap="openDetail(item)"
       >
-        <view class="avatar" :style="{ background: avatarColor(item.userName) }">
-          {{ firstChar(item.userName) }}
+        <view class="avatar" :style="{ background: avatarUrl(item.avatar) ? '#F1F5F9' : avatarColor(item.userName) }">
+          <image v-if="avatarUrl(item.avatar)" class="avatar-img" :src="avatarUrl(item.avatar)" mode="aspectFill" />
+          <text v-else class="avatar-fallback">{{ firstChar(item.userName) }}</text>
         </view>
         <view class="user-info">
           <view class="user-name-row">
@@ -40,6 +54,9 @@
             <text class="user-phone">{{ item.phonenumber || '-' }}</text>
             <view class="status-pill" :class="item.status === '0' ? 'status-ok' : 'status-disabled'">
               {{ item.status === '0' ? '正常' : '停用' }}
+            </view>
+            <view class="wechat-pill" :class="wechatBindingClass(item)">
+              {{ wechatBindingText(item) }}
             </view>
           </view>
         </view>
@@ -62,7 +79,7 @@
 </template>
 
 <script>
-import { request } from '@/api/index.js'
+import { request, getBaseUrl } from '@/api/index.js'
 import { isAdmin } from '@/utils/permission.js'
 
 export default {
@@ -98,13 +115,73 @@ export default {
       return name.charAt(0).toUpperCase()
     },
     avatarColor(name) {
-      const colors = ['#2A6F97', '#3A8DB8', '#8EC8D2', '#059669', '#0284c7', '#7c3aed', '#db2777', '#ea580c']
+      const colors = ['#087CF0', '#5AA9E8', '#A8C7E5', '#059669', '#0284c7', '#7c3aed', '#db2777', '#ea580c']
       if (!name) return colors[0]
       let hash = 0
       for (let i = 0; i < name.length; i++) {
         hash = name.charCodeAt(i) + ((hash << 5) - hash)
       }
       return colors[Math.abs(hash) % colors.length]
+    },
+    avatarUrl(avatar) {
+      if (!avatar) return ''
+      if (/^(https?:)?\/\//.test(avatar) || avatar.startsWith('data:') || avatar.startsWith('wxfile://')) {
+        return avatar
+      }
+      const baseUrl = getBaseUrl().replace(/\/$/, '')
+      if (avatar.startsWith('/statics/')) {
+        return baseUrl.replace(/\/prod-api$/, '').replace(/\/dev-api$/, '') + avatar
+      }
+      const path = avatar.startsWith('/') ? avatar : `/${avatar}`
+      return `${baseUrl}${path}`
+    },
+    normalizeMpBindings(res) {
+      const data = res.data || res.rows || res || []
+      return Array.isArray(data) ? data : []
+    },
+    isActiveMpBinding(binding) {
+      const status = String(binding.status || binding.bindStatus || binding.mpStatus || '').toUpperCase()
+      if (status === 'ACTIVE' || status === 'BOUND' || status === '0') return true
+      if (binding.bound === true || binding.bind === true || binding.isBound === true) return true
+      const statusText = String(binding.statusText || binding.bindStatusText || binding.remark || '')
+      return statusText.includes('绑定') && !statusText.includes('未绑定') && !statusText.includes('解绑')
+    },
+    async loadMpBindingStatus(list) {
+      const users = list.filter(user => user && user.userId)
+      await Promise.all(users.map(async (user) => {
+        try {
+          const res = await request({
+            url: `/system/user/${user.userId}/mp-binding`,
+            method: 'GET',
+            noRedirect: true,
+            silent: true,
+            timeout: 8000
+          })
+          const bindings = this.normalizeMpBindings(res)
+          const activeCount = bindings.filter(item => this.isActiveMpBinding(item)).length
+          const target = this.rows.find(row => String(row.userId) === String(user.userId))
+          if (target) {
+            target.mpBindingStatus = activeCount > 0 ? 'BOUND' : 'UNBOUND'
+            target.mpBindingCount = activeCount
+          }
+        } catch (e) {
+          const target = this.rows.find(row => String(row.userId) === String(user.userId))
+          if (target) {
+            target.mpBindingStatus = 'UNKNOWN'
+            target.mpBindingCount = 0
+          }
+        }
+      }))
+    },
+    wechatBindingText(item) {
+      if (item.mpBindingStatus === 'BOUND') {
+        return item.mpBindingCount > 1 ? `微信已绑定${item.mpBindingCount}个` : '微信已绑定'
+      }
+      if (item.mpBindingStatus === 'UNBOUND') return '微信未绑定'
+      return '微信状态未知'
+    },
+    wechatBindingClass(item) {
+      return item.mpBindingStatus === 'BOUND' ? 'wechat-bound' : 'wechat-unbound'
     },
     buildQuery() {
       const query = { pageNum: this.pageNum, pageSize: this.pageSize }
@@ -125,6 +202,7 @@ export default {
         const list = res.rows || res.data || []
         this.rows = reset ? list : this.rows.concat(list)
         this.finished = list.length < this.pageSize
+        this.loadMpBindingStatus(list)
       } catch (e) {
         console.error('加载用户列表失败', e)
       } finally {
@@ -148,6 +226,23 @@ export default {
     },
     addUser() {
       uni.navigateTo({ url: '/pages/user/form' })
+    },
+    revokeWechatSessions() {
+      uni.showModal({
+        title: '一键清除微信会话',
+        content: '清除后，当前租户下所有微信登录用户下次操作需要重新登录。是否继续？',
+        confirmText: '清除',
+        success: async (res) => {
+          if (!res.confirm) return
+          try {
+            const reason = encodeURIComponent('小程序端管理员一键清除微信会话')
+            await request({ url: `/system/wechat-session/revoke-all?reason=${reason}`, method: 'POST' })
+            uni.showToast({ title: '已清除微信会话', icon: 'success' })
+          } catch (e) {
+            console.error('清除微信会话失败', e)
+          }
+        }
+      })
     }
   }
 }
@@ -156,7 +251,7 @@ export default {
 <style scoped>
 .page {
   min-height: 100vh;
-  background: #F0F4F8;
+  background: #E8EEF5;
 }
 
 .search-wrap {
@@ -164,7 +259,7 @@ export default {
   gap: 12rpx;
   padding: 20rpx 28rpx;
   background: #FFFFFF;
-  box-shadow: 0 2rpx 8rpx rgba(42, 111, 151, 0.04);
+  box-shadow: 0 2rpx 8rpx rgba(8, 124, 240, 0.04);
 }
 
 .search {
@@ -181,14 +276,74 @@ export default {
   width: 108rpx;
   height: 80rpx;
   line-height: 80rpx;
-  background: linear-gradient(135deg, #2A6F97, #3A8DB8);
+  background: linear-gradient(135deg, #087CF0, #5AA9E8);
   color: #FFFFFF;
   font-size: 26rpx;
   border-radius: 999rpx;
 }
 
+.action-wrap {
+  padding: 0 28rpx 18rpx;
+  background: #FFFFFF;
+}
+
+.session-action-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+  padding: 18rpx 20rpx;
+  background: #E8EEF5;
+  border: 2rpx solid #CBD5E1;
+  border-radius: 16rpx;
+}
+
+.session-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-title {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #1A2332;
+}
+
+.session-subtitle {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: #64748B;
+}
+
+.session-button {
+  width: 190rpx;
+  height: 68rpx;
+  line-height: 68rpx;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+  background: #334155;
+  color: #FFFFFF;
+  font-size: 24rpx;
+  font-weight: 600;
+  border-radius: 12rpx;
+}
+
+.session-button::after {
+  border: none;
+}
+
+.session-button-icon {
+  font-size: 26rpx;
+  color: #FFFFFF;
+}
+
 .scroll {
-  height: calc(100vh - 120rpx);
+  height: calc(100vh - 220rpx);
   padding: 16rpx 0 30rpx;
 }
 
@@ -199,11 +354,11 @@ export default {
   padding: 24rpx;
   background: #FFFFFF;
   border-radius: 16rpx;
-  box-shadow: 0 2rpx 8rpx rgba(42, 111, 151, 0.04);
+  box-shadow: 0 2rpx 8rpx rgba(8, 124, 240, 0.04);
 }
 
 .user-item--active {
-  background: #F0F4F8;
+  background: #E8EEF5;
 }
 
 .avatar {
@@ -217,6 +372,17 @@ export default {
   font-weight: 700;
   color: #FFFFFF;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.avatar-img {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+}
+
+.avatar-fallback {
+  color: #FFFFFF;
 }
 
 .user-info {
@@ -247,6 +413,7 @@ export default {
   align-items: center;
   gap: 12rpx;
   margin-top: 8rpx;
+  flex-wrap: wrap;
 }
 
 .user-phone {
@@ -271,6 +438,23 @@ export default {
   color: #991B1B;
 }
 
+.wechat-pill {
+  font-size: 22rpx;
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  font-weight: 500;
+}
+
+.wechat-bound {
+  background: #E0F2FE;
+  color: #0369A1;
+}
+
+.wechat-unbound {
+  background: #F1F5F9;
+  color: #64748B;
+}
+
 .arrow {
   font-size: 36rpx;
   color: #CBD5E1;
@@ -286,11 +470,11 @@ export default {
   width: 108rpx;
   height: 108rpx;
   border-radius: 50%;
-  background: linear-gradient(135deg, #2A6F97, #3A8DB8);
+  background: linear-gradient(135deg, #087CF0, #5AA9E8);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8rpx 24rpx rgba(42, 111, 151, 0.3);
+  box-shadow: 0 8rpx 24rpx rgba(8, 124, 240, 0.3);
   z-index: 100;
 }
 

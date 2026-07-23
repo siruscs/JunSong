@@ -226,7 +226,7 @@ export default {
 .page {
   min-height: 100vh;
   padding: 24rpx 28rpx 150rpx;
-  background: #F0F4F8;
+  background: #E8EEF5;
   box-sizing: border-box;
 }
 
@@ -235,9 +235,9 @@ export default {
   align-items: center;
   gap: 24rpx;
   padding: 34rpx 30rpx;
-  background: linear-gradient(135deg, #173B57, #2A6F97, #8EC8D2);
+  background: linear-gradient(135deg, #123F73, #087CF0, #A8C7E5);
   border-radius: 24rpx;
-  box-shadow: 0 12rpx 32rpx rgba(42, 111, 151, 0.18);
+  box-shadow: 0 12rpx 32rpx rgba(8, 124, 240, 0.18);
 }
 
 .hero-avatar {
@@ -303,13 +303,13 @@ export default {
   padding: 28rpx;
   background: #FFFFFF;
   border-radius: 22rpx;
-  box-shadow: 0 2rpx 16rpx rgba(42, 111, 151, 0.06);
+  box-shadow: 0 2rpx 16rpx rgba(8, 124, 240, 0.06);
 }
 
 .form-item + .form-item {
   margin-top: 24rpx;
   padding-top: 24rpx;
-  border-top: 1rpx solid #F0F4F8;
+  border-top: 1rpx solid #E8EEF5;
 }
 
 .label {
@@ -365,7 +365,7 @@ export default {
 .meta-row + .meta-row {
   margin-top: 20rpx;
   padding-top: 20rpx;
-  border-top: 1rpx solid #F0F4F8;
+  border-top: 1rpx solid #E8EEF5;
 }
 
 .meta-label {
@@ -393,7 +393,7 @@ export default {
   z-index: 10;
   padding: 18rpx 28rpx calc(18rpx + env(safe-area-inset-bottom));
   background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 -8rpx 24rpx rgba(42, 111, 151, 0.08);
+  box-shadow: 0 -8rpx 24rpx rgba(8, 124, 240, 0.08);
   box-sizing: border-box;
 }
 
@@ -402,7 +402,7 @@ export default {
   height: 88rpx;
   line-height: 88rpx;
   border-radius: 999rpx;
-  background: linear-gradient(135deg, #2A6F97, #3A8DB8);
+  background: linear-gradient(135deg, #087CF0, #5AA9E8);
   color: #FFFFFF;
   font-size: 30rpx;
   font-weight: 700;

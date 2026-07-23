@@ -1,0 +1,1 @@
+"use strict";const e=require("./index.js");exports.findMemberByNo=function(t){return e.request({url:"/member/no/"+encodeURIComponent(t),method:"GET",silent:!0})},exports.findProductByCode=function(t,n){return e.request({url:"/product/list",method:"GET",data:{productCode:t,deptId:n},silent:!0}).then(e=>{const t=(null==e?void 0:e.rows)||[];return t.length>0?t[0]:null})};

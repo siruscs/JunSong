@@ -71,3 +71,31 @@ export function buildTaskCenterItems({ approvals = [], expenses = [], now = new 
     return priority || itemTime(a) - itemTime(b) || a.key.localeCompare(b.key)
   })
 }
+
+/**
+ * 任务完成后刷新任务列表、待办计数和统一指标。
+ *
+ * 刷新策略：
+ * 1. 刷新任务列表（当前页 + 待办计数）
+ * 2. 刷新统一经营指标（Phase 5 的 getOperatingMetrics）
+ * 3. 通知首页/工作台更新徽章
+ *
+ * @param {Object} options 刷新选项
+ * @param {Function} [options.refreshTaskList] 刷新任务列表的回调
+ * @param {Function} [options.refreshPendingCount] 刷新待办计数的回调
+ * @param {Function} [options.refreshMetrics] 刷新统一指标的回调
+ * @returns {Promise<void>}
+ */
+export async function refreshAfterTaskAction(options = {}) {
+  const tasks = []
+  if (typeof options.refreshTaskList === 'function') {
+    tasks.push(Promise.resolve(options.refreshTaskList()))
+  }
+  if (typeof options.refreshPendingCount === 'function') {
+    tasks.push(Promise.resolve(options.refreshPendingCount()))
+  }
+  if (typeof options.refreshMetrics === 'function') {
+    tasks.push(Promise.resolve(options.refreshMetrics()))
+  }
+  await Promise.allSettled(tasks)
+}

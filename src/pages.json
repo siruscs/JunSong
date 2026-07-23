@@ -119,6 +119,10 @@
     {
       "path": "pages/operating-task/index",
       "style": { "navigationBarTitleText": "经营任务" }
+    },
+    {
+      "path": "pages/field-work/index",
+      "style": { "navigationBarTitleText": "现场作业" }
     }
   ],
   "tabBar": {

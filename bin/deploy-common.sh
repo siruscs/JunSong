@@ -2,13 +2,18 @@
 
 set -euo pipefail
 
-PROJECT_ROOT="${PROJECT_ROOT:-/Users/sirius/Documents/TRAE/JunSong-Cloud}"
-PROD_HOST="***PROD_HOST_REDACTED***"
-PROD_USER="root"
-PROD_SSH_KEY="${PROD_SSH_KEY:-/Users/sirius/.ssh/id_rsa}"
-PROD_DEPLOY_DIR="${PROD_DEPLOY_DIR:-/root/deploy}"
+PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 DEPLOY_DRY_RUN="${DEPLOY_DRY_RUN:-0}"
 DEPLOY_SKIP_BUILD="${DEPLOY_SKIP_BUILD:-0}"
+
+# PROD 连接信息必须从环境变量注入，禁止硬编码
+# 使用前请 export: PROD_HOST PROD_USER PROD_SSH_KEY PROD_DEPLOY_DIR
+require_prod_env() {
+    [ -n "${PROD_HOST:-}" ] || die "缺少环境变量 PROD_HOST (生产服务器地址)"
+    [ -n "${PROD_USER:-}" ] || die "缺少环境变量 PROD_USER (SSH 用户)"
+    [ -n "${PROD_SSH_KEY:-}" ] || die "缺少环境变量 PROD_SSH_KEY (SSH 私钥路径)"
+    [ -n "${PROD_DEPLOY_DIR:-}" ] || die "缺少环境变量 PROD_DEPLOY_DIR (远程部署目录)"
+}
 
 log() { printf '%s\n' "$*"; }
 die() { log "✗ $*" >&2; exit 1; }
@@ -27,9 +32,9 @@ run_cmd() {
     "$@"
 }
 
-ssh_options=(-i "${PROD_SSH_KEY}" -o BatchMode=yes -o ConnectTimeout=10)
-
 prod_ssh() {
+    require_prod_env
+    local ssh_options=(-i "${PROD_SSH_KEY}" -o BatchMode=yes -o ConnectTimeout=10)
     if [ "${DEPLOY_DRY_RUN}" = "1" ]; then
         print_command ssh "${ssh_options[@]}" "${PROD_USER}@${PROD_HOST}" "$@"
         return 0
@@ -38,6 +43,8 @@ prod_ssh() {
 }
 
 prod_scp() {
+    require_prod_env
+    local ssh_options=(-i "${PROD_SSH_KEY}" -o BatchMode=yes -o ConnectTimeout=10)
     if [ "${DEPLOY_DRY_RUN}" = "1" ]; then
         print_command scp "${ssh_options[@]}" "$1" "${PROD_USER}@${PROD_HOST}:$2"
         return 0

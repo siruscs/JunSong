@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 
 MYSQL_CONTAINER="${MYSQL_CONTAINER:-junsong-mysql}"
 MYSQL_USER="${MYSQL_USER:-root}"
-MYSQL_PASS="${MYSQL_PASS:-change-me-db-password}"
+MYSQL_PASS="${MYSQL_PASS:?请通过环境变量设置 MYSQL_PASS (数据库密码)}"
 MYSQL_DB="${MYSQL_DB:-junsong-config}"
 
 echo "==> 检查 MySQL 容器 ${MYSQL_CONTAINER} ..."

@@ -7,7 +7,7 @@
 set -e
 
 ENV=${1:-prod}
-PROJECT_ROOT="/Users/sirius/Documents/TRAE/JunSong-Cloud"
+PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 MINIPROGRAM_DIR="${PROJECT_ROOT}/junsong-miniprogram"
 
 echo "=========================================="

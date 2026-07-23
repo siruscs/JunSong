@@ -8,13 +8,19 @@ echo "=========================================="
 echo "  JunSong Cloud 功能验证"
 echo "=========================================="
 
+# 数据库连接信息从环境变量读取（仅开发占位符）
+MYSQL_USER="${MYSQL_USER:-root}"
+MYSQL_PASS="${MYSQL_PASS:-change-me-db-password}"
+MYSQL_CONTAINER="${MYSQL_CONTAINER:-junsong-mysql}"
+PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+
 # 1. 检查字典数据
 echo ""
 echo "[1/3] 检查字典数据..."
 echo "查询会员卡类型字典..."
-docker exec -i junsong-mysql mysql -uroot -pchange-me-db-password -e "
+docker exec -i "${MYSQL_CONTAINER}" mysql -u"${MYSQL_USER}" -p"${MYSQL_PASS}" -e "
 USE junsong-cloud;
-SELECT 
+SELECT
     dt.dict_name AS '字典名称',
     dt.dict_type AS '字典类型',
     dt.status AS '状态',
@@ -27,9 +33,9 @@ GROUP BY dt.dict_id;
 
 echo ""
 echo "会员卡类型字典详情："
-docker exec -i junsong-mysql mysql -uroot -pchange-me-db-password -e "
+docker exec -i "${MYSQL_CONTAINER}" mysql -u"${MYSQL_USER}" -p"${MYSQL_PASS}" -e "
 USE junsong-cloud;
-SELECT 
+SELECT
     dict_label AS '类型名称',
     dict_value AS '类型值',
     dict_sort AS '排序',
@@ -43,16 +49,16 @@ ORDER BY dict_sort;
 echo ""
 echo "[2/3] 检查用户部门关联功能..."
 echo "用户部门关联表结构："
-docker exec -i junsong-mysql mysql -uroot -pchange-me-db-password -e "
+docker exec -i "${MYSQL_CONTAINER}" mysql -u"${MYSQL_USER}" -p"${MYSQL_PASS}" -e "
 USE junsong-cloud;
 SHOW CREATE TABLE sys_user_dept\G
 "
 
 echo ""
 echo "示例数据："
-docker exec -i junsong-mysql mysql -uroot -pchange-me-db-password -e "
+docker exec -i "${MYSQL_CONTAINER}" mysql -u"${MYSQL_USER}" -p"${MYSQL_PASS}" -e "
 USE junsong-cloud;
-SELECT 
+SELECT
     ud.user_dept_id AS 'ID',
     u.user_name AS '用户名',
     d.dept_name AS '部门名称',
@@ -66,7 +72,7 @@ LIMIT 10;
 # 3. 检查Docker容器状态
 echo ""
 echo "[3/3] 检查Docker容器状态..."
-docker compose -f /Users/sirius/Documents/TRAE/JunSong-Cloud/docker/docker-compose.yml ps
+docker compose -f "${PROJECT_ROOT}/docker/docker-compose.yml" ps
 
 echo ""
 echo "=========================================="
@@ -76,10 +82,10 @@ echo ""
 echo "如果上述检查发现问题，请执行以下步骤："
 echo ""
 echo "1. 执行SQL脚本初始化字典数据："
-echo "   docker exec -i junsong-mysql mysql -uroot -pchange-me-db-password < sql/init_mem_card_type.sql"
+echo "   docker exec -i ${MYSQL_CONTAINER} mysql -u${MYSQL_USER} -p\${MYSQL_PASS} < sql/init_mem_card_type.sql"
 echo ""
 echo "2. 重新编译并部署："
-echo "   cd /Users/sirius/Documents/TRAE/JunSong-Cloud"
+echo "   cd ${PROJECT_ROOT}"
 echo "   ./bin/deploy.sh"
 echo ""
 echo "3. 清理浏览器缓存并重新登录系统"

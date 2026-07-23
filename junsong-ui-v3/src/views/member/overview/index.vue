@@ -324,6 +324,7 @@ const quickLinks = [
   { group: '活动', title: '秒杀记录', desc: '查看活动参与和领取记录。', to: '/member/seckill/record' },
   { group: '售后', title: '退款管理', desc: '处理退款申请和审核流转。', to: '/member/refund' },
   { group: '移动端', title: '小程序权限', desc: '配置小程序可访问能力。', to: '/member/mpPerm' },
+  { group: '经营', title: '经营任务中心', desc: '查看待办、逾期和优先处理任务。', to: '/system/operatingTask' },
 ]
 
 const unverifiedTotal = computed(() => Number(stats.value.unverifiedExpense ?? 0) + Number(stats.value.unverifiedAdvance ?? 0))

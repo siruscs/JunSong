@@ -207,4 +207,17 @@ export const dynamicRoutes: any[] = [
       },
     ],
   },
+  {
+    path: '/system/operatingTask',
+    component: () => import('@/layout/index.vue'),
+    meta: { permissions: ['system:operatingTask:list'] },
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/system/operatingTask/index.vue'),
+        name: 'SystemOperatingTask',
+        meta: { title: '经营任务', icon: 'Bell' },
+      },
+    ],
+  },
 ]

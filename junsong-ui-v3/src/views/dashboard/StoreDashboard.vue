@@ -99,6 +99,7 @@
             <h3>今日待办与优先处理</h3>
           </div>
           <el-button text type="primary" @click="goReviewTask">查看复盘任务</el-button>
+          <el-button text type="primary" @click="goOperatingTask">经营任务中心</el-button>
         </div>
         <div v-if="priorityItems.length" class="priority-list">
           <div v-for="item in priorityItems" :key="item.key" class="priority-row" :class="item.level">
@@ -585,6 +586,10 @@ function assignReactive(target: any, source: any) {
 
 function goReviewTask() {
   router.push('/finance/reviewTask')
+}
+
+function goOperatingTask() {
+  router.push('/system/operatingTask')
 }
 
 function number(value: any, digits = 2) {

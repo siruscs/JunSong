@@ -379,6 +379,7 @@
     <el-card class="section-card">
       <template #header><span>快捷入口</span></template>
       <div class="quick-links">
+        <router-link to="/system/operatingTask" class="quick-link">经营任务中心</router-link>
         <router-link to="/finance/expense" class="quick-link">费用管理</router-link>
         <router-link to="/finance/accountingPeriod" class="quick-link">核算周期</router-link>
         <router-link to="/finance/profitShare" class="quick-link">分润结算</router-link>

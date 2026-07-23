@@ -37,3 +37,25 @@ export function getMpDashboardTrend() {
     method: 'GET'
   })
 }
+
+/**
+ * 统一经营指标接口（Phase 5）。
+ *
+ * PC 和小程序共用同一后端端点，后端负责租户/部门范围和口径统一。
+ * 返回 10 个指标：销售/费用/净现金流/应收/逾期/库存风险/会员新增/活跃会员/待核销/待办任务。
+ * 旧接口保留兼容，客户端逐步迁移。
+ *
+ * @param {Object} [params] 查询参数（deptIds / timeType / startTime / endTime）
+ * @param {boolean} [options.silent] 是否静默请求
+ * @param {boolean} [options.withContextMeta] 是否附加上下文元数据
+ * @returns {Promise<Array>} 统一指标列表
+ */
+export function getOperatingMetrics(params = {}, options = {}) {
+  return request({
+    url: '/finance/operatingMetrics',
+    method: 'POST',
+    data: params,
+    silent: options.silent !== false,
+    withContextMeta: options.withContextMeta !== false
+  })
+}

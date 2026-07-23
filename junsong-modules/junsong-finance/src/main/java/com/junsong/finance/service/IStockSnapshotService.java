@@ -5,8 +5,8 @@ import java.time.LocalDate;
 /**
  * 库存每日快照生成服务（R7-E 前置）。
  *
- * 数据来源为当前结存表 fin_stock_position，结合 fin_stock_ledger 当日流水，
- * 生成 fin_stock_snapshot 每日快照，为 R8 开放库存经营报表做底座准备。
+ * 数据来源为历史 fin_stock_ledger 与前一日 fin_stock_snapshot，
+ * 生成可追溯的 fin_stock_snapshot 每日快照。
  * 不开放完整库存经营报表。
  *
  * @author junsong
@@ -16,17 +16,12 @@ public interface IStockSnapshotService {
     /**
      * 重建某门店某日的库存快照。
      *
-     * 逻辑：
-     * 1. 数据来源 fin_stock_position（当前结存表）
-     * 2. closing = position.quantity
-     * 3. in/out 取自 fin_stock_ledger 当日流水
-     * 4. opening = closing - in + out
-     * 5. 幂等 upsert：同日同门店同商品已有快照则 UPDATE，不产生重复行
-     * 6. 无 position 返回 0
+     * 历史日期按前一日快照和当日分类流水重放，不使用当前结存倒填。
      *
+     * @param tenantId 租户ID
      * @param snapshotDate 快照日期
      * @param deptId 门店ID
-     * @return 生成的快照条数（等于该门店的 position 行数）
+     * @return 生成的快照条数
      */
-    int rebuildDailySnapshot(LocalDate snapshotDate, Long deptId);
+    int rebuildDailySnapshot(Long tenantId, LocalDate snapshotDate, Long deptId);
 }

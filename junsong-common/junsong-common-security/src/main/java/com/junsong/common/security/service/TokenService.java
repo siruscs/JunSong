@@ -54,6 +54,7 @@ public class TokenService
         loginUser.setUserid(userId);
         loginUser.setUsername(userName);
         loginUser.setIpaddr(IpUtils.getIpAddr());
+        loginUser.setAuthSource("PASSWORD");
 
         boolean isKickout = false;
         // 检查是否开启单点登录
@@ -98,8 +99,27 @@ public class TokenService
 
     /**
      * 创建令牌（小程序端，不触发单点登录互踢）
+     *
+     * <p>注意：本方法不设置 authSource，由调用方通过 {@link #createTokenMp(LoginUser, String)} 指定，
+     * 以区分"小程序密码登录"（PASSWORD）和"微信快捷登录"（WECHAT_MP）。
+     * 仅当 authSource=WECHAT_MP 时才参与微信会话版本号校验。</p>
+     *
+     * @param loginUser 登录用户信息
+     * @deprecated 使用 {@link #createTokenMp(LoginUser, String)} 显式指定登录来源
      */
+    @Deprecated
     public Map<String, Object> createTokenMp(LoginUser loginUser)
+    {
+        return createTokenMp(loginUser, "PASSWORD");
+    }
+
+    /**
+     * 创建令牌（小程序端，不触发单点登录互踢）
+     *
+     * @param loginUser  登录用户信息
+     * @param authSource 登录来源：PASSWORD（密码登录）或 WECHAT_MP（微信快捷登录）
+     */
+    public Map<String, Object> createTokenMp(LoginUser loginUser, String authSource)
     {
         String token = IdUtils.fastUUID();
         Long userId = loginUser.getSysUser().getUserId();
@@ -108,6 +128,17 @@ public class TokenService
         loginUser.setUserid(userId);
         loginUser.setUsername(userName);
         loginUser.setIpaddr(IpUtils.getIpAddr());
+        loginUser.setAuthSource(authSource);
+        // 仅微信登录记录会话版本号，密码登录不参与 epoch 校验
+        if ("WECHAT_MP".equals(authSource))
+        {
+            Long tenantId = loginUser.getSysUser().getTenantId();
+            loginUser.setWechatSessionEpoch(getWechatSessionEpoch(tenantId));
+        }
+        else
+        {
+            loginUser.setWechatSessionEpoch(null);
+        }
 
         // 小程序使用独立的 token key，不与 PC 互踢
         String userTokenKey = CacheConstants.USER_TOKEN_MP_KEY + userId;
@@ -235,5 +266,103 @@ public class TokenService
     private String getTokenKey(String token)
     {
         return ACCESS_TOKEN + token;
+    }
+
+    // =========================================================================
+    // 微信会话版本号（epoch）管理
+    // =========================================================================
+
+    /**
+     * 获取指定租户的微信会话版本号
+     *
+     * @param tenantId 租户ID
+     * @return 当前版本号，未设置时返回 0
+     */
+    public Long getWechatSessionEpoch(Long tenantId)
+    {
+        if (tenantId == null)
+        {
+            return 0L;
+        }
+        // Redis 反序列化时小数值可能为 Integer，直接强转 Long 会 ClassCastException
+        Object raw = redisService.getCacheObject(CacheConstants.WECHAT_SESSION_EPOCH_KEY + tenantId);
+        if (raw == null)
+        {
+            return 0L;
+        }
+        if (raw instanceof Number)
+        {
+            return ((Number) raw).longValue();
+        }
+        try
+        {
+            return Long.parseLong(raw.toString());
+        }
+        catch (NumberFormatException e)
+        {
+            log.warn("getWechatSessionEpoch: invalid value, raw={}", raw);
+            return 0L;
+        }
+    }
+
+    /**
+     * 原子递增指定租户的微信会话版本号
+     *
+     * <p>递增后，该租户所有已登录的微信会话在下次请求时因版本不匹配而被注销。
+     * 密码登录会话不受影响。</p>
+     *
+     * @param tenantId 租户ID
+     * @return 递增后的新版本号
+     */
+    public Long incrementWechatSessionEpoch(Long tenantId)
+    {
+        if (tenantId == null)
+        {
+            throw new IllegalArgumentException("tenantId 不能为空");
+        }
+        return redisService.increment(CacheConstants.WECHAT_SESSION_EPOCH_KEY + tenantId);
+    }
+
+    /**
+     * 校验微信会话版本号是否一致
+     *
+     * <p>仅对 authSource=WECHAT_MP 的会话校验。PASSWORD 会话或 null 视为有效（向后兼容）。
+     * 版本不匹配时删除当前 Token 并返回 false。</p>
+     *
+     * @param loginUser 登录用户信息
+     * @return true 如果会话有效或非微信来源；false 如果版本不匹配需注销
+     */
+    public boolean verifyWechatSessionEpoch(LoginUser loginUser)
+    {
+        if (loginUser == null)
+        {
+            return true;
+        }
+        if (!"WECHAT_MP".equals(loginUser.getAuthSource()))
+        {
+            return true;
+        }
+        Long tenantId = loginUser.getSysUser() != null ? loginUser.getSysUser().getTenantId() : null;
+        if (tenantId == null)
+        {
+            // 微信会话但无租户信息，fail-closed
+            log.warn("verifyWechatSessionEpoch: tenantId is null, userId={}, sysUser is null={}, authSource={}",
+                    loginUser.getUserid(), loginUser.getSysUser() == null, loginUser.getAuthSource());
+            delLoginUser(loginUser.getToken());
+            return false;
+        }
+        Long currentEpoch = getWechatSessionEpoch(tenantId);
+        Long sessionEpoch = loginUser.getWechatSessionEpoch();
+        // 使用 longValue() 比较而非 equals()，避免 FastJson2 反序列化时
+        // 可能将 Long 字段设为 Integer 运行时类型导致 Integer.equals(Long) 永远返回 false
+        if (sessionEpoch == null || sessionEpoch.longValue() != currentEpoch.longValue())
+        {
+            log.warn("verifyWechatSessionEpoch: epoch mismatch, tenantId={}, sessionEpoch={}, currentEpoch={}, sessionEpochClass={}",
+                    tenantId, sessionEpoch, currentEpoch,
+                    sessionEpoch != null ? sessionEpoch.getClass().getName() : "null");
+            delLoginUser(loginUser.getToken());
+            return false;
+        }
+        return true;
     }
 }

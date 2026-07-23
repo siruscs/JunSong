@@ -10,6 +10,7 @@ import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
 import com.junsong.common.security.annotation.RequiresPermissions;
+import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.finance.domain.FinExpenseVerifyBatch;
 import com.junsong.finance.service.IFinExpenseVerificationService;
 
@@ -33,6 +34,10 @@ public class FinExpenseVerificationController extends BaseController
     @GetMapping("/list")
     public TableDataInfo list(FinExpenseVerifyBatch query)
     {
+        if (!SecurityUtils.isAdmin())
+        {
+            query.setDeptId(SecurityUtils.getDeptId());
+        }
         startPage();
         List<FinExpenseVerifyBatch> list = finExpenseVerificationService.selectBatchList(query);
         return getDataTable(list);

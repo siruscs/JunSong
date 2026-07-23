@@ -6,12 +6,14 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import com.junsong.common.core.domain.R;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.member.service.IMemMpRoleModuleService;
 import com.junsong.member.service.IMemMpDashboardService;
 import com.junsong.member.mapper.MemMpDashboardMapper;
+import com.junsong.system.api.RemoteUserService;
 import com.junsong.system.api.domain.SysRole;
 import com.junsong.system.api.model.LoginUser;
 
@@ -36,6 +38,9 @@ public class MemMpController extends BaseController {
 
     @Autowired
     private IMemMpDashboardService mpDashboardService;
+
+    @Autowired
+    private RemoteUserService remoteUserService;
 
     @GetMapping("/userinfo")
     public AjaxResult getUserInfo() {
@@ -197,5 +202,30 @@ public class MemMpController extends BaseController {
         List<String> modules = getAccessibleModules(loginUser);
         Map<String, Object> overview = mpDashboardService.getOverview(modules);
         return AjaxResult.success(overview);
+    }
+
+    /**
+     * 小程序登录页能力接口（无需登录鉴权）。
+     * 返回 {wechatLoginEnabled} 字段，控制是否渲染微信快捷登录按钮。
+     * fail-closed：接口异常、超时或返回非法值时一律返回 false。
+     *
+     * @param tenantId 租户ID（可选，由小程序在登录页传入）
+     * @return AjaxResult 包含 wechatLoginEnabled 布尔字段
+     */
+    @GetMapping("/capabilities")
+    public AjaxResult getCapabilities(@RequestParam(value = "tenantId", required = false) Long tenantId) {
+        boolean wechatLoginEnabled = false;
+        try {
+            R<Boolean> result = remoteUserService.isWechatLoginEnabled(tenantId, com.junsong.common.core.constant.SecurityConstants.INNER);
+            wechatLoginEnabled = result != null
+                    && R.SUCCESS == result.getCode()
+                    && Boolean.TRUE.equals(result.getData());
+        } catch (Exception e) {
+            // fail-closed：异常时隐藏微信登录按钮
+            wechatLoginEnabled = false;
+        }
+        Map<String, Object> caps = new HashMap<>();
+        caps.put("wechatLoginEnabled", wechatLoginEnabled);
+        return AjaxResult.success(caps);
     }
 }

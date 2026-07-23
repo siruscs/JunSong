@@ -24,6 +24,7 @@ public interface IFinanceReviewTaskService {
      * @return 复盘任务集合
      */
     List<FinanceReviewTask> listTasks(Map<String, Object> params);
+    FinanceReviewTask getTask(Long taskId);
 
     /**
      * 从诊断结果生成复盘任务

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.util.List;
+import com.junsong.finance.domain.vo.FinStockPositionView;
 
 /**
  * R21 库存每日快照任务。
@@ -29,25 +30,25 @@ public class StockDailySnapshotTask
     public R21TaskResult execute()
     {
         try {
-            List<Long> deptIds = finStockLedgerMapper.selectAllDeptIdsWithPosition();
-            if (deptIds == null || deptIds.isEmpty()) {
+            List<FinStockPositionView> scopes = finStockLedgerMapper.selectAllTenantDeptScopesWithPosition();
+            if (scopes == null || scopes.isEmpty()) {
                 return R21TaskResult.skipped("No stores with stock position found");
             }
             LocalDate today = LocalDate.now();
             int totalRows = 0;
             int failedStores = 0;
             String lastError = null;
-            for (Long deptId : deptIds) {
+            for (FinStockPositionView scope : scopes) {
                 try {
-                    totalRows += stockSnapshotService.rebuildDailySnapshot(today, deptId);
+                    totalRows += stockSnapshotService.rebuildDailySnapshot(scope.getTenantId(), today, scope.getDeptId());
                 } catch (Exception ex) {
                     failedStores++;
-                    lastError = "store " + deptId + ": " + ex.getMessage();
+                    lastError = "tenant/store " + scope.getTenantId() + "/" + scope.getDeptId() + ": " + ex.getMessage();
                 }
             }
-            if (failedStores > 0 && failedStores < deptIds.size()) {
+            if (failedStores > 0 && failedStores < scopes.size()) {
                 return R21TaskResult.partial(totalRows,
-                        "Stock snapshot partial: " + totalRows + " rows, " + failedStores + "/" + deptIds.size() + " stores failed",
+                        "Stock snapshot partial: " + totalRows + " rows, " + failedStores + "/" + scopes.size() + " stores failed",
                         lastError);
             }
             if (failedStores > 0) {
@@ -57,7 +58,7 @@ public class StockDailySnapshotTask
                 return R21TaskResult.skipped("No stock snapshot rows generated");
             }
             return R21TaskResult.success(totalRows,
-                    "Generated stock snapshots: " + totalRows + " rows across " + deptIds.size() + " stores");
+                    "Generated stock snapshots: " + totalRows + " rows across " + scopes.size() + " tenant/store scopes");
         } catch (Exception ex) {
             return R21TaskResult.failed(ex);
         }

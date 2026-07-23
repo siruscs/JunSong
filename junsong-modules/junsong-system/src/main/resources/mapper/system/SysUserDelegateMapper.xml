@@ -7,7 +7,9 @@
     <resultMap type="com.junsong.system.domain.SysUserDelegate" id="SysUserDelegateResult">
         <id property="id" column="id"/>
         <result property="userId" column="user_id"/>
+        <result property="userName" column="user_name"/>
         <result property="delegateUserId" column="delegate_user_id"/>
+        <result property="delegateUserName" column="delegate_user_name"/>
         <result property="delegateType" column="delegate_type"/>
         <result property="processKeys" column="process_keys"/>
         <result property="startTime" column="start_time"/>
@@ -21,15 +23,19 @@
     </resultMap>
 
     <sql id="selectSysUserDelegateVo">
-        select id, user_id, delegate_user_id, delegate_type, process_keys,
-               start_time, end_time, status, create_by, create_time, update_by, update_time, remark
-        from sys_user_delegate
+        select d.id, d.user_id, user_account.user_name,
+               d.delegate_user_id, delegate_account.user_name as delegate_user_name,
+               d.delegate_type, d.process_keys, d.start_time, d.end_time, d.status,
+               d.create_by, d.create_time, d.update_by, d.update_time, d.remark
+        from sys_user_delegate d
+        left join sys_user user_account on user_account.user_id = d.user_id and user_account.del_flag = '0'
+        left join sys_user delegate_account on delegate_account.user_id = d.delegate_user_id and delegate_account.del_flag = '0'
     </sql>
 
     <select id="selectById" parameterType="Long" resultMap="SysUserDelegateResult">
         <include refid="selectSysUserDelegateVo"/>
         <where>
-            id = #{id}
+            d.id = #{id}
         </where>
     </select>
 
@@ -37,34 +43,34 @@
             resultMap="SysUserDelegateResult">
         <include refid="selectSysUserDelegateVo"/>
         <where>
-            <if test="userId != null">and user_id = #{userId}</if>
-            <if test="delegateUserId != null">and delegate_user_id = #{delegateUserId}</if>
-            <if test="delegateType != null and delegateType != ''">and delegate_type = #{delegateType}</if>
-            <if test="status != null and status != ''">and status = #{status}</if>
+            <if test="userId != null">and d.user_id = #{userId}</if>
+            <if test="delegateUserId != null">and d.delegate_user_id = #{delegateUserId}</if>
+            <if test="delegateType != null and delegateType != ''">and d.delegate_type = #{delegateType}</if>
+            <if test="status != null and status != ''">and d.status = #{status}</if>
         </where>
-        order by create_time desc
+        order by d.create_time desc
     </select>
 
     <select id="selectActiveByUserId" resultMap="SysUserDelegateResult">
         <include refid="selectSysUserDelegateVo"/>
         <where>
-            user_id = #{userId}
-            and status = '0'
-            and start_time &lt;= NOW()
-            and end_time &gt;= NOW()
+            d.user_id = #{userId}
+            and d.status = '0'
+            and d.start_time &lt;= NOW()
+            and d.end_time &gt;= NOW()
         </where>
-        order by create_time desc
+        order by d.create_time desc
     </select>
 
     <select id="selectActiveByDelegateUserId" resultMap="SysUserDelegateResult">
         <include refid="selectSysUserDelegateVo"/>
         <where>
-            delegate_user_id = #{delegateUserId}
-            and status = '0'
-            and start_time &lt;= NOW()
-            and end_time &gt;= NOW()
+            d.delegate_user_id = #{delegateUserId}
+            and d.status = '0'
+            and d.start_time &lt;= NOW()
+            and d.end_time &gt;= NOW()
         </where>
-        order by create_time desc
+        order by d.create_time desc
     </select>
 
     <insert id="insert" parameterType="com.junsong.system.domain.SysUserDelegate" useGeneratedKeys="true"

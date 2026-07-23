@@ -163,6 +163,13 @@ public class ReceivableCollectionServiceImpl implements IReceivableCollectionSer
         return rows;
     }
 
+    @Override
+    public boolean canAccess(Long collectionId, Long deptId) {
+        FinanceReceivableCollection collection = receivableCollectionMapper.selectById(collectionId);
+        return collection != null && (SecurityUtils.isAdmin()
+                || (deptId != null && deptId.equals(collection.getDeptId())));
+    }
+
     private void validateFollow(FinanceReceivableCollection existing, ReceivableCollectionUpdateParams params) {
         if (params == null || isBlank(params.getCollectionStatus())) {
             throw new ServiceException("催收状态不能为空");

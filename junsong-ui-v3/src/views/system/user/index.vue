@@ -55,6 +55,7 @@
           <el-button type="warning" :icon="Download" @click="handleExport" v-hasPermi="['system:user:export']">导出</el-button>
           <el-button type="info" :icon="Key" @click="handleResetPwd" :disabled="single" v-hasPermi="['system:user:resetPwd']">重置密码</el-button>
           <el-button type="primary" :icon="Switch" @click="handleSwitchDept" v-hasPermi="['system:user:edit']">部门切换</el-button>
+          <el-button type="danger" :icon="CircleClose" @click="handleRevokeWechatSessions" v-hasPermi="['system:user:wechatSession:revokeAll']">微信会话失效</el-button>
         </RightToolbar>
 
         <el-table v-loading="loading" :data="userList" @selection-change="handleSelectionChange">
@@ -68,8 +69,10 @@
           <el-table-column label="用户昵称" align="center" key="nickName" prop="nickName" :show-overflow-tooltip="true" />
           <el-table-column label="头像" align="center" key="avatar" prop="avatar" width="80">
             <template #default="scope">
-              <ImagePreview v-if="scope.row.avatar" :src="scope.row.avatar" :previewSrcList="[scope.row.avatar]" />
-              <el-avatar v-else :size="30">{{ scope.row.nickName }}</el-avatar>
+              <div class="user-list-avatar">
+                <ImagePreview v-if="scope.row.avatar" :src="scope.row.avatar" :previewSrcList="[scope.row.avatar]" />
+                <el-avatar v-else :size="32">{{ scope.row.nickName }}</el-avatar>
+              </div>
             </template>
           </el-table-column>
           <el-table-column label="部门" align="center" key="deptName" prop="dept.deptName" :show-overflow-tooltip="true" />
@@ -79,12 +82,19 @@
               <el-switch v-model="scope.row.status" active-value="0" inactive-value="1" @change="handleStatusChange(scope.row)" />
             </template>
           </el-table-column>
+          <el-table-column label="微信绑定" align="center" width="100">
+            <template #default="scope">
+              <el-tag v-if="scope.row.mpBound" type="success" size="small">已绑定</el-tag>
+              <el-tag v-else type="info" size="small">未绑定</el-tag>
+            </template>
+          </el-table-column>
           <el-table-column label="创建时间" align="center" prop="createTime" width="160" />
-          <el-table-column label="操作" align="center" width="260" class-name="small-padding fixed-width">
+          <el-table-column label="操作" align="center" width="320" class-name="small-padding fixed-width">
             <template #default="scope">
               <el-button link type="primary" @click="handleUpdate(scope.row)" v-hasPermi="['system:user:edit']">修改</el-button>
               <el-button link type="primary" @click="handleAuthRole(scope.row)" v-hasPermi="['system:user:edit']">分配角色</el-button>
               <el-button link type="primary" @click="handleResetPwd(scope.row)" v-hasPermi="['system:user:resetPwd']">重置密码</el-button>
+              <el-button link type="warning" @click="handleMpUnbind(scope.row)" v-if="scope.row.mpBound" v-hasPermi="['system:user:unbindMp']">微信解绑</el-button>
               <el-button link type="danger" @click="handleDelete(scope.row)" v-hasPermi="['system:user:remove']">删除</el-button>
             </template>
           </el-table-column>
@@ -142,6 +152,18 @@
               <el-radio-group v-model="form.status">
                 <el-radio v-for="d in dict.type.sys_normal_disable" :key="d.value" :value="d.value">{{ d.label }}</el-radio>
               </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="24">
+            <el-form-item label="用户头像" prop="avatar">
+              <div class="user-avatar-form">
+                <el-input v-model="form.avatar" placeholder="请输入头像图片地址" clearable maxlength="500" />
+                <el-avatar :size="40" :src="form.avatar">
+                  {{ form.nickName || form.userName }}
+                </el-avatar>
+              </div>
             </el-form-item>
           </el-col>
         </el-row>
@@ -258,7 +280,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, nextTick, watch } from 'vue'
 import { ElMessage, ElMessageBox, ElForm } from 'element-plus'
-import { Plus, Edit, Delete, Download, Key, Switch, Upload } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, Download, Key, Switch, Upload, CircleClose } from '@element-plus/icons-vue'
 import RightToolbar from '@/components/RightToolbar/index.vue'
 import Pagination from '@/components/Pagination/index.vue'
 import DictTag from '@/components/DictTag/index.vue'
@@ -284,6 +306,7 @@ import {
 } from '@/api/system/user'
 import { listRole } from '@/api/system/role'
 import { listPost, postOptionSelect } from '@/api/system/post'
+import { getUserBindings, adminUnbind, revokeAllWechatSessions } from '@/api/system/wechatBinding'
 
 const { hasPermi } = useAuth()
 const { download } = useDownload()
@@ -329,6 +352,7 @@ const form = reactive<any>({
   password: '',
   phonenumber: '',
   email: '',
+  avatar: '',
   sex: undefined,
   status: '0',
   remark: '',
@@ -400,6 +424,7 @@ function getList() {
       userList.value = res.rows
       total.value = res.total
       loading.value = false
+      loadMpBindingStatus()
     })
     .catch(() => {
       loading.value = false
@@ -498,6 +523,7 @@ function reset() {
     password: '',
     phonenumber: '',
     email: '',
+    avatar: '',
     sex: undefined,
     status: '0',
     remark: '',
@@ -598,6 +624,66 @@ function handleDelete(row?: any) {
       getList()
     })
     .catch(() => {})
+}
+
+function handleMpUnbind(row: any) {
+  ElMessageBox.confirm(
+    '是否确认解绑用户 "' + row.userName + '" 的微信账号？解绑后该用户将无法使用微信快捷登录，直到重新绑定。',
+    '微信解绑确认',
+    {
+      confirmButtonText: '确定解绑',
+      cancelButtonText: '取消',
+      type: 'warning',
+    },
+  )
+    .then(async () => {
+      await adminUnbind(row.userId)
+      ElMessage.success('解绑成功')
+      getList()
+    })
+    .catch(() => {})
+}
+
+function handleRevokeWechatSessions() {
+  ElMessageBox.confirm(
+    '此操作将使当前租户下所有已登录的微信会话立即失效，受影响用户需重新登录。密码登录会话不受影响，微信绑定关系不会被解除。是否继续？',
+    '微信会话失效确认',
+    {
+      confirmButtonText: '确定失效',
+      cancelButtonText: '取消',
+      type: 'warning',
+      inputPlaceholder: '请输入操作原因（可选）',
+      inputType: 'text',
+    },
+  )
+    .then(async ({ value }: any) => {
+      const reason = (value || '').trim() || undefined
+      await revokeAllWechatSessions(reason)
+      ElMessage.success('微信会话已失效，受影响用户下次微信请求需重新登录')
+      getList()
+    })
+    .catch(() => {})
+}
+
+function loadMpBindingStatus() {
+  const userIds = userList.value.map((u: any) => u.userId)
+  if (userIds.length === 0) return
+  Promise.allSettled(userIds.map((id: number) => getUserBindings(id).catch(() => null))).then(
+    (results) => {
+      results.forEach((result, index) => {
+        const userId = userIds[index]
+        const user = userList.value.find((u: any) => u.userId === userId)
+        if (!user) return
+        if (result.status === 'fulfilled' && result.value) {
+          const data = result.value.data ?? result.value
+          const list = Array.isArray(data) ? data : (data.rows ?? data.list ?? [])
+          user.mpBound = Array.isArray(list) && list.some((b: any) => b.status === 'ACTIVE')
+        } else {
+          user.mpBound = false
+        }
+      })
+    },
+  )
 }
 
 function handleExport() {
@@ -710,5 +796,27 @@ onMounted(() => {
   border: 1px solid #e4e7ed;
   border-radius: 4px;
   padding: 8px;
+}
+.user-list-avatar {
+  width: 32px;
+  height: 32px;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 50%;
+  line-height: 32px;
+}
+.user-list-avatar :deep(.image-preview),
+.user-list-avatar :deep(.el-image),
+.user-list-avatar :deep(img) {
+  width: 32px;
+  height: 32px;
+  display: block;
+}
+.user-avatar-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
 }
 </style>

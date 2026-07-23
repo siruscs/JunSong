@@ -47,6 +47,9 @@
       </el-table-column>
       <el-table-column label="销售数量" align="center" prop="saleQuantity" />
       <el-table-column label="赠品数量" align="center" prop="giftQuantity" />
+      <el-table-column label="加赠单价" align="center">
+        <template #default="scope">{{ giftUnitPrice(scope.row) }}</template>
+      </el-table-column>
       <el-table-column label="状态" align="center" prop="status">
         <template #default="scope">
           <el-tag :type="getStatusType(scope.row.status)">{{ getStatusText(scope.row.status) }}</el-tag>
@@ -56,7 +59,7 @@
         <template #default="scope">
           <el-button size="small" type="text" @click="handleView(scope.row)">查看</el-button>
           <el-button v-if="!isCarried(scope.row)" size="small" type="text" @click="handleUpdate(scope.row)" v-hasPermi="['finance:sale:edit']">修改</el-button>
-          <el-button v-if="!isPaidOff(scope.row)" size="small" type="text" @click="handlePayment(scope.row)" v-hasPermi="['finance:sale:edit']">缴款</el-button>
+          <el-button v-if="needsPaymentAdjustment(scope.row)" size="small" type="text" @click="handlePayment(scope.row)" v-hasPermi="['finance:sale:edit']">缴款</el-button>
           <el-button v-if="!isCarried(scope.row)" size="small" type="text" @click="handleDelete(scope.row)" v-hasPermi="['finance:sale:remove']">删除</el-button>
         </template>
       </el-table-column>
@@ -217,12 +220,15 @@
         </el-descriptions-item>
         <el-descriptions-item label="销售数量">{{ viewForm.saleQuantity }}</el-descriptions-item>
         <el-descriptions-item label="赠品数量">{{ viewForm.giftQuantity }}</el-descriptions-item>
+        <el-descriptions-item label="加赠单价">{{ giftUnitPrice(viewForm) }}</el-descriptions-item>
         <el-descriptions-item label="总数量">{{ viewForm.totalQuantity }}</el-descriptions-item>
         <el-descriptions-item label="单价">¥{{ viewForm.unitPrice }}</el-descriptions-item>
         <el-descriptions-item label="状态">
           <el-tag :type="getStatusType(viewForm.status)">{{ getStatusText(viewForm.status) }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="备注" :span="2">{{ viewForm.remark || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="备注" :span="2">
+          <span style="display: block; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word;">{{ viewForm.remark || '-' }}</span>
+        </el-descriptions-item>
       </el-descriptions>
 
       <div v-if="viewForm.payments && viewForm.payments.length > 0" style="margin-top: 20px;">
@@ -267,7 +273,7 @@
 import { useDict } from '@/composables/useDict'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listSale, listReceivable, getSale, delSale, addSale, updateSale, addPayment, updatePayment, delPayment } from '@/api/finance/sale'
-import { listProduct } from '@/api/finance/product'
+import { listProduct, listProductSelector } from '@/api/finance/product'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
@@ -377,12 +383,13 @@ export default {
     isCarried(row) {
       return row && row.periodStatus === '2'
     },
-    isPaidOff(row) {
-      return row && row.status === '2'
+    needsPaymentAdjustment(row) {
+      if (!row) return false
+      return Math.round((Number(row.saleAmount || 0) - Number(row.paidAmount || 0)) * 100) !== 0
     },
     getProductList() {
-      listProduct({ pageNum: 1, pageSize: 1000, deptId: userStore.currentDeptId }).then(response => {
-        this.productOptions = response.rows
+      listProductSelector().then(response => {
+        this.productOptions = response.data || []
       })
     },
     getStatusText(status) {
@@ -476,6 +483,11 @@ export default {
         this.form.unitPrice = 0
       }
     },
+    giftUnitPrice(row) {
+        const amount = Number(row?.saleAmount || 0)
+        const totalQuantity = Number(row?.saleQuantity || 0) + Number(row?.giftQuantity || 0)
+        return totalQuantity > 0 ? `¥${(amount / totalQuantity).toFixed(2)}` : '-'
+    },
     submitForm() {
       this.$refs["form"].validate(valid => {
         if (valid) {
@@ -510,6 +522,11 @@ export default {
               ElMessage.success("修改成功")
               this.paymentOpen = false
               this.handleView({ saleId: this.viewForm.saleId })
+              if (this.activeTab === 'receivable') {
+                this.getReceivableList()
+              } else {
+                this.getList()
+              }
             })
           } else {
             addPayment(this.paymentForm.saleId, data).then(() => {

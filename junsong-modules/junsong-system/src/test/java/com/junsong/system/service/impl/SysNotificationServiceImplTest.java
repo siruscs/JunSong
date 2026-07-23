@@ -80,10 +80,11 @@ class SysNotificationServiceImplTest
     void markAsReadShouldDelegateToMapper()
     {
         mapper.markAsReadResult = 1;
-        int rows = service.markAsRead(42L);
+        int rows = service.markAsRead(42L, 100L);
 
         assertEquals(1, rows);
         assertEquals(42L, mapper.lastMarkAsReadId);
+        assertEquals(100L, mapper.lastMarkAsReadUserId);
     }
 
     @Test
@@ -255,6 +256,7 @@ class SysNotificationServiceImplTest
         Long lastUnreadCountUserId = null;
         int markAsReadResult = 1;
         Long lastMarkAsReadId = null;
+        Long lastMarkAsReadUserId = null;
         int markAllAsReadResult = 0;
         Long lastMarkAllAsReadUserId = null;
         int insertResult = 1;
@@ -298,9 +300,10 @@ class SysNotificationServiceImplTest
         }
 
         @Override
-        public int markAsRead(Long id)
+        public int markAsRead(Long id, Long userId)
         {
             lastMarkAsReadId = id;
+            lastMarkAsReadUserId = userId;
             return markAsReadResult;
         }
 

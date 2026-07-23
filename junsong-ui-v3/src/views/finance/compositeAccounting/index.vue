@@ -267,7 +267,16 @@
           <el-table :data="bindInvestorForm.investors" border size="small" style="width: 100%;">
             <el-table-column label="投资人" min-width="140">
               <template #default="scope">
-                <el-select v-model="scope.row.investorId" filterable placeholder="请选择" @change="onInvestorChange(scope.row)">
+                <el-select
+                  v-model="scope.row.investorId"
+                  filterable
+                  remote
+                  reserve-keyword
+                  :remote-method="searchInvestorOptions"
+                  :loading="investorSearchLoading"
+                  placeholder="输入姓名搜索"
+                  @change="onInvestorChange(scope.row)"
+                >
                   <el-option v-for="inv in investorOptions" :key="inv.investorId" :label="inv.investorName" :value="inv.investorId" />
                 </el-select>
               </template>
@@ -401,6 +410,8 @@ export default {
       poolList: [],
       deptOptions: [],
       investorOptions: [],
+      investorSearchLoading: false,
+      investorSearchRequestId: 0,
       title: '',
       open: false,
       queryParams: {
@@ -563,17 +574,33 @@ export default {
       if (this.bindInvestorForm.investors.length === 0) {
         this.bindInvestorForm.investors.push({ investorId: undefined, investorName: '', investAmount: 0 })
       }
-      this.loadInvestorOptions()
+      this.investorOptions = this.bindInvestorForm.investors
+        .filter(inv => inv.investorId)
+        .map(inv => ({ investorId: inv.investorId, investorName: inv.investorName }))
+      this.searchInvestorOptions()
       this.bindInvestorOpen = true
     },
-    loadInvestorOptions() {
-      // 只加载用户权限部门的投资人
-      const userDeptIds = userStore.depts.map(d => d.deptId)
-      listInvestor({ pageNum: 1, pageSize: 1000 }).then(response => {
-        const allInvestors = response.rows || []
-        // 按用户权限部门过滤
-        this.investorOptions = allInvestors.filter(inv => userDeptIds.includes(inv.deptId))
-      })
+    async searchInvestorOptions(keyword = '') {
+      const requestId = ++this.investorSearchRequestId
+      this.investorSearchLoading = true
+      try {
+        const response = await listInvestor({
+          investorName: keyword.trim() || undefined,
+          pageNum: 1,
+          pageSize: 20,
+          status: '0'
+        })
+        if (requestId !== this.investorSearchRequestId) return
+        const rows = response.rows || []
+        const selectedIds = new Set(this.bindInvestorForm.investors.map(item => item.investorId).filter(Boolean))
+        const selected = this.investorOptions.filter(item => selectedIds.has(item.investorId))
+        this.investorOptions = [
+          ...selected.filter(item => !rows.some(row => row.investorId === item.investorId)),
+          ...rows
+        ]
+      } finally {
+        if (requestId === this.investorSearchRequestId) this.investorSearchLoading = false
+      }
     },
     onInvestorChange(row) {
       const inv = this.investorOptions.find(i => i.investorId === row.investorId)

@@ -128,4 +128,19 @@ public class FinSupplierServiceImpl implements IFinSupplierService
         }
         return true;
     }
+
+    @Override
+    public FinSupplier selectFinSupplierBySupplierIdAndDeptId(Long supplierId, Long deptId) {
+        return finSupplierMapper.selectFinSupplierBySupplierIdAndDeptId(supplierId, deptId);
+    }
+
+    @Override
+    public int updateFinSupplierByDeptId(FinSupplier supplier, Long deptId) {
+        return finSupplierMapper.updateFinSupplierByDeptId(supplier, deptId);
+    }
+
+    @Override
+    public int deleteFinSupplierBySupplierIdsAndDeptId(Long[] supplierIds, Long deptId) {
+        return finSupplierMapper.deleteFinSupplierBySupplierIdsAndDeptId(supplierIds, deptId);
+    }
 }

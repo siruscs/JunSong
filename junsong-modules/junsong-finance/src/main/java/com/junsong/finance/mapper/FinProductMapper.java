@@ -1,6 +1,7 @@
 package com.junsong.finance.mapper;
 
 import java.util.List;
+import org.apache.ibatis.annotations.Param;
 import com.junsong.finance.domain.FinProduct;
 
 /**
@@ -65,4 +66,8 @@ public interface FinProductMapper
      * @return 结果
      */
     public FinProduct checkProductCodeUnique(String productCode);
+
+    FinProduct selectFinProductByProductIdAndDeptId(@Param("productId") Long productId, @Param("deptId") Long deptId);
+    int updateFinProductByDeptId(@Param("product") FinProduct product, @Param("deptId") Long deptId);
+    int deleteFinProductByProductIdsAndDeptId(@Param("productIds") Long[] productIds, @Param("deptId") Long deptId);
 }

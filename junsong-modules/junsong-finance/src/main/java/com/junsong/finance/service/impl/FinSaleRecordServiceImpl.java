@@ -360,6 +360,7 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
         if (current != null)
         {
             applySaleStockOut(current);
+            refreshSalePaymentState(current.getSaleId());
         }
         return rows;
     }
@@ -476,15 +477,15 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
         finAccountingPeriodService.assertPeriodEditable(currentPeriodId);
 
         // 超额缴款保护：缴款后累计已缴不能超出销售金额范围
+        if (paymentAmount == null || paymentAmount.compareTo(BigDecimal.ZERO) == 0) {
+            throw new ServiceException("缴款金额不能为0");
+        }
         BigDecimal totalPaid = finSalePaymentMapper.sumPaymentAmountBySaleId(saleId);
         if (totalPaid == null) totalPaid = BigDecimal.ZERO;
         BigDecimal saleAmount = sale.getSaleAmount();
         BigDecimal afterPaid = totalPaid.add(paymentAmount);
-        if (paymentAmount == null || paymentAmount.compareTo(BigDecimal.ZERO) == 0) {
-            throw new ServiceException("缴款金额不能为0");
-        }
         if (saleAmount.compareTo(BigDecimal.ZERO) > 0) {
-            // 正向销售：0 <= afterPaid <= saleAmount
+            // 正向销售允许正向补缴和负向金额调整，但累计已缴仍须落在合法范围内。
             if (afterPaid.compareTo(BigDecimal.ZERO) < 0) {
                 throw new ServiceException("退货缴款金额不能超过已缴金额");
             }
@@ -524,7 +525,7 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
                 finAccountingPeriodService.selectCurrentPeriodByDeptId(sale.getDeptId());
 
                 // 更新销售记录的已缴金额和状态
-                updateSalePaidAmountAndStatus(saleId);
+                refreshSalePaymentState(saleId);
 
                 return rows;
             }
@@ -581,7 +582,7 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
         int rows = finSalePaymentMapper.updateFinSalePayment(payment);
         
         // 更新销售记录的已缴金额和状态
-        updateSalePaidAmountAndStatus(payment.getSaleId());
+        refreshSalePaymentState(payment.getSaleId());
         
         return rows;
     }
@@ -614,7 +615,7 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
         int rows = finSalePaymentMapper.deleteFinSalePaymentByPaymentId(paymentId);
         
         // 更新销售记录的已缴金额和状态
-        updateSalePaidAmountAndStatus(saleId);
+        refreshSalePaymentState(saleId);
         
         return rows;
     }
@@ -626,7 +627,7 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
      * 不修改任何销售业务字段，也不校验销售单原周期是否可编辑，
      * 允许在原销售周期已结转后随新周期缴款而更新累计缴款状态。
      */
-    private void updateSalePaidAmountAndStatus(Long saleId)
+    void refreshSalePaymentState(Long saleId)
     {
         BigDecimal totalPaid = finSalePaymentMapper.sumPaymentAmountBySaleId(saleId);
         if (totalPaid == null)

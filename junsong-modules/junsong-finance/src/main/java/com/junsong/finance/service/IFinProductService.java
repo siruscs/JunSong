@@ -65,4 +65,7 @@ public interface IFinProductService
      * @return 结果
      */
     public boolean checkProductCodeUnique(FinProduct finProduct);
+    FinProduct selectFinProductByProductIdAndDeptId(Long productId, Long deptId);
+    int updateFinProductByDeptId(FinProduct product, Long deptId);
+    int deleteFinProductByProductIdsAndDeptId(Long[] productIds, Long deptId);
 }

@@ -40,6 +40,13 @@ public class HeaderInterceptor implements AsyncHandlerInterceptor
             if (StringUtils.isNotNull(loginUser))
             {
                 AuthUtil.verifyLoginUserExpire(loginUser);
+                // 校验微信会话版本号：版本不匹配时注销当前 Token 并拒绝请求
+                if (!AuthUtil.authLogic.tokenService.verifyWechatSessionEpoch(loginUser))
+                {
+                    SecurityContextHolder.remove();
+                    TenantContext.clear();
+                    return false;
+                }
                 SecurityContextHolder.set(SecurityConstants.LOGIN_USER, loginUser);
                 setTenantContextFromLoginUser(loginUser);
             }

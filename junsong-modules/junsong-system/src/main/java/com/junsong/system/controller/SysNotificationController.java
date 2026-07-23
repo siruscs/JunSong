@@ -51,7 +51,7 @@ public class SysNotificationController extends BaseController
     @PutMapping("/read/{id}")
     public AjaxResult markRead(@PathVariable Long id)
     {
-        notificationService.markAsRead(id);
+        notificationService.markAsRead(id, SecurityUtils.getUserId());
         return AjaxResult.success();
     }
 

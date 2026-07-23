@@ -3,7 +3,9 @@ import request from '../request'
 export interface DelegateItem {
   id?: number
   userId?: number
+  userName?: string
   delegateUserId: number
+  delegateUserName?: string
   delegateType: string
   processKeys: string
   startTime: string

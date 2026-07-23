@@ -15,4 +15,5 @@ public interface IReceivableCollectionService {
     int syncFromReceivables(ReceivableCollectionSyncParams params);
 
     int updateFollow(Long collectionId, ReceivableCollectionUpdateParams params);
+    boolean canAccess(Long collectionId, Long deptId);
 }

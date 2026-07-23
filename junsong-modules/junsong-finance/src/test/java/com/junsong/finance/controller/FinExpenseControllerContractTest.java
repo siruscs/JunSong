@@ -52,6 +52,8 @@ class FinExpenseControllerContractTest
         assertTrue(method(source, "verificationCandidate").contains("@RequiresPermissions(\"finance:expense:verify\")"));
         assertTrue(method(source, "verificationCandidate").contains("finExpenseVerificationService.getVerificationCandidate(expenseId)"));
         assertFalse(source.contains("getUnverifiedAdvances(@RequestParam"));
+        assertTrue(method(source, "getUnverifiedAdvances").contains("@RequiresPermissions(\"finance:expense:verify\")"));
+        assertFalse(method(source, "getUnverifiedAdvances").contains("@RequiresPermissions(\"finance:advance:list\")"));
         assertTrue(source.contains("Long deptId = SecurityUtils.getDeptId()"));
         assertTrue(source.contains("query.setDeptId(deptId)"));
         assertTrue(source.contains("无法确定当前门店，禁止查询借支单"));
@@ -67,7 +69,7 @@ class FinExpenseControllerContractTest
 
     private static String method(String source, String name)
     {
-        var matcher = Pattern.compile("(?s)((?:\\s*@[^\\n]+\\n)+\\s*public AjaxResult " + name + "\\(.*?\\n    })\\n(?=\\n    @|\\n    /\\*\\*)").matcher(source);
+        var matcher = Pattern.compile("(?s)((?:\\s*@[^\\n]+\\n)+\\s*public (?:AjaxResult|TableDataInfo) " + name + "\\(.*?\\n    })\\n(?=\\n    @|\\n    /\\*\\*)").matcher(source);
         assertTrue(matcher.find(), "missing method " + name);
         return matcher.group(1);
     }

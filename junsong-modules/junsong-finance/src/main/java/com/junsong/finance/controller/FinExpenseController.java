@@ -67,7 +67,7 @@ public class FinExpenseController extends BaseController
         return success(finExpenseService.getExpenseSummary(deptId));
     }
 
-    @RequiresPermissions("finance:advance:list")
+    @RequiresPermissions("finance:expense:verify")
     @GetMapping("/unverifiedAdvances")
     public TableDataInfo getUnverifiedAdvances()
     {

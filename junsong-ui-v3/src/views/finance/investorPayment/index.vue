@@ -137,7 +137,18 @@
           <el-input value="返款" disabled />
         </el-form-item>
         <el-form-item label="投资人" prop="investorName">
-          <el-select v-model="form.investorId" placeholder="请选择投资人" filterable clearable style="width: 100%;" @change="handleInvestorChange">
+          <el-select
+            v-model="form.investorId"
+            placeholder="输入投资人姓名搜索"
+            filterable
+            remote
+            reserve-keyword
+            clearable
+            :remote-method="searchInvestorOptions"
+            :loading="investorSearchLoading"
+            style="width: 100%;"
+            @change="handleInvestorChange"
+          >
             <el-option v-for="investor in filteredInvestors" :key="investor.investorId" :label="investor.investorName" :value="investor.investorId" />
           </el-select>
         </el-form-item>
@@ -211,6 +222,8 @@ export default {
       selectedPayments: [],
       deptOptions: [],
       investorOptions: [],
+      investorSearchLoading: false,
+      investorSearchRequestId: 0,
       summary: {},
       title: "",
       open: false,
@@ -237,7 +250,6 @@ export default {
   },
   created() {
     this.getDeptOptions()
-    this.getInvestorOptions()
     this.getList()
     this.getSummary()
   },
@@ -257,10 +269,26 @@ export default {
     getDeptOptions() {
       this.deptOptions = userStore.depts || []
     },
-    getInvestorOptions() {
-      listInvestor({ pageNum: 1, pageSize: 9999, status: '0' }).then(response => {
-        this.investorOptions = response.rows || []
-      })
+    async searchInvestorOptions(keyword = '') {
+      const requestId = ++this.investorSearchRequestId
+      this.investorSearchLoading = true
+      try {
+        const response = await listInvestor({
+          investorName: keyword.trim() || undefined,
+          pageNum: 1,
+          pageSize: 20,
+          status: '0',
+          deptId: this.form.deptId || undefined
+        })
+        if (requestId !== this.investorSearchRequestId) return
+        const selected = this.investorOptions.find(item => item.investorId === this.form.investorId)
+        const rows = response.rows || []
+        this.investorOptions = selected && !rows.some(item => item.investorId === selected.investorId)
+          ? [selected, ...rows]
+          : rows
+      } finally {
+        if (requestId === this.investorSearchRequestId) this.investorSearchLoading = false
+      }
     },
     getList() {
       this.loading = true
@@ -283,7 +311,7 @@ export default {
       this.form = {
         paymentId: undefined,
         paymentNo: undefined,
-        deptId: undefined,
+        deptId: userStore.currentDeptId,
         investorId: undefined,
         paymentDate: new Date().toISOString().split('T')[0],
         paymentType: 'return',
@@ -314,6 +342,7 @@ export default {
       this.reset()
       this.open = true
       this.title = "新增投资人返款"
+      this.searchInvestorOptions()
     },
     handleUpdate(row) {
       if (row.sourceType === '1') {
@@ -324,6 +353,13 @@ export default {
       const paymentId = row.paymentId || this.ids
       getInvestorPayment(paymentId).then(response => {
         this.form = response.data
+        this.investorOptions = [{
+          investorId: this.form.investorId,
+          investorName: this.form.investorName,
+          deptId: this.form.deptId,
+          status: '0'
+        }]
+        this.searchInvestorOptions()
         this.open = true
         this.title = "修改投资人返款"
       })
@@ -331,6 +367,7 @@ export default {
     handleFormDeptChange() {
       this.form.investorId = undefined
       this.form.investorName = undefined
+      this.searchInvestorOptions()
     },
     handleInvestorChange(investorId) {
       const investor = this.investorOptions.find(item => item.investorId === investorId)
@@ -356,7 +393,6 @@ export default {
               this.getSummary()
             })
           } else {
-            this.form.deptId = userStore.currentDeptId
             addInvestorPayment(this.form).then(() => {
               ElMessage.success("新增成功")
               this.open = false

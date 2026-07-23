@@ -42,9 +42,21 @@ public class FinSupplierController extends BaseController
     @GetMapping("/list")
     public TableDataInfo list(FinSupplier finSupplier)
     {
+        finSupplier.setDeptId(SecurityUtils.getDeptId());
         startPage();
         List<FinSupplier> list = finSupplierService.selectFinSupplierList(finSupplier);
         return getDataTable(list);
+    }
+
+    /** 供进货业务选择供应商，仅返回当前部门的启用供应商。 */
+    @RequiresPermissions("finance:supplier:list")
+    @GetMapping("/selector")
+    public AjaxResult selector()
+    {
+        FinSupplier query = new FinSupplier();
+        query.setDeptId(SecurityUtils.getDeptId());
+        query.setStatus("0");
+        return success(finSupplierService.selectFinSupplierList(query));
     }
 
     /**
@@ -67,7 +79,15 @@ public class FinSupplierController extends BaseController
     @GetMapping(value = "/{supplierId}")
     public AjaxResult getInfo(@PathVariable Long supplierId)
     {
-        return success(finSupplierService.selectFinSupplierBySupplierId(supplierId));
+        if (supplierId == null)
+        {
+            return error("供应商不存在");
+        }
+        Long deptId = SecurityUtils.getDeptId();
+        FinSupplier supplier = SecurityUtils.isAdmin()
+            ? finSupplierService.selectFinSupplierBySupplierId(supplierId)
+            : finSupplierService.selectFinSupplierBySupplierIdAndDeptId(supplierId, deptId);
+        return supplier == null ? error("供应商不存在或无权访问") : success(supplier);
     }
 
     /**
@@ -100,7 +120,10 @@ public class FinSupplierController extends BaseController
             return error("修改供应商'" + finSupplier.getSupplierName() + "'失败，供应商编码已存在");
         }
         finSupplier.setUpdateBy(SecurityUtils.getUsername());
-        return toAjax(finSupplierService.updateFinSupplier(finSupplier));
+        Long deptId = SecurityUtils.getDeptId();
+        return toAjax(SecurityUtils.isAdmin()
+            ? finSupplierService.updateFinSupplier(finSupplier)
+            : finSupplierService.updateFinSupplierByDeptId(finSupplier, deptId));
     }
 
     /**
@@ -111,6 +134,9 @@ public class FinSupplierController extends BaseController
     @DeleteMapping("/{supplierIds}")
     public AjaxResult remove(@PathVariable Long[] supplierIds)
     {
-        return toAjax(finSupplierService.deleteFinSupplierBySupplierIds(supplierIds));
+        Long deptId = SecurityUtils.getDeptId();
+        return toAjax(SecurityUtils.isAdmin()
+            ? finSupplierService.deleteFinSupplierBySupplierIds(supplierIds)
+            : finSupplierService.deleteFinSupplierBySupplierIdsAndDeptId(supplierIds, deptId));
     }
 }

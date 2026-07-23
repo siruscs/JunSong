@@ -15,7 +15,7 @@ import java.util.concurrent.Executors;
 public class ActuatorServiceHealthProbe implements ServiceHealthProbe
 {
     private final RestTemplate restTemplate;
-    private final ExecutorService executor = Executors.newFixedThreadPool(9);
+    private final ExecutorService executor = Executors.newFixedThreadPool(11);
 
     private final List<ServiceEndpoint> endpoints = List.of(
         new ServiceEndpoint("网关服务", "junsong-gateway", "http://junsong-gateway:8080/actuator/health"),
@@ -23,9 +23,11 @@ public class ActuatorServiceHealthProbe implements ServiceHealthProbe
         new ServiceEndpoint("系统服务", "junsong-system", "http://junsong-modules-system:9201/actuator/health"),
         new ServiceEndpoint("代码生成", "junsong-gen", "http://junsong-modules-gen:9202/actuator/health"),
         new ServiceEndpoint("定时任务", "junsong-job", "http://junsong-modules-job:9203/actuator/health"),
-        new ServiceEndpoint("文件服务", "junsong-file", "http://junsong-modules-file:9300/actuator/health"),
-        new ServiceEndpoint("会员服务", "junsong-member", "http://junsong-modules-member:9206/actuator/health"),
         new ServiceEndpoint("财务服务", "junsong-finance", "http://junsong-modules-finance:9205/actuator/health"),
+        new ServiceEndpoint("会员服务", "junsong-member", "http://junsong-modules-member:9206/actuator/health"),
+        new ServiceEndpoint("工作流服务", "junsong-workflow", "http://junsong-modules-workflow:9207/actuator/health"),
+        new ServiceEndpoint("文件服务", "junsong-file", "http://junsong-modules-file:9300/actuator/health"),
+        new ServiceEndpoint("开放接口", "junsong-open", "http://junsong-modules-open:9208/actuator/health"),
         new ServiceEndpoint("监控服务", "junsong-monitor", "http://junsong-visual-monitor:9100/actuator/health")
     );
 

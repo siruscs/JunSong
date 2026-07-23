@@ -36,6 +36,18 @@ public interface RemoteUserService
     public R<LoginUser> getUserInfo(@PathVariable("username") String username, @RequestHeader(SecurityConstants.FROM_SOURCE) String source);
 
     /**
+     * 通过用户ID查询用户信息（用于微信快捷登录）
+     *
+     * @param userId 用户ID
+     * @param source 请求来源
+     * @return 结果
+     */
+    @GetMapping("/user/info-by-id/{userId}")
+    default R<LoginUser> getUserInfoById(@PathVariable("userId") Long userId, @RequestHeader(SecurityConstants.FROM_SOURCE) String source) {
+        return R.fail("用户服务不可用");
+    }
+
+    /**
      * 注册用户信息
      *
      * @param sysUser 用户信息
@@ -75,4 +87,17 @@ public interface RemoteUserService
      */
     @GetMapping("/user/list-by-role")
     public R<List<String>> listUsernamesByRoleKey(@RequestParam("roleKey") String roleKey, @RequestHeader(SecurityConstants.FROM_SOURCE) String source);
+
+    /**
+     * 查询指定租户是否启用微信登录
+     * 用于小程序能力接口和后端再校验（fail-closed：读取异常返回 false）
+     *
+     * @param tenantId 租户ID（null 时查询公共配置 tenant_id=0）
+     * @param source   请求来源
+     * @return true=已启用 false=未启用或读取失败
+     */
+    @GetMapping("/user/isWechatLoginEnabled")
+    default R<Boolean> isWechatLoginEnabled(@RequestParam(value = "tenantId", required = false) Long tenantId, @RequestHeader(SecurityConstants.FROM_SOURCE) String source) {
+        return R.fail("微信登录配置服务不可用");
+    }
 }

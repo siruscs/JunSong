@@ -31,7 +31,7 @@ public interface ISysNotificationService
     /**
      * 标记已读
      */
-    public int markAsRead(Long id);
+    public int markAsRead(Long id, Long userId);
 
     /**
      * 标记用户全部已读

@@ -128,4 +128,19 @@ public class FinProductServiceImpl implements IFinProductService
         }
         return true;
     }
+
+    @Override
+    public FinProduct selectFinProductByProductIdAndDeptId(Long productId, Long deptId) {
+        return finProductMapper.selectFinProductByProductIdAndDeptId(productId, deptId);
+    }
+
+    @Override
+    public int updateFinProductByDeptId(FinProduct product, Long deptId) {
+        return finProductMapper.updateFinProductByDeptId(product, deptId);
+    }
+
+    @Override
+    public int deleteFinProductByProductIdsAndDeptId(Long[] productIds, Long deptId) {
+        return finProductMapper.deleteFinProductByProductIdsAndDeptId(productIds, deptId);
+    }
 }

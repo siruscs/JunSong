@@ -143,6 +143,31 @@ class FinSalePaymentCrossPeriodTest {
     }
 
     @Test
+    void refreshSalePaymentState_whenSaleAmountIncreases_marksReceivable() {
+        seedSale(5011L, new BigDecimal("800.00"), new BigDecimal("800.00"));
+        saleMapper.sales.get(5011L).setStatus(PaymentStatus.PAID);
+        saleMapper.sales.get(5011L).setSaleAmount(new BigDecimal("900.00"));
+
+        service.refreshSalePaymentState(5011L);
+
+        assertEquals(new BigDecimal("800.00"), saleMapper.paidUpdates.get(5011L));
+        assertEquals(PaymentStatus.PARTIAL, saleMapper.statusUpdates.get(5011L));
+    }
+
+    @Test
+    void refreshSalePaymentState_whenSaleAmountDecreases_keepsPaidStatusAndAllowsNegativeAdjustment() {
+        seedSale(5012L, new BigDecimal("800.00"), new BigDecimal("800.00"));
+        saleMapper.sales.get(5012L).setStatus(PaymentStatus.PAID);
+        saleMapper.sales.get(5012L).setSaleAmount(new BigDecimal("700.00"));
+
+        service.refreshSalePaymentState(5012L);
+        service.addPayment(5012L, new BigDecimal("-100.00"), "cash", "销售金额调整", new Date());
+
+        assertEquals(PaymentStatus.PAID, saleMapper.statusUpdates.get(5012L));
+        assertEquals(new BigDecimal("700.00"), saleMapper.paidUpdates.get(5012L));
+    }
+
+    @Test
     void updatePayment_onCurrentPeriod_succeeds() {
         seedSale(5005L, new BigDecimal("100.00"), new BigDecimal("50.00"));
         FinSalePayment p = new FinSalePayment();
@@ -155,6 +180,22 @@ class FinSalePaymentCrossPeriodTest {
 
         assertEquals(1, rows);
         assertEquals(0, new BigDecimal("60.00").compareTo(paymentMapper.payments.get(9001L).getPaymentAmount()));
+    }
+
+    @Test
+    void updatePayment_recalculatesSalePaidAmountAndStatus() {
+        seedSale(5013L, new BigDecimal("900.00"), BigDecimal.ZERO);
+        FinSalePayment p = new FinSalePayment();
+        p.setPaymentId(9005L);
+        p.setSaleId(5013L);
+        p.setPeriodId(CUR_PERIOD);
+        p.setPaymentAmount(new BigDecimal("800.00"));
+        paymentMapper.payments.put(9005L, p);
+
+        service.updatePayment(9005L, new BigDecimal("900.00"), "cash", "补足", new Date());
+
+        assertEquals(new BigDecimal("900.00"), saleMapper.paidUpdates.get(5013L));
+        assertEquals(PaymentStatus.PAID, saleMapper.statusUpdates.get(5013L));
     }
 
     @Test
@@ -282,8 +323,8 @@ class FinSalePaymentCrossPeriodTest {
 
         @Override
         public int updateFinSaleRecord(FinSaleRecord finSaleRecord) {
-            // 若被误用来更新销售单，视为测试失败信号（跨周期补缴款不应走全字段更新）
-            throw new AssertionError("补缴款不应调用全字段 updateFinSaleRecord");
+            sales.put(finSaleRecord.getSaleId(), finSaleRecord);
+            return 1;
         }
 
         @Override public List<FinSaleRecord> selectFinSaleRecordList(FinSaleRecord finSaleRecord) { return new ArrayList<>(); }

@@ -94,6 +94,10 @@ public class FinAccountingPeriodController extends BaseController
     @GetMapping("/list")
     public TableDataInfo list(FinAccountingPeriod finAccountingPeriod)
     {
+        if (!SecurityUtils.isAdmin())
+        {
+            finAccountingPeriod.setDeptId(SecurityUtils.getDeptId());
+        }
         startPage();
         List<FinAccountingPeriod> list = finAccountingPeriodService.selectFinAccountingPeriodList(finAccountingPeriod);
         return getDataTable(list);

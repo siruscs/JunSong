@@ -224,6 +224,43 @@ public class SysConfigServiceImpl implements ISysConfigService
     }
 
     /**
+     * 查询指定租户是否启用微信登录
+     * 读取 mp.wechat.login.enabled 参数，按 tenant_id 隔离。
+     * 参数缺失、非法值或读取异常时一律返回 false（fail-closed）。
+     *
+     * @param tenantId 租户ID（null 时使用当前租户上下文）
+     * @return true=已启用 false=未启用或读取失败
+     */
+    @Override
+    public boolean isWechatLoginEnabled(Long tenantId)
+    {
+        Long originalTenantId = TenantContext.getTenantId();
+        boolean tenantChanged = false;
+        if (tenantId != null && !tenantId.equals(originalTenantId))
+        {
+            TenantContext.setTenantId(tenantId);
+            tenantChanged = true;
+        }
+        try
+        {
+            String value = selectConfigByKey("mp.wechat.login.enabled");
+            return "true".equalsIgnoreCase(value);
+        }
+        catch (Exception e)
+        {
+            // fail-closed：读取异常时返回 false
+            return false;
+        }
+        finally
+        {
+            if (tenantChanged)
+            {
+                TenantContext.setTenantId(originalTenantId);
+            }
+        }
+    }
+
+    /**
      * 设置cache key（多租户隔离）
      * 默认租户(tenant_id=1)使用旧格式，兼容网关等无租户上下文的服务
      *

@@ -65,4 +65,7 @@ public interface IFinSupplierService
      * @return 结果
      */
     public boolean checkSupplierCodeUnique(FinSupplier finSupplier);
+    FinSupplier selectFinSupplierBySupplierIdAndDeptId(Long supplierId, Long deptId);
+    int updateFinSupplierByDeptId(FinSupplier supplier, Long deptId);
+    int deleteFinSupplierBySupplierIdsAndDeptId(Long[] supplierIds, Long deptId);
 }

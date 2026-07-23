@@ -9,6 +9,13 @@ export function listProduct(query: any) {
   })
 }
 
+export function listProductSelector() {
+  return request({
+    url: '/finance/product/selector',
+    method: 'get'
+  })
+}
+
 // 查询商品详细
 export function getProduct(productId: any) {
   return request({

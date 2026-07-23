@@ -32,7 +32,7 @@ public interface SysNotificationMapper
     /**
      * 标记已读
      */
-    public int markAsRead(Long id);
+    public int markAsRead(@Param("id") Long id, @Param("userId") Long userId);
 
     /**
      * 标记用户全部已读

@@ -59,13 +59,16 @@ public class TokenController extends BaseController
 
     /**
      * 小程序登录（不触发PC端单点登录互踢）
+     *
+     * <p>此入口为账号密码登录，Token 标记为 PASSWORD 来源，
+     * 不受"微信会话一键失效"影响。微信快捷登录走 /auth/mp/wechat/login。</p>
      */
     @PostMapping("mp/login")
     public R<?> mpLogin(@RequestBody LoginBody form)
     {
         // 小程序不走验证码
         LoginUser userInfo = sysLoginService.login(form.getUsername(), form.getPassword(), form.getDeptId());
-        return R.ok(tokenService.createTokenMp(userInfo));
+        return R.ok(tokenService.createTokenMp(userInfo, "PASSWORD"));
     }
 
     @PostMapping("refresh")

@@ -15,7 +15,8 @@ import com.junsong.common.core.web.domain.BaseEntity;
  * - in_quantity：当日入库数量（正向流水合计）
  * - out_quantity：当日出库数量（反向流水绝对值合计）
  *
- * 唯一键：snapshot_date + dept_id + product_id（uk_stock_snapshot_date_dept_product）
+ * 唯一键：tenant_id + snapshot_date + dept_id + product_id
+ * （uk_stock_snapshot_tenant_date_dept_product）
  *
  * @author junsong
  */

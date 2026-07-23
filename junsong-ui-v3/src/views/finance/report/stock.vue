@@ -169,7 +169,7 @@
             <el-pagination
               v-model:current-page="queryParams.pageNum"
               v-model:page-size="queryParams.pageSize"
-              :page-sizes="[20, 50, 100]"
+              :page-sizes="[10, 20, 30, 50, 100, 200]"
               :total="total"
               layout="total, sizes, prev, pager, next, jumper"
               @size-change="handleQuery"

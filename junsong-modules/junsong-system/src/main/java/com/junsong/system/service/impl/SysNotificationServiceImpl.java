@@ -71,9 +71,9 @@ public class SysNotificationServiceImpl implements ISysNotificationService
     }
 
     @Override
-    public int markAsRead(Long id)
+    public int markAsRead(Long id, Long userId)
     {
-        return notificationMapper.markAsRead(id);
+        return notificationMapper.markAsRead(id, userId);
     }
 
     @Override

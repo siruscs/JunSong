@@ -81,4 +81,10 @@ public class CacheConstants
      * 菜单 cache key
      */
     public static final String SYS_MENU_KEY = "sys_menu:";
+
+    /**
+     * 微信会话版本号 key：每个租户一个原子递增的 epoch
+     * 用于一键使指定租户的所有微信登录会话失效
+     */
+    public static final String WECHAT_SESSION_EPOCH_KEY = "wechat:session:epoch:";
 }

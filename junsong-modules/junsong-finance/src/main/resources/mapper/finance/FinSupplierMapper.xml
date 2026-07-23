@@ -14,6 +14,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="address"         column="address"          />
         <result property="status"          column="status"           />
         <result property="delFlag"         column="del_flag"         />
+        <result property="deptId"          column="dept_id"          />
         <result property="createBy"        column="create_by"        />
         <result property="createTime"      column="create_time"      />
         <result property="updateBy"        column="update_by"        />
@@ -22,7 +23,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
     
     <sql id="selectFinSupplierVo">
-        select s.supplier_id, s.supplier_code, s.supplier_name, s.contact_person, s.contact_phone, s.address, s.status, s.del_flag, s.create_by, s.create_time, s.update_by, s.update_time, s.remark 
+        select s.supplier_id, s.supplier_code, s.supplier_name, s.contact_person, s.contact_phone, s.address, s.status, s.del_flag, s.dept_id, s.create_by, s.create_time, s.update_by, s.update_time, s.remark
         from fin_supplier s
     </sql>
 
@@ -47,6 +48,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectFinSupplierBySupplierId" parameterType="Long" resultMap="FinSupplierResult">
         <include refid="selectFinSupplierVo"/>
         where s.supplier_id = #{supplierId}
+    </select>
+
+    <select id="selectFinSupplierBySupplierIdAndDeptId" resultMap="FinSupplierResult">
+        <include refid="selectFinSupplierVo"/>
+        where s.supplier_id = #{supplierId} and s.dept_id = #{deptId} and s.del_flag = '0'
     </select>
 
     <select id="checkSupplierCodeUnique" parameterType="String" resultMap="FinSupplierResult">
@@ -113,5 +119,26 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <foreach item="supplierId" collection="array" open="(" separator="," close=")">
             #{supplierId}
         </foreach>
+    </update>
+
+    <update id="updateFinSupplierByDeptId">
+        update fin_supplier
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="supplier.supplierCode != null and supplier.supplierCode != ''">supplier_code = #{supplier.supplierCode},</if>
+            <if test="supplier.supplierName != null and supplier.supplierName != ''">supplier_name = #{supplier.supplierName},</if>
+            <if test="supplier.contactPerson != null">contact_person = #{supplier.contactPerson},</if>
+            <if test="supplier.contactPhone != null">contact_phone = #{supplier.contactPhone},</if>
+            <if test="supplier.address != null">address = #{supplier.address},</if>
+            <if test="supplier.status != null">status = #{supplier.status},</if>
+            <if test="supplier.updateBy != null">update_by = #{supplier.updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where supplier_id = #{supplier.supplierId} and dept_id = #{deptId} and del_flag = '0'
+    </update>
+
+    <update id="deleteFinSupplierBySupplierIdsAndDeptId">
+        update fin_supplier set del_flag = '2'
+        where dept_id = #{deptId} and supplier_id in
+        <foreach item="supplierId" collection="supplierIds" open="(" separator="," close=")">#{supplierId}</foreach>
     </update>
 </mapper>

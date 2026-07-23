@@ -22,8 +22,9 @@
             <if test="deptId != null"> and i.dept_id=#{deptId}</if>
             <if test="investorName != null and investorName != ''"> and i.investor_name like concat('%', #{investorName}, '%')</if>
             <if test="status != null and status != ''"> and i.status=#{status}</if>
+            ${params.dataScope}
         </where>
-        order by create_time desc
+        order by i.create_time desc
     </select>
     <insert id="insertFinInvestor" parameterType="FinInvestor" useGeneratedKeys="true" keyProperty="investorId">
         insert into fin_investor(dept_id, investor_name, phone, status, del_flag, create_by, create_time, remark)

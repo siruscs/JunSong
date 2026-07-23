@@ -10,7 +10,7 @@
               <el-button link type="primary" @click="loadMenuTree">刷新</el-button>
             </div>
           </template>
-          <el-input v-model="filterText" placeholder="输入菜单名称过滤" clearable class="tree-filter" />
+          <el-input v-model="filterText" placeholder="输入菜单名称或权限标识过滤" clearable class="tree-filter" />
           <el-tree
             ref="treeRef"
             v-loading="treeLoading"
@@ -335,8 +335,10 @@ function resetFormData(data: any = {}) {
 
 function filterNode(value: string, data: any) {
   if (!value) return true
-  const name = data.menuName || data.label || data.name || ''
-  return name.includes(value)
+  const keyword = value.trim()
+  if (!keyword) return true
+  const fields = [data.menuName, data.label, data.name, data.perms]
+  return fields.some((field) => String(field || '').includes(keyword))
 }
 
 function buildMenuTree(list: any[]): any[] {

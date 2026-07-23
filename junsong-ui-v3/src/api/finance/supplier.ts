@@ -9,6 +9,13 @@ export function listSupplier(query: any) {
   })
 }
 
+export function listSupplierSelector() {
+  return request({
+    url: '/finance/supplier/selector',
+    method: 'get'
+  })
+}
+
 // 查询供应商详细
 export function getSupplier(supplierId: any) {
   return request({

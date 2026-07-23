@@ -4,6 +4,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.junsong.common.core.exception.ServiceException;
+import com.junsong.common.datascope.annotation.DataScope;
 import com.junsong.finance.domain.FinInvestRecord;
 import com.junsong.finance.domain.FinInvestor;
 import com.junsong.finance.domain.FinInvestorPayment;
@@ -23,6 +24,7 @@ public class FinInvestorServiceImpl implements IFinInvestorService
     private FinInvestorPaymentMapper finInvestorPaymentMapper;
 
     public FinInvestor selectFinInvestorByInvestorId(Long investorId) { return finInvestorMapper.selectFinInvestorByInvestorId(investorId); }
+    @DataScope(deptAlias = "i", permission = "finance:investor:list")
     public List<FinInvestor> selectFinInvestorList(FinInvestor finInvestor) { return finInvestorMapper.selectFinInvestorList(finInvestor); }
     public int insertFinInvestor(FinInvestor finInvestor) { return finInvestorMapper.insertFinInvestor(finInvestor); }
     public int updateFinInvestor(FinInvestor finInvestor) {

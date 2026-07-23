@@ -62,15 +62,25 @@
             <el-progress :percentage="normalizePercent(health.diskUsage)" :stroke-width="10" />
           </div>
         </div>
-        <el-table :data="health.services || []" stripe style="width: 100%; margin-top: 14px" empty-text="暂无服务健康数据" max-height="280">
-          <el-table-column prop="name" label="服务" min-width="160" />
-          <el-table-column prop="status" label="状态" width="100">
-            <template #default="{ row }">
-              <el-tag :type="String(row.status).toUpperCase() === 'UP' ? 'success' : 'danger'" size="small">{{ row.status }}</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="message" label="说明" min-width="220" show-overflow-tooltip />
-        </el-table>
+        <div v-if="(health.services || []).length > 0" class="service-tiles">
+          <div
+            v-for="service in health.services || []"
+            :key="service.code || service.name"
+            class="service-tile"
+            :class="{ 'is-down': String(service.status).toUpperCase() !== 'UP' }"
+          >
+            <div class="service-tile__head">
+              <span class="service-dot"></span>
+              <strong>{{ service.name || service.code || '未知服务' }}</strong>
+              <el-tag :type="String(service.status).toUpperCase() === 'UP' ? 'success' : 'danger'" size="small">
+                {{ serviceStatusText(service.status) }}
+              </el-tag>
+            </div>
+            <div class="service-tile__meta">{{ service.code || '-' }}</div>
+            <p>{{ service.message || '暂无说明' }}</p>
+          </div>
+        </div>
+        <el-empty v-else description="暂无服务健康数据" />
       </el-card>
 
       <el-card class="section-card">
@@ -475,6 +485,11 @@ function formatPercent(value: any) {
   return `${normalizePercent(value)}%`
 }
 
+function serviceStatusText(status: any) {
+  const value = String(status || '').toUpperCase()
+  return value || 'UNKNOWN'
+}
+
 async function loadData() {
   loading.value = true
   loadError.value = ''
@@ -607,6 +622,71 @@ onMounted(loadData)
   margin-bottom: 6px;
   color: #445065;
   font-size: 13px;
+}
+
+.service-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.service-tile {
+  min-height: 92px;
+  padding: 12px;
+  border: 1px solid #e5e9f2;
+  border-radius: 8px;
+  background: #f8fafc;
+
+  &.is-down {
+    border-color: #f4b4ad;
+    background: #fff7f6;
+
+    .service-dot {
+      background: #dc2626;
+      box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.12);
+    }
+  }
+
+  p {
+    margin: 8px 0 0;
+    color: #667085;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+}
+
+.service-tile__head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+
+  strong {
+    min-width: 0;
+    color: #24324b;
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.service-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #16a34a;
+  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.12);
+}
+
+.service-tile__meta {
+  margin-top: 8px;
+  color: #8a94a6;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .risk-list {

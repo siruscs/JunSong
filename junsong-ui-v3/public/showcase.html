@@ -260,6 +260,45 @@
       margin-top: 30px;
     }
 
+    .mini-program-entry {
+      display: flex;
+      width: fit-content;
+      align-items: center;
+      gap: 14px;
+      margin-top: 26px;
+      padding: 10px 14px 10px 10px;
+      border: 1px solid rgba(42, 111, 151, 0.14);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.68);
+      box-shadow: 0 14px 32px rgba(23, 59, 87, 0.08);
+    }
+
+    .mini-program-entry img {
+      display: block;
+      width: 82px;
+      height: 82px;
+      padding: 4px;
+      border-radius: 12px;
+      background: #fff;
+      object-fit: contain;
+    }
+
+    .mini-program-copy strong {
+      display: block;
+      color: var(--primary-3);
+      font-size: 15px;
+      line-height: 1.3;
+    }
+
+    .mini-program-copy span {
+      display: block;
+      max-width: 190px;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
     .primary-action,
     .secondary-action {
       display: inline-flex;
@@ -1100,6 +1139,13 @@
           <div class="hero-actions">
             <a class="primary-action" href="/login?redirect=/index">进入系统</a>
             <a class="secondary-action" href="#modules">查看能力</a>
+          </div>
+          <div class="mini-program-entry" aria-label="扫码进入峻松运营小程序">
+            <img src="/miniprogramcode.jpeg" alt="峻松运营小程序码" />
+            <div class="mini-program-copy">
+              <strong>微信扫码进入小程序</strong>
+              <span>移动端经营、会员和门店操作，打开微信即可使用。</span>
+            </div>
           </div>
         </div>
 

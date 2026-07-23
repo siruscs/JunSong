@@ -74,9 +74,19 @@ public interface ISysConfigService
 
     /**
      * 校验参数键名是否唯一
-     * 
+     *
      * @param config 参数信息
      * @return 结果
      */
     public boolean checkConfigKeyUnique(SysConfig config);
+
+    /**
+     * 查询指定租户是否启用微信登录
+     * 读取 mp.wechat.login.enabled 参数，按 tenant_id 隔离。
+     * 参数缺失、非法值或读取异常时一律返回 false（fail-closed）。
+     *
+     * @param tenantId 租户ID（null 时使用当前租户上下文）
+     * @return true=已启用 false=未启用或读取失败
+     */
+    public boolean isWechatLoginEnabled(Long tenantId);
 }

@@ -34,10 +34,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectFinSaleRecordVo">
-        select r.sale_id, r.dept_id, r.period_id, r.sale_no, r.product_id, r.member_id, r.member_no, r.member_name, r.product_name, r.sale_quantity, r.gift_quantity, r.total_quantity, r.sale_amount, r.unit_price, r.paid_amount, r.sale_date, r.status, r.del_flag, r.create_by, r.create_time, r.update_by, r.update_time, r.remark,
+        select r.sale_id, r.dept_id, r.period_id, r.sale_no, r.product_id, r.member_id, r.member_no, r.member_name,
+               coalesce(nullif(r.product_name, ''), fp.product_name) as product_name,
+               r.sale_quantity, r.gift_quantity, r.total_quantity, r.sale_amount, r.unit_price, r.paid_amount, r.sale_date, r.status, r.del_flag, r.create_by, r.create_time, r.update_by, r.update_time, r.remark,
                p.period_no as period_no, p.status as period_status
         from fin_sale_record r
         left join fin_accounting_period p on r.period_id = p.period_id
+        left join fin_product fp on fp.product_id = r.product_id and fp.dept_id = r.dept_id
     </sql>
 
     <select id="selectFinSaleRecordList" parameterType="FinSaleRecord" resultMap="FinSaleRecordResult">

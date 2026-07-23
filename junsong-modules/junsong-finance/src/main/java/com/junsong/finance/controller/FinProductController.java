@@ -42,9 +42,21 @@ public class FinProductController extends BaseController
     @GetMapping("/list")
     public TableDataInfo list(FinProduct finProduct)
     {
+        finProduct.setDeptId(SecurityUtils.getDeptId());
         startPage();
         List<FinProduct> list = finProductService.selectFinProductList(finProduct);
         return getDataTable(list);
+    }
+
+    /** 供进销业务选择商品，仅返回当前部门的启用商品。 */
+    @RequiresPermissions("finance:product:list")
+    @GetMapping("/selector")
+    public AjaxResult selector()
+    {
+        FinProduct query = new FinProduct();
+        query.setDeptId(SecurityUtils.getDeptId());
+        query.setStatus("0");
+        return success(finProductService.selectFinProductList(query));
     }
 
     /**
@@ -64,10 +76,18 @@ public class FinProductController extends BaseController
      * 获取商品详细信息
      */
     @RequiresPermissions("finance:product:query")
-    @GetMapping(value = "/{productId}")
+    @GetMapping(value = "/{productId:\\d+}")
     public AjaxResult getInfo(@PathVariable Long productId)
     {
-        return success(finProductService.selectFinProductByProductId(productId));
+        if (productId == null)
+        {
+            return error("商品不存在");
+        }
+        Long deptId = SecurityUtils.getDeptId();
+        FinProduct product = SecurityUtils.isAdmin()
+            ? finProductService.selectFinProductByProductId(productId)
+            : finProductService.selectFinProductByProductIdAndDeptId(productId, deptId);
+        return product == null ? error("商品不存在或无权访问") : success(product);
     }
 
     /**
@@ -100,7 +120,10 @@ public class FinProductController extends BaseController
             return error("修改商品'" + finProduct.getProductName() + "'失败，商品编码已存在");
         }
         finProduct.setUpdateBy(SecurityUtils.getUsername());
-        return toAjax(finProductService.updateFinProduct(finProduct));
+        Long deptId = SecurityUtils.getDeptId();
+        return toAjax(SecurityUtils.isAdmin()
+            ? finProductService.updateFinProduct(finProduct)
+            : finProductService.updateFinProductByDeptId(finProduct, deptId));
     }
 
     /**
@@ -108,9 +131,12 @@ public class FinProductController extends BaseController
      */
     @RequiresPermissions("finance:product:remove")
     @Log(title = "商品", businessType = BusinessType.DELETE)
-    @DeleteMapping("/{productIds}")
+    @DeleteMapping("/{productIds:\\d+(?:,\\d+)*}")
     public AjaxResult remove(@PathVariable Long[] productIds)
     {
-        return toAjax(finProductService.deleteFinProductByProductIds(productIds));
+        Long deptId = SecurityUtils.getDeptId();
+        return toAjax(SecurityUtils.isAdmin()
+            ? finProductService.deleteFinProductByProductIds(productIds)
+            : finProductService.deleteFinProductByProductIdsAndDeptId(productIds, deptId));
     }
 }

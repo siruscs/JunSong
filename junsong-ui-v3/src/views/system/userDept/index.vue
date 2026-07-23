@@ -2,7 +2,17 @@
   <div class="app-container">
     <el-form :model="queryParams" ref="queryFormRef" :inline="true" v-show="showSearch" label-width="100px">
       <el-form-item label="用户" prop="userId">
-        <el-select v-model="queryParams.userId" placeholder="请选择用户" clearable filterable style="width: 200px">
+        <el-select
+          v-model="queryParams.userId"
+          placeholder="输入用户名搜索"
+          clearable
+          filterable
+          remote
+          reserve-keyword
+          :remote-method="searchUsers"
+          :loading="userSearchLoading"
+          style="width: 200px"
+        >
           <el-option v-for="item in userOptions" :key="item.userId" :label="item.userName" :value="item.userId" />
         </el-select>
       </el-form-item>
@@ -65,7 +75,16 @@
     <el-dialog v-model="formDialog.visible" :title="formDialog.title" width="540px" append-to-body>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
         <el-form-item label="用户" prop="userId">
-          <el-select v-model="form.userId" placeholder="请选择用户" filterable style="width: 100%">
+          <el-select
+            v-model="form.userId"
+            placeholder="输入用户名搜索"
+            filterable
+            remote
+            reserve-keyword
+            :remote-method="searchUsers"
+            :loading="userSearchLoading"
+            style="width: 100%"
+          >
             <el-option v-for="item in userOptions" :key="item.userId" :label="item.userName" :value="item.userId" />
           </el-select>
         </el-form-item>
@@ -130,6 +149,8 @@ const showSearch = ref(true)
 const total = ref(0)
 const userDeptList = ref<any[]>([])
 const userOptions = ref<any[]>([])
+const userSearchLoading = ref(false)
+let userSearchRequestId = 0
 const deptTreeOptions = ref<any[]>([])
 
 const queryParams = reactive<any>({
@@ -187,10 +208,19 @@ function getList() {
     })
 }
 
-function getUserList() {
-  listUser({ pageNum: 1, pageSize: 1000 }).then((res: any) => {
-    userOptions.value = res.rows || []
-  })
+async function searchUsers(keyword = '') {
+  const requestId = ++userSearchRequestId
+  userSearchLoading.value = true
+  try {
+    const res: any = await listUser({ userName: keyword.trim() || undefined, pageNum: 1, pageSize: 20 })
+    if (requestId !== userSearchRequestId) return
+    const selectedIds = new Set([queryParams.userId, form.userId].filter(Boolean))
+    const selected = userOptions.value.filter((user: any) => selectedIds.has(user.userId))
+    const rows = res.rows || []
+    userOptions.value = [...selected.filter((user: any) => !rows.some((row: any) => row.userId === user.userId)), ...rows]
+  } finally {
+    if (requestId === userSearchRequestId) userSearchLoading.value = false
+  }
 }
 
 function getDeptTree() {
@@ -234,12 +264,15 @@ function handleAdd() {
   reset()
   formDialog.visible = true
   formDialog.title = '添加关联'
+  searchUsers()
 }
 
 function handleUpdate(row: any) {
   reset()
   getUserDept(row.userDeptId).then((res: any) => {
-    Object.assign(form, res.data || {})
+    const detail = res.data || {}
+    Object.assign(form, detail)
+    userOptions.value = [{ userId: detail.userId, userName: detail.userName || String(detail.userId) }]
     formDialog.visible = true
     formDialog.title = '修改关联'
   })
@@ -296,7 +329,6 @@ function cancel() {
 
 onMounted(() => {
   getList()
-  getUserList()
   getDeptTree()
 })
 </script>

@@ -73,11 +73,12 @@
         </trim>
     </insert>
 
-    <update id="markAsRead" parameterType="Long">
+    <update id="markAsRead">
         update sys_notification
         set is_read = '1',
             read_time = now()
         where id = #{id}
+          and user_id = #{userId}
     </update>
 
     <update id="markAllAsRead" parameterType="Long">

@@ -85,6 +85,7 @@
           <span>{{ parseTime(scope.row.purchaseDate, '{y}-{m}-{d}') }}</span>
         </template>
       </el-table-column>
+      <el-table-column label="进货商品" align="center" prop="productNames" min-width="160" show-overflow-tooltip />
       <el-table-column label="总金额" align="center" prop="totalAmount">
         <template #default="scope">
           <span style="color: #409EFF; font-weight: bold;">¥{{ scope.row.totalAmount }}</span>
@@ -360,8 +361,8 @@
 import { useDict } from '@/composables/useDict'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listPurchase, getPurchase, delPurchase, addPurchase, updatePurchase } from '@/api/finance/purchase'
-import { listSupplier } from '@/api/finance/supplier'
-import { listProduct } from '@/api/finance/product'
+import { listSupplier, listSupplierSelector } from '@/api/finance/supplier'
+import { listProduct, listProductSelector } from '@/api/finance/product'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
@@ -444,14 +445,14 @@ export default {
     },
     /** 查询供应商列表 */
     getSupplierList() {
-      listSupplier({ pageNum: 1, pageSize: 1000, deptId: userStore.currentDeptId }).then(response => {
-        this.supplierOptions = response.rows
+      listSupplierSelector().then(response => {
+        this.supplierOptions = response.data || []
       })
     },
     /** 查询商品列表 */
     getProductList() {
-      listProduct({ pageNum: 1, pageSize: 1000, deptId: userStore.currentDeptId }).then(response => {
-        this.productOptions = response.rows
+      listProductSelector().then(response => {
+        this.productOptions = response.data || []
       })
     },
     // 取消按钮

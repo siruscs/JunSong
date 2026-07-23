@@ -32,6 +32,10 @@ public class FinDeptProfitConfigController extends BaseController
     @GetMapping("/list")
     public TableDataInfo list(FinDeptProfitConfig finDeptProfitConfig)
     {
+        if (!SecurityUtils.isAdmin())
+        {
+            finDeptProfitConfig.setDeptId(SecurityUtils.getDeptId());
+        }
         startPage();
         List<FinDeptProfitConfig> list = finDeptProfitConfigService.selectFinDeptProfitConfigList(finDeptProfitConfig);
         return getDataTable(list);

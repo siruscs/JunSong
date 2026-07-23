@@ -23,6 +23,7 @@ public interface IFinCompositeAccountingService
      * 查询复合核算池详情
      */
     public FinCompositeAccountingPool selectCompositePoolByPoolId(Long poolId);
+    boolean canAccessPool(Long poolId, Long deptId);
 
     /**
      * 创建复合核算池(同时保存参与店面和共享投资人)

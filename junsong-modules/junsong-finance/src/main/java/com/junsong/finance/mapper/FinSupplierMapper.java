@@ -1,6 +1,7 @@
 package com.junsong.finance.mapper;
 
 import java.util.List;
+import org.apache.ibatis.annotations.Param;
 import com.junsong.finance.domain.FinSupplier;
 
 /**
@@ -65,4 +66,8 @@ public interface FinSupplierMapper
      * @return 结果
      */
     public FinSupplier checkSupplierCodeUnique(String supplierCode);
+
+    FinSupplier selectFinSupplierBySupplierIdAndDeptId(@Param("supplierId") Long supplierId, @Param("deptId") Long deptId);
+    int updateFinSupplierByDeptId(@Param("supplier") FinSupplier supplier, @Param("deptId") Long deptId);
+    int deleteFinSupplierBySupplierIdsAndDeptId(@Param("supplierIds") Long[] supplierIds, @Param("deptId") Long deptId);
 }

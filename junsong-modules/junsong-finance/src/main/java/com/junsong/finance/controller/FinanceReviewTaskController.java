@@ -32,6 +32,12 @@ public class FinanceReviewTaskController extends BaseController {
     @Autowired
     private IFinanceReviewTaskService reviewTaskService;
 
+    private boolean canAccessTask(Long taskId) {
+        FinanceReviewTask task = reviewTaskService.getTask(taskId);
+        return task != null && (SecurityUtils.isAdmin()
+                || java.util.Objects.equals(task.getDeptId(), SecurityUtils.getDeptId()));
+    }
+
     /**
      * 查询复盘任务列表（分页）
      */
@@ -61,6 +67,11 @@ public class FinanceReviewTaskController extends BaseController {
         if (taskType != null && !taskType.isEmpty()) {
             params.put("taskType", taskType);
         }
+        if (!SecurityUtils.isAdmin()) {
+            deptIds = SecurityUtils.getDeptId() == null
+                    ? java.util.Collections.singletonList(-1L)
+                    : java.util.Collections.singletonList(SecurityUtils.getDeptId());
+        }
         if (deptIds != null && !deptIds.isEmpty()) {
             params.put("deptIds", deptIds);
         }
@@ -87,6 +98,12 @@ public class FinanceReviewTaskController extends BaseController {
     @PostMapping("/generate")
     public AjaxResult generate(@RequestBody ReportQueryParams params) {
         List<Long> deptIds = params.getDeptIds();
+        if (!SecurityUtils.isAdmin()) {
+            deptIds = SecurityUtils.getDeptId() == null
+                    ? java.util.Collections.emptyList()
+                    : java.util.Collections.singletonList(SecurityUtils.getDeptId());
+            params.setDeptIds(deptIds);
+        }
         if (deptIds == null || deptIds.isEmpty()) {
             return AjaxResult.error("门店ID列表不能为空");
         }
@@ -100,6 +117,11 @@ public class FinanceReviewTaskController extends BaseController {
     @RequiresPermissions("finance:reviewTask:add")
     @PostMapping("/from-member-action")
     public AjaxResult createFromMemberAction(@RequestBody Map<String, Object> req) {
+        if (!SecurityUtils.isAdmin()) {
+            Long deptId = SecurityUtils.getDeptId();
+            if (deptId == null) return AjaxResult.error("当前用户未关联部门");
+            req.put("deptId", deptId);
+        }
         FinanceReviewTask task = reviewTaskService.createFromMemberAction(req);
         return AjaxResult.success("已生成复盘任务", task);
     }
@@ -110,6 +132,7 @@ public class FinanceReviewTaskController extends BaseController {
     @RequiresPermissions("finance:reviewTask:edit")
     @PostMapping("/{taskId}/in-progress")
     public AjaxResult markInProgress(@PathVariable Long taskId) {
+        if (!canAccessTask(taskId)) return AjaxResult.error("任务不存在或无权操作");
         Long userId = SecurityUtils.getUserId();
         String username = SecurityUtils.getUsername();
         reviewTaskService.markInProgress(taskId, userId, username);
@@ -122,6 +145,7 @@ public class FinanceReviewTaskController extends BaseController {
     @RequiresPermissions("finance:reviewTask:edit")
     @PostMapping("/{taskId}/done")
     public AjaxResult markDone(@PathVariable Long taskId, @RequestBody Map<String, String> body) {
+        if (!canAccessTask(taskId)) return AjaxResult.error("任务不存在或无权操作");
         String handlerNote = body.get("handlerNote");
         Long userId = SecurityUtils.getUserId();
         String username = SecurityUtils.getUsername();
@@ -135,6 +159,7 @@ public class FinanceReviewTaskController extends BaseController {
     @RequiresPermissions("finance:reviewTask:edit")
     @PostMapping("/{taskId}/ignored")
     public AjaxResult markIgnored(@PathVariable Long taskId, @RequestBody Map<String, String> body) {
+        if (!canAccessTask(taskId)) return AjaxResult.error("任务不存在或无权操作");
         String ignoreReason = body.get("ignoreReason");
         Long userId = SecurityUtils.getUserId();
         String username = SecurityUtils.getUsername();
@@ -148,6 +173,7 @@ public class FinanceReviewTaskController extends BaseController {
     @RequiresPermissions("finance:reviewTask:edit")
     @PostMapping("/{taskId}/reopen")
     public AjaxResult reopen(@PathVariable Long taskId, @RequestBody Map<String, String> body) {
+        if (!canAccessTask(taskId)) return AjaxResult.error("任务不存在或无权操作");
         String reason = body.get("reason");
         reviewTaskService.reopenTask(taskId, reason);
         return AjaxResult.success("任务已重开");
@@ -160,6 +186,7 @@ public class FinanceReviewTaskController extends BaseController {
     @GetMapping("/{taskId}/effect")
     public R<ReviewTaskEffectVO> effect(@PathVariable Long taskId,
                                         @RequestParam(defaultValue = "7") Integer windowDays) {
+        if (!canAccessTask(taskId)) return R.fail("任务不存在或无权访问");
         return R.ok(reviewTaskService.evaluateTaskEffect(taskId, windowDays));
     }
 
@@ -171,6 +198,11 @@ public class FinanceReviewTaskController extends BaseController {
     public R<ReviewTaskEffectSummaryVO> effectSummary(
             @RequestParam(required = false) List<Long> deptIds,
             @RequestParam(defaultValue = "7") Integer windowDays) {
+        if (!SecurityUtils.isAdmin()) {
+            deptIds = SecurityUtils.getDeptId() == null
+                    ? java.util.Collections.singletonList(-1L)
+                    : java.util.Collections.singletonList(SecurityUtils.getDeptId());
+        }
         return R.ok(reviewTaskService.summarizeEffect(deptIds, windowDays));
     }
 
@@ -180,6 +212,7 @@ public class FinanceReviewTaskController extends BaseController {
     @RequiresPermissions("finance:reviewTask:list")
     @GetMapping("/{taskId}/logs")
     public R<List<FinanceReviewTaskLog>> getTaskLogs(@PathVariable Long taskId) {
+        if (!canAccessTask(taskId)) return R.fail("任务不存在或无权访问");
         return R.ok(reviewTaskService.getTaskLogs(taskId));
     }
 
@@ -189,7 +222,12 @@ public class FinanceReviewTaskController extends BaseController {
     @RequiresPermissions("finance:reviewTask:add")
     @PostMapping("/generate/receivable-collection")
     public AjaxResult generateReceivableCollectionTasks(@RequestBody Map<String, Object> body) {
-        Long deptId = Long.valueOf(String.valueOf(body.get("deptId")));
+        Long deptId = SecurityUtils.isAdmin()
+                ? Long.valueOf(String.valueOf(body.get("deptId")))
+                : SecurityUtils.getDeptId();
+        if (deptId == null) {
+            return AjaxResult.error("当前用户未关联部门");
+        }
         Integer minAgeDays = body.containsKey("minAgeDays")
                 ? Integer.valueOf(String.valueOf(body.get("minAgeDays"))) : 14;
         BigDecimal minUnpaidAmount = body.containsKey("minUnpaidAmount")

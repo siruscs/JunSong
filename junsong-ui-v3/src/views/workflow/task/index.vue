@@ -482,7 +482,17 @@
     <el-dialog v-model="ccDialog.visible" title="抄送流程" width="520px">
       <el-form label-width="88px">
         <el-form-item label="抄送人">
-          <el-select v-model="ccDialog.form.toUsers" multiple filterable placeholder="选择抄送人" style="width: 100%">
+          <el-select
+            v-model="ccDialog.form.toUsers"
+            multiple
+            filterable
+            remote
+            reserve-keyword
+            :remote-method="searchUsers"
+            :loading="userSearchLoading"
+            placeholder="输入用户名搜索"
+            style="width: 100%"
+          >
             <el-option
               v-for="u in userOptions"
               :key="u.userName"
@@ -501,7 +511,16 @@
     <el-dialog v-model="addSignDialog.visible" title="加签任务" width="480px">
       <el-form label-width="88px">
         <el-form-item label="加签人">
-          <el-select v-model="addSignDialog.form.addSignUser" filterable placeholder="选择加签人" style="width: 100%">
+          <el-select
+            v-model="addSignDialog.form.addSignUser"
+            filterable
+            remote
+            reserve-keyword
+            :remote-method="searchUsers"
+            :loading="userSearchLoading"
+            placeholder="输入用户名搜索"
+            style="width: 100%"
+          >
             <el-option
               v-for="u in userOptions"
               :key="u.userName"
@@ -687,6 +706,20 @@ const resubmitDialog = reactive({
 })
 
 const userOptions = ref<any[]>([])
+const userSearchLoading = ref(false)
+let userSearchRequestId = 0
+
+async function searchUsers(keyword = '') {
+  const requestId = ++userSearchRequestId
+  userSearchLoading.value = true
+  try {
+    const res: any = await listUser({ userName: keyword.trim() || undefined, pageNum: 1, pageSize: 20 })
+    if (requestId !== userSearchRequestId) return
+    userOptions.value = res.rows || []
+  } finally {
+    if (requestId === userSearchRequestId) userSearchLoading.value = false
+  }
+}
 
 const queryParams = reactive({
   keyword: '',
@@ -1190,10 +1223,7 @@ async function openCcDialog() {
   ccDialog.visible = true
   ccDialog.row = row as WorkflowTodoTaskRow
   ccDialog.form.toUsers = []
-  if (userOptions.value.length === 0) {
-    const res: any = await listUser({ pageSize: 9999 })
-    userOptions.value = res.rows || []
-  }
+  await searchUsers()
 }
 
 async function submitCc() {
@@ -1207,18 +1237,14 @@ async function submitCc() {
   ElMessage.success('抄送已发送')
 }
 
-function openAddSignDialog() {
+async function openAddSignDialog() {
   if (!detailDrawer.data) return
   const row: any = { taskId: detailDrawer.data.taskId }
   addSignDialog.visible = true
   addSignDialog.row = row as WorkflowTodoTaskRow
   addSignDialog.form.addSignUser = ''
   addSignDialog.form.type = 'before'
-  if (userOptions.value.length === 0) {
-    listUser({ pageSize: 9999 }).then((res: any) => {
-      userOptions.value = res.rows || []
-    })
-  }
+  await searchUsers()
 }
 
 async function submitAddSign() {

@@ -128,7 +128,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="花销内容" prop="expenseContent">
-          <el-input v-model="form.expenseContent" type="textarea" placeholder="请输入花销内容" :rows="3" />
+          <el-input v-model.lazy="form.expenseContent" type="textarea" placeholder="请输入花销内容" :rows="3" maxlength="500" show-word-limit />
         </el-form-item>
         <el-form-item label="费用金额" prop="expenseAmount">
           <el-input v-model="form.expenseAmount" placeholder="请输入费用金额" style="width: 100%;" />
@@ -145,7 +145,7 @@
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-        <el-button type="primary" @click="submitForm">确 定</el-button>
+        <el-button type="primary" :loading="formSubmitting" :disabled="formSubmitting" @click="submitForm">确 定</el-button>
         <el-button @click="cancel">取 消</el-button>
       </div>
       </template>
@@ -276,6 +276,7 @@ export default {
       summary: {},
       title: "",
       open: false,
+      formSubmitting: false,
       viewOpen: false,
       viewForm: {},
       batchVerifyOpen: false,
@@ -352,6 +353,7 @@ export default {
       listExpense(params).then(response => {
         this.expenseList = response.rows
         this.total = response.total
+      }).finally(() => {
         this.loading = false
       })
     },
@@ -474,26 +476,27 @@ export default {
         }
       }
     },
-    submitForm() {
-      this.$refs["form"].validate(valid => {
-        if (valid) {
-          if (this.form.expenseId != undefined) {
-            updateExpense(this.form).then(() => {
-              ElMessage.success("修改成功")
-              this.open = false
-              this.getList()
-              this.getSummary()
-            })
-          } else {
-            addExpense(this.form).then(() => {
-              ElMessage.success("新增成功")
-              this.open = false
-              this.getList()
-              this.getSummary()
-            })
-          }
+    async submitForm() {
+      if (this.formSubmitting) return
+      const formRef = this.$refs["form"]
+      if (!formRef) return
+      const valid = await formRef.validate().catch(() => false)
+      if (!valid) return
+
+      this.formSubmitting = true
+      try {
+        if (this.form.expenseId != undefined) {
+          await updateExpense(this.form)
+          ElMessage.success("修改成功")
+        } else {
+          await addExpense(this.form)
+          ElMessage.success("新增成功")
         }
-      })
+        this.open = false
+        await Promise.all([this.getList(), this.getSummary()])
+      } finally {
+        this.formSubmitting = false
+      }
     },
     handleDelete(row = {}) {
       if (row.status === '1') {

@@ -98,6 +98,12 @@ public class FinCompositeAccountingServiceImpl implements IFinCompositeAccountin
     }
 
     @Override
+    public boolean canAccessPool(Long poolId, Long deptId) {
+        if (SecurityUtils.isAdmin()) return true;
+        return deptId != null && compositeMapper.selectPoolDeptIdsByPoolId(poolId).contains(deptId);
+    }
+
+    @Override
     public CompositePoolOverviewVO getOverview(Long poolId) {
         // requirePool 已通过主表租户隔离校验归属
         FinCompositeAccountingPool pool = requirePool(poolId);

@@ -107,7 +107,10 @@ security:
       - /auth/logout
       - /auth/login
       - /auth/mp/login
+      - /auth/mp/wechat/login
+      - /auth/mp/wechat/bind
       - /auth/register
+      - /member/mp/capabilities
       - /code
       - /system/user/deptsForLogin
       - /*/v2/api-docs

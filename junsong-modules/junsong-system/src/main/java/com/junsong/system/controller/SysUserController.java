@@ -43,6 +43,7 @@ import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.system.api.domain.SysDept;
 import com.junsong.system.api.domain.SysRole;
 import com.junsong.system.api.domain.SysUser;
+import com.junsong.system.api.domain.SysUserMpBinding;
 import com.junsong.system.api.model.LoginUser;
 import com.junsong.system.domain.SysNotification;
 import com.junsong.system.domain.SysUserDept;
@@ -52,6 +53,7 @@ import com.junsong.system.mapper.SysUserRoleMapper;
 import com.junsong.system.service.ISysConfigService;
 import com.junsong.system.service.ISysDeptService;
 import com.junsong.system.service.ISysNotificationService;
+import com.junsong.system.service.ISysUserMpBindingService;
 import com.junsong.system.service.ISysPermissionService;
 import com.junsong.system.service.ISysPostService;
 import com.junsong.system.service.ISysRoleService;
@@ -103,11 +105,30 @@ public class SysUserController extends BaseController
     @Autowired
     private RedisService redisService;
 
+    @Autowired
+    private ISysUserMpBindingService userMpBindingService;
+
     /** 注册限流：每小时最多5次 */
     private static final int REGISTER_MAX_PER_HOUR = 5;
 
     /** 邀请码生成限流：每小时最多10次 */
     private static final int INVITE_CODE_MAX_PER_HOUR = 10;
+
+    private void checkDeptDataScope(Long deptId, Long[] deptIds)
+    {
+        deptService.checkDeptDataScope(deptId);
+        if (deptIds == null)
+        {
+            return;
+        }
+        for (Long item : deptIds)
+        {
+            if (item != null)
+            {
+                deptService.checkDeptDataScope(item);
+            }
+        }
+    }
 
     /**
      * 获取用户列表
@@ -175,6 +196,50 @@ public class SysUserController extends BaseController
         if (StringUtils.isNull(sysUser))
         {
             return R.fail("用户名或密码错误");
+        }
+        TenantContext.setTenantId(sysUser.getTenantId());
+        // 角色集合
+        Set<String> roles = permissionService.getRolePermission(sysUser);
+        // 权限集合
+        Set<String> permissions = permissionService.getMenuPermission(sysUser);
+        LoginUser sysUserVo = new LoginUser();
+        sysUserVo.setSysUser(sysUser);
+        // 设置部门ID：优先使用sys_user表的dept_id，为空时从关联表取第一个部门
+        Long deptId = sysUser.getDeptId();
+        if (deptId == null) {
+            java.util.List<com.junsong.system.domain.SysUserDept> userDepts = userDeptService.selectUserDeptByUserId(sysUser.getUserId());
+            if (userDepts != null && !userDepts.isEmpty()) {
+                deptId = userDepts.get(0).getDeptId();
+            }
+        }
+        sysUserVo.setDeptId(deptId);
+        // 同步更新内部SysUser对象的dept_id，确保DataScope能正确读取
+        sysUser.setDeptId(deptId);
+        sysUserVo.setRoles(roles);
+        sysUserVo.setPermissions(permissions);
+        return R.ok(sysUserVo);
+    }
+
+    /**
+     * 通过用户ID获取用户信息（供微信快捷登录远程调用）
+     */
+    @InnerAuth
+    @GetMapping("/info-by-id/{userId}")
+    public R<LoginUser> infoById(@PathVariable("userId") Long userId)
+    {
+        TenantContext.setIgnore(true);
+        SysUser sysUser;
+        try
+        {
+            sysUser = userService.selectUserById(userId);
+        }
+        finally
+        {
+            TenantContext.setIgnore(false);
+        }
+        if (StringUtils.isNull(sysUser))
+        {
+            return R.fail("用户不存在");
         }
         TenantContext.setTenantId(sysUser.getTenantId());
         // 角色集合
@@ -490,6 +555,21 @@ public class SysUserController extends BaseController
             ajax.put(AjaxResult.DATA_TAG, sysUser);
             ajax.put("postIds", postService.selectPostListByUserId(userId));
             ajax.put("roleIds", sysUser.getRoles().stream().map(SysRole::getRoleId).collect(Collectors.toList()));
+            List<SysUserDept> userDeptList = userDeptService.selectUserDeptByUserId(userId).stream()
+                .filter(userDept -> !"1".equals(userDept.getStatus()))
+                .collect(Collectors.toList());
+            List<Long> deptIds = userDeptList.stream()
+                .map(SysUserDept::getDeptId)
+                .filter(deptId -> deptId != null)
+                .distinct()
+                .collect(Collectors.toList());
+            if (deptIds.isEmpty() && sysUser.getDeptId() != null)
+            {
+                deptIds.add(sysUser.getDeptId());
+            }
+            List<SysDept> depts = deptIds.isEmpty() ? new ArrayList<>() : deptService.selectDeptByIds(deptIds);
+            ajax.put("deptIds", deptIds);
+            ajax.put("depts", depts);
         }
         List<SysRole> roles = roleService.selectRoleAll();
         ajax.put("roles", SecurityUtils.isAdmin(userId) ? roles : roles.stream().filter(r -> !r.isAdmin()).collect(Collectors.toList()));
@@ -505,7 +585,7 @@ public class SysUserController extends BaseController
     @PostMapping
     public AjaxResult add(@Validated @RequestBody SysUser user)
     {
-        deptService.checkDeptDataScope(user.getDeptId());
+        checkDeptDataScope(user.getDeptId(), user.getDeptIds());
         roleService.checkRoleDataScope(user.getRoleIds());
         if (!userService.checkUserNameUnique(user))
         {
@@ -534,7 +614,7 @@ public class SysUserController extends BaseController
     {
         userService.checkUserAllowed(user);
         userService.checkUserDataScope(user.getUserId());
-        deptService.checkDeptDataScope(user.getDeptId());
+        checkDeptDataScope(user.getDeptId(), user.getDeptIds());
         roleService.checkRoleDataScope(user.getRoleIds());
         if (!userService.checkUserNameUnique(user))
         {
@@ -711,5 +791,80 @@ public class SysUserController extends BaseController
     {
         List<String> usernames = userService.selectUsernameListByRoleKey(roleKey);
         return R.ok(usernames);
+    }
+
+    /**
+     * 查询指定租户是否启用微信登录（供小程序能力接口和后端再校验远程调用）
+     * fail-closed：读取异常或未配置时返回 false
+     */
+    @InnerAuth
+    @GetMapping("/isWechatLoginEnabled")
+    public R<Boolean> isWechatLoginEnabled(@RequestParam(value = "tenantId", required = false) Long tenantId)
+    {
+        return R.ok(configService.isWechatLoginEnabled(tenantId));
+    }
+
+    // =========================================================================
+    // 微信小程序绑定管理（PC 管理端）
+    // =========================================================================
+
+    /**
+     * 查询用户的微信绑定状态
+     *
+     * <p>读取状态复用用户列表权限；解绑操作仍使用独立权限 system:user:unbindMp。
+     * 响应中不返回 openid/unionid 等敏感标识。</p>
+     */
+    @RequiresPermissions("system:user:list")
+    @GetMapping("/{userId}/mp-binding")
+    public AjaxResult getUserMpBindings(@PathVariable("userId") Long userId)
+    {
+        userService.checkUserDataScope(userId);
+        SysUser user = userService.selectUserById(userId);
+        if (StringUtils.isNull(user))
+        {
+            return AjaxResult.error("用户不存在");
+        }
+        List<SysUserMpBinding> list = userMpBindingService.selectByUserId(user.getTenantId(), userId);
+        // 脱敏：不返回 openid/unionid 明文
+        for (SysUserMpBinding b : list)
+        {
+            b.setOpenid(null);
+            b.setUnionid(null);
+            b.setAppId(null);
+        }
+        return AjaxResult.success(list);
+    }
+
+    /**
+     * 管理员解绑用户的微信绑定
+     *
+     * <p>独立权限 system:user:unbindMp，写审计日志。
+     * 撤销所有 ACTIVE 绑定，保留 REVOKED 审计链。</p>
+     */
+    @RequiresPermissions("system:user:unbindMp")
+    @Log(title = "微信解绑", businessType = BusinessType.DELETE)
+    @DeleteMapping("/{userId}/mp-binding")
+    public AjaxResult adminUnbind(@PathVariable("userId") Long userId,
+                                  @RequestParam(value = "reason", required = false) String reason)
+    {
+        SysUser user = userService.selectUserById(userId);
+        if (StringUtils.isNull(user))
+        {
+            return AjaxResult.error("用户不存在");
+        }
+        String operator = SecurityUtils.getUsername();
+        String revokeReason = StringUtils.isNotEmpty(reason) ? reason : "管理员解绑";
+        List<SysUserMpBinding> list = userMpBindingService.selectByUserId(user.getTenantId(), userId);
+        int revokedCount = 0;
+        for (SysUserMpBinding b : list)
+        {
+            if ("ACTIVE".equals(b.getStatus()))
+            {
+                b.setRevokedBy(operator);
+                b.setRevokeReason(revokeReason);
+                revokedCount += userMpBindingService.revokeBinding(b);
+            }
+        }
+        return AjaxResult.success("解绑成功，共撤销 " + revokedCount + " 条绑定");
     }
 }

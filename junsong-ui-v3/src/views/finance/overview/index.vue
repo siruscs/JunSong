@@ -380,7 +380,6 @@
       <template #header><span>快捷入口</span></template>
       <div class="quick-links">
         <router-link to="/finance/expense" class="quick-link">费用管理</router-link>
-        <router-link to="/finance/costAccounting" class="quick-link">成本核算</router-link>
         <router-link to="/finance/accountingPeriod" class="quick-link">核算周期</router-link>
         <router-link to="/finance/profitShare" class="quick-link">分润结算</router-link>
       </div>

@@ -300,7 +300,7 @@ class SystemWorkbenchNotifierServiceImplTest
         }
 
         @Override
-        public int markAsRead(Long id)
+        public int markAsRead(Long id, Long userId)
         {
             return 0;
         }

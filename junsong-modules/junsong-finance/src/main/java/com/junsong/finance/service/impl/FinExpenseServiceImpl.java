@@ -18,6 +18,7 @@ import com.junsong.finance.domain.FinAccountingPeriod;
 import com.junsong.finance.domain.vo.ExpenseVerifyVO;
 import com.junsong.finance.mapper.FinExpenseMapper;
 import com.junsong.finance.mapper.FinAdvanceMapper;
+import com.junsong.finance.mapper.FinAccountingPeriodMapper;
 import com.junsong.finance.service.IFinAccountingPeriodService;
 import com.junsong.finance.service.IFinExpenseService;
 import com.junsong.finance.constant.VerifyStatus;
@@ -36,6 +37,9 @@ public class FinExpenseServiceImpl implements IFinExpenseService
 
     @Autowired
     private FinAdvanceMapper finAdvanceMapper;
+
+    @Autowired
+    private FinAccountingPeriodMapper finAccountingPeriodMapper;
 
     @Autowired
     private IFinAccountingPeriodService finAccountingPeriodService;
@@ -403,7 +407,13 @@ public class FinExpenseServiceImpl implements IFinExpenseService
     {
         if (finExpense.getPeriodId() == null && finExpense.getDeptId() != null)
         {
-            FinAccountingPeriod period = finAccountingPeriodService.initCurrentPeriod(finExpense.getDeptId());
+            // 新增费用只需要当前周期 ID；不要触发 initCurrentPeriod 的全量统计刷新。
+            FinAccountingPeriod period = finAccountingPeriodMapper
+                    .selectCurrentPeriodByDeptId(finExpense.getDeptId());
+            if (period == null)
+            {
+                period = finAccountingPeriodService.initCurrentPeriod(finExpense.getDeptId());
+            }
             finExpense.setPeriodId(period.getPeriodId());
         }
     }

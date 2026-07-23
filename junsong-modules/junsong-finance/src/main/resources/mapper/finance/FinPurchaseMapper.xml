@@ -27,10 +27,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="updateBy"        column="update_by"        />
         <result property="updateTime"      column="update_time"      />
         <result property="remark"          column="remark"           />
+        <result property="productNames"    column="product_names"     />
     </resultMap>
     
     <sql id="selectFinPurchaseVo">
-        select p.purchase_id, p.period_id, p.purchase_no, p.supplier_id, s.supplier_name, p.purchase_date, p.total_amount, p.paid_amount, p.payment_method, p.total_quantity, p.status, p.receiver_name, p.receiver_phone, p.receiver_address, p.del_flag, p.dept_id, p.create_by, p.create_time, p.update_by, p.update_time, p.remark
+        select p.purchase_id, p.period_id, p.purchase_no, p.supplier_id, s.supplier_name, p.purchase_date, p.total_amount, p.paid_amount, p.payment_method, p.total_quantity, p.status, p.receiver_name, p.receiver_phone, p.receiver_address, p.del_flag, p.dept_id, p.create_by, p.create_time, p.update_by, p.update_time, p.remark,
+               (select group_concat(distinct d.product_name order by d.product_name separator '，')
+                  from fin_purchase_detail d
+                 where d.purchase_id = p.purchase_id) as product_names
         from fin_purchase p
         left join fin_supplier s on p.supplier_id = s.supplier_id
     </sql>

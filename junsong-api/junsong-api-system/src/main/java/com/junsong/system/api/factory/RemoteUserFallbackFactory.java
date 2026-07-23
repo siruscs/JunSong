@@ -34,6 +34,12 @@ public class RemoteUserFallbackFactory implements FallbackFactory<RemoteUserServ
             }
 
             @Override
+            public R<LoginUser> getUserInfoById(Long userId, String source)
+            {
+                return R.fail("获取用户失败:" + throwable.getMessage());
+            }
+
+            @Override
             public R<Boolean> registerUserInfo(SysUser sysUser, String source)
             {
                 return R.fail("注册用户失败:" + throwable.getMessage());
@@ -55,6 +61,13 @@ public class RemoteUserFallbackFactory implements FallbackFactory<RemoteUserServ
             public R<List<String>> listUsernamesByRoleKey(String roleKey, String source)
             {
                 return R.fail("按角色查用户失败:" + throwable.getMessage());
+            }
+
+            @Override
+            public R<Boolean> isWechatLoginEnabled(Long tenantId, String source)
+            {
+                // fail-closed：降级时返回 false，不允许微信登录
+                return R.ok(false);
             }
         };
     }

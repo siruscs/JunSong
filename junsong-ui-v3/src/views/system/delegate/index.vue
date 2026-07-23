@@ -30,12 +30,12 @@
       <el-table-column label="ID" prop="id" width="70" />
       <el-table-column label="委托人" prop="userId" width="100">
         <template #default="{ row }">
-          {{ getUserName(row.userId) }}
+          {{ row.userName || row.userId }}
         </template>
       </el-table-column>
       <el-table-column label="代理人" prop="delegateUserId" width="100">
         <template #default="{ row }">
-          {{ getUserName(row.delegateUserId) }}
+          {{ row.delegateUserName || row.delegateUserId }}
         </template>
       </el-table-column>
       <el-table-column label="委托类型" prop="delegateType" width="100">
@@ -67,7 +67,17 @@
     <el-dialog v-model="dialog.visible" :title="dialog.title" width="560px">
       <el-form ref="formRef" :model="dialog.form" :rules="rules" label-width="100px">
         <el-form-item label="代理人" prop="delegateUserId">
-          <el-select v-model="dialog.form.delegateUserId" placeholder="选择代理人" clearable filterable style="width: 100%">
+          <el-select
+            v-model="dialog.form.delegateUserId"
+            placeholder="输入用户名搜索"
+            clearable
+            filterable
+            remote
+            reserve-keyword
+            :remote-method="searchUsers"
+            :loading="userSearchLoading"
+            style="width: 100%"
+          >
             <el-option v-for="u in userOptions" :key="u.userId" :label="u.userName + (u.nickName ? '(' + u.nickName + ')' : '')" :value="u.userId" />
           </el-select>
         </el-form-item>
@@ -121,6 +131,8 @@ const loading = ref(false)
 const total = ref(0)
 const delegateList = ref<DelegateItem[]>([])
 const userOptions = ref<any[]>([])
+const userSearchLoading = ref(false)
+let userSearchRequestId = 0
 const queryRef = ref()
 const formRef = ref()
 
@@ -151,11 +163,6 @@ const rules = {
   timeRange: [{ required: true, message: '请选择时间范围', trigger: 'change' }],
 }
 
-function getUserName(userId?: number) {
-  const u = userOptions.value.find((x: any) => x.userId === userId)
-  return u ? (u.nickName || u.userName) : userId
-}
-
 async function getList() {
   loading.value = true
   try {
@@ -167,9 +174,18 @@ async function getList() {
   }
 }
 
-async function loadUsers() {
-  const res: any = await listUser({ pageSize: 9999 })
-  userOptions.value = res.rows || []
+async function searchUsers(keyword = '') {
+  const requestId = ++userSearchRequestId
+  userSearchLoading.value = true
+  try {
+    const res: any = await listUser({ userName: keyword.trim() || undefined, pageNum: 1, pageSize: 20 })
+    if (requestId !== userSearchRequestId) return
+    const selected = userOptions.value.find((user: any) => user.userId === dialog.form.delegateUserId)
+    const rows = res.rows || []
+    userOptions.value = selected && !rows.some((user: any) => user.userId === selected.userId) ? [selected, ...rows] : rows
+  } finally {
+    if (requestId === userSearchRequestId) userSearchLoading.value = false
+  }
 }
 
 function handleQuery() {
@@ -196,6 +212,7 @@ function handleAdd() {
     remark: '',
   }
   dialog.visible = true
+  searchUsers()
 }
 
 function handleEdit(row: DelegateItem) {
@@ -209,7 +226,9 @@ function handleEdit(row: DelegateItem) {
     status: row.status,
     remark: row.remark || '',
   }
+  userOptions.value = [{ userId: row.delegateUserId, userName: row.delegateUserName || String(row.delegateUserId) }]
   dialog.visible = true
+  searchUsers()
 }
 
 async function submitForm() {
@@ -244,6 +263,5 @@ async function handleDelete(row: DelegateItem) {
 
 onMounted(() => {
   getList()
-  loadUsers()
 })
 </script>

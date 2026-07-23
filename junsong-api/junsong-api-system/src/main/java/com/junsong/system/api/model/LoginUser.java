@@ -63,6 +63,19 @@ public class LoginUser implements Serializable
      */
     private SysUser sysUser;
 
+    /**
+     * 登录来源：WECHAT_MP（微信快捷登录）或 PASSWORD（密码登录）
+     * 为 null 时视为 PASSWORD（向后兼容）
+     */
+    private String authSource;
+
+    /**
+     * 微信会话版本号：微信登录时记录的租户级 epoch
+     * 每次请求校验，版本不一致时会话失效
+     * 仅 authSource=WECHAT_MP 时有效
+     */
+    private Long wechatSessionEpoch;
+
     public String getToken()
     {
         return token;
@@ -161,5 +174,25 @@ public class LoginUser implements Serializable
     public void setSysUser(SysUser sysUser)
     {
         this.sysUser = sysUser;
+    }
+
+    public String getAuthSource()
+    {
+        return authSource;
+    }
+
+    public void setAuthSource(String authSource)
+    {
+        this.authSource = authSource;
+    }
+
+    public Long getWechatSessionEpoch()
+    {
+        return wechatSessionEpoch;
+    }
+
+    public void setWechatSessionEpoch(Long wechatSessionEpoch)
+    {
+        this.wechatSessionEpoch = wechatSessionEpoch;
     }
 }

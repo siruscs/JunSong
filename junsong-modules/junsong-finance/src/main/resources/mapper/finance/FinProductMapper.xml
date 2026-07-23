@@ -54,6 +54,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where p.product_id = #{productId}
     </select>
 
+    <select id="selectFinProductByProductIdAndDeptId" resultMap="FinProductResult">
+        <include refid="selectFinProductVo"/>
+        where p.product_id = #{productId} and p.dept_id = #{deptId} and p.del_flag = '0'
+    </select>
+
     <select id="checkProductCodeUnique" parameterType="String" resultMap="FinProductResult">
         <include refid="selectFinProductVo"/>
         where p.product_code = #{productCode} and p.del_flag = '0'
@@ -128,5 +133,29 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <foreach item="productId" collection="array" open="(" separator="," close=")">
             #{productId}
         </foreach>
+    </update>
+
+    <update id="updateFinProductByDeptId">
+        update fin_product
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="product.productCode != null and product.productCode != ''">product_code = #{product.productCode},</if>
+            <if test="product.productName != null and product.productName != ''">product_name = #{product.productName},</if>
+            <if test="product.categoryId != null">category_id = #{product.categoryId},</if>
+            <if test="product.unit != null">unit = #{product.unit},</if>
+            <if test="product.purchasePrice != null">purchase_price = #{product.purchasePrice},</if>
+            <if test="product.salePrice != null">sale_price = #{product.salePrice},</if>
+            <if test="product.stockNum != null">stock_num = #{product.stockNum},</if>
+            <if test="product.minStock != null">min_stock = #{product.minStock},</if>
+            <if test="product.status != null">status = #{product.status},</if>
+            <if test="product.updateBy != null">update_by = #{product.updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where product_id = #{product.productId} and dept_id = #{deptId} and del_flag = '0'
+    </update>
+
+    <update id="deleteFinProductByProductIdsAndDeptId">
+        update fin_product set del_flag = '2'
+        where dept_id = #{deptId} and product_id in
+        <foreach item="productId" collection="productIds" open="(" separator="," close=")">#{productId}</foreach>
     </update>
 </mapper>

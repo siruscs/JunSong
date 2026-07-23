@@ -5,6 +5,7 @@ import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
 import com.junsong.common.security.annotation.RequiresPermissions;
+import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.finance.domain.FinanceReviewKnowledge;
 import com.junsong.finance.service.IFinanceReviewKnowledgeService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +41,9 @@ public class FinanceReviewKnowledgeController extends BaseController {
         Map<String, Object> params = new HashMap<>();
         if (problemType != null && !problemType.isEmpty()) {
             params.put("problemType", problemType);
+        }
+        if (!SecurityUtils.isAdmin()) {
+            deptId = SecurityUtils.getDeptId();
         }
         if (deptId != null) {
             params.put("deptId", deptId);

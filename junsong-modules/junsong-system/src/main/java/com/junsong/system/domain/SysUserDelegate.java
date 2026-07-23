@@ -17,8 +17,14 @@ public class SysUserDelegate extends BaseEntity
     /** 委托人用户ID */
     private Long userId;
 
+    /** 委托人用户名（列表展示） */
+    private String userName;
+
     /** 代理人用户ID */
     private Long delegateUserId;
+
+    /** 代理人用户名（列表展示） */
+    private String delegateUserName;
 
     /** 委托类型（all=全部, workflow=工作流, system=系统） */
     private String delegateType;
@@ -57,6 +63,16 @@ public class SysUserDelegate extends BaseEntity
         this.userId = userId;
     }
 
+    public String getUserName()
+    {
+        return userName;
+    }
+
+    public void setUserName(String userName)
+    {
+        this.userName = userName;
+    }
+
     public Long getDelegateUserId()
     {
         return delegateUserId;
@@ -65,6 +81,16 @@ public class SysUserDelegate extends BaseEntity
     public void setDelegateUserId(Long delegateUserId)
     {
         this.delegateUserId = delegateUserId;
+    }
+
+    public String getDelegateUserName()
+    {
+        return delegateUserName;
+    }
+
+    public void setDelegateUserName(String delegateUserName)
+    {
+        this.delegateUserName = delegateUserName;
     }
 
     public String getDelegateType()

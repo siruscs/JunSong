@@ -1,4 +1,5 @@
 com.junsong.system.api.factory.RemoteUserFallbackFactory
+com.junsong.system.api.factory.RemoteUserMpBindingFallbackFactory
 com.junsong.system.api.factory.RemoteLogFallbackFactory
 com.junsong.system.api.factory.RemoteFileFallbackFactory
 com.junsong.system.api.factory.RemoteMenuFallbackFactory

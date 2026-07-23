@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.system.mapper.SysUserMpBindingMapper">
+
+    <resultMap type="com.junsong.system.api.domain.SysUserMpBinding" id="SysUserMpBindingResult">
+        <id property="bindingId" column="binding_id"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="appId" column="app_id"/>
+        <result property="openid" column="openid"/>
+        <result property="unionid" column="unionid"/>
+        <result property="status" column="status"/>
+        <result property="boundTime" column="bound_time"/>
+        <result property="lastLoginTime" column="last_login_time"/>
+        <result property="boundBy" column="bound_by"/>
+        <result property="revokedTime" column="revoked_time"/>
+        <result property="revokedBy" column="revoked_by"/>
+        <result property="revokeReason" column="revoke_reason"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <sql id="selectSysUserMpBindingVo">
+        select binding_id, tenant_id, user_id, app_id, openid, unionid, status,
+               bound_time, last_login_time, bound_by, revoked_time, revoked_by, revoke_reason,
+               create_by, create_time, update_by, update_time, remark
+        from sys_user_mp_binding
+    </sql>
+
+    <!-- 按 (tenantId, appId, openid) 查询 ACTIVE 绑定关系（管理场景使用） -->
+    <select id="selectByAppOpenid" resultMap="SysUserMpBindingResult">
+        <include refid="selectSysUserMpBindingVo"/>
+        <where>
+            tenant_id = #{tenantId}
+            and app_id = #{appId}
+            and openid = #{openid}
+            and status = 'ACTIVE'
+        </where>
+        limit 1
+    </select>
+
+    <!-- 仅按 (appId, openid) 全局查询 ACTIVE 绑定关系（仅限微信快捷登录流程使用）。
+         (app_id, openid) 全局唯一键保证最多一条。 -->
+    <select id="selectActiveByAppOpenidForLogin" resultMap="SysUserMpBindingResult">
+        <include refid="selectSysUserMpBindingVo"/>
+        <where>
+            app_id = #{appId}
+            and openid = #{openid}
+            and status = 'ACTIVE'
+        </where>
+        limit 1
+    </select>
+
+    <!-- 按 (tenantId, userId) 查询绑定列表（管理员/PC 查看） -->
+    <select id="selectByUserId" resultMap="SysUserMpBindingResult">
+        <include refid="selectSysUserMpBindingVo"/>
+        <where>
+            tenant_id = #{tenantId}
+            and user_id = #{userId}
+        </where>
+        order by create_time desc
+    </select>
+
+    <!-- 按 (tenantId, bindingId) 查询绑定关系（撤销前校验） -->
+    <select id="selectByBindingId" resultMap="SysUserMpBindingResult">
+        <include refid="selectSysUserMpBindingVo"/>
+        <where>
+            tenant_id = #{tenantId}
+            and binding_id = #{bindingId}
+        </where>
+        limit 1
+    </select>
+
+    <!-- 新增绑定关系：唯一键 uk_user_mp_binding_app_openid 防止并发重复绑定 -->
+    <insert id="insert" parameterType="com.junsong.system.api.domain.SysUserMpBinding"
+            useGeneratedKeys="true" keyProperty="bindingId">
+        insert into sys_user_mp_binding
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            tenant_id,
+            user_id,
+            app_id,
+            openid,
+            status,
+            <if test="unionid != null and unionid != ''">unionid,</if>
+            <if test="boundBy != null and boundBy != ''">bound_by,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            #{tenantId},
+            #{userId},
+            #{appId},
+            #{openid},
+            <choose>
+                <when test="status != null and status != ''">#{status},</when>
+                <otherwise>'ACTIVE',</otherwise>
+            </choose>
+            <if test="unionid != null and unionid != ''">#{unionid},</if>
+            <if test="boundBy != null and boundBy != ''">#{boundBy},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+        </trim>
+    </insert>
+
+    <!-- 撤销绑定：条件更新防止重复撤销，status='ACTIVE' 才能被撤销 -->
+    <update id="revoke" parameterType="com.junsong.system.api.domain.SysUserMpBinding">
+        update sys_user_mp_binding
+        set status = 'REVOKED',
+            revoked_time = NOW(),
+            revoked_by = #{revokedBy},
+            <if test="revokeReason != null and revokeReason != ''">
+                revoke_reason = #{revokeReason},
+            </if>
+            update_by = #{revokedBy},
+            update_time = NOW()
+        where binding_id = #{bindingId}
+          and tenant_id = #{tenantId}
+          and status = 'ACTIVE'
+    </update>
+
+    <!-- 更新最近登录时间 -->
+    <update id="updateLastLoginTime">
+        update sys_user_mp_binding
+        set last_login_time = NOW(),
+            update_time = NOW()
+        where binding_id = #{bindingId}
+          and tenant_id = #{tenantId}
+          and status = 'ACTIVE'
+    </update>
+
+    <!-- 重新激活已撤销的绑定关系（REVOKED → ACTIVE）。
+         解绑后 REVOKED 记录仍占用 (app_id, openid) 唯一键，
+         重新绑定时用此 UPDATE 覆盖为新的绑定用户信息，无需物理删除。
+         条件 status='REVOKED' 防止并发重复激活；create_time/create_by 保留原始审计痕迹。 -->
+    <update id="reactivate" parameterType="com.junsong.system.api.domain.SysUserMpBinding">
+        update sys_user_mp_binding
+        set status = 'ACTIVE',
+            tenant_id = #{tenantId},
+            user_id = #{userId},
+            unionid = #{unionid},
+            bound_time = NOW(),
+            bound_by = #{boundBy},
+            last_login_time = NULL,
+            revoked_time = NULL,
+            revoked_by = '',
+            revoke_reason = '',
+            update_by = #{boundBy},
+            update_time = NOW()
+        where app_id = #{appId}
+          and openid = #{openid}
+          and status = 'REVOKED'
+    </update>
+
+</mapper>

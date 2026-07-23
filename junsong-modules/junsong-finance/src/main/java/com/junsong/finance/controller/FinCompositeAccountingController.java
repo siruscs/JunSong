@@ -39,6 +39,10 @@ public class FinCompositeAccountingController extends BaseController
     @Autowired
     private IFinCompositeAccountingService compositeAccountingService;
 
+    private boolean canAccessPool(Long poolId) {
+        return compositeAccountingService.canAccessPool(poolId, SecurityUtils.getDeptId());
+    }
+
     /**
      * 查询复合核算池列表
      */
@@ -56,6 +60,7 @@ public class FinCompositeAccountingController extends BaseController
     @RequiresPermissions("finance:compositeAccounting:query")
     @GetMapping("/{poolId}")
     public AjaxResult getInfo(@PathVariable Long poolId) {
+        if (!canAccessPool(poolId)) return error("核算池不存在或无权访问");
         return success(compositeAccountingService.selectCompositePoolByPoolId(poolId));
     }
 
@@ -65,6 +70,7 @@ public class FinCompositeAccountingController extends BaseController
     @RequiresPermissions("finance:compositeAccounting:query")
     @GetMapping("/{poolId}/overview")
     public AjaxResult getOverview(@PathVariable Long poolId) {
+        if (!canAccessPool(poolId)) return error("核算池不存在或无权访问");
         CompositePoolOverviewVO vo = compositeAccountingService.getOverview(poolId);
         return success(vo);
     }
@@ -75,6 +81,7 @@ public class FinCompositeAccountingController extends BaseController
     @RequiresPermissions("finance:compositeAccounting:query")
     @GetMapping("/{poolId}/periods")
     public AjaxResult listPeriods(@PathVariable Long poolId) {
+        if (!canAccessPool(poolId)) return error("核算池不存在或无权访问");
         List<FinCompositePeriodItem> list = compositeAccountingService.listPeriods(poolId);
         return success(list);
     }
@@ -86,6 +93,9 @@ public class FinCompositeAccountingController extends BaseController
     @GetMapping("/{poolId}/candidatePeriods")
     public AjaxResult listCandidatePeriods(@PathVariable Long poolId,
                                            @RequestParam(value = "deptId", required = false) Long deptId) {
+        if (!SecurityUtils.isAdmin()) {
+            deptId = SecurityUtils.getDeptId();
+        }
         List<CompositeCandidatePeriodVO> list = compositeAccountingService.listCandidatePeriods(poolId, deptId);
         return success(list);
     }
@@ -108,6 +118,7 @@ public class FinCompositeAccountingController extends BaseController
     @Log(title = "复合核算池", businessType = BusinessType.UPDATE)
     @PutMapping
     public AjaxResult edit(@RequestBody FinCompositeAccountingPool pool) {
+        if (!canAccessPool(pool.getPoolId())) return error("核算池不存在或无权操作");
         pool.setUpdateBy(SecurityUtils.getUsername());
         return toAjax(compositeAccountingService.updatePool(pool));
     }
@@ -119,6 +130,11 @@ public class FinCompositeAccountingController extends BaseController
     @Log(title = "复合核算池", businessType = BusinessType.DELETE)
     @DeleteMapping("/{poolIds}")
     public AjaxResult remove(@PathVariable Long[] poolIds) {
+        if (!SecurityUtils.isAdmin()) {
+            for (Long poolId : poolIds) {
+                if (!canAccessPool(poolId)) return error("包含不存在或无权删除的核算池");
+            }
+        }
         return toAjax(compositeAccountingService.deleteCompositePoolByPoolIds(poolIds));
     }
 
@@ -129,6 +145,13 @@ public class FinCompositeAccountingController extends BaseController
     @Log(title = "复合核算池-绑定店面", businessType = BusinessType.UPDATE)
     @PostMapping("/{poolId}/bindDepts")
     public AjaxResult bindDepts(@PathVariable Long poolId, @RequestBody List<Long> deptIds) {
+        if (!canAccessPool(poolId)) return error("核算池不存在或无权操作");
+        if (!SecurityUtils.isAdmin()) {
+            Long currentDeptId = SecurityUtils.getDeptId();
+            if (currentDeptId == null || deptIds == null || deptIds.stream().anyMatch(id -> !java.util.Objects.equals(id, currentDeptId))) {
+                return error("只能绑定当前部门");
+            }
+        }
         return toAjax(compositeAccountingService.bindDepts(poolId, deptIds));
     }
 
@@ -140,6 +163,7 @@ public class FinCompositeAccountingController extends BaseController
     @PostMapping("/{poolId}/bindInvestors")
     public AjaxResult bindInvestors(@PathVariable Long poolId,
                                     @RequestBody List<IFinCompositeAccountingService.InvestorInput> investors) {
+        if (!canAccessPool(poolId)) return error("核算池不存在或无权操作");
         return toAjax(compositeAccountingService.bindInvestors(poolId, investors));
     }
 
@@ -149,6 +173,7 @@ public class FinCompositeAccountingController extends BaseController
     @RequiresPermissions("finance:compositeAccounting:include")
     @PostMapping("/{poolId}/trialInclude")
     public AjaxResult trialInclude(@PathVariable Long poolId, @RequestBody List<Long> periodIds) {
+        if (!canAccessPool(poolId)) return error("核算池不存在或无权操作");
         CompositeTrialResultVO result = compositeAccountingService.trialIncludePeriods(poolId, periodIds);
         return success(result);
     }
@@ -160,6 +185,7 @@ public class FinCompositeAccountingController extends BaseController
     @Log(title = "复合核算池-确认纳入周期", businessType = BusinessType.UPDATE)
     @PostMapping("/{poolId}/confirmInclude")
     public AjaxResult confirmInclude(@PathVariable Long poolId, @RequestBody List<Long> periodIds) {
+        if (!canAccessPool(poolId)) return error("核算池不存在或无权操作");
         return toAjax(compositeAccountingService.confirmIncludePeriods(poolId, periodIds));
     }
 
@@ -170,6 +196,7 @@ public class FinCompositeAccountingController extends BaseController
     @Log(title = "复合核算池-重新计算", businessType = BusinessType.UPDATE)
     @PostMapping("/{poolId}/recalculate")
     public AjaxResult recalculate(@PathVariable Long poolId) {
+        if (!canAccessPool(poolId)) return error("核算池不存在或无权操作");
         return toAjax(compositeAccountingService.recalculatePool(poolId));
     }
 
@@ -180,6 +207,7 @@ public class FinCompositeAccountingController extends BaseController
     @Log(title = "复合核算池-确认回本", businessType = BusinessType.UPDATE)
     @PostMapping("/{poolId}/confirmBreakEven")
     public AjaxResult confirmBreakEven(@PathVariable Long poolId) {
+        if (!canAccessPool(poolId)) return error("核算池不存在或无权操作");
         return toAjax(compositeAccountingService.confirmBreakEven(poolId));
     }
 
@@ -190,6 +218,7 @@ public class FinCompositeAccountingController extends BaseController
     @Log(title = "复合核算池-关闭", businessType = BusinessType.UPDATE)
     @PostMapping("/{poolId}/close")
     public AjaxResult close(@PathVariable Long poolId) {
+        if (!canAccessPool(poolId)) return error("核算池不存在或无权操作");
         return toAjax(compositeAccountingService.closePool(poolId));
     }
 }

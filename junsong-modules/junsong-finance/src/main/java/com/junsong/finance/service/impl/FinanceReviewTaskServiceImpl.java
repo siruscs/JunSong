@@ -98,6 +98,11 @@ public class FinanceReviewTaskServiceImpl implements IFinanceReviewTaskService {
     }
 
     @Override
+    public FinanceReviewTask getTask(Long taskId) {
+        return reviewTaskMapper.selectByTaskId(taskId);
+    }
+
+    @Override
     public int generateFromDiagnosis(List<Long> deptIds, ReportQueryParams params) {
         List<Long> authorizedDeptIds = resolveAuthorizedDeptIds(deptIds);
         FinanceDiagnosisContext ctx = buildDiagnosisContext(authorizedDeptIds, params);

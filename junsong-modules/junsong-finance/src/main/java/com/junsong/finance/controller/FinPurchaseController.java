@@ -42,6 +42,7 @@ public class FinPurchaseController extends BaseController
     @GetMapping("/list")
     public TableDataInfo list(FinPurchase finPurchase)
     {
+        finPurchase.setDeptId(SecurityUtils.getDeptId());
         startPage();
         List<FinPurchase> list = finPurchaseService.selectFinPurchaseList(finPurchase);
         return getDataTable(list);
@@ -55,6 +56,7 @@ public class FinPurchaseController extends BaseController
     @PostMapping("/export")
     public void export(HttpServletResponse response, FinPurchase finPurchase)
     {
+        finPurchase.setDeptId(SecurityUtils.getDeptId());
         List<FinPurchase> list = finPurchaseService.selectFinPurchaseList(finPurchase);
         ExcelUtil<FinPurchase> util = new ExcelUtil<FinPurchase>(FinPurchase.class);
         util.exportExcel(response, list, "进货单数据");
@@ -67,7 +69,12 @@ public class FinPurchaseController extends BaseController
     @GetMapping(value = "/{purchaseId}")
     public AjaxResult getInfo(@PathVariable Long purchaseId)
     {
-        return success(finPurchaseService.selectFinPurchaseByPurchaseId(purchaseId));
+        FinPurchase purchase = finPurchaseService.selectFinPurchaseByPurchaseId(purchaseId);
+        if (purchase == null || (!SecurityUtils.isAdmin() && !java.util.Objects.equals(purchase.getDeptId(), SecurityUtils.getDeptId())))
+        {
+            return error("进货单不存在或无权访问");
+        }
+        return success(purchase);
     }
 
     /**
@@ -99,6 +106,12 @@ public class FinPurchaseController extends BaseController
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody FinPurchase finPurchase)
     {
+        FinPurchase existing = finPurchaseService.selectFinPurchaseByPurchaseId(finPurchase.getPurchaseId());
+        if (existing == null || (!SecurityUtils.isAdmin() && !java.util.Objects.equals(existing.getDeptId(), SecurityUtils.getDeptId())))
+        {
+            return error("进货单不存在或无权编辑");
+        }
+        finPurchase.setDeptId(SecurityUtils.getDeptId());
         if (!finPurchaseService.checkPurchaseNoUnique(finPurchase))
         {
             return error("修改进货单失败，进货单号已存在");
@@ -115,6 +128,18 @@ public class FinPurchaseController extends BaseController
     @DeleteMapping("/{purchaseIds}")
     public AjaxResult remove(@PathVariable Long[] purchaseIds)
     {
+        if (!SecurityUtils.isAdmin())
+        {
+            Long deptId = SecurityUtils.getDeptId();
+            for (Long purchaseId : purchaseIds)
+            {
+                FinPurchase purchase = finPurchaseService.selectFinPurchaseByPurchaseId(purchaseId);
+                if (purchase == null || !java.util.Objects.equals(purchase.getDeptId(), deptId))
+                {
+                    return error("包含不存在或无权删除的进货单");
+                }
+            }
+        }
         return toAjax(finPurchaseService.deleteFinPurchaseByPurchaseIds(purchaseIds));
     }
 }

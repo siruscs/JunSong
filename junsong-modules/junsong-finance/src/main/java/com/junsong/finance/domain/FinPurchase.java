@@ -88,6 +88,9 @@ public class FinPurchase extends BaseEntity
     /** 进货单明细 */
     private List<FinPurchaseDetail> details;
 
+    /** 进货商品名称汇总（列表展示用，按明细去重） */
+    private String productNames;
+
     public Long getPurchaseId()
     {
         return purchaseId;
@@ -261,6 +264,16 @@ public class FinPurchase extends BaseEntity
     public void setDetails(List<FinPurchaseDetail> details)
     {
         this.details = details;
+    }
+
+    public String getProductNames()
+    {
+        return productNames;
+    }
+
+    public void setProductNames(String productNames)
+    {
+        this.productNames = productNames;
     }
     
     @Override

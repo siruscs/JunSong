@@ -185,6 +185,12 @@ PROD部署更新文档.md
 debug-user-update-404-error.md
 LOGO.md
 
+# bin/ 下的部署交接与 AI 生成文档 (含 PROD 敏感信息，禁止入库)
+bin/*.zh-CN.md
+bin/*agent-handoff*
+bin/*deploy*.md
+bin/*deployment*.md
+
 # 显式保留 README 与 LICENSE
 !README.md
 !LICENSE

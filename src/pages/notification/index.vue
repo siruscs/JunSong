@@ -120,7 +120,8 @@ export default {
       return resolveNotificationTarget(item, {
         workflowTodo: hasModulePermission('wfTodo') && hasExactPermission('workflow:task:list'),
         workflowDone: hasModulePermission('wfDone') && hasExactPermission('workflow:task:list'),
-        expenseList: hasModulePermission('expense') && hasExactPermission('finance:expense:list')
+        expenseList: hasModulePermission('expense') && hasExactPermission('finance:expense:list'),
+        operatingTask: hasExactPermission('system:operatingTask:list')
       })
     },
     async refresh() {

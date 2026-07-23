@@ -28,7 +28,8 @@
     "pages/verification-record/index",
     "pages/verification-record/detail",
     "pages/wechat-bind/index",
-    "pages/legal/index"
+    "pages/legal/index",
+    "pages/operating-task/index"
   ],
   "window": {
     "navigationBarTextStyle": "black",

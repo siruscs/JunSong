@@ -101,6 +101,26 @@
       </view>
     </scroll-view>
 
+    <!-- 经营任务快捷入口（角色优先：有权限即展示） -->
+    <view class="section" v-if="canViewOperatingTask && !searchQuery">
+      <view class="section-header">
+        <view>
+          <text class="section-title">经营任务</text>
+          <text class="section-sub">待处理 · 逾期 · 优先事项</text>
+        </view>
+        <view class="section-mark" style="background:#6366F1"></view>
+      </view>
+      <view class="grid">
+        <view class="tile" hover-class="tile--active" @tap="openOperatingTask">
+          <view class="tile-icon" style="background:rgba(99,102,241,0.08)">
+            <text class="tile-icon-text">📋</text>
+          </view>
+          <text class="tile-title">经营任务中心</text>
+          <text class="tile-desc">查看和处理你的待办任务</text>
+        </view>
+      </view>
+    </view>
+
     <view class="empty" v-else>
       <view class="empty-mark">{{ searchQuery ? '搜' : '权' }}</view>
       <text class="empty-title">{{ searchQuery ? '未找到匹配功能' : '暂无可用功能' }}</text>
@@ -112,7 +132,7 @@
 <script>
 import miniProgramShare from '@/mixins/miniProgramShare.js'
 import { groups, modules } from '@/config/modules.js'
-import { filterAuthorizedGroups, hasModulePermission } from '@/utils/permission.js'
+import { filterAuthorizedGroups, hasModulePermission, hasExactPermission } from '@/utils/permission.js'
 import {
   filterEntries,
   filterModuleGroups,
@@ -211,6 +231,9 @@ export default {
         ...group,
         items: group.items.map((item) => ({ ...item, desc: this.getModuleDesc(item.key) }))
       }))
+    },
+    canViewOperatingTask() {
+      return hasExactPermission('system:operatingTask:list')
     },
     filteredGroups() {
       return filterModuleGroups(this.authorizedGroups, this.searchQuery)
@@ -329,6 +352,13 @@ export default {
         }
       }
       uni.navigateTo({ url: '/pages/member/' + key })
+    },
+    openOperatingTask() {
+      if (!this.canViewOperatingTask) {
+        uni.showToast({ title: '暂无该功能权限', icon: 'none' })
+        return
+      }
+      uni.navigateTo({ url: '/pages/operating-task/index' })
     }
   }
 }

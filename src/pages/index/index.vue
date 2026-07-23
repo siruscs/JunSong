@@ -290,6 +290,19 @@
         </view>
       </view>
 
+      <!-- 经营任务快捷入口（角色优先：店长/财务/管理员可见） -->
+      <view class="section-card fade-in-up" style="animation-delay:0.33s" v-if="canViewOperatingTask" @tap="openOperatingTask">
+        <view class="section-header">
+          <view class="section-dot" style="background:#6366F1"></view>
+          <text class="section-title">经营任务</text>
+          <text class="section-badge warn" v-if="operatingTaskCount > 0">{{ operatingTaskCount }} 待办</text>
+        </view>
+        <view class="alert-row">
+          <text class="alert-label">点击查看待处理任务、逾期提醒和优先事项</text>
+          <text class="alert-value primary">›</text>
+        </view>
+      </view>
+
       <!-- 核算周期综合数据 -->
       <view class="section-card fade-in-up" style="animation-delay:0.32s" v-if="expenseSummary">
         <view class="section-header">
@@ -358,7 +371,7 @@
 import miniProgramShare from '@/mixins/miniProgramShare.js'
 import { groups, modules } from '@/config/modules.js'
 import { request, getToken, getBaseUrl } from '@/api/index.js'
-import { filterAuthorizedGroups, hasModulePermission, isAdmin } from '@/utils/permission.js'
+import { filterAuthorizedGroups, hasModulePermission, hasExactPermission, isAdmin } from '@/utils/permission.js'
 import { applySeckillStats } from '@/utils/seckillStats.js'
 import { SERVICE_STATUS_TARGETS, buildSystemHealthItems, normalizeDeptOptions, resolveCurrentDept, normalizeServerStatus, isSystemAdminUser } from '@/utils/homeControl.js'
 import { getStatusBarHeight } from '@/utils/systemInfo.js'
@@ -421,7 +434,8 @@ export default {
       barColors: ['#087CF0', '#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EC4899'],
       showDeptPicker: false,
       allDepts: [],
-      pendingDeptId: null
+      pendingDeptId: null,
+      operatingTaskCount: 0
     }
   },
   computed: {
@@ -443,6 +457,11 @@ export default {
     },
     adminUser() {
       return isAdmin(this.modules) || isSystemAdminUser(this.userInfo, this.systemPermissions)
+    },
+    canViewOperatingTask() {
+      // 后端权限是权威：system:operatingTask:list
+      // 角色优先：店长(workView.management)、财务、管理员可见
+      return hasExactPermission('system:operatingTask:list')
     },
     canViewServerStatus() {
       return isSystemAdminUser(this.userInfo, this.systemPermissions)
@@ -712,6 +731,25 @@ export default {
     },
     go(url) {
       uni.navigateTo({ url })
+    },
+    openOperatingTask() {
+      uni.navigateTo({ url: '/pages/operating-task/index' })
+    },
+    async loadOperatingTaskCount() {
+      if (!this.canViewOperatingTask) {
+        this.operatingTaskCount = 0
+        return
+      }
+      try {
+        const res = await request({
+          url: '/operatingTask/pendingCount',
+          method: 'GET',
+          silent: true
+        })
+        this.operatingTaskCount = Number(res?.data ?? res ?? 0)
+      } catch {
+        this.operatingTaskCount = 0
+      }
     },
     openModule(key) {
       if (!hasModulePermission(key, this.modules)) {
@@ -1068,7 +1106,7 @@ export default {
         this.applyWorkContext(workContext.snapshot())
         this.clearModuleAccess()
         await this.refreshModules()
-        await Promise.all([this.loadDashboard(), this.loadOverview(), this.loadPeriod(), this.loadSeckill(), this.loadExpenseSummary()])
+        await Promise.all([this.loadDashboard(), this.loadOverview(), this.loadPeriod(), this.loadSeckill(), this.loadExpenseSummary(), this.loadOperatingTaskCount()])
         uni.showToast({ title: '已切换部门', icon: 'success' })
       } catch (err) {
         uni.showToast({ title: err?.msg || err?.message || '部门切换失败', icon: 'none' })
@@ -1138,7 +1176,7 @@ export default {
         this.closeDeptPicker()
         this.clearModuleAccess()
         await this.refreshModules()
-        await Promise.all([this.loadDashboard(), this.loadOverview(), this.loadPeriod(), this.loadSeckill(), this.loadExpenseSummary()])
+        await Promise.all([this.loadDashboard(), this.loadOverview(), this.loadPeriod(), this.loadSeckill(), this.loadExpenseSummary(), this.loadOperatingTaskCount()])
         uni.showToast({ title: '已切换部门', icon: 'success' })
       } catch (err) {
         uni.showToast({ title: err?.msg || err?.message || '部门切换失败', icon: 'none' })

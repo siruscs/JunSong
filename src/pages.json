@@ -115,6 +115,10 @@
     {
       "path": "pages/legal/index",
       "style": { "navigationBarTitleText": "隐私政策" }
+    },
+    {
+      "path": "pages/operating-task/index",
+      "style": { "navigationBarTitleText": "经营任务" }
     }
   ],
   "tabBar": {

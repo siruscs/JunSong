@@ -86,8 +86,8 @@ test('five home loaders request context metadata and ignore stale responses', ()
   assert.match(seckill, /if \(results\.some\(item => item === null\)\) return/)
 })
 
-test('department refresh keeps the existing five-loader Promise.all', () => {
-  assert.match(home, /Promise\.all\(\[this\.loadDashboard\(\), this\.loadOverview\(\), this\.loadPeriod\(\), this\.loadSeckill\(\), this\.loadExpenseSummary\(\)\]\)/)
+test('department refresh keeps the existing Promise.all including operating task count', () => {
+  assert.match(home, /Promise\.all\(\[this\.loadDashboard\(\), this\.loadOverview\(\), this\.loadPeriod\(\), this\.loadSeckill\(\), this\.loadExpenseSummary\(\), this\.loadOperatingTaskCount\(\)\]\)/)
   assert.doesNotMatch(home, /loadAll\(\)/)
 })
 

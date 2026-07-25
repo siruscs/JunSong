@@ -3,6 +3,7 @@ package com.junsong.finance.service;
 import java.util.List;
 import com.junsong.finance.domain.FinStocktake;
 import com.junsong.finance.domain.vo.StocktakeAssignRequest;
+import com.junsong.finance.domain.vo.StocktakeCountRequest;
 import com.junsong.finance.domain.vo.StocktakeCreateRequest;
 import com.junsong.finance.domain.vo.StocktakeDetailVO;
 import com.junsong.finance.domain.vo.StocktakeQuery;
@@ -18,7 +19,8 @@ import com.junsong.finance.domain.vo.StocktakeQuery;
  * 5. counter 视角隐藏期望值（盲盘保护）
  *
  * Task 3 范围：create / list / detail / assign
- * 后续 Task 扩展：start / count / submit / recount / approve / post / cancel / reverse
+ * Task 4 范围：start / count（盲盘与幂等行录入）
+ * 后续 Task 扩展：submit / recount / approve / post / cancel / reverse
  *
  * @author junsong
  */
@@ -57,4 +59,32 @@ public interface IFinStocktakeService {
      * @return 影响行数
      */
     int assignCounter(Long stocktakeId, StocktakeAssignRequest request);
+
+    /**
+     * 启动盘点任务（DRAFT → COUNTING）。
+     * 仅已分配盘点人的草稿任务可启动。
+     *
+     * @param stocktakeId 盘点任务ID
+     * @param version 头表版本号（乐观锁）
+     * @return 影响行数
+     */
+    int startStocktake(Long stocktakeId, Integer version);
+
+    /**
+     * 盘点行录入（盲盘 + 幂等）。
+     *
+     * 安全契约：
+     * 1. 仅 COUNTING 状态任务允许录入
+     * 2. 非 admin 时仅分配的 counter 可录入
+     * 3. actualQuantity 非负
+     * 4. 幂等键非空；相同键相同负载返回原结果；相同键不同负载拒绝
+     * 5. 方差非零时 reasonCode 和 reason 必填
+     * 6. 不更新库存/成本（仅存储盘点证据）
+     *
+     * @param stocktakeId 盘点任务ID
+     * @param itemId 行表ID
+     * @param request 录入请求
+     * @return 影响行数（幂等重放时返回 1，但不重复更新）
+     */
+    int countItem(Long stocktakeId, Long itemId, StocktakeCountRequest request);
 }

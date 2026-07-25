@@ -17,13 +17,14 @@ import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
 import com.junsong.finance.domain.FinStocktake;
 import com.junsong.finance.domain.vo.StocktakeAssignRequest;
+import com.junsong.finance.domain.vo.StocktakeCountRequest;
 import com.junsong.finance.domain.vo.StocktakeCreateRequest;
 import com.junsong.finance.domain.vo.StocktakeDetailVO;
 import com.junsong.finance.domain.vo.StocktakeQuery;
 import com.junsong.finance.service.IFinStocktakeService;
 
 /**
- * 库存盘点 Controller（Task 3：创建、分配、列表、详情）。
+ * 库存盘点 Controller（Task 3-4：创建、分配、列表、详情、启动、行录入）。
  *
  * 端点：/stocktakes
  *
@@ -32,8 +33,9 @@ import com.junsong.finance.service.IFinStocktakeService;
  * - finance:stocktake:list    列表
  * - finance:stocktake:query   详情
  * - finance:stocktake:assign  分配
+ * - finance:stocktake:count   启动盘点 / 行录入
  *
- * 后续 Task 扩展：start / count / submit / recount / approve / post / cancel / reverse / export
+ * 后续 Task 扩展：submit / recount / approve / post / cancel / reverse / export
  *
  * @author junsong
  */
@@ -73,5 +75,22 @@ public class FinStocktakeController extends BaseController {
     public AjaxResult assign(@PathVariable Long stocktakeId,
                               @RequestBody StocktakeAssignRequest request) {
         return toAjax(finStocktakeService.assignCounter(stocktakeId, request));
+    }
+
+    @RequiresPermissions("finance:stocktake:count")
+    @Log(title = "库存盘点-启动", businessType = BusinessType.UPDATE)
+    @PutMapping("/{stocktakeId}/start")
+    public AjaxResult start(@PathVariable Long stocktakeId,
+                             @org.springframework.web.bind.annotation.RequestParam Integer version) {
+        return toAjax(finStocktakeService.startStocktake(stocktakeId, version));
+    }
+
+    @RequiresPermissions("finance:stocktake:count")
+    @Log(title = "库存盘点-行录入", businessType = BusinessType.UPDATE)
+    @PutMapping("/{stocktakeId}/items/{itemId}/count")
+    public AjaxResult count(@PathVariable Long stocktakeId,
+                             @PathVariable Long itemId,
+                             @RequestBody StocktakeCountRequest request) {
+        return toAjax(finStocktakeService.countItem(stocktakeId, itemId, request));
     }
 }

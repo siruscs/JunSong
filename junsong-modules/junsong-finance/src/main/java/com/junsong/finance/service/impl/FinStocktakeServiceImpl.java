@@ -17,6 +17,7 @@ import com.junsong.finance.domain.FinStocktake;
 import com.junsong.finance.domain.FinStocktakeHistory;
 import com.junsong.finance.domain.FinStocktakeItem;
 import com.junsong.finance.domain.vo.StocktakeAssignRequest;
+import com.junsong.finance.domain.vo.StocktakeCountRequest;
 import com.junsong.finance.domain.vo.StocktakeCreateRequest;
 import com.junsong.finance.domain.vo.StocktakeDetailVO;
 import com.junsong.finance.domain.vo.StocktakeQuery;
@@ -241,6 +242,127 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
         return affected;
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int startStocktake(Long stocktakeId, Integer version) {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null) {
+            throw new ServiceException("租户上下文缺失，禁止启动盘点任务");
+        }
+        if (version == null) {
+            throw new ServiceException("版本号不能为空");
+        }
+
+        FinStocktake header = finStocktakeMapper.selectStocktakeById(tenantId, stocktakeId);
+        if (header == null) {
+            throw new ServiceException("盘点任务不存在或无权访问");
+        }
+        assertDeptAuthorized(tenantId, header.getDeptId());
+
+        if (!STATUS_DRAFT.equals(header.getStatus())) {
+            throw new ServiceException("仅草稿状态可启动盘点，当前状态: " + header.getStatus());
+        }
+        if (header.getCounterUserId() == null) {
+            throw new ServiceException("盘点任务尚未分配盘点人，无法启动");
+        }
+        if (!version.equals(header.getVersion())) {
+            throw new ServiceException("版本号不匹配，请刷新后重试");
+        }
+
+        int affected = finStocktakeMapper.updateStocktakeStatus(
+                tenantId, stocktakeId, STATUS_DRAFT, STATUS_COUNTING, version,
+                SecurityUtils.getUsername(), null, null, null, null, null);
+        if (affected != 1) {
+            throw new ServiceException("启动盘点失败，可能已被其他操作更新");
+        }
+
+        FinStocktakeHistory history = new FinStocktakeHistory();
+        history.setTenantId(tenantId);
+        history.setStocktakeId(stocktakeId);
+        history.setAction("START");
+        history.setFromStatus(STATUS_DRAFT);
+        history.setToStatus(STATUS_COUNTING);
+        history.setOperator(SecurityUtils.getUsername());
+        history.setComment("启动盘点任务");
+        finStocktakeMapper.insertStocktakeHistory(history);
+
+        return affected;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int countItem(Long stocktakeId, Long itemId, StocktakeCountRequest request) {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null) {
+            throw new ServiceException("租户上下文缺失，禁止录入盘点数据");
+        }
+
+        assertCountRequestValid(request);
+
+        FinStocktake header = finStocktakeMapper.selectStocktakeById(tenantId, stocktakeId);
+        if (header == null) {
+            throw new ServiceException("盘点任务不存在或无权访问");
+        }
+        assertDeptAuthorized(tenantId, header.getDeptId());
+
+        if (!STATUS_COUNTING.equals(header.getStatus())) {
+            throw new ServiceException("仅盘点中状态可录入数据，当前状态: " + header.getStatus());
+        }
+
+        // 非 admin 时仅分配的 counter 可录入
+        if (!SecurityUtils.isAdmin()) {
+            Long currentUserId = SecurityUtils.getUserId();
+            if (currentUserId == null || !currentUserId.equals(header.getCounterUserId())) {
+                throw new ServiceException("仅分配的盘点人可录入盘点数据");
+            }
+        }
+
+        FinStocktakeItem item = finStocktakeMapper.selectStocktakeItemById(tenantId, itemId);
+        if (item == null || !stocktakeId.equals(item.getStocktakeId())) {
+            throw new ServiceException("盘点行不存在或不属于该盘点任务");
+        }
+
+        // 幂等键校验：相同键相同负载返回原结果；相同键不同负载/被其他行占用拒绝
+        int existing = finStocktakeMapper.countByCountIdempotencyKey(tenantId, request.getIdempotencyKey());
+        if (existing > 0) {
+            if (request.getIdempotencyKey().equals(item.getCountIdempotencyKey())) {
+                // 当前行已有此幂等键：相同负载幂等重放，不同负载拒绝
+                if (isSameCountPayload(item, request)) {
+                    return 1;
+                }
+                throw new ServiceException("幂等键已存在但负载不同，拒绝重复录入: " + request.getIdempotencyKey());
+            }
+            throw new ServiceException("幂等键已被其他盘点行占用: " + request.getIdempotencyKey());
+        }
+
+        // 版本校验
+        if (request.getVersion() == null || !request.getVersion().equals(item.getVersion())) {
+            throw new ServiceException("行版本号不匹配，请刷新后重试");
+        }
+
+        // 方差校验：非零方差需要 reasonCode 和 reason
+        int expected = item.getExpectedQuantity() == null ? 0 : item.getExpectedQuantity();
+        int variance = request.getActualQuantity() - expected;
+        if (variance != 0) {
+            if (request.getReasonCode() == null || request.getReasonCode().isEmpty()) {
+                throw new ServiceException("盘亏或盘盈时原因代码必填");
+            }
+            if (request.getReason() == null || request.getReason().isEmpty()) {
+                throw new ServiceException("盘亏或盘盈时原因说明必填");
+            }
+        }
+
+        int affected = finStocktakeMapper.updateStocktakeItemCount(
+                tenantId, itemId, request.getActualQuantity(),
+                request.getReasonCode(), request.getReason(), request.getAttachments(),
+                request.getIdempotencyKey(), SecurityUtils.getUsername(), request.getVersion());
+        if (affected != 1) {
+            throw new ServiceException("录入盘点数据失败，可能已被其他操作更新");
+        }
+
+        return affected;
+    }
+
     // ===== 私有辅助方法 =====
 
     private void assertCreateRequestValid(StocktakeCreateRequest request) {
@@ -346,5 +468,32 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
         masked.setRecountedTime(original.getRecountedTime());
         masked.setVersion(original.getVersion());
         return masked;
+    }
+
+    private void assertCountRequestValid(StocktakeCountRequest request) {
+        if (request.getActualQuantity() == null) {
+            throw new ServiceException("实际盘点数量不能为空");
+        }
+        if (request.getActualQuantity() < 0) {
+            throw new ServiceException("实际盘点数量不能为负数");
+        }
+        if (request.getIdempotencyKey() == null || request.getIdempotencyKey().isEmpty()) {
+            throw new ServiceException("幂等键不能为空");
+        }
+    }
+
+    private boolean isSameCountPayload(FinStocktakeItem item, StocktakeCountRequest request) {
+        if (item.getActualQuantity() == null
+                || !item.getActualQuantity().equals(request.getActualQuantity())) {
+            return false;
+        }
+        boolean reasonCodeSame = (item.getReasonCode() == null && request.getReasonCode() == null)
+                || (item.getReasonCode() != null && item.getReasonCode().equals(request.getReasonCode()));
+        if (!reasonCodeSame) {
+            return false;
+        }
+        boolean reasonSame = (item.getReason() == null && request.getReason() == null)
+                || (item.getReason() != null && item.getReason().equals(request.getReason()));
+        return reasonSame;
     }
 }

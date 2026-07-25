@@ -8,6 +8,7 @@ import com.junsong.finance.domain.FinStocktake;
 import com.junsong.finance.domain.FinStocktakeHistory;
 import com.junsong.finance.domain.FinStocktakeItem;
 import com.junsong.finance.domain.vo.StocktakeAssignRequest;
+import com.junsong.finance.domain.vo.StocktakeCountRequest;
 import com.junsong.finance.domain.vo.StocktakeCreateRequest;
 import com.junsong.finance.domain.vo.StocktakeDetailVO;
 import com.junsong.finance.domain.vo.StocktakeQuery;
@@ -358,6 +359,260 @@ class FinStocktakeServiceImplTest {
         assertThrows(ServiceException.class, () -> service.assignCounter(1L, req));
     }
 
+    // ===== 启动盘点 (Task 4) =====
+
+    @Test
+    void start_draftWithCounterSucceeds() {
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-001", "DRAFT");
+        header.setCounterUserId(COUNTER_USER);
+        header.setVersion(0);
+        stocktakeMapper.headers.add(header);
+
+        int affected = service.startStocktake(1L, 0);
+        assertEquals(1, affected);
+        assertEquals("COUNTING", header.getStatus());
+        assertEquals(1, header.getVersion(), "version 应递增");
+        assertEquals("START", stocktakeMapper.insertedHistories.get(0).getAction());
+    }
+
+    @Test
+    void start_nonDraftStatusThrows() {
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-001", "COUNTING");
+        header.setCounterUserId(COUNTER_USER);
+        stocktakeMapper.headers.add(header);
+
+        assertThrows(ServiceException.class, () -> service.startStocktake(1L, 0));
+    }
+
+    @Test
+    void start_versionMismatchThrows() {
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-001", "DRAFT");
+        header.setCounterUserId(COUNTER_USER);
+        header.setVersion(2);
+        stocktakeMapper.headers.add(header);
+
+        assertThrows(ServiceException.class, () -> service.startStocktake(1L, 0));
+    }
+
+    @Test
+    void start_missingCounterThrows() {
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-001", "DRAFT");
+        header.setCounterUserId(null); // 未分配盘点人
+        header.setVersion(0);
+        stocktakeMapper.headers.add(header);
+
+        assertThrows(ServiceException.class, () -> service.startStocktake(1L, 0));
+    }
+
+    @Test
+    void start_unauthorizedDeptThrows() {
+        SecurityContextHolder.setUserId("2");
+        SecurityContextHolder.setUserName("bob");
+        remoteUserService.authorizedDepts = Arrays.asList(DEPT_10);
+
+        stocktakeMapper.headers.add(buildHeader(T1, 1L, DEPT_20, "PD-001", "DRAFT"));
+
+        assertThrows(ServiceException.class, () -> service.startStocktake(1L, 0));
+    }
+
+    // ===== 行录入 (Task 4) =====
+
+    private FinStocktakeItem buildCountingItem(Long itemId, Long stocktakeId, Long productId, int expectedQty) {
+        FinStocktakeItem item = new FinStocktakeItem();
+        item.setItemId(itemId);
+        item.setStocktakeId(stocktakeId);
+        item.setTenantId(T1);
+        item.setDeptId(DEPT_10);
+        item.setProductId(productId);
+        item.setExpectedQuantity(expectedQty);
+        item.setVersion(0);
+        stocktakeMapper.insertedItems.add(item);
+        return item;
+    }
+
+    private StocktakeCountRequest buildCountRequest(int actualQty, String idempotencyKey, Integer version) {
+        StocktakeCountRequest req = new StocktakeCountRequest();
+        req.setActualQuantity(actualQty);
+        req.setIdempotencyKey(idempotencyKey);
+        req.setVersion(version);
+        return req;
+    }
+
+    @Test
+    void count_countingStatusSucceeds() {
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-001", "COUNTING");
+        header.setCounterUserId(1L); // admin 是用户 1
+        stocktakeMapper.headers.add(header);
+        buildCountingItem(11L, 1L, PRODUCT_100, 50);
+
+        StocktakeCountRequest req = buildCountRequest(48, "PD-001-100-count-1", 0);
+        req.setReasonCode("DAMAGED");
+        req.setReason("外包装破损");
+
+        int affected = service.countItem(1L, 11L, req);
+        assertEquals(1, affected);
+        FinStocktakeItem item = stocktakeMapper.insertedItems.get(0);
+        assertEquals(48, item.getActualQuantity());
+        assertEquals("DAMAGED", item.getReasonCode());
+        assertEquals("PD-001-100-count-1", item.getCountIdempotencyKey());
+        assertEquals(1, item.getVersion(), "行版本应递增");
+    }
+
+    @Test
+    void count_nonCountingStatusThrows() {
+        stocktakeMapper.headers.add(buildHeader(T1, 1L, DEPT_10, "PD-001", "DRAFT"));
+        buildCountingItem(11L, 1L, PRODUCT_100, 50);
+
+        StocktakeCountRequest req = buildCountRequest(48, "PD-001-100-count-1", 0);
+        assertThrows(ServiceException.class, () -> service.countItem(1L, 11L, req));
+    }
+
+    @Test
+    void count_nonCounterUserThrows() {
+        SecurityContextHolder.setUserId("2");
+        SecurityContextHolder.setUserName("bob");
+        remoteUserService.authorizedDepts = Arrays.asList(DEPT_10);
+
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-001", "COUNTING");
+        header.setCounterUserId(999L); // 不是当前用户
+        stocktakeMapper.headers.add(header);
+        buildCountingItem(11L, 1L, PRODUCT_100, 50);
+
+        StocktakeCountRequest req = buildCountRequest(48, "PD-001-100-count-1", 0);
+        assertThrows(ServiceException.class, () -> service.countItem(1L, 11L, req));
+    }
+
+    @Test
+    void count_negativeQuantityThrows() {
+        stocktakeMapper.headers.add(buildHeader(T1, 1L, DEPT_10, "PD-001", "COUNTING"));
+        buildCountingItem(11L, 1L, PRODUCT_100, 50);
+
+        StocktakeCountRequest req = buildCountRequest(-1, "PD-001-100-count-1", 0);
+        assertThrows(ServiceException.class, () -> service.countItem(1L, 11L, req));
+    }
+
+    @Test
+    void count_missingIdempotencyKeyThrows() {
+        stocktakeMapper.headers.add(buildHeader(T1, 1L, DEPT_10, "PD-001", "COUNTING"));
+        buildCountingItem(11L, 1L, PRODUCT_100, 50);
+
+        StocktakeCountRequest req = new StocktakeCountRequest();
+        req.setActualQuantity(48);
+        req.setVersion(0);
+        // idempotencyKey 未设置
+        assertThrows(ServiceException.class, () -> service.countItem(1L, 11L, req));
+    }
+
+    @Test
+    void count_nonZeroVarianceWithoutReasonCodeThrows() {
+        stocktakeMapper.headers.add(buildHeader(T1, 1L, DEPT_10, "PD-001", "COUNTING"));
+        buildCountingItem(11L, 1L, PRODUCT_100, 50); // expected=50
+
+        StocktakeCountRequest req = buildCountRequest(48, "PD-001-100-count-1", 0);
+        req.setReason("外包装破损");
+        // reasonCode 未设置
+        assertThrows(ServiceException.class, () -> service.countItem(1L, 11L, req));
+    }
+
+    @Test
+    void count_nonZeroVarianceWithoutReasonThrows() {
+        stocktakeMapper.headers.add(buildHeader(T1, 1L, DEPT_10, "PD-001", "COUNTING"));
+        buildCountingItem(11L, 1L, PRODUCT_100, 50);
+
+        StocktakeCountRequest req = buildCountRequest(48, "PD-001-100-count-1", 0);
+        req.setReasonCode("DAMAGED");
+        // reason 未设置
+        assertThrows(ServiceException.class, () -> service.countItem(1L, 11L, req));
+    }
+
+    @Test
+    void count_zeroVariancePersistsWithoutReason() {
+        stocktakeMapper.headers.add(buildHeader(T1, 1L, DEPT_10, "PD-001", "COUNTING"));
+        buildCountingItem(11L, 1L, PRODUCT_100, 50); // expected=50
+
+        // actualQuantity=50，方差为 0，无需 reasonCode/reason
+        StocktakeCountRequest req = buildCountRequest(50, "PD-001-100-count-1", 0);
+
+        int affected = service.countItem(1L, 11L, req);
+        assertEquals(1, affected, "零方差应成功持久化");
+        assertEquals(50, stocktakeMapper.insertedItems.get(0).getActualQuantity());
+    }
+
+    @Test
+    void count_idempotentReplayReturnsSame() {
+        stocktakeMapper.headers.add(buildHeader(T1, 1L, DEPT_10, "PD-001", "COUNTING"));
+        buildCountingItem(11L, 1L, PRODUCT_100, 50);
+
+        StocktakeCountRequest req1 = buildCountRequest(48, "PD-001-100-count-1", 0);
+        req1.setReasonCode("DAMAGED");
+        req1.setReason("外包装破损");
+
+        int first = service.countItem(1L, 11L, req1);
+        assertEquals(1, first);
+
+        // 相同幂等键、相同负载再次请求 —— 应返回 1（幂等重放），不重复更新
+        StocktakeCountRequest req2 = buildCountRequest(48, "PD-001-100-count-1", 0);
+        req2.setReasonCode("DAMAGED");
+        req2.setReason("外包装破损");
+
+        int second = service.countItem(1L, 11L, req2);
+        assertEquals(1, second, "幂等重放应返回成功");
+        // version 不应再次递增（第一次更新后 version=1，第二次是幂等重放不再更新）
+        assertEquals(1, stocktakeMapper.insertedItems.get(0).getVersion(), "幂等重放不应再次递增版本");
+    }
+
+    @Test
+    void count_idempotentKeyWithDifferentPayloadThrows() {
+        stocktakeMapper.headers.add(buildHeader(T1, 1L, DEPT_10, "PD-001", "COUNTING"));
+        buildCountingItem(11L, 1L, PRODUCT_100, 50);
+
+        // 第一次录入 actualQuantity=48
+        StocktakeCountRequest req1 = buildCountRequest(48, "PD-001-100-count-1", 0);
+        req1.setReasonCode("DAMAGED");
+        req1.setReason("外包装破损");
+        service.countItem(1L, 11L, req1);
+
+        // 相同幂等键但 actualQuantity 不同（负载不同）—— 应拒绝
+        StocktakeCountRequest req2 = buildCountRequest(45, "PD-001-100-count-1", 0);
+        req2.setReasonCode("DAMAGED");
+        req2.setReason("外包装破损");
+
+        assertThrows(ServiceException.class, () -> service.countItem(1L, 11L, req2));
+    }
+
+    @Test
+    void count_versionConflictThrows() {
+        stocktakeMapper.headers.add(buildHeader(T1, 1L, DEPT_10, "PD-001", "COUNTING"));
+        buildCountingItem(11L, 1L, PRODUCT_100, 50);
+
+        // item.version=0，但请求传 version=3
+        StocktakeCountRequest req = buildCountRequest(48, "PD-001-100-count-1", 3);
+        req.setReasonCode("DAMAGED");
+        req.setReason("外包装破损");
+
+        assertThrows(ServiceException.class, () -> service.countItem(1L, 11L, req));
+    }
+
+    @Test
+    void count_idempotentKeyOccupiedByOtherItemThrows() {
+        stocktakeMapper.headers.add(buildHeader(T1, 1L, DEPT_10, "PD-001", "COUNTING"));
+
+        // item1 已用幂等键 "SHARED-KEY"
+        FinStocktakeItem item1 = buildCountingItem(11L, 1L, PRODUCT_100, 50);
+        item1.setCountIdempotencyKey("SHARED-KEY");
+        item1.setActualQuantity(48);
+
+        // item2 尝试用相同幂等键
+        buildCountingItem(12L, 1L, PRODUCT_200, 30);
+
+        StocktakeCountRequest req = buildCountRequest(25, "SHARED-KEY", 0);
+        req.setReasonCode("DAMAGED");
+        req.setReason("测试");
+
+        assertThrows(ServiceException.class, () -> service.countItem(1L, 12L, req),
+                "幂等键被其他行占用时应拒绝");
+    }
+
     // ===== 辅助方法 =====
 
     private FinProduct buildProduct(Long id, String name) {
@@ -430,7 +685,18 @@ class FinStocktakeServiceImplTest {
         public int updateStocktakeStatus(Long tenantId, Long stocktakeId, String fromStatus, String toStatus,
                                           Integer version, String updateBy, String submittedBy, String approvedBy,
                                           String postedBy, String reversedBy, String reversalReason) {
-            return 0;
+            FinStocktake h = selectStocktakeById(tenantId, stocktakeId);
+            if (h == null || !fromStatus.equals(h.getStatus()) || !version.equals(h.getVersion())) {
+                return 0;
+            }
+            h.setStatus(toStatus);
+            h.setVersion(h.getVersion() + 1);
+            if (submittedBy != null) h.setSubmittedBy(submittedBy);
+            if (approvedBy != null) h.setApprovedBy(approvedBy);
+            if (postedBy != null) h.setPostedBy(postedBy);
+            if (reversedBy != null) h.setReversedBy(reversedBy);
+            if (reversalReason != null) h.setReversalReason(reversalReason);
+            return 1;
         }
 
         @Override
@@ -476,7 +742,23 @@ class FinStocktakeServiceImplTest {
         @Override
         public int updateStocktakeItemCount(Long tenantId, Long itemId, Integer actualQuantity, String reasonCode,
                                             String reason, String attachments, String countIdempotencyKey,
-                                            String countedBy, Integer version) { return 0; }
+                                            String countedBy, Integer version) {
+            FinStocktakeItem item = insertedItems.stream()
+                    .filter(i -> tenantId.equals(i.getTenantId()) && itemId.equals(i.getItemId()))
+                    .findFirst().orElse(null);
+            if (item == null || !version.equals(item.getVersion())) {
+                return 0;
+            }
+            item.setActualQuantity(actualQuantity);
+            item.setReasonCode(reasonCode);
+            item.setReason(reason);
+            item.setAttachments(attachments);
+            item.setCountIdempotencyKey(countIdempotencyKey);
+            item.setCountedBy(countedBy);
+            item.setCountedTime(new java.util.Date());
+            item.setVersion(item.getVersion() + 1);
+            return 1;
+        }
 
         @Override
         public int updateStocktakeItemRecount(Long tenantId, Long itemId, Integer recountQuantity,
@@ -497,7 +779,13 @@ class FinStocktakeServiceImplTest {
                                                    Long reverseCostLedgerId, Integer version) { return 0; }
 
         @Override
-        public int countByCountIdempotencyKey(Long tenantId, String countIdempotencyKey) { return 0; }
+        public int countByCountIdempotencyKey(Long tenantId, String countIdempotencyKey) {
+            return (int) insertedItems.stream()
+                    .filter(i -> tenantId.equals(i.getTenantId())
+                            && countIdempotencyKey != null
+                            && countIdempotencyKey.equals(i.getCountIdempotencyKey()))
+                    .count();
+        }
 
         @Override
         public int insertStocktakeHistory(FinStocktakeHistory history) {

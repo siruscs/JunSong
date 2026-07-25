@@ -1,0 +1,329 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.FinStocktakeMapper">
+
+    <resultMap type="FinStocktake" id="FinStocktakeResult">
+        <id     property="stocktakeId"      column="stocktake_id"      />
+        <result property="tenantId"         column="tenant_id"         />
+        <result property="takeNo"           column="take_no"           />
+        <result property="deptId"           column="dept_id"           />
+        <result property="scopeType"        column="scope_type"        />
+        <result property="status"           column="status"            />
+        <result property="freezeTime"       column="freeze_time"       />
+        <result property="counterUserId"    column="counter_user_id"   />
+        <result property="recountUserId"    column="recount_user_id"   />
+        <result property="submittedBy"      column="submitted_by"      />
+        <result property="submittedTime"    column="submitted_time"    />
+        <result property="approvedBy"       column="approved_by"       />
+        <result property="approvedTime"     column="approved_time"     />
+        <result property="postedBy"         column="posted_by"         />
+        <result property="postedTime"       column="posted_time"       />
+        <result property="reversedBy"       column="reversed_by"       />
+        <result property="reversedTime"     column="reversed_time"     />
+        <result property="reversalReason"   column="reversal_reason"   />
+        <result property="version"          column="version"           />
+        <result property="remark"           column="remark"            />
+        <result property="createBy"         column="create_by"         />
+        <result property="createTime"       column="create_time"       />
+        <result property="updateBy"         column="update_by"         />
+        <result property="updateTime"       column="update_time"       />
+    </resultMap>
+
+    <resultMap type="FinStocktakeItem" id="FinStocktakeItemResult">
+        <id     property="itemId"                    column="item_id"                    />
+        <result property="stocktakeId"               column="stocktake_id"               />
+        <result property="tenantId"                  column="tenant_id"                  />
+        <result property="deptId"                    column="dept_id"                    />
+        <result property="productId"                 column="product_id"                 />
+        <result property="productName"               column="product_name"               />
+        <result property="expectedQuantity"          column="expected_quantity"          />
+        <result property="movementQuantityAfterFreeze" column="movement_quantity_after_freeze" />
+        <result property="adjustedExpectedQuantity"  column="adjusted_expected_quantity" />
+        <result property="actualQuantity"            column="actual_quantity"            />
+        <result property="recountQuantity"           column="recount_quantity"           />
+        <result property="finalQuantity"             column="final_quantity"             />
+        <result property="varianceQuantity"          column="variance_quantity"          />
+        <result property="unitCost"                  column="unit_cost"                  />
+        <result property="varianceAmount"            column="variance_amount"            />
+        <result property="reasonCode"                column="reason_code"                />
+        <result property="reason"                    column="reason"                     />
+        <result property="attachments"               column="attachments"                />
+        <result property="countedBy"                 column="counted_by"                 />
+        <result property="countedTime"               column="counted_time"               />
+        <result property="recountedBy"               column="recounted_by"               />
+        <result property="recountedTime"             column="recounted_time"             />
+        <result property="stockLedgerId"             column="stock_ledger_id"            />
+        <result property="costLedgerId"              column="cost_ledger_id"             />
+        <result property="reverseStockLedgerId"      column="reverse_stock_ledger_id"    />
+        <result property="reverseCostLedgerId"       column="reverse_cost_ledger_id"     />
+        <result property="countIdempotencyKey"       column="count_idempotency_key"      />
+        <result property="version"                   column="version"                    />
+    </resultMap>
+
+    <resultMap type="FinStocktakeHistory" id="FinStocktakeHistoryResult">
+        <id     property="historyId"     column="history_id"     />
+        <result property="stocktakeId"   column="stocktake_id"   />
+        <result property="tenantId"      column="tenant_id"      />
+        <result property="action"        column="action"         />
+        <result property="fromStatus"    column="from_status"    />
+        <result property="toStatus"      column="to_status"      />
+        <result property="operator"      column="operator"       />
+        <result property="comment"       column="comment"        />
+        <result property="createTime"    column="create_time"    />
+    </resultMap>
+
+    <!-- ===== 头表 ===== -->
+
+    <insert id="insertStocktake" parameterType="FinStocktake" useGeneratedKeys="true" keyProperty="stocktakeId">
+        insert into finance_stocktake
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            tenant_id,
+            take_no,
+            dept_id,
+            scope_type,
+            status,
+            freeze_time,
+            counter_user_id,
+            <if test="recountUserId != null">recount_user_id,</if>
+            version,
+            <if test="remark != null">remark,</if>
+            create_by,
+            create_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            #{tenantId},
+            #{takeNo},
+            #{deptId},
+            #{scopeType},
+            #{status},
+            #{freezeTime},
+            #{counterUserId},
+            <if test="recountUserId != null">#{recountUserId},</if>
+            #{version},
+            <if test="remark != null">#{remark},</if>
+            #{createBy},
+            sysdate(),
+        </trim>
+    </insert>
+
+    <select id="selectStocktakeById" resultMap="FinStocktakeResult">
+        select * from finance_stocktake
+        where tenant_id = #{tenantId}
+          and stocktake_id = #{stocktakeId}
+    </select>
+
+    <select id="selectStocktakeForUpdate" resultMap="FinStocktakeResult">
+        select * from finance_stocktake
+        where tenant_id = #{tenantId}
+          and stocktake_id = #{stocktakeId}
+        for update
+    </select>
+
+    <select id="listStocktakes" resultMap="FinStocktakeResult">
+        select * from finance_stocktake
+        where tenant_id = #{tenantId}
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in
+            <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">
+                #{deptId}
+            </foreach>
+        </if>
+        <if test="status != null and status != ''">
+            and status = #{status}
+        </if>
+        <if test="counterUserId != null">
+            and counter_user_id = #{counterUserId}
+        </if>
+        order by create_time desc
+    </select>
+
+    <select id="countByTakeNo" resultType="int">
+        select count(*) from finance_stocktake
+        where tenant_id = #{tenantId}
+          and take_no = #{takeNo}
+    </select>
+
+    <update id="updateStocktakeStatus">
+        update finance_stocktake
+        set status = #{toStatus},
+            version = version + 1,
+            <if test="submittedBy != null">submitted_by = #{submittedBy}, submitted_time = sysdate(),</if>
+            <if test="approvedBy != null">approved_by = #{approvedBy}, approved_time = sysdate(),</if>
+            <if test="postedBy != null">posted_by = #{postedBy}, posted_time = sysdate(),</if>
+            <if test="reversedBy != null">reversed_by = #{reversedBy}, reversed_time = sysdate(),</if>
+            <if test="reversalReason != null">reversal_reason = #{reversalReason},</if>
+            update_by = #{updateBy},
+            update_time = sysdate()
+        where tenant_id = #{tenantId}
+          and stocktake_id = #{stocktakeId}
+          and status = #{fromStatus}
+          and version = #{version}
+    </update>
+
+    <!-- ===== 行表 ===== -->
+
+    <insert id="insertStocktakeItem" parameterType="FinStocktakeItem" useGeneratedKeys="true" keyProperty="itemId">
+        insert into finance_stocktake_item
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            stocktake_id,
+            tenant_id,
+            dept_id,
+            product_id,
+            product_name,
+            expected_quantity,
+            movement_quantity_after_freeze,
+            version,
+            create_by,
+            create_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            #{stocktakeId},
+            #{tenantId},
+            #{deptId},
+            #{productId},
+            #{productName},
+            #{expectedQuantity},
+            #{movementQuantityAfterFreeze},
+            #{version},
+            #{createBy},
+            sysdate(),
+        </trim>
+    </insert>
+
+    <select id="selectStocktakeItemById" resultMap="FinStocktakeItemResult">
+        select * from finance_stocktake_item
+        where tenant_id = #{tenantId}
+          and item_id = #{itemId}
+    </select>
+
+    <select id="listStocktakeItems" resultMap="FinStocktakeItemResult">
+        select * from finance_stocktake_item
+        where tenant_id = #{tenantId}
+          and stocktake_id = #{stocktakeId}
+        order by item_id asc
+    </select>
+
+    <select id="selectStocktakeItemsForUpdate" resultMap="FinStocktakeItemResult">
+        select * from finance_stocktake_item
+        where tenant_id = #{tenantId}
+          and stocktake_id = #{stocktakeId}
+        order by dept_id, product_id
+        for update
+    </select>
+
+    <update id="updateStocktakeItemCount">
+        update finance_stocktake_item
+        set actual_quantity = #{actualQuantity},
+            reason_code = #{reasonCode},
+            reason = #{reason},
+            attachments = #{attachments},
+            count_idempotency_key = #{countIdempotencyKey},
+            counted_by = #{countedBy},
+            counted_time = sysdate(),
+            version = version + 1
+        where tenant_id = #{tenantId}
+          and item_id = #{itemId}
+          and version = #{version}
+    </update>
+
+    <update id="updateStocktakeItemRecount">
+        update finance_stocktake_item
+        set recount_quantity = #{recountQuantity},
+            recounted_by = #{recountedBy},
+            recounted_time = sysdate(),
+            version = version + 1
+        where tenant_id = #{tenantId}
+          and item_id = #{itemId}
+          and version = #{version}
+    </update>
+
+    <update id="updateStocktakeItemFinal">
+        update finance_stocktake_item
+        set final_quantity = #{finalQuantity},
+            variance_quantity = #{varianceQuantity},
+            unit_cost = #{unitCost},
+            variance_amount = #{varianceAmount},
+            reason_code = #{reasonCode},
+            reason = #{reason},
+            movement_quantity_after_freeze = #{movementQuantityAfterFreeze},
+            adjusted_expected_quantity = #{adjustedExpectedQuantity},
+            version = version + 1
+        where tenant_id = #{tenantId}
+          and item_id = #{itemId}
+          and version = #{version}
+    </update>
+
+    <update id="updateStocktakeItemPostingRefs">
+        update finance_stocktake_item
+        set stock_ledger_id = #{stockLedgerId},
+            cost_ledger_id = #{costLedgerId},
+            version = version + 1
+        where tenant_id = #{tenantId}
+          and item_id = #{itemId}
+          and version = #{version}
+    </update>
+
+    <update id="updateStocktakeItemReverseRefs">
+        update finance_stocktake_item
+        set reverse_stock_ledger_id = #{reverseStockLedgerId},
+            reverse_cost_ledger_id = #{reverseCostLedgerId},
+            version = version + 1
+        where tenant_id = #{tenantId}
+          and item_id = #{itemId}
+          and version = #{version}
+    </update>
+
+    <select id="countByCountIdempotencyKey" resultType="int">
+        select count(*) from finance_stocktake_item
+        where tenant_id = #{tenantId}
+          and count_idempotency_key = #{countIdempotencyKey}
+    </select>
+
+    <!-- ===== 历史表 ===== -->
+
+    <insert id="insertStocktakeHistory" parameterType="FinStocktakeHistory" useGeneratedKeys="true" keyProperty="historyId">
+        insert into finance_stocktake_history
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            stocktake_id,
+            tenant_id,
+            action,
+            from_status,
+            to_status,
+            operator,
+            <if test="comment != null">comment,</if>
+            create_time,
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            #{stocktakeId},
+            #{tenantId},
+            #{action},
+            #{fromStatus},
+            #{toStatus},
+            #{operator},
+            <if test="comment != null">#{comment},</if>
+            sysdate(),
+        </trim>
+    </insert>
+
+    <select id="listStocktakeHistory" resultMap="FinStocktakeHistoryResult">
+        select * from finance_stocktake_history
+        where tenant_id = #{tenantId}
+          and stocktake_id = #{stocktakeId}
+        order by create_time asc, history_id asc
+    </select>
+
+    <!-- ===== 冻结后 movement 汇总（Task 6 使用） ===== -->
+
+    <select id="sumMovementAfterFreeze" resultType="java.lang.Integer">
+        select coalesce(sum(change_quantity), 0)
+        from fin_stock_ledger
+        where tenant_id = #{tenantId}
+          and dept_id = #{deptId}
+          and product_id = #{productId}
+          and create_time &gt;= #{freezeTime}
+          and del_flag = '0'
+    </select>
+
+</mapper>

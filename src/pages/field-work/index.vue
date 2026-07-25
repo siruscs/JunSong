@@ -79,7 +79,7 @@
 <script>
 import { findProductByCode, findMemberByNo } from '@/api/scan.js'
 import { uploadAttachment } from '@/api/attachment.js'
-import { submitStockTake, generateTakeNo } from '@/api/stockTake.js'
+import { submitStockTake, generateTakeNo } from '@/api/stocktake.js'
 import { saveDraft, loadDraft, clearDraft } from '@/utils/draftStore.js'
 import { refreshAfterTaskAction } from '@/utils/taskCenter.js'
 import { workContext } from '@/utils/workContext.js'

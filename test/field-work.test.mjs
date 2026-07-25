@@ -170,7 +170,7 @@ test('uploadAttachment passes bizNo for idempotent association', () => {
 
 // 8. 库存盘点数量校验
 test('submitStockTake passes actualQuantity and field-work validates non-negative', () => {
-  const api = readSource('src/api/stockTake.js')
+  const api = readSource('src/api/stocktake.js')
   assert.match(api, /export function submitStockTake/)
   assert.match(api, /url: '\/stockTake'/)
   assert.match(api, /method: 'POST'/)
@@ -190,7 +190,7 @@ test('reason is required when actual differs from expected on both client and ba
   assert.match(page, /actual !== expected && !this\.takeForm\.reason/)
   assert.match(page, /盘盈盘亏必须填写原因/)
   // API 传递 reason
-  const api = readSource('src/api/stockTake.js')
+  const api = readSource('src/api/stocktake.js')
   assert.match(api, /reason: params\.reason/)
   // 后端 VO 有 reason 字段
   const vo = readBackend('domain/vo/StockTakeRequest.java')
@@ -407,7 +407,7 @@ test('refreshAfterTaskAction invokes all refresh callbacks', async () => {
 // 18. 重复提交不会重复写入
 test('idempotency: takeNo uniqueness enforced by backend and preserved by client on retry', () => {
   // 客户端：生成唯一 takeNo
-  const api = readSource('src/api/stockTake.js')
+  const api = readSource('src/api/stocktake.js')
   assert.match(api, /export function generateTakeNo/)
   assert.match(api, /TK-/)
   // submitStockTake 使用 params.takeNo || generateTakeNo()

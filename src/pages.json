@@ -123,6 +123,14 @@
     {
       "path": "pages/field-work/index",
       "style": { "navigationBarTitleText": "现场作业" }
+    },
+    {
+      "path": "pages/stocktake/index",
+      "style": { "navigationBarTitleText": "库存盘点" }
+    },
+    {
+      "path": "pages/stocktake/detail",
+      "style": { "navigationBarTitleText": "盘点详情" }
     }
   ],
   "tabBar": {

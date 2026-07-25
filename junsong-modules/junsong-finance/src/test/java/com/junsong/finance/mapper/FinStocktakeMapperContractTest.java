@@ -206,6 +206,31 @@ class FinStocktakeMapperContractTest {
                 "countByCountIdempotencyKey 必须过滤 count_idempotency_key");
     }
 
+    // ===== 分配盘点人契约（Task 3） =====
+
+    @Test
+    void assignCounter_filtersByTenant() throws Exception {
+        String body = statementBody(loadMapperXml(), "assignCounter");
+        assertTrue(body.replaceAll("\\s+", " ").contains("tenant_id = #{tenantId}"),
+                "assignCounter 必须包含 tenant_id = #{tenantId}");
+    }
+
+    @Test
+    void assignCounter_usesOptimisticVersion() throws Exception {
+        String body = statementBody(loadMapperXml(), "assignCounter");
+        assertTrue(body.replaceAll("\\s+", " ").contains("version = #{version}"),
+                "assignCounter 必须包含 version = #{version} 乐观锁谓词");
+        assertTrue(body.contains("version + 1") || body.contains("version+1"),
+                "assignCounter 必须递增 version");
+    }
+
+    @Test
+    void assignCounter_onlyInDraftStatus() throws Exception {
+        String body = statementBody(loadMapperXml(), "assignCounter");
+        assertTrue(body.replaceAll("\\s+", " ").toLowerCase().contains("status = 'draft'"),
+                "assignCounter 必须限定 status = 'DRAFT'（仅草稿状态可分配盘点人）");
+    }
+
     // ===== 冻结后 movement 汇总契约（Task 6 预留） =====
 
     @Test

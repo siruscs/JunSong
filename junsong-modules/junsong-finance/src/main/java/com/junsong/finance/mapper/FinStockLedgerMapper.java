@@ -35,6 +35,19 @@ public interface FinStockLedgerMapper {
     Integer selectPositionQuantityForUpdate(@Param("tenantId") Long tenantId, @Param("deptId") Long deptId, @Param("productId") Long productId);
 
     /**
+     * 无锁查询当前库存数量（盘点冻结期望数量时使用，不持有行锁）。
+     *
+     * 用于盘点单创建时读取期望数量 —— 盘点单从创建到过账可能跨越数小时或数天，
+     * 不应长时间持有 position 行锁。过账阶段（Task 6）才使用
+     * selectPositionQuantityForUpdate 锁定行。
+     *
+     * @param deptId 门店ID
+     * @param productId 商品ID
+     * @return 当前库存，行不存在时返回 null（视为 0）
+     */
+    Integer selectPositionQuantity(@Param("tenantId") Long tenantId, @Param("deptId") Long deptId, @Param("productId") Long productId);
+
+    /**
      * 更新当前库存数量。
      *
      * @param deptId 门店ID

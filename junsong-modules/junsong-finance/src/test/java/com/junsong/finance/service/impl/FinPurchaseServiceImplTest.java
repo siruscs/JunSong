@@ -290,6 +290,11 @@ class FinPurchaseServiceImplTest {
         }
 
         @Override
+        public Integer selectPositionQuantity(Long tenantId, Long deptId, Long productId) {
+            return positions.get(tenantId + ":" + deptId + ":" + productId);
+        }
+
+        @Override
         public int updatePositionQuantity(Long tenantId, Long deptId, Long productId, Integer quantity) {
             positions.put(tenantId + ":" + deptId + ":" + productId, quantity);
             return 1;

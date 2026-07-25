@@ -50,6 +50,24 @@ public interface FinStocktakeMapper {
                                @Param("reversedBy") String reversedBy,
                                @Param("reversalReason") String reversalReason);
 
+    /**
+     * 分配盘点人和复盘人（仅 DRAFT 状态允许，带乐观锁谓词）。
+     *
+     * @param tenantId 租户ID
+     * @param stocktakeId 盘点任务ID
+     * @param counterUserId 盘点人用户ID
+     * @param recountUserId 复盘人用户ID（可空）
+     * @param version 当前版本号
+     * @param updateBy 操作人
+     * @return 影响行数（0 表示状态/版本不匹配）
+     */
+    int assignCounter(@Param("tenantId") Long tenantId,
+                       @Param("stocktakeId") Long stocktakeId,
+                       @Param("counterUserId") Long counterUserId,
+                       @Param("recountUserId") Long recountUserId,
+                       @Param("version") Integer version,
+                       @Param("updateBy") String updateBy);
+
     // ===== 行表 =====
 
     int insertStocktakeItem(FinStocktakeItem item);

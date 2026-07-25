@@ -251,6 +251,11 @@ class FinStockLedgerServiceImplTest {
         }
 
         @Override
+        public Integer selectPositionQuantity(Long tenantId, Long deptId, Long productId) {
+            return positions.get(key(tenantId, deptId, productId));
+        }
+
+        @Override
         public int updatePositionQuantity(Long tenantId, Long deptId, Long productId, Integer quantity) {
             positions.put(key(tenantId, deptId, productId), quantity);
             return 1;

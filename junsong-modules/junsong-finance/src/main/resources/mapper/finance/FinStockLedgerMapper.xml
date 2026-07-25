@@ -35,6 +35,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         for update
     </select>
 
+    <!-- 无锁查询当前库存（盘点冻结期望数量用，不持锁；过账阶段才用 selectPositionQuantityForUpdate） -->
+    <select id="selectPositionQuantity" resultType="java.lang.Integer">
+        select quantity from fin_stock_position
+        where tenant_id = #{tenantId} and dept_id = #{deptId} and product_id = #{productId}
+    </select>
+
     <update id="updatePositionQuantity">
         update fin_stock_position
         set quantity = #{quantity}

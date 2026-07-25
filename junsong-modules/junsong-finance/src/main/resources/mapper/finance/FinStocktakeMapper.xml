@@ -162,6 +162,23 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
           and version = #{version}
     </update>
 
+    <!-- 分配盘点人和复盘人：仅 DRAFT 状态允许，带乐观锁谓词 -->
+    <update id="assignCounter">
+        update finance_stocktake
+        set counter_user_id = #{counterUserId},
+            <choose>
+                <when test="recountUserId != null">recount_user_id = #{recountUserId},</when>
+                <otherwise>recount_user_id = null,</otherwise>
+            </choose>
+            version = version + 1,
+            update_by = #{updateBy},
+            update_time = sysdate()
+        where tenant_id = #{tenantId}
+          and stocktake_id = #{stocktakeId}
+          and status = 'DRAFT'
+          and version = #{version}
+    </update>
+
     <!-- ===== 行表 ===== -->
 
     <insert id="insertStocktakeItem" parameterType="FinStocktakeItem" useGeneratedKeys="true" keyProperty="itemId">

@@ -51,6 +51,20 @@ class FinStockLedgerMapperContractTest {
     }
 
     @Test
+    void selectPositionQuantity_filtersByTenant() throws Exception {
+        String body = statementBody(loadMapperXml(), "selectPositionQuantity");
+        assertTrue(body.replaceAll("\\s+", " ").contains("tenant_id = #{tenantId}"),
+                "selectPositionQuantity 必须包含 tenant_id = #{tenantId}");
+    }
+
+    @Test
+    void selectPositionQuantity_doesNotLockRow() throws Exception {
+        String body = statementBody(loadMapperXml(), "selectPositionQuantity");
+        assertFalse(body.toUpperCase().contains("FOR UPDATE"),
+                "selectPositionQuantity 不得包含 FOR UPDATE（盘点冻结期望数量不应长时间持锁）");
+    }
+
+    @Test
     void updatePositionQuantity_filtersByTenant() throws Exception {
         String body = statementBody(loadMapperXml(), "updatePositionQuantity");
         assertTrue(body.replaceAll("\\s+", " ").contains("tenant_id = #{tenantId}"),

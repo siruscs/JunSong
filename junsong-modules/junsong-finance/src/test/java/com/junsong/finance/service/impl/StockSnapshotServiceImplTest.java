@@ -161,6 +161,7 @@ class StockSnapshotServiceImplTest {
 
         @Override public int insertPositionIfAbsent(Long a,Long b,Long c){return 0;}
         @Override public Integer selectPositionQuantityForUpdate(Long a,Long b,Long c){positionRead=true;return currentPosition;}
+        @Override public Integer selectPositionQuantity(Long a,Long b,Long c){return currentPosition;}
         @Override public int updatePositionQuantity(Long a,Long b,Long c,Integer d){return 0;}
         @Override public Integer sumRecordedNet(Long a,String b,Long c,Long d){return 0;}
         @Override public List<Long> selectRecordedProductIds(Long a,String b,Long c){return List.of();}

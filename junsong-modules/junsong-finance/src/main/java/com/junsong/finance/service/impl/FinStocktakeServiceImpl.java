@@ -25,6 +25,7 @@ import com.junsong.finance.domain.vo.StocktakeCreateRequest;
 import com.junsong.finance.domain.vo.StocktakeDetailVO;
 import com.junsong.finance.domain.vo.StocktakeQuery;
 import com.junsong.finance.domain.vo.StocktakeRecountRequest;
+import com.junsong.finance.domain.vo.StocktakeReverseRequest;
 import com.junsong.finance.mapper.FinProductMapper;
 import com.junsong.finance.mapper.FinStockLedgerMapper;
 import com.junsong.finance.mapper.FinStocktakeMapper;
@@ -57,9 +58,13 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
     private static final String STATUS_RECOUNTING = "RECOUNTING";
     private static final String STATUS_APPROVED = "APPROVED";
     private static final String STATUS_POSTED = "POSTED";
+    private static final String STATUS_CANCELLED = "CANCELLED";
+    private static final String STATUS_REVERSED = "REVERSED";
     private static final String STOCK_TAKE_GAIN = "STOCK_TAKE_GAIN";
     private static final String STOCK_TAKE_LOSS = "STOCK_TAKE_LOSS";
+    private static final String STOCK_TAKE_REVERSE = "STOCK_TAKE_REVERSE";
     private static final String REF_STOCKTAKE = "STOCKTAKE";
+    private static final String REF_STOCKTAKE_REVERSE = "STOCKTAKE_REVERSE";
     private static final String PERIOD_ACTIVE = "0";
 
     /** 复盘阈值：当任一行 |variance| 超过此值且已分配复盘人时，流转至 RECOUNTING */
@@ -872,6 +877,220 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
         history.setToStatus(STATUS_POSTED);
         history.setOperator(operator);
         history.setComment("过账完成，数量与成本原子更新");
+        finStocktakeMapper.insertStocktakeHistory(history);
+
+        return affected;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int cancelStocktake(Long stocktakeId, Integer version) {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null) {
+            throw new ServiceException("租户上下文缺失，禁止取消盘点任务");
+        }
+        if (version == null) {
+            throw new ServiceException("版本号不能为空");
+        }
+
+        FinStocktake header = finStocktakeMapper.selectStocktakeForUpdate(tenantId, stocktakeId);
+        if (header == null) {
+            throw new ServiceException("盘点任务不存在或无权访问");
+        }
+        assertDeptAuthorized(tenantId, header.getDeptId());
+
+        // 已 POSTED / CANCELLED / REVERSED 的任务禁止取消
+        String status = header.getStatus();
+        if (STATUS_POSTED.equals(status) || STATUS_CANCELLED.equals(status) || STATUS_REVERSED.equals(status)) {
+            throw new ServiceException("仅过账前的盘点任务可取消，当前状态: " + status);
+        }
+        if (!version.equals(header.getVersion())) {
+            throw new ServiceException("版本号不匹配，请刷新后重试");
+        }
+
+        // 流转到 CANCELLED（不写库存/成本，因为尚未过账）
+        int affected = finStocktakeMapper.updateStocktakeStatus(
+                tenantId, stocktakeId, status, STATUS_CANCELLED, version,
+                SecurityUtils.getUsername(), null, null, null, null, null);
+        if (affected != 1) {
+            throw new ServiceException("取消盘点任务失败，可能已被其他操作更新");
+        }
+
+        FinStocktakeHistory history = new FinStocktakeHistory();
+        history.setTenantId(tenantId);
+        history.setStocktakeId(stocktakeId);
+        history.setAction("CANCEL");
+        history.setFromStatus(status);
+        history.setToStatus(STATUS_CANCELLED);
+        history.setOperator(SecurityUtils.getUsername());
+        history.setComment("取消盘点任务（过账前软删除）");
+        finStocktakeMapper.insertStocktakeHistory(history);
+
+        return affected;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int reverseStocktake(Long stocktakeId, StocktakeReverseRequest request) {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null) {
+            throw new ServiceException("租户上下文缺失，禁止冲销盘点任务");
+        }
+        if (request == null) {
+            throw new ServiceException("冲销请求不能为空");
+        }
+        if (request.getReason() == null || request.getReason().isEmpty()) {
+            throw new ServiceException("冲销理由不能为空");
+        }
+        if (request.getIdempotencyKey() == null || request.getIdempotencyKey().isEmpty()) {
+            throw new ServiceException("冲销幂等键不能为空");
+        }
+        if (request.getVersion() == null) {
+            throw new ServiceException("版本号不能为空");
+        }
+
+        FinStocktake header = finStocktakeMapper.selectStocktakeForUpdate(tenantId, stocktakeId);
+        if (header == null) {
+            throw new ServiceException("盘点任务不存在或无权访问");
+        }
+        assertDeptAuthorized(tenantId, header.getDeptId());
+
+        // 仅 POSTED 状态可冲销；已 REVERSED 拒绝二次冲销
+        if (!STATUS_POSTED.equals(header.getStatus())) {
+            throw new ServiceException("仅已过账状态可冲销，当前状态: " + header.getStatus()
+                    + (STATUS_REVERSED.equals(header.getStatus()) ? "（已冲销，拒绝二次冲销）" : ""));
+        }
+        if (!request.getVersion().equals(header.getVersion())) {
+            throw new ServiceException("版本号不匹配，请刷新后重试");
+        }
+
+        // 会计期间必须为 ACTIVE
+        com.junsong.finance.domain.FinAccountingPeriod period =
+                accountingPeriodMapper.selectCurrentPeriodByDeptId(header.getDeptId());
+        if (period == null || !PERIOD_ACTIVE.equals(period.getStatus())) {
+            throw new ServiceException("门店 " + header.getDeptId() + " 会计期间已结转或不存在，禁止冲销");
+        }
+
+        // 锁定行表并按 (deptId, productId) 排序（避免死锁）
+        List<FinStocktakeItem> items = finStocktakeMapper.selectStocktakeItemsForUpdate(tenantId, stocktakeId);
+        if (items == null || items.isEmpty()) {
+            throw new ServiceException("盘点任务无明细行，禁止冲销");
+        }
+        List<FinStocktakeItem> sortedItems = new ArrayList<>(items);
+        sortedItems.sort((a, b) -> {
+            int byDept = a.getDeptId().compareTo(b.getDeptId());
+            return byDept != 0 ? byDept : a.getProductId().compareTo(b.getProductId());
+        });
+
+        String operator = SecurityUtils.getUsername();
+        String reverseRefNo = header.getTakeNo() + ":REVERSE";
+
+        for (FinStocktakeItem item : sortedItems) {
+            // 仅过账时写了流水的行需要冲销（stockLedgerId 非空表示有差异已过账）
+            if (item.getStockLedgerId() == null) {
+                continue;
+            }
+            if (item.getReverseStockLedgerId() != null) {
+                // 已冲销的行跳过（幂等保护，正常不应走到这里因为头表状态校验）
+                continue;
+            }
+
+            Integer varianceBox = item.getVarianceQuantity();
+            int originalVariance = varianceBox == null ? 0 : varianceBox;
+            if (originalVariance == 0) {
+                continue;
+            }
+
+            int absVariance = Math.abs(originalVariance);
+
+            // 获取原固化单位成本：优先行表，为 null 时通过成本服务查询
+            java.math.BigDecimal unitCost = item.getUnitCost();
+            if (unitCost == null && item.getCostLedgerId() != null) {
+                unitCost = stockCostService.getCostLedgerUnitCost(tenantId, item.getCostLedgerId());
+            }
+            if (unitCost == null || unitCost.signum() <= 0) {
+                throw new ServiceException("冲销行缺少原固化成本（商品 " + item.getProductId()
+                        + "，costLedgerId=" + item.getCostLedgerId() + "），拒绝冲销");
+            }
+
+            // 锁定 position 行
+            finStockLedgerMapper.insertPositionIfAbsent(tenantId, item.getDeptId(), item.getProductId());
+            Integer currentQtyBox = finStockLedgerMapper.selectPositionQuantityForUpdate(
+                    tenantId, item.getDeptId(), item.getProductId());
+            int currentQty = currentQtyBox == null ? 0 : currentQtyBox;
+
+            // 反向变动：原盘亏(负) → 冲销为正；原盘盈(正) → 冲销为负
+            int reverseChange = -originalVariance;
+            int afterQty = currentQty + reverseChange;
+            if (afterQty < 0) {
+                throw new ServiceException("冲销后库存为负（商品 " + item.getProductId()
+                        + " 当前 " + currentQty + "，冲销 " + Math.abs(reverseChange) + "），拒绝冲销");
+            }
+
+            // 写反向库存流水
+            FinStockLedger reverseLedger = new FinStockLedger();
+            reverseLedger.setTenantId(tenantId);
+            reverseLedger.setDeptId(item.getDeptId());
+            reverseLedger.setProductId(item.getProductId());
+            reverseLedger.setProductName(item.getProductName());
+            reverseLedger.setChangeType(STOCK_TAKE_REVERSE);
+            reverseLedger.setChangeQuantity(reverseChange);
+            reverseLedger.setBeforeQuantity(currentQty);
+            reverseLedger.setAfterQuantity(afterQty);
+            reverseLedger.setReferenceType(REF_STOCKTAKE_REVERSE);
+            reverseLedger.setReferenceNo(reverseRefNo);
+            reverseLedger.setDelFlag("0");
+            reverseLedger.setCreateBy(operator);
+            reverseLedger.setRemark("冲销: " + request.getReason());
+            finStockLedgerMapper.insertFinStockLedger(reverseLedger);
+            Long reverseStockLedgerId = reverseLedger.getLedgerId();
+            if (reverseStockLedgerId == null) {
+                throw new ServiceException("冲销库存流水ID未生成，冲销失败");
+            }
+
+            // 更新结存
+            int positionAffected = finStockLedgerMapper.updatePositionQuantity(
+                    tenantId, item.getDeptId(), item.getProductId(), afterQty);
+            if (positionAffected != 1) {
+                throw new ServiceException("冲销库存结存更新影响行数异常（" + positionAffected + "），事务回滚");
+            }
+
+            // 成本冲销：复用原 unitCost，关联原 costLedgerId
+            Long reverseCostLedgerId = stockCostService.reverseStocktakeAdjustment(
+                    tenantId, item.getDeptId(), item.getProductId(),
+                    absVariance, unitCost,
+                    reverseStockLedgerId, item.getCostLedgerId(),
+                    operator);
+            if (reverseCostLedgerId == null) {
+                throw new ServiceException("冲销成本流水ID未生成，冲销失败");
+            }
+
+            // 更新行表冲销引用
+            int refAffected = finStocktakeMapper.updateStocktakeItemReverseRefs(
+                    tenantId, item.getItemId(),
+                    reverseStockLedgerId, reverseCostLedgerId,
+                    item.getVersion());
+            if (refAffected != 1) {
+                throw new ServiceException("更新盘点行冲销引用失败（行版本冲突）");
+            }
+        }
+
+        // 状态流转 POSTED → REVERSED
+        int affected = finStocktakeMapper.updateStocktakeStatus(
+                tenantId, stocktakeId, STATUS_POSTED, STATUS_REVERSED, request.getVersion(),
+                operator, null, null, null, operator, request.getReason());
+        if (affected != 1) {
+            throw new ServiceException("冲销盘点任务失败，可能已被其他操作更新");
+        }
+
+        FinStocktakeHistory history = new FinStocktakeHistory();
+        history.setTenantId(tenantId);
+        history.setStocktakeId(stocktakeId);
+        history.setAction("REVERSE");
+        history.setFromStatus(STATUS_POSTED);
+        history.setToStatus(STATUS_REVERSED);
+        history.setOperator(operator);
+        history.setComment("整单冲销: " + request.getReason());
         finStocktakeMapper.insertStocktakeHistory(history);
 
         return affected;

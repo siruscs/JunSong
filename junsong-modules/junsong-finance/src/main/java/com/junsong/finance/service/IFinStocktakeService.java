@@ -9,6 +9,7 @@ import com.junsong.finance.domain.vo.StocktakeCreateRequest;
 import com.junsong.finance.domain.vo.StocktakeDetailVO;
 import com.junsong.finance.domain.vo.StocktakeQuery;
 import com.junsong.finance.domain.vo.StocktakeRecountRequest;
+import com.junsong.finance.domain.vo.StocktakeReverseRequest;
 
 /**
  * 库存盘点 Service 接口。
@@ -165,4 +166,37 @@ public interface IFinStocktakeService {
      * @return 影响行数
      */
     int postStocktake(Long stocktakeId, Integer version);
+
+    /**
+     * 取消盘点任务（POSTED 之前的状态 → CANCELLED）。
+     *
+     * 安全契约：
+     * 1. 仅 DRAFT/COUNTING/SUBMITTED/RECOUNTING/APPROVED 状态可取消
+     * 2. 已 POSTED / CANCELLED / REVERSED 的任务禁止取消
+     * 3. 取消是软删除，不写库存/成本（因为尚未过账）
+     * 4. 记录历史（CANCEL action）
+     *
+     * @param stocktakeId 盘点任务ID
+     * @param version 头表版本号（乐观锁）
+     * @return 影响行数
+     */
+    int cancelStocktake(Long stocktakeId, Integer version);
+
+    /**
+     * 整单冲销盘点任务（POSTED → REVERSED）。
+     *
+     * 安全契约：
+     * 1. 仅 POSTED 状态可冲销；已 REVERSED 拒绝二次冲销
+     * 2. 会计期间必须为 ACTIVE（0）
+     * 3. 必须提供 reason 和 idempotencyKey
+     * 4. 整单冲销：写入相反的数量与成本流水，不删除原始证据
+     * 5. 按 (deptId, productId) 排序锁定行，避免死锁
+     * 6. 原始成本复用：从原过账成本流水读取 unitCost
+     * 7. 任一步失败全量回滚（事务原子性）
+     *
+     * @param stocktakeId 盘点任务ID
+     * @param request 冲销请求（含 reason/idempotencyKey/version）
+     * @return 影响行数
+     */
+    int reverseStocktake(Long stocktakeId, StocktakeReverseRequest request);
 }

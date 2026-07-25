@@ -488,5 +488,10 @@ class StockValueReportServiceTest {
         public Long reverseStocktakeAdjustment(Long tenantId, Long deptId, Long productId, int quantity, BigDecimal unitCost, Long sourceLedgerId, Long originalCostLedgerId, String operator) {
             return 1L;
         }
+
+        @Override
+        public BigDecimal getCostLedgerUnitCost(Long tenantId, Long costLedgerId) {
+            return null;
+        }
     }
 }

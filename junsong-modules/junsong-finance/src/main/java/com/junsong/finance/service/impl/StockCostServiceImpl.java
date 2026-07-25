@@ -347,6 +347,27 @@ public class StockCostServiceImpl implements IStockCostService {
                                changeType, signedQty, originalCost, reverseAmount, operator);
     }
 
+    @Override
+    public BigDecimal getCostLedgerUnitCost(Long tenantId, Long costLedgerId) {
+        if (tenantId == null || costLedgerId == null) {
+            return null;
+        }
+        FinStockCostLedger ledger = costLayerMapper.selectCostLedgerById(costLedgerId);
+        if (ledger == null) {
+            return null;
+        }
+        // 租户隔离校验：防止跨租户读取成本流水
+        if (!tenantId.equals(ledger.getTenantId())) {
+            return null;
+        }
+        // 类型校验：仅盘点调整流水可被冲销引用
+        String type = ledger.getCostChangeType();
+        if (!STOCKTAKE_LOSS_OUT.equals(type) && !STOCKTAKE_GAIN_IN.equals(type)) {
+            return null;
+        }
+        return ledger.getUnitCost();
+    }
+
     private BigDecimal computeAvg(BigDecimal amount, int qty) {
         if (qty == 0) {
             return BigDecimal.ZERO.setScale(UNIT_COST_SCALE, ROUNDING);

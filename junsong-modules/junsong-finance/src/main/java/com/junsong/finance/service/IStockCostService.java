@@ -130,4 +130,21 @@ public interface IStockCostService {
                                     int quantity, BigDecimal unitCost,
                                     Long sourceLedgerId, Long originalCostLedgerId,
                                     String operator);
+
+    /**
+     * 查询原过账成本流水的固化单位成本（Task 7 冲销前置依赖）。
+     *
+     * 用途：盘点整单冲销时，行表的 unitCost 字段可能在 Task 6 过账时未固化（为 null）。
+     * 此方法通过 costLedgerId 查询原成本流水，返回其 unitCost，确保冲销金额与原过账一致。
+     *
+     * 安全契约：
+     * - 校验 costLedgerId 归属当前租户（防止跨租户读取）
+     * - 校验 costLedger 类型为盘点调整（STOCKTAKE_LOSS_OUT / STOCKTAKE_GAIN_IN）
+     * - 不存在或不匹配时返回 null（调用方必须 fail-closed）
+     *
+     * @param tenantId 租户ID
+     * @param costLedgerId 原过账成本流水ID
+     * @return 原固化单位成本（6位小数）；不存在或不匹配返回 null
+     */
+    BigDecimal getCostLedgerUnitCost(Long tenantId, Long costLedgerId);
 }

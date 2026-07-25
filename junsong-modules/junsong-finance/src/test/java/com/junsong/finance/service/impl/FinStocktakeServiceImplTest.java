@@ -16,6 +16,7 @@ import com.junsong.finance.domain.vo.StocktakeCreateRequest;
 import com.junsong.finance.domain.vo.StocktakeDetailVO;
 import com.junsong.finance.domain.vo.StocktakeQuery;
 import com.junsong.finance.domain.vo.StocktakeRecountRequest;
+import com.junsong.finance.domain.vo.StocktakeReverseRequest;
 import com.junsong.finance.mapper.FinAccountingPeriodMapper;
 import com.junsong.finance.mapper.FinProductMapper;
 import com.junsong.finance.mapper.FinStockLedgerMapper;
@@ -1253,6 +1254,464 @@ class FinStocktakeServiceImplTest {
         assertTrue(hasPost, "过账应写入 POST 历史");
     }
 
+    // ===== Task 7: 取消 =====
+
+    @Test
+    void cancel_draft_success() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-C1", "DRAFT");
+        stocktakeMapper.headers.add(h);
+
+        int affected = service.cancelStocktake(1L, 0);
+
+        assertEquals(1, affected);
+        assertEquals("CANCELLED", h.getStatus());
+    }
+
+    @Test
+    void cancel_counting_success() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-C2", "COUNTING");
+        stocktakeMapper.headers.add(h);
+
+        int affected = service.cancelStocktake(1L, 0);
+
+        assertEquals(1, affected);
+        assertEquals("CANCELLED", h.getStatus());
+    }
+
+    @Test
+    void cancel_posted_throws() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-C3", "POSTED");
+        stocktakeMapper.headers.add(h);
+
+        ServiceException ex = assertThrows(ServiceException.class,
+                () -> service.cancelStocktake(1L, 0));
+        assertTrue(ex.getMessage().contains("仅过账前"));
+    }
+
+    @Test
+    void cancel_cancelled_throws() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-C4", "CANCELLED");
+        stocktakeMapper.headers.add(h);
+
+        assertThrows(ServiceException.class, () -> service.cancelStocktake(1L, 0));
+    }
+
+    @Test
+    void cancel_reversed_throws() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-C5", "REVERSED");
+        stocktakeMapper.headers.add(h);
+
+        assertThrows(ServiceException.class, () -> service.cancelStocktake(1L, 0));
+    }
+
+    @Test
+    void cancel_versionMismatch_throws() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-C6", "DRAFT");
+        stocktakeMapper.headers.add(h);
+
+        assertThrows(ServiceException.class, () -> service.cancelStocktake(1L, 99));
+    }
+
+    @Test
+    void cancel_tenantMissing_throws() {
+        // TenantContext.getTenantId() 在 ThreadLocal 为空时返回 DEFAULT_TENANT_ID=1L 而非 null，
+        // 因此 null 租户路径无法通过公共 API 触发，租户隔离由 Mapper SQL 的 tenant_id 过滤保证。
+        // 改为验证跨租户隔离：T1 的任务在 T2 上下文中不可取消。
+        TenantContext.setTenantId(2L);
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-C7", "DRAFT");
+        stocktakeMapper.headers.add(h);
+
+        assertThrows(ServiceException.class, () -> service.cancelStocktake(1L, 0));
+        TenantContext.setTenantId(T1);
+    }
+
+    @Test
+    void cancel_historyRecorded() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-C8", "DRAFT");
+        stocktakeMapper.headers.add(h);
+
+        service.cancelStocktake(1L, 0);
+
+        boolean hasCancel = stocktakeMapper.insertedHistories.stream()
+                .anyMatch(h2 -> "CANCEL".equals(h2.getAction()) && "CANCELLED".equals(h2.getToStatus()));
+        assertTrue(hasCancel, "取消应写入 CANCEL 历史");
+    }
+
+    // ===== Task 7: 整单冲销 =====
+
+    @Test
+    void reverse_postedLoss_success_restoresStockAndCost() {
+        // 准备一个已过账的盘亏任务
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-R1", "POSTED");
+        h.setFreezeTime(new Date());
+        stocktakeMapper.headers.add(h);
+
+        // 期望 10，实际 7（盘亏 3），过账后库存 7
+        FinStocktakeItem item = buildItem(T1, 1L, DEPT_10, PRODUCT_100, 10);
+        item.setFinalQuantity(7);
+        item.setVarianceQuantity(-3);
+        item.setUnitCost(new BigDecimal("10.000000"));
+        item.setStockLedgerId(9001L);
+        item.setCostLedgerId(7001L);
+        stocktakeMapper.insertedItems.add(item);
+        stocktakeMapper.itemsByStocktake.computeIfAbsent(1L, k -> new ArrayList<>()).add(item);
+
+        // 当前库存 7（盘亏后）
+        ledgerMapper.positions.put(T1 + ":" + DEPT_10 + ":" + PRODUCT_100, 7);
+
+        StocktakeReverseRequest req = new StocktakeReverseRequest();
+        req.setReason("录入错误，需冲销");
+        req.setIdempotencyKey("PD-R1-REVERSE-1");
+        req.setVersion(0);
+
+        int affected = service.reverseStocktake(1L, req);
+
+        assertEquals(1, affected);
+        assertEquals("REVERSED", h.getStatus());
+        // 库存恢复：7 → 10
+        assertEquals(10, ledgerMapper.positions.get(T1 + ":" + DEPT_10 + ":" + PRODUCT_100).intValue());
+        // 写入一笔冲销库存流水
+        assertEquals(1, ledgerMapper.insertedLedgers.size());
+        FinStockLedger reverseLedger = ledgerMapper.insertedLedgers.get(0);
+        assertEquals("STOCK_TAKE_REVERSE", reverseLedger.getChangeType());
+        assertEquals(3, reverseLedger.getChangeQuantity().intValue(), "盘亏冲销应为正数恢复");
+        assertEquals(10, reverseLedger.getAfterQuantity().intValue());
+        assertEquals("PD-R1:REVERSE", reverseLedger.getReferenceNo());
+        // 成本冲销被调用
+        assertEquals(1, stockCostService.reverseCalls.size());
+        assertTrue(stockCostService.reverseCalls.get(0).contains("qty=3"));
+        // 行表冲销引用被设置
+        assertNotNull(item.getReverseStockLedgerId());
+        assertNotNull(item.getReverseCostLedgerId());
+    }
+
+    @Test
+    void reverse_postedGain_success_reducesStockAndCost() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-R2", "POSTED");
+        h.setFreezeTime(new Date());
+        stocktakeMapper.headers.add(h);
+
+        // 期望 5，实际 8（盘盈 3），过账后库存 8
+        FinStocktakeItem item = buildItem(T1, 1L, DEPT_10, PRODUCT_100, 5);
+        item.setFinalQuantity(8);
+        item.setVarianceQuantity(3);
+        item.setUnitCost(new BigDecimal("10.000000"));
+        item.setStockLedgerId(9002L);
+        item.setCostLedgerId(7002L);
+        stocktakeMapper.insertedItems.add(item);
+        stocktakeMapper.itemsByStocktake.computeIfAbsent(1L, k -> new ArrayList<>()).add(item);
+
+        // 当前库存 8（盘盈后）
+        ledgerMapper.positions.put(T1 + ":" + DEPT_10 + ":" + PRODUCT_100, 8);
+
+        StocktakeReverseRequest req = new StocktakeReverseRequest();
+        req.setReason("盘盈数据错误");
+        req.setIdempotencyKey("PD-R2-REVERSE-1");
+        req.setVersion(0);
+
+        int affected = service.reverseStocktake(1L, req);
+
+        assertEquals(1, affected);
+        assertEquals("REVERSED", h.getStatus());
+        // 库存扣减：8 → 5
+        assertEquals(5, ledgerMapper.positions.get(T1 + ":" + DEPT_10 + ":" + PRODUCT_100).intValue());
+        // 冲销流水为负数
+        assertEquals(-3, ledgerMapper.insertedLedgers.get(0).getChangeQuantity().intValue());
+        // 成本冲销被调用
+        assertEquals(1, stockCostService.reverseCalls.size());
+    }
+
+    @Test
+    void reverse_nonPosted_throws() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-R3", "APPROVED");
+        stocktakeMapper.headers.add(h);
+
+        StocktakeReverseRequest req = new StocktakeReverseRequest();
+        req.setReason("test");
+        req.setIdempotencyKey("PD-R3-REVERSE-1");
+        req.setVersion(0);
+
+        ServiceException ex = assertThrows(ServiceException.class, () -> service.reverseStocktake(1L, req));
+        assertTrue(ex.getMessage().contains("仅已过账状态可冲销"));
+    }
+
+    @Test
+    void reverse_alreadyReversed_throws() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-R4", "REVERSED");
+        stocktakeMapper.headers.add(h);
+
+        StocktakeReverseRequest req = new StocktakeReverseRequest();
+        req.setReason("二次冲销");
+        req.setIdempotencyKey("PD-R4-REVERSE-2");
+        req.setVersion(1);
+
+        ServiceException ex = assertThrows(ServiceException.class, () -> service.reverseStocktake(1L, req));
+        assertTrue(ex.getMessage().contains("已冲销") || ex.getMessage().contains("仅已过账"));
+    }
+
+    @Test
+    void reverse_missingReason_throws() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-R5", "POSTED");
+        stocktakeMapper.headers.add(h);
+
+        StocktakeReverseRequest req = new StocktakeReverseRequest();
+        req.setReason("");
+        req.setIdempotencyKey("PD-R5-REVERSE-1");
+        req.setVersion(0);
+
+        assertThrows(ServiceException.class, () -> service.reverseStocktake(1L, req));
+    }
+
+    @Test
+    void reverse_missingIdempotencyKey_throws() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-R6", "POSTED");
+        stocktakeMapper.headers.add(h);
+
+        StocktakeReverseRequest req = new StocktakeReverseRequest();
+        req.setReason("test");
+        req.setIdempotencyKey("");
+        req.setVersion(0);
+
+        assertThrows(ServiceException.class, () -> service.reverseStocktake(1L, req));
+    }
+
+    @Test
+    void reverse_versionMismatch_throws() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-R7", "POSTED");
+        stocktakeMapper.headers.add(h);
+
+        StocktakeReverseRequest req = new StocktakeReverseRequest();
+        req.setReason("test");
+        req.setIdempotencyKey("PD-R7-REVERSE-1");
+        req.setVersion(99);
+
+        assertThrows(ServiceException.class, () -> service.reverseStocktake(1L, req));
+    }
+
+    @Test
+    void reverse_lockedPeriod_throws() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-R8", "POSTED");
+        stocktakeMapper.headers.add(h);
+
+        // 期间已结转
+        accountingPeriodMapper.currentPeriod.setStatus("2");
+
+        StocktakeReverseRequest req = new StocktakeReverseRequest();
+        req.setReason("test");
+        req.setIdempotencyKey("PD-R8-REVERSE-1");
+        req.setVersion(0);
+
+        try {
+            assertThrows(ServiceException.class, () -> service.reverseStocktake(1L, req));
+        } finally {
+            accountingPeriodMapper.currentPeriod.setStatus("0");
+        }
+    }
+
+    @Test
+    void reverse_negativeStock_throws() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-R9", "POSTED");
+        h.setFreezeTime(new Date());
+        stocktakeMapper.headers.add(h);
+
+        // 原盘盈 3（冲销需扣减 3），但当前库存只有 1（被销售消耗）
+        FinStocktakeItem item = buildItem(T1, 1L, DEPT_10, PRODUCT_100, 5);
+        item.setFinalQuantity(8);
+        item.setVarianceQuantity(3);
+        item.setUnitCost(new BigDecimal("10.000000"));
+        item.setStockLedgerId(9003L);
+        item.setCostLedgerId(7003L);
+        stocktakeMapper.insertedItems.add(item);
+        stocktakeMapper.itemsByStocktake.computeIfAbsent(1L, k -> new ArrayList<>()).add(item);
+
+        // 当前库存 1，冲销需扣 3 → 负库存拒绝
+        ledgerMapper.positions.put(T1 + ":" + DEPT_10 + ":" + PRODUCT_100, 1);
+
+        StocktakeReverseRequest req = new StocktakeReverseRequest();
+        req.setReason("test");
+        req.setIdempotencyKey("PD-R9-REVERSE-1");
+        req.setVersion(0);
+
+        ServiceException ex = assertThrows(ServiceException.class, () -> service.reverseStocktake(1L, req));
+        assertTrue(ex.getMessage().contains("冲销后库存为负"));
+        // 状态未变
+        assertEquals("POSTED", h.getStatus());
+    }
+
+    @Test
+    void reverse_missingUnitCost_throws() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-R10", "POSTED");
+        h.setFreezeTime(new Date());
+        stocktakeMapper.headers.add(h);
+
+        FinStocktakeItem item = buildItem(T1, 1L, DEPT_10, PRODUCT_100, 10);
+        item.setFinalQuantity(7);
+        item.setVarianceQuantity(-3);
+        item.setUnitCost(null); // 行表未固化成本
+        item.setStockLedgerId(9004L);
+        item.setCostLedgerId(7004L);
+        stocktakeMapper.insertedItems.add(item);
+        stocktakeMapper.itemsByStocktake.computeIfAbsent(1L, k -> new ArrayList<>()).add(item);
+
+        ledgerMapper.positions.put(T1 + ":" + DEPT_10 + ":" + PRODUCT_100, 7);
+
+        // 让成本服务返回 null（模拟原成本流水丢失）
+        stockCostService.avgUnitCost = null;
+
+        StocktakeReverseRequest req = new StocktakeReverseRequest();
+        req.setReason("test");
+        req.setIdempotencyKey("PD-R10-REVERSE-1");
+        req.setVersion(0);
+
+        try {
+            ServiceException ex = assertThrows(ServiceException.class, () -> service.reverseStocktake(1L, req));
+            assertTrue(ex.getMessage().contains("缺少原固化成本"));
+        } finally {
+            stockCostService.avgUnitCost = new BigDecimal("10.000000");
+        }
+    }
+
+    @Test
+    void reverse_historyRecorded() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-R11", "POSTED");
+        h.setFreezeTime(new Date());
+        stocktakeMapper.headers.add(h);
+
+        FinStocktakeItem item = buildItem(T1, 1L, DEPT_10, PRODUCT_100, 10);
+        item.setFinalQuantity(7);
+        item.setVarianceQuantity(-3);
+        item.setUnitCost(new BigDecimal("10.000000"));
+        item.setStockLedgerId(9005L);
+        item.setCostLedgerId(7005L);
+        stocktakeMapper.insertedItems.add(item);
+        stocktakeMapper.itemsByStocktake.computeIfAbsent(1L, k -> new ArrayList<>()).add(item);
+
+        ledgerMapper.positions.put(T1 + ":" + DEPT_10 + ":" + PRODUCT_100, 7);
+
+        StocktakeReverseRequest req = new StocktakeReverseRequest();
+        req.setReason("冲销测试");
+        req.setIdempotencyKey("PD-R11-REVERSE-1");
+        req.setVersion(0);
+
+        service.reverseStocktake(1L, req);
+
+        boolean hasReverse = stocktakeMapper.insertedHistories.stream()
+                .anyMatch(h2 -> "REVERSE".equals(h2.getAction()) && "REVERSED".equals(h2.getToStatus()));
+        assertTrue(hasReverse, "冲销应写入 REVERSE 历史");
+        // 冲销理由被记录
+        FinStocktakeHistory revHistory = stocktakeMapper.insertedHistories.stream()
+                .filter(h2 -> "REVERSE".equals(h2.getAction()))
+                .findFirst().orElse(null);
+        assertNotNull(revHistory);
+        assertTrue(revHistory.getComment().contains("冲销测试"));
+    }
+
+    @Test
+    void reverse_originalEvidencePreserved() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-R12", "POSTED");
+        h.setFreezeTime(new Date());
+        stocktakeMapper.headers.add(h);
+
+        FinStocktakeItem item = buildItem(T1, 1L, DEPT_10, PRODUCT_100, 10);
+        item.setFinalQuantity(7);
+        item.setVarianceQuantity(-3);
+        item.setUnitCost(new BigDecimal("10.000000"));
+        item.setStockLedgerId(9006L);
+        item.setCostLedgerId(7006L);
+        stocktakeMapper.insertedItems.add(item);
+        stocktakeMapper.itemsByStocktake.computeIfAbsent(1L, k -> new ArrayList<>()).add(item);
+
+        ledgerMapper.positions.put(T1 + ":" + DEPT_10 + ":" + PRODUCT_100, 7);
+
+        StocktakeReverseRequest req = new StocktakeReverseRequest();
+        req.setReason("test");
+        req.setIdempotencyKey("PD-R12-REVERSE-1");
+        req.setVersion(0);
+
+        service.reverseStocktake(1L, req);
+
+        // 原始过账引用保留（不删除）
+        assertEquals(9006L, item.getStockLedgerId());
+        assertEquals(7006L, item.getCostLedgerId());
+        // 冲销引用已设置
+        assertNotNull(item.getReverseStockLedgerId());
+        assertNotNull(item.getReverseCostLedgerId());
+        // 原始过账字段未被覆盖
+        assertEquals(-3, item.getVarianceQuantity().intValue());
+        assertEquals(7, item.getFinalQuantity().intValue());
+    }
+
+    @Test
+    void reverse_zeroVarianceLine_skipped() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-R13", "POSTED");
+        h.setFreezeTime(new Date());
+        stocktakeMapper.headers.add(h);
+
+        // 无差异行（过账时未写流水）
+        FinStocktakeItem item = buildItem(T1, 1L, DEPT_10, PRODUCT_100, 10);
+        item.setFinalQuantity(10);
+        item.setVarianceQuantity(0);
+        item.setStockLedgerId(null); // 无差异不写流水
+        item.setCostLedgerId(null);
+        stocktakeMapper.insertedItems.add(item);
+        stocktakeMapper.itemsByStocktake.computeIfAbsent(1L, k -> new ArrayList<>()).add(item);
+
+        ledgerMapper.positions.put(T1 + ":" + DEPT_10 + ":" + PRODUCT_100, 10);
+
+        StocktakeReverseRequest req = new StocktakeReverseRequest();
+        req.setReason("test");
+        req.setIdempotencyKey("PD-R13-REVERSE-1");
+        req.setVersion(0);
+
+        int affected = service.reverseStocktake(1L, req);
+
+        assertEquals(1, affected);
+        assertEquals("REVERSED", h.getStatus());
+        // 无差异行不写冲销流水
+        assertTrue(ledgerMapper.insertedLedgers.isEmpty());
+        // 无成本冲销调用
+        assertTrue(stockCostService.reverseCalls.isEmpty());
+    }
+
+    @Test
+    void reverse_tenantMissing_throws() {
+        TenantContext.clear();
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-R14", "POSTED");
+        stocktakeMapper.headers.add(h);
+
+        StocktakeReverseRequest req = new StocktakeReverseRequest();
+        req.setReason("test");
+        req.setIdempotencyKey("PD-R14-REVERSE-1");
+        req.setVersion(0);
+
+        assertThrows(ServiceException.class, () -> service.reverseStocktake(1L, req));
+        TenantContext.setTenantId(T1);
+    }
+
+    @Test
+    void reverse_unauthorizedDept_throws() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_20, "PD-R15", "POSTED");
+        stocktakeMapper.headers.add(h);
+
+        // 非 admin，授权部门不含 DEPT_20
+        SecurityContextHolder.setUserId("100");
+        SecurityContextHolder.setUserName("non-admin");
+        remoteUserService.authorizedDepts = Arrays.asList(DEPT_10);
+
+        StocktakeReverseRequest req = new StocktakeReverseRequest();
+        req.setReason("test");
+        req.setIdempotencyKey("PD-R15-REVERSE-1");
+        req.setVersion(0);
+
+        try {
+            assertThrows(ServiceException.class, () -> service.reverseStocktake(1L, req));
+        } finally {
+            // 恢复 admin
+            SecurityContextHolder.setUserId("1");
+            SecurityContextHolder.setUserName("admin");
+        }
+    }
+
     // ===== 辅助方法 =====
 
     private FinProduct buildProduct(Long id, String name) {
@@ -1468,13 +1927,25 @@ class FinStocktakeServiceImplTest {
             if (item == null || !version.equals(item.getVersion())) {
                 return 0;
             }
+            item.setStockLedgerId(stockLedgerId);
+            item.setCostLedgerId(costLedgerId);
             // version 不变（postingRefs 在 updateStocktakeItemFinal 之后调用，version 已 +1）
             return 1;
         }
 
         @Override
         public int updateStocktakeItemReverseRefs(Long tenantId, Long itemId, Long reverseStockLedgerId,
-                                                   Long reverseCostLedgerId, Integer version) { return 0; }
+                                                   Long reverseCostLedgerId, Integer version) {
+            FinStocktakeItem item = insertedItems.stream()
+                    .filter(i -> tenantId.equals(i.getTenantId()) && itemId.equals(i.getItemId()))
+                    .findFirst().orElse(null);
+            if (item == null || !version.equals(item.getVersion())) {
+                return 0;
+            }
+            item.setReverseStockLedgerId(reverseStockLedgerId);
+            item.setReverseCostLedgerId(reverseCostLedgerId);
+            return 1;
+        }
 
         @Override
         public int countByCountIdempotencyKey(Long tenantId, String countIdempotencyKey) {
@@ -1548,6 +2019,7 @@ class FinStocktakeServiceImplTest {
     static class FakeIStockCostService implements IStockCostService {
         final List<String> lossCalls = new ArrayList<>();
         final List<String> gainCalls = new ArrayList<>();
+        final List<String> reverseCalls = new ArrayList<>();
         BigDecimal avgUnitCost = new BigDecimal("10.000000");
         long nextCostLedgerId = 7000L;
 
@@ -1587,7 +2059,15 @@ class FinStocktakeServiceImplTest {
 
         @Override
         public Long reverseStocktakeAdjustment(Long tenantId, Long deptId, Long productId, int quantity, BigDecimal unitCost, Long sourceLedgerId, Long originalCostLedgerId, String operator) {
+            reverseCalls.add(tenantId + ":" + deptId + ":" + productId + ":qty=" + quantity
+                    + ":unitCost=" + unitCost + ":src=" + sourceLedgerId + ":orig=" + originalCostLedgerId);
             return nextCostLedgerId++;
+        }
+
+        @Override
+        public BigDecimal getCostLedgerUnitCost(Long tenantId, Long costLedgerId) {
+            // 测试默认返回配置的平均成本，模拟原过账固化成本
+            return avgUnitCost;
         }
     }
 

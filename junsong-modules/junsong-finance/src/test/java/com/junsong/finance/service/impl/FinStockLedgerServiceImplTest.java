@@ -394,5 +394,10 @@ class FinStockLedgerServiceImplTest {
                                                 Long originalCostLedgerId, String operator) {
             return 1L;
         }
+
+        @Override
+        public BigDecimal getCostLedgerUnitCost(Long tenantId, Long costLedgerId) {
+            return null;
+        }
     }
 }

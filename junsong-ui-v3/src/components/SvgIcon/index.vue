@@ -14,7 +14,7 @@ const props = withDefaults(defineProps<{
   className: '',
 })
 
-const iconName = computed(() => `#icon-${props.iconClass}`)
+const iconName = computed(() => `#icon-${props.iconClass.toLowerCase()}`)
 const svgClass = computed(() => {
   if (props.className) {
     return 'svg-icon ' + props.className

@@ -67,6 +67,23 @@ function mergeRouteTrees(routeList: any[]): any[] {
   return Array.from(merged.values())
 }
 
+function normalizeMenuIcons(routeList: any[]) {
+  routeList.forEach((route) => {
+    const path = String(route.path || '').toLowerCase()
+    const title = String(route.meta?.title || '')
+    route.meta = { ...(route.meta || {}) }
+    if (path === 'index' || path === '/index' || title === '首页') {
+      route.meta.icon = 'dashboard'
+    } else if (path === 'monitor' || path.startsWith('/monitor') || title === '系统监控') {
+      route.meta.icon = 'system'
+    }
+    if (route.meta.icon) {
+      route.meta.icon = route.meta.icon.toLowerCase()
+    }
+    if (route.children?.length) normalizeMenuIcons(route.children)
+  })
+}
+
 function isExternalLink(path?: string) {
   return /^(https?:|mailto:|tel:)/.test(path || '')
 }
@@ -159,6 +176,8 @@ export const usePermissionStore = defineStore('permission', () => {
     const res: any = await getRouters()
     const sdata = mergeRouteTrees(JSON.parse(JSON.stringify(res.data)))
     const rdata = mergeRouteTrees(JSON.parse(JSON.stringify(res.data)))
+    normalizeMenuIcons(sdata)
+    normalizeMenuIcons(rdata)
     normalizeRouteNames(sdata)
     normalizeRouteNames(rdata)
     const sidebarRoutes = filterAsyncRouter(sdata)

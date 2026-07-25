@@ -3,7 +3,7 @@
     <template v-if="hasOneShowingChild(item.children, item) && (!onlyChild.children || onlyChild.noShowingChildren) && !item.alwaysShow">
       <app-link v-if="onlyChild.meta" :to="resolvePath(onlyChild.path)">
         <el-menu-item :index="resolvePath(onlyChild.path)">
-          <svg-icon v-if="onlyChild.meta.icon || (item.meta && item.meta.icon)" :icon-class="onlyChild.meta.icon || item.meta.icon" />
+          <svg-icon :icon-class="resolveMenuIcon(onlyChild, onlyChild.meta?.icon || item.meta?.icon)" />
           <template #title>
             <span>{{ onlyChild.meta.title }}</span>
           </template>
@@ -13,7 +13,7 @@
 
     <el-sub-menu v-else ref="subMenu" :index="resolvePath(item.path)" teleported>
       <template #title>
-        <svg-icon v-if="item.meta && item.meta.icon" :icon-class="item.meta.icon" />
+        <svg-icon :icon-class="resolveMenuIcon(item, item.meta?.icon)" />
         <span>{{ item.meta && item.meta.title }}</span>
       </template>
       <SidebarItem
@@ -38,6 +38,14 @@ const props = defineProps<{
 }>()
 
 const onlyChild = ref<any>({})
+
+function resolveMenuIcon(menuItem: any, fallbackIcon: string): string {
+  const title = menuItem?.meta?.title
+  const path = String(menuItem?.path || '').toLowerCase()
+  if (title === '首页') return 'dashboard'
+  if (title === '系统监控' || path === 'monitor' || path.startsWith('/monitor/')) return 'system'
+  return (fallbackIcon || 'system').toLowerCase()
+}
 
 function hasOneShowingChild(children: any[] = [], parent: any) {
   if (!children) {

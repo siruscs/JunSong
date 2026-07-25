@@ -1,5 +1,6 @@
 <template>
   <div class="app-container report-page">
+    <el-button class="workbench-back" text @click="$router.push('/finance/overview')">← 返回报表工作台</el-button>
     <!-- 查询栏 -->
     <div class="report-filter-panel">
       <el-form :model="queryParams" label-position="top" class="report-query-form">
@@ -180,6 +181,12 @@
       </el-tab-pane>
 
       <el-tab-pane label="价值报表" name="value">
+        <div class="report-section-heading">
+          <div>
+            <h3>库存与成本分析</h3>
+            <span>库存金额、销售成本和毛利统一以成本层口径计算</span>
+          </div>
+        </div>
         <!-- 期间状态指示 -->
         <div class="period-status-bar" v-if="valueReport">
           <el-tag :type="periodStatusTag(valueReport.periodStatus)" size="default" effect="plain">
@@ -284,6 +291,24 @@
       </el-tab-pane>
     </el-tabs>
 
+    <!-- Task 11: 损耗闭环入口 —— 跳转盘点工作台，损耗原因代码与损耗金额汇总由盘点过账原子写入 -->
+    <el-card class="section-card stocktake-entry-card" shadow="never">
+      <template #header>
+        <span>损耗闭环</span>
+        <el-link
+          type="primary"
+          :underline="false"
+          class="stocktake-entry-link"
+          v-hasPermi="['finance:stocktake:list']"
+          @click="goStocktake"
+        >前往盘点工作台 →</el-link>
+      </template>
+      <p class="stocktake-entry-hint">
+        盘亏/盘盈通过 DRAFT→COUNTING→SUBMITTED→RECOUNTING→APPROVED→POSTED 工作流原子过账，
+        反向冲销生成红字库存与成本台账，损耗金额与原因代码可在此报表的成本调整列与流水下钻中追溯。
+      </p>
+    </el-card>
+
     <!-- 流水下钻抽屉 -->
     <StockLedgerDrawer
       v-model:visible="ledgerVisible"
@@ -298,6 +323,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { saveAs } from 'file-saver'
 import { parseTime } from '@/utils/junsong'
@@ -313,6 +339,11 @@ import { useUserStore } from '@/stores/user'
 import StockLedgerDrawer from './components/StockLedgerDrawer.vue'
 
 const userStore = useUserStore()
+const router = useRouter()
+
+function goStocktake() {
+  router.push('/finance/stocktake/index')
+}
 const depts = ref<any[]>(userStore.depts || [])
 
 const statusOptions = [
@@ -555,6 +586,36 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.stocktake-entry-card {
+  margin-top: 12px;
+  border-left: 3px solid var(--el-color-warning);
+}
+.stocktake-entry-card :deep(.el-card__header) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.stocktake-entry-link {
+  font-size: 13px;
+}
+.stocktake-entry-hint {
+  margin: 0;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.report-section-heading {
+  display: flex;
+  align-items: center;
+  margin: 4px 0 14px;
+  padding-left: 12px;
+  border-left: 3px solid var(--el-color-primary);
+}
+
+.report-section-heading h3 { margin: 0; color: var(--el-text-color-primary); font-size: 16px; }
+.report-section-heading span { display: block; margin-top: 4px; color: var(--el-text-color-secondary); font-size: 12px; }
+
 .report-page {
   background: #f5f7fb;
   min-height: calc(100vh - 84px);

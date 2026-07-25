@@ -220,4 +220,18 @@ export const dynamicRoutes: any[] = [
       },
     ],
   },
+  {
+    // Task 9: 库存盘点详情页（隐藏路由，从列表页跳转）
+    path: '/finance/stocktake',
+    component: () => import('@/layout/index.vue'),
+    meta: { hidden: true, permissions: ['finance:stocktake:query'] },
+    children: [
+      {
+        path: 'detail/:id(\\d+)',
+        component: () => import('@/views/finance/stocktake/detail.vue'),
+        name: 'FinanceStocktakeDetail',
+        meta: { title: '盘点详情', activeMenu: '/finance/stocktake/index' },
+      },
+    ],
+  },
 ]

@@ -14,6 +14,7 @@ import com.junsong.common.core.context.TenantContext;
 import com.junsong.common.core.exception.ServiceException;
 import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.finance.domain.FinProduct;
+import com.junsong.finance.domain.FinStockLedger;
 import com.junsong.finance.domain.FinStocktake;
 import com.junsong.finance.domain.FinStocktakeHistory;
 import com.junsong.finance.domain.FinStocktakeItem;
@@ -55,6 +56,11 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
     private static final String STATUS_SUBMITTED = "SUBMITTED";
     private static final String STATUS_RECOUNTING = "RECOUNTING";
     private static final String STATUS_APPROVED = "APPROVED";
+    private static final String STATUS_POSTED = "POSTED";
+    private static final String STOCK_TAKE_GAIN = "STOCK_TAKE_GAIN";
+    private static final String STOCK_TAKE_LOSS = "STOCK_TAKE_LOSS";
+    private static final String REF_STOCKTAKE = "STOCKTAKE";
+    private static final String PERIOD_ACTIVE = "0";
 
     /** 复盘阈值：当任一行 |variance| 超过此值且已分配复盘人时，流转至 RECOUNTING */
     @Value("${finance.stocktake.recount.quantityThreshold:5}")
@@ -71,6 +77,12 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
 
     @Autowired
     private RemoteUserService remoteUserService;
+
+    @Autowired
+    private com.junsong.finance.service.IStockCostService stockCostService;
+
+    @Autowired
+    private com.junsong.finance.mapper.FinAccountingPeriodMapper accountingPeriodMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -414,8 +426,8 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
         boolean needRecount = false;
         for (FinStocktakeItem item : items) {
             int expected = item.getExpectedQuantity() == null ? 0 : item.getExpectedQuantity();
-            // Task 5: movementAfterFreeze 暂通过 mapper 查询（Task 6 会真正使用）
-            Integer movement = finStocktakeMapper.sumMovementAfterFreeze(
+            // movementAfterFreeze 通过 fin_stock_ledger 汇总查询
+            Integer movement = finStockLedgerMapper.sumMovementAfterFreeze(
                     tenantId, header.getDeptId(), item.getProductId(), header.getFreezeTime());
             int movementAfterFreeze = movement == null ? 0 : movement;
             int adjustedExpected = expected + movementAfterFreeze;
@@ -662,6 +674,204 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
         history.setToStatus(STATUS_APPROVED);
         history.setOperator(SecurityUtils.getUsername());
         history.setComment(request.getComment() == null ? "审批通过" : request.getComment());
+        finStocktakeMapper.insertStocktakeHistory(history);
+
+        return affected;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int postStocktake(Long stocktakeId, Integer version) {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null) {
+            throw new ServiceException("租户上下文缺失，禁止过账盘点任务");
+        }
+        if (version == null) {
+            throw new ServiceException("版本号不能为空");
+        }
+
+        FinStocktake header = finStocktakeMapper.selectStocktakeForUpdate(tenantId, stocktakeId);
+        if (header == null) {
+            throw new ServiceException("盘点任务不存在或无权访问");
+        }
+        assertDeptAuthorized(tenantId, header.getDeptId());
+
+        if (!STATUS_APPROVED.equals(header.getStatus())) {
+            throw new ServiceException("仅已审批状态可过账，当前状态: " + header.getStatus());
+        }
+        if (!version.equals(header.getVersion())) {
+            throw new ServiceException("版本号不匹配，请刷新后重试");
+        }
+
+        // 会计期间必须为 ACTIVE
+        com.junsong.finance.domain.FinAccountingPeriod period =
+                accountingPeriodMapper.selectCurrentPeriodByDeptId(header.getDeptId());
+        if (period == null) {
+            throw new ServiceException("门店 " + header.getDeptId() + " 无 ACTIVE 会计期间，禁止过账");
+        }
+        if (!PERIOD_ACTIVE.equals(period.getStatus())) {
+            throw new ServiceException("门店 " + header.getDeptId() + " 会计期间已结转，禁止过账");
+        }
+
+        // 幂等校验：takeNo 已有库存流水则拒绝重复过账
+        int existing = finStockLedgerMapper.countByReferenceNo(tenantId, header.getTakeNo());
+        if (existing > 0) {
+            throw new ServiceException("盘点任务已过账，禁止重复过账: " + header.getTakeNo());
+        }
+
+        // 锁定行表
+        List<FinStocktakeItem> items = finStocktakeMapper.selectStocktakeItemsForUpdate(tenantId, stocktakeId);
+        if (items == null || items.isEmpty()) {
+            throw new ServiceException("盘点任务无明细行，禁止过账");
+        }
+
+        // 按 (deptId, productId) 升序排序后锁定 position 行（避免死锁）
+        List<FinStocktakeItem> sortedItems = new ArrayList<>(items);
+        sortedItems.sort((a, b) -> {
+            int byDept = a.getDeptId().compareTo(b.getDeptId());
+            if (byDept != 0) return byDept;
+            return a.getProductId().compareTo(b.getProductId());
+        });
+
+        String operator = SecurityUtils.getUsername();
+
+        for (FinStocktakeItem item : sortedItems) {
+            // 重新计算 movementAfterFreeze 和 adjustedExpected
+            Integer movement = finStockLedgerMapper.sumMovementAfterFreeze(
+                    tenantId, item.getDeptId(), item.getProductId(), header.getFreezeTime());
+            int movementAfterFreeze = movement == null ? 0 : movement;
+            int adjustedExpected = (item.getExpectedQuantity() == null ? 0 : item.getExpectedQuantity())
+                    + movementAfterFreeze;
+
+            Integer finalQty = item.getFinalQuantity();
+            if (finalQty == null) {
+                throw new ServiceException("盘点行缺少最终数量: productId=" + item.getProductId());
+            }
+            int finalVariance = finalQty - adjustedExpected;
+
+            if (finalVariance == 0) {
+                // 无差异：仅更新行表的 movement/adjusted 字段，不写流水
+                int itemAffected = finStocktakeMapper.updateStocktakeItemFinal(
+                        tenantId, item.getItemId(),
+                        finalQty, 0,
+                        null, null,
+                        item.getReasonCode(), item.getReason(),
+                        movementAfterFreeze, adjustedExpected,
+                        item.getVersion());
+                if (itemAffected != 1) {
+                    throw new ServiceException("更新盘点行过账字段失败（行版本冲突）");
+                }
+                continue;
+            }
+
+            // 锁定 position 行
+            finStockLedgerMapper.insertPositionIfAbsent(tenantId, item.getDeptId(), item.getProductId());
+            Integer currentQtyBox = finStockLedgerMapper.selectPositionQuantityForUpdate(
+                    tenantId, item.getDeptId(), item.getProductId());
+            int currentQty = currentQtyBox == null ? 0 : currentQtyBox;
+
+            int absVariance = Math.abs(finalVariance);
+            int afterQty = currentQty + finalVariance;
+            if (afterQty < 0) {
+                throw new ServiceException("盘亏后库存为负（商品 " + item.getProductId()
+                        + " 当前 " + currentQty + "，盘亏 " + absVariance + "），拒绝过账");
+            }
+
+            String changeType = finalVariance > 0 ? STOCK_TAKE_GAIN : STOCK_TAKE_LOSS;
+
+            // 写库存流水
+            FinStockLedger ledger = new FinStockLedger();
+            ledger.setTenantId(tenantId);
+            ledger.setDeptId(item.getDeptId());
+            ledger.setProductId(item.getProductId());
+            ledger.setProductName(item.getProductName());
+            ledger.setChangeType(changeType);
+            ledger.setChangeQuantity(finalVariance);
+            ledger.setBeforeQuantity(currentQty);
+            ledger.setAfterQuantity(afterQty);
+            ledger.setReferenceType(REF_STOCKTAKE);
+            ledger.setReferenceNo(header.getTakeNo());
+            ledger.setDelFlag("0");
+            ledger.setCreateBy(operator);
+            ledger.setRemark(item.getReason());
+            finStockLedgerMapper.insertFinStockLedger(ledger);
+            Long stockLedgerId = ledger.getLedgerId();
+            if (stockLedgerId == null) {
+                throw new ServiceException("库存流水ID未生成，过账失败");
+            }
+
+            // 更新结存
+            int positionAffected = finStockLedgerMapper.updatePositionQuantity(
+                    tenantId, item.getDeptId(), item.getProductId(), afterQty);
+            if (positionAffected != 1) {
+                throw new ServiceException("库存结存更新影响行数异常（" + positionAffected + "），事务回滚");
+            }
+
+            // 成本联动：盘亏按当前平均成本，盘盈金额默认按当前平均成本 * 数量
+            Long costLedgerId;
+            java.math.BigDecimal solidifiedUnitCost;
+            if (finalVariance < 0) {
+                // 盘亏：applyStocktakeLoss 内部按当前 avgUnitCost 计算金额
+                solidifiedUnitCost = null;
+                costLedgerId = stockCostService.applyStocktakeLoss(
+                        tenantId, item.getDeptId(), item.getProductId(),
+                        absVariance, stockLedgerId, operator);
+            } else {
+                // 盘盈：amount=null 表示由成本服务内部按当前 avgUnitCost * quantity 计算入账金额
+                solidifiedUnitCost = null;
+                costLedgerId = stockCostService.applyStocktakeGain(
+                        tenantId, item.getDeptId(), item.getProductId(),
+                        absVariance, null, stockLedgerId, operator);
+            }
+
+            if (costLedgerId == null) {
+                throw new ServiceException("成本流水ID未生成，过账失败");
+            }
+
+            // 更新行表过账字段
+            java.math.BigDecimal unitCostForItem = solidifiedUnitCost;
+            java.math.BigDecimal varianceAmount = unitCostForItem == null
+                    ? null
+                    : unitCostForItem.multiply(java.math.BigDecimal.valueOf(absVariance))
+                            .setScale(2, java.math.RoundingMode.HALF_UP);
+
+            int originalItemVersion = item.getVersion();
+            int itemAffected = finStocktakeMapper.updateStocktakeItemFinal(
+                    tenantId, item.getItemId(),
+                    finalQty, finalVariance,
+                    unitCostForItem, varianceAmount,
+                    item.getReasonCode(), item.getReason(),
+                    movementAfterFreeze, adjustedExpected,
+                    originalItemVersion);
+            if (itemAffected != 1) {
+                throw new ServiceException("更新盘点行过账字段失败（行版本冲突）");
+            }
+
+            int refAffected = finStocktakeMapper.updateStocktakeItemPostingRefs(
+                    tenantId, item.getItemId(),
+                    stockLedgerId, costLedgerId,
+                    originalItemVersion + 1);
+            if (refAffected != 1) {
+                throw new ServiceException("更新盘点行过账引用失败（行版本冲突）");
+            }
+        }
+
+        // 状态流转 APPROVED → POSTED
+        int affected = finStocktakeMapper.updateStocktakeStatus(
+                tenantId, stocktakeId, STATUS_APPROVED, STATUS_POSTED, version,
+                operator, null, null, operator, null, null);
+        if (affected != 1) {
+            throw new ServiceException("过账盘点任务失败，可能已被其他操作更新");
+        }
+
+        FinStocktakeHistory history = new FinStocktakeHistory();
+        history.setTenantId(tenantId);
+        history.setStocktakeId(stocktakeId);
+        history.setAction("POST");
+        history.setFromStatus(STATUS_APPROVED);
+        history.setToStatus(STATUS_POSTED);
+        history.setOperator(operator);
+        history.setComment("过账完成，数量与成本原子更新");
         finStocktakeMapper.insertStocktakeHistory(history);
 
         return affected;

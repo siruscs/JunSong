@@ -35,11 +35,14 @@ public class StockCostServiceImpl implements IStockCostService {
     private static final String SOURCE_PURCHASE = "PURCHASE";
     private static final String SOURCE_SALE = "SALE";
     private static final String SOURCE_ADJUST = "ADJUST";
+    private static final String SOURCE_STOCKTAKE = "STOCKTAKE";
     private static final String COST_IN = "COST_IN";
     private static final String COST_OUT = "COST_OUT";
     private static final String COST_REVERSE_IN = "COST_REVERSE_IN";
     private static final String COST_REVERSE_OUT = "COST_REVERSE_OUT";
     private static final String COST_ADJUST = "COST_ADJUST";
+    private static final String STOCKTAKE_LOSS_OUT = "STOCKTAKE_LOSS_OUT";
+    private static final String STOCKTAKE_GAIN_IN = "STOCKTAKE_GAIN_IN";
 
     @Autowired
     private FinStockCostLayerMapper costLayerMapper;
@@ -197,6 +200,153 @@ public class StockCostServiceImpl implements IStockCostService {
         writeAdjustCostLedger(tenantId, deptId, productId, adjustAmount, newAvg, reason, operator);
     }
 
+    @Override
+    public Long applyStocktakeLoss(Long tenantId, Long deptId, Long productId,
+                                   int quantity, Long sourceLedgerId, String operator) {
+        assertTenantScope(tenantId, deptId, productId);
+        if (quantity <= 0) {
+            throw new ServiceException("盘亏数量必须为正数");
+        }
+
+        costLayerMapper.insertCostLayerIfAbsent(tenantId, deptId, productId);
+        FinStockCostLayer layer = costLayerMapper.selectCostLayerForUpdate(tenantId, deptId, productId);
+        if (layer == null) {
+            throw new ServiceException("成本层行创建失败，拒绝处理");
+        }
+
+        int newQty = layer.getStockQuantity() - quantity;
+        if (newQty < 0) {
+            // 盘亏超过库存：说明盘点数据或库存数据异常，拒绝过账
+            throw new ServiceException("盘亏数量超过库存（当前 " + layer.getStockQuantity()
+                    + "，盘亏 " + quantity + "），拒绝过账");
+        }
+
+        BigDecimal solidifiedCost = layer.getAvgUnitCost();
+        BigDecimal lossAmount = solidifiedCost.multiply(BigDecimal.valueOf(quantity))
+                .setScale(AMOUNT_SCALE, ROUNDING);
+        BigDecimal newAmount = layer.getStockAmount().subtract(lossAmount).setScale(AMOUNT_SCALE, ROUNDING);
+        if (newAmount.signum() < 0) {
+            newAmount = BigDecimal.ZERO.setScale(AMOUNT_SCALE, ROUNDING);
+        }
+        // 盘亏不改变平均成本（与销售出库一致）
+        BigDecimal newAvg = solidifiedCost;
+
+        updateLayerWithVersion(layer, newAvg, newQty, newAmount, operator);
+        return writeCostLedger(tenantId, deptId, productId, SOURCE_STOCKTAKE, sourceLedgerId,
+                               STOCKTAKE_LOSS_OUT, -quantity, solidifiedCost, lossAmount, operator);
+    }
+
+    @Override
+    public Long applyStocktakeGain(Long tenantId, Long deptId, Long productId,
+                                   int quantity, BigDecimal amount,
+                                   Long sourceLedgerId, String operator) {
+        assertTenantScope(tenantId, deptId, productId);
+        if (quantity <= 0) {
+            throw new ServiceException("盘盈数量必须为正数");
+        }
+
+        costLayerMapper.insertCostLayerIfAbsent(tenantId, deptId, productId);
+        FinStockCostLayer layer = costLayerMapper.selectCostLayerForUpdate(tenantId, deptId, productId);
+        if (layer == null) {
+            throw new ServiceException("成本层行创建失败，拒绝处理");
+        }
+
+        // amount=null 时按当前平均成本 × 数量计算入账金额（默认估值）
+        BigDecimal gainAmount;
+        if (amount == null) {
+            gainAmount = layer.getAvgUnitCost().multiply(BigDecimal.valueOf(quantity))
+                    .setScale(AMOUNT_SCALE, ROUNDING);
+        } else {
+            gainAmount = amount.setScale(AMOUNT_SCALE, ROUNDING);
+        }
+        if (gainAmount.signum() < 0) {
+            throw new ServiceException("盘盈金额不能为负数");
+        }
+
+        int newQty = layer.getStockQuantity() + quantity;
+        BigDecimal newAmount = layer.getStockAmount().add(gainAmount).setScale(AMOUNT_SCALE, ROUNDING);
+        // 盘盈视同入库，重新计算平均成本
+        BigDecimal newAvg = computeAvg(newAmount, newQty);
+
+        updateLayerWithVersion(layer, newAvg, newQty, newAmount, operator);
+        return writeCostLedger(tenantId, deptId, productId, SOURCE_STOCKTAKE, sourceLedgerId,
+                               STOCKTAKE_GAIN_IN, quantity, newAvg, gainAmount, operator);
+    }
+
+    @Override
+    public Long reverseStocktakeAdjustment(Long tenantId, Long deptId, Long productId,
+                                           int quantity, BigDecimal unitCost,
+                                           Long sourceLedgerId, Long originalCostLedgerId,
+                                           String operator) {
+        assertTenantScope(tenantId, deptId, productId);
+        if (quantity <= 0) {
+            throw new ServiceException("冲销数量必须为正数");
+        }
+        if (unitCost == null || unitCost.signum() < 0) {
+            throw new ServiceException("冲销缺少原固化成本，拒绝回补");
+        }
+        if (originalCostLedgerId == null) {
+            throw new ServiceException("冲销必须提供原成本流水ID以追溯方向");
+        }
+
+        FinStockCostLedger original = costLayerMapper.selectCostLedgerById(originalCostLedgerId);
+        if (original == null) {
+            throw new ServiceException("原成本流水不存在: " + originalCostLedgerId);
+        }
+        if (!tenantId.equals(original.getTenantId())
+                || !deptId.equals(original.getDeptId())
+                || !productId.equals(original.getProductId())) {
+            throw new ServiceException("原成本流水租户/门店/商品不匹配，拒绝冲销");
+        }
+
+        String originalType = original.getCostChangeType();
+        boolean reverseLoss = STOCKTAKE_LOSS_OUT.equals(originalType);
+        boolean reverseGain = STOCKTAKE_GAIN_IN.equals(originalType);
+        if (!reverseLoss && !reverseGain) {
+            throw new ServiceException("原成本流水类型非盘点调整: " + originalType + "，拒绝冲销");
+        }
+
+        BigDecimal originalCost = unitCost.setScale(UNIT_COST_SCALE, ROUNDING);
+        BigDecimal reverseAmount = originalCost.multiply(BigDecimal.valueOf(quantity))
+                .setScale(AMOUNT_SCALE, ROUNDING);
+
+        costLayerMapper.insertCostLayerIfAbsent(tenantId, deptId, productId);
+        FinStockCostLayer layer = costLayerMapper.selectCostLayerForUpdate(tenantId, deptId, productId);
+        if (layer == null) {
+            throw new ServiceException("成本层行创建失败，拒绝处理");
+        }
+
+        int newQty;
+        BigDecimal newAmount;
+        String changeType;
+
+        if (reverseLoss) {
+            // 原盘亏 → 冲销恢复库存与金额
+            newQty = layer.getStockQuantity() + quantity;
+            newAmount = layer.getStockAmount().add(reverseAmount).setScale(AMOUNT_SCALE, ROUNDING);
+            changeType = COST_REVERSE_IN;
+        } else {
+            // 原盘盈 → 冲销扣减库存与金额
+            newQty = layer.getStockQuantity() - quantity;
+            if (newQty < 0) {
+                throw new ServiceException("冲销盘盈后库存为负（当前 " + layer.getStockQuantity()
+                        + "，冲销 " + quantity + "），拒绝冲销");
+            }
+            newAmount = layer.getStockAmount().subtract(reverseAmount).setScale(AMOUNT_SCALE, ROUNDING);
+            if (newAmount.signum() < 0) {
+                newAmount = BigDecimal.ZERO.setScale(AMOUNT_SCALE, ROUNDING);
+            }
+            changeType = COST_REVERSE_OUT;
+        }
+
+        BigDecimal newAvg = computeAvg(newAmount, newQty);
+        updateLayerWithVersion(layer, newAvg, newQty, newAmount, operator);
+
+        int signedQty = reverseLoss ? quantity : -quantity;
+        return writeCostLedger(tenantId, deptId, productId, SOURCE_STOCKTAKE, sourceLedgerId,
+                               changeType, signedQty, originalCost, reverseAmount, operator);
+    }
+
     private BigDecimal computeAvg(BigDecimal amount, int qty) {
         if (qty == 0) {
             return BigDecimal.ZERO.setScale(UNIT_COST_SCALE, ROUNDING);
@@ -214,7 +364,7 @@ public class StockCostServiceImpl implements IStockCostService {
         }
     }
 
-    private void writeCostLedger(Long tenantId, Long deptId, Long productId,
+    private Long writeCostLedger(Long tenantId, Long deptId, Long productId,
                                  String sourceType, Long sourceLedgerId, String costChangeType,
                                  int quantity, BigDecimal unitCost, BigDecimal amount,
                                  String operator) {
@@ -232,6 +382,7 @@ public class StockCostServiceImpl implements IStockCostService {
         cl.setDelFlag("0");
         cl.setCreateBy(operator);
         costLayerMapper.insertCostLedger(cl);
+        return cl.getCostLedgerId();
     }
 
     private void writeAdjustCostLedger(Long tenantId, Long deptId, Long productId,

@@ -218,4 +218,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
           and reference_no = #{referenceNo}
           and del_flag = '0'
     </select>
+
+    <!-- 汇总盘点冻结时间之后的库存净变动（过账时重算 adjustedExpected） -->
+    <select id="sumMovementAfterFreeze" resultType="java.lang.Integer">
+        select coalesce(sum(change_quantity), 0)
+        from fin_stock_ledger
+        where tenant_id = #{tenantId}
+          and dept_id = #{deptId}
+          and product_id = #{productId}
+          and create_time &gt;= #{freezeTime}
+          and del_flag = '0'
+    </select>
 </mapper>

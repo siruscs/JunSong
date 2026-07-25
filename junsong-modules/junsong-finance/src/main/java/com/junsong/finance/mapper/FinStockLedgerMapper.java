@@ -177,4 +177,21 @@ public interface FinStockLedgerMapper {
      * @return 已存在流水数量
      */
     int countByReferenceNo(@Param("tenantId") Long tenantId, @Param("referenceNo") String referenceNo);
+
+    /**
+     * 汇总盘点冻结时间之后某门店某商品的库存净变动（用于过账时重算 adjustedExpected）。
+     *
+     * 查询 fin_stock_ledger 表中 create_time >= freezeTime 的净流水合计。
+     * 盘点从创建到过账可能跨越数小时或数天，过账时需重算冻结后的变动以还原"盘点时刻的期望"。
+     *
+     * @param tenantId 租户ID
+     * @param deptId 门店ID
+     * @param productId 商品ID
+     * @param freezeTime 盘点冻结时间
+     * @return 净变动数量（无记录返回 0）
+     */
+    Integer sumMovementAfterFreeze(@Param("tenantId") Long tenantId,
+                                    @Param("deptId") Long deptId,
+                                    @Param("productId") Long productId,
+                                    @Param("freezeTime") java.util.Date freezeTime);
 }

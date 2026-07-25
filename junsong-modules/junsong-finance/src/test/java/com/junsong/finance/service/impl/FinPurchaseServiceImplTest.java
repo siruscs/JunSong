@@ -363,5 +363,10 @@ class FinPurchaseServiceImplTest {
             return 0;
         }
 
+        @Override
+        public Integer sumMovementAfterFreeze(Long tenantId, Long deptId, Long productId, java.util.Date freezeTime) {
+            return 0;
+        }
+
     }
 }

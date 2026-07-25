@@ -3,7 +3,9 @@ package com.junsong.finance.service.impl;
 import com.junsong.common.core.context.SecurityContextHolder;
 import com.junsong.common.core.context.TenantContext;
 import com.junsong.common.core.exception.ServiceException;
+import com.junsong.finance.domain.FinAccountingPeriod;
 import com.junsong.finance.domain.FinProduct;
+import com.junsong.finance.domain.FinStockLedger;
 import com.junsong.finance.domain.FinStocktake;
 import com.junsong.finance.domain.FinStocktakeHistory;
 import com.junsong.finance.domain.FinStocktakeItem;
@@ -14,9 +16,11 @@ import com.junsong.finance.domain.vo.StocktakeCreateRequest;
 import com.junsong.finance.domain.vo.StocktakeDetailVO;
 import com.junsong.finance.domain.vo.StocktakeQuery;
 import com.junsong.finance.domain.vo.StocktakeRecountRequest;
+import com.junsong.finance.mapper.FinAccountingPeriodMapper;
 import com.junsong.finance.mapper.FinProductMapper;
 import com.junsong.finance.mapper.FinStockLedgerMapper;
 import com.junsong.finance.mapper.FinStocktakeMapper;
+import com.junsong.finance.service.IStockCostService;
 import com.junsong.common.core.domain.R;
 import com.junsong.system.api.RemoteUserService;
 import com.junsong.system.api.domain.SysDept;
@@ -27,8 +31,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,6 +68,8 @@ class FinStocktakeServiceImplTest {
     private FakeFinStockLedgerMapper ledgerMapper;
     private FakeFinProductMapper productMapper;
     private FakeRemoteUserService remoteUserService;
+    private FakeIStockCostService stockCostService;
+    private FakeFinAccountingPeriodMapper accountingPeriodMapper;
     private FinStocktakeServiceImpl service;
 
     @BeforeEach
@@ -70,12 +78,16 @@ class FinStocktakeServiceImplTest {
         ledgerMapper = new FakeFinStockLedgerMapper();
         productMapper = new FakeFinProductMapper();
         remoteUserService = new FakeRemoteUserService();
+        stockCostService = new FakeIStockCostService();
+        accountingPeriodMapper = new FakeFinAccountingPeriodMapper();
         service = new FinStocktakeServiceImpl();
 
         inject("finStocktakeMapper", stocktakeMapper);
         inject("finStockLedgerMapper", ledgerMapper);
         inject("finProductMapper", productMapper);
         inject("remoteUserService", remoteUserService);
+        inject("stockCostService", stockCostService);
+        inject("accountingPeriodMapper", accountingPeriodMapper);
 
         // 默认 admin 上下文
         TenantContext.setTenantId(T1);
@@ -1023,6 +1035,224 @@ class FinStocktakeServiceImplTest {
         assertThrows(ServiceException.class, () -> service.approveStocktake(1L, req));
     }
 
+    // ===== Task 6：过账（postStocktake）=====
+
+    @Test
+    void post_missingTenant_throws() {
+        TenantContext.clear();
+        assertThrows(ServiceException.class, () -> service.postStocktake(1L, 0));
+    }
+
+    @Test
+    void post_versionNull_throws() {
+        assertThrows(ServiceException.class, () -> service.postStocktake(1L, null));
+    }
+
+    @Test
+    void post_notFound_throws() {
+        assertThrows(ServiceException.class, () -> service.postStocktake(999L, 0));
+    }
+
+    @Test
+    void post_unauthorizedDept_throws() {
+        SecurityContextHolder.setUserId("2");
+        SecurityContextHolder.setUserName("bob");
+        remoteUserService.authorizedDepts = Arrays.asList(DEPT_10);
+        stocktakeMapper.headers.add(buildHeader(T1, 1L, DEPT_20, "PD-001", "APPROVED"));
+        assertThrows(ServiceException.class, () -> service.postStocktake(1L, 0));
+    }
+
+    @Test
+    void post_nonApprovedStatus_throws() {
+        stocktakeMapper.headers.add(buildHeader(T1, 1L, DEPT_10, "PD-001", "SUBMITTED"));
+        assertThrows(ServiceException.class, () -> service.postStocktake(1L, 0));
+    }
+
+    @Test
+    void post_versionMismatch_throws() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-001", "APPROVED");
+        h.setVersion(5);
+        stocktakeMapper.headers.add(h);
+        assertThrows(ServiceException.class, () -> service.postStocktake(1L, 0));
+    }
+
+    @Test
+    void post_noActivePeriod_throws() {
+        accountingPeriodMapper.currentPeriod = null;
+        stocktakeMapper.headers.add(buildHeader(T1, 1L, DEPT_10, "PD-001", "APPROVED"));
+        assertThrows(ServiceException.class, () -> service.postStocktake(1L, 0));
+    }
+
+    @Test
+    void post_periodClosed_throws() {
+        accountingPeriodMapper.currentPeriod.setStatus("2"); // 已结转
+        stocktakeMapper.headers.add(buildHeader(T1, 1L, DEPT_10, "PD-001", "APPROVED"));
+        assertThrows(ServiceException.class, () -> service.postStocktake(1L, 0));
+    }
+
+    @Test
+    void post_idempotent_duplicateRejected() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-001", "APPROVED");
+        stocktakeMapper.headers.add(h);
+        ledgerMapper.existingReferenceNos.add(T1 + ":PD-001");
+        assertThrows(ServiceException.class, () -> service.postStocktake(1L, 0));
+    }
+
+    @Test
+    void post_noItems_throws() {
+        stocktakeMapper.headers.add(buildHeader(T1, 1L, DEPT_10, "PD-001", "APPROVED"));
+        assertThrows(ServiceException.class, () -> service.postStocktake(1L, 0));
+    }
+
+    @Test
+    void post_lossMakesStockNegative_throws() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-001", "APPROVED");
+        h.setFreezeTime(new Date());
+        stocktakeMapper.headers.add(h);
+
+        // 期望 5，实际 0（盘亏 5），当前库存 3 → 盘亏后 -2 拒绝
+        FinStocktakeItem item = buildItem(T1, 1L, DEPT_10, PRODUCT_100, 5);
+        item.setFinalQuantity(0);
+        stocktakeMapper.insertedItems.add(item);
+        stocktakeMapper.itemsByStocktake.computeIfAbsent(1L, k -> new ArrayList<>()).add(item);
+
+        ledgerMapper.positions.put(T1 + ":" + DEPT_10 + ":" + PRODUCT_100, 3);
+
+        ServiceException ex = assertThrows(ServiceException.class, () -> service.postStocktake(1L, 0));
+        assertTrue(ex.getMessage().contains("盘亏后库存为负"));
+        // 成本服务未被调用（事务回滚）
+        assertTrue(stockCostService.lossCalls.isEmpty());
+    }
+
+    @Test
+    void post_loss_success_updatesStockAndCost() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-001", "APPROVED");
+        h.setFreezeTime(new Date());
+        stocktakeMapper.headers.add(h);
+
+        // 期望 10，实际 7（盘亏 3），当前库存 10 → 盘亏后 7
+        FinStocktakeItem item = buildItem(T1, 1L, DEPT_10, PRODUCT_100, 10);
+        item.setFinalQuantity(7);
+        item.setReasonCode("DAMAGE");
+        item.setReason("破损");
+        stocktakeMapper.insertedItems.add(item);
+        stocktakeMapper.itemsByStocktake.computeIfAbsent(1L, k -> new ArrayList<>()).add(item);
+
+        ledgerMapper.positions.put(T1 + ":" + DEPT_10 + ":" + PRODUCT_100, 10);
+
+        int affected = service.postStocktake(1L, 0);
+
+        assertEquals(1, affected);
+        // 状态流转 APPROVED → POSTED
+        assertEquals("POSTED", h.getStatus());
+        // 库存更新：10 → 7
+        assertEquals(7, ledgerMapper.positions.get(T1 + ":" + DEPT_10 + ":" + PRODUCT_100).intValue());
+        // 写入一笔库存流水
+        assertEquals(1, ledgerMapper.insertedLedgers.size());
+        FinStockLedger ledger = ledgerMapper.insertedLedgers.get(0);
+        assertEquals("STOCK_TAKE_LOSS", ledger.getChangeType());
+        assertEquals(-3, ledger.getChangeQuantity().intValue());
+        assertEquals(7, ledger.getAfterQuantity().intValue());
+        assertEquals("PD-001", ledger.getReferenceNo());
+        // 成本服务被调用一次（盘亏）
+        assertEquals(1, stockCostService.lossCalls.size());
+        assertTrue(stockCostService.gainCalls.isEmpty());
+    }
+
+    @Test
+    void post_gain_success_updatesStockAndCost() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-002", "APPROVED");
+        h.setFreezeTime(new Date());
+        stocktakeMapper.headers.add(h);
+
+        // 期望 5，实际 8（盘盈 3），当前库存 5 → 盘盈后 8
+        FinStocktakeItem item = buildItem(T1, 1L, DEPT_10, PRODUCT_100, 5);
+        item.setFinalQuantity(8);
+        item.setReasonCode("FOUND");
+        item.setReason("盘盈入库");
+        stocktakeMapper.insertedItems.add(item);
+        stocktakeMapper.itemsByStocktake.computeIfAbsent(1L, k -> new ArrayList<>()).add(item);
+
+        ledgerMapper.positions.put(T1 + ":" + DEPT_10 + ":" + PRODUCT_100, 5);
+
+        int affected = service.postStocktake(1L, 0);
+
+        assertEquals(1, affected);
+        assertEquals("POSTED", h.getStatus());
+        // 库存更新：5 → 8
+        assertEquals(8, ledgerMapper.positions.get(T1 + ":" + DEPT_10 + ":" + PRODUCT_100).intValue());
+        // 写入一笔库存流水
+        assertEquals(1, ledgerMapper.insertedLedgers.size());
+        FinStockLedger ledger = ledgerMapper.insertedLedgers.get(0);
+        assertEquals("STOCK_TAKE_GAIN", ledger.getChangeType());
+        assertEquals(3, ledger.getChangeQuantity().intValue());
+        assertEquals(8, ledger.getAfterQuantity().intValue());
+        // 成本服务被调用一次（盘盈）
+        assertEquals(1, stockCostService.gainCalls.size());
+        assertTrue(stockCostService.lossCalls.isEmpty());
+        // 关键：盘盈金额 = 当前平均成本 × 数量（10 × 3 = 30.00），不是 0
+        assertTrue(stockCostService.gainCalls.get(0).contains("amount=30.00"),
+                "盘盈金额应为 30.00，实际: " + stockCostService.gainCalls.get(0));
+    }
+
+    @Test
+    void post_zeroVariance_noLedgerWritten() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-003", "APPROVED");
+        h.setFreezeTime(new Date());
+        stocktakeMapper.headers.add(h);
+
+        // 期望 10，实际 10（无差异）
+        FinStocktakeItem item = buildItem(T1, 1L, DEPT_10, PRODUCT_100, 10);
+        item.setFinalQuantity(10);
+        stocktakeMapper.insertedItems.add(item);
+        stocktakeMapper.itemsByStocktake.computeIfAbsent(1L, k -> new ArrayList<>()).add(item);
+
+        ledgerMapper.positions.put(T1 + ":" + DEPT_10 + ":" + PRODUCT_100, 10);
+
+        int affected = service.postStocktake(1L, 0);
+
+        assertEquals(1, affected);
+        assertEquals("POSTED", h.getStatus());
+        // 无库存流水
+        assertTrue(ledgerMapper.insertedLedgers.isEmpty());
+        // 无成本调用
+        assertTrue(stockCostService.lossCalls.isEmpty());
+        assertTrue(stockCostService.gainCalls.isEmpty());
+    }
+
+    @Test
+    void post_missingFinalQuantity_throws() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-004", "APPROVED");
+        h.setFreezeTime(new Date());
+        stocktakeMapper.headers.add(h);
+
+        FinStocktakeItem item = buildItem(T1, 1L, DEPT_10, PRODUCT_100, 10);
+        item.setFinalQuantity(null); // 缺失最终数量
+        stocktakeMapper.insertedItems.add(item);
+        stocktakeMapper.itemsByStocktake.computeIfAbsent(1L, k -> new ArrayList<>()).add(item);
+
+        assertThrows(ServiceException.class, () -> service.postStocktake(1L, 0));
+    }
+
+    @Test
+    void post_historyRecorded() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-005", "APPROVED");
+        h.setFreezeTime(new Date());
+        stocktakeMapper.headers.add(h);
+
+        FinStocktakeItem item = buildItem(T1, 1L, DEPT_10, PRODUCT_100, 10);
+        item.setFinalQuantity(10);
+        stocktakeMapper.insertedItems.add(item);
+        stocktakeMapper.itemsByStocktake.computeIfAbsent(1L, k -> new ArrayList<>()).add(item);
+
+        service.postStocktake(1L, 0);
+
+        // 历史记录包含 POST 动作
+        boolean hasPost = stocktakeMapper.insertedHistories.stream()
+                .anyMatch(h2 -> "POST".equals(h2.getAction()) && "POSTED".equals(h2.getToStatus()));
+        assertTrue(hasPost, "过账应写入 POST 历史");
+    }
+
     // ===== 辅助方法 =====
 
     private FinProduct buildProduct(Long id, String name) {
@@ -1041,6 +1271,20 @@ class FinStocktakeServiceImplTest {
         h.setStatus(status);
         h.setVersion(0);
         return h;
+    }
+
+    private FinStocktakeItem buildItem(Long tenantId, Long stocktakeId, Long deptId, Long productId, int expectedQty) {
+        FinStocktakeItem item = new FinStocktakeItem();
+        item.setTenantId(tenantId);
+        item.setStocktakeId(stocktakeId);
+        item.setItemId((long) (stocktakeMapper.nextId++));
+        item.setDeptId(deptId);
+        item.setProductId(productId);
+        item.setProductName("product-" + productId);
+        item.setExpectedQuantity(expectedQty);
+        item.setMovementQuantityAfterFreeze(0);
+        item.setVersion(0);
+        return item;
     }
 
     // ===== Fake Mapper =====
@@ -1217,7 +1461,16 @@ class FinStocktakeServiceImplTest {
 
         @Override
         public int updateStocktakeItemPostingRefs(Long tenantId, Long itemId, Long stockLedgerId,
-                                                   Long costLedgerId, Integer version) { return 0; }
+                                                   Long costLedgerId, Integer version) {
+            FinStocktakeItem item = insertedItems.stream()
+                    .filter(i -> tenantId.equals(i.getTenantId()) && itemId.equals(i.getItemId()))
+                    .findFirst().orElse(null);
+            if (item == null || !version.equals(item.getVersion())) {
+                return 0;
+            }
+            // version 不变（postingRefs 在 updateStocktakeItemFinal 之后调用，version 已 +1）
+            return 1;
+        }
 
         @Override
         public int updateStocktakeItemReverseRefs(Long tenantId, Long itemId, Long reverseStockLedgerId,
@@ -1245,23 +1498,28 @@ class FinStocktakeServiceImplTest {
                     .filter(h -> tenantId.equals(h.getTenantId()) && stocktakeId.equals(h.getStocktakeId()))
                     .collect(java.util.stream.Collectors.toList());
         }
-
-        @Override
-        public Integer sumMovementAfterFreeze(Long tenantId, Long deptId, Long productId, java.util.Date freezeTime) {
-            return 0;
-        }
     }
 
     static class FakeFinStockLedgerMapper implements FinStockLedgerMapper {
         final Map<String, Integer> positions = new HashMap<>();
+        final List<FinStockLedger> insertedLedgers = new ArrayList<>();
+        final java.util.Set<String> existingReferenceNos = new java.util.HashSet<>();
+        long nextLedgerId = 9000L;
 
         @Override public int insertPositionIfAbsent(Long t, Long d, Long p) { return 0; }
-        @Override public Integer selectPositionQuantityForUpdate(Long t, Long d, Long p) { return positions.get(t+":"+d+":"+p); }
-        @Override public Integer selectPositionQuantity(Long t, Long d, Long p) { return positions.get(t+":"+d+":"+p); }
-        @Override public int updatePositionQuantity(Long t, Long d, Long p, Integer q) { return 0; }
+        @Override public Integer selectPositionQuantityForUpdate(Long t, Long d, Long p) { return positions.getOrDefault(t+":"+d+":"+p, 0); }
+        @Override public Integer selectPositionQuantity(Long t, Long d, Long p) { return positions.getOrDefault(t+":"+d+":"+p, 0); }
+        @Override public int updatePositionQuantity(Long t, Long d, Long p, Integer q) {
+            positions.put(t+":"+d+":"+p, q);
+            return 1;
+        }
         @Override public Integer sumRecordedNet(Long t, String rt, Long ri, Long p) { return 0; }
         @Override public List<Long> selectRecordedProductIds(Long t, String rt, Long ri) { return new ArrayList<>(); }
-        @Override public int insertFinStockLedger(com.junsong.finance.domain.FinStockLedger l) { return 0; }
+        @Override public int insertFinStockLedger(FinStockLedger l) {
+            l.setLedgerId(nextLedgerId++);
+            insertedLedgers.add(l);
+            return 1;
+        }
         @Override public com.junsong.finance.domain.vo.DailyFlowView sumDailyFlow(Long t, java.time.LocalDate d, Long dept, Long p) { return null; }
         @Override public List<Long> selectSnapshotProductIds(Long t, java.time.LocalDate d, Long dept) { return new ArrayList<>(); }
         @Override public com.junsong.finance.domain.FinStockSnapshot selectPreviousSnapshot(Long t, java.time.LocalDate d, Long dept, Long p) { return null; }
@@ -1271,7 +1529,105 @@ class FinStocktakeServiceImplTest {
         @Override public int upsertSnapshot(com.junsong.finance.domain.FinStockSnapshot s) { return 0; }
         @Override public java.math.BigDecimal selectSaleOutUnitCost(Long t, Long ri, Long p) { return null; }
         @Override public int updateLedgerUnitCost(Long id, java.math.BigDecimal uc) { return 0; }
-        @Override public int countByReferenceNo(Long t, String rn) { return 0; }
+        @Override public int countByReferenceNo(Long t, String rn) {
+            return existingReferenceNos.contains(t + ":" + rn) ? 1 : 0;
+        }
+
+        @Override
+        public Integer sumMovementAfterFreeze(Long tenantId, Long deptId, Long productId, Date freezeTime) {
+            return 0;
+        }
+    }
+
+    /**
+     * Fake IStockCostService：记录调用参数，模拟成本层行为。
+     * - avgUnitCost 配置当前平均成本（用于盘盈金额计算）
+     * - lossCalls/gainCalls 记录调用
+     * - 默认返回递增的 costLedgerId
+     */
+    static class FakeIStockCostService implements IStockCostService {
+        final List<String> lossCalls = new ArrayList<>();
+        final List<String> gainCalls = new ArrayList<>();
+        BigDecimal avgUnitCost = new BigDecimal("10.000000");
+        long nextCostLedgerId = 7000L;
+
+        @Override
+        public void applyPurchaseInbound(Long tenantId, Long deptId, Long productId, int quantity, BigDecimal amount, Long sourceLedgerId, String operator) { }
+
+        @Override
+        public void reversePurchaseInbound(Long tenantId, Long deptId, Long productId, int reverseQuantity, Long sourceLedgerId, String operator) { }
+
+        @Override
+        public BigDecimal applySaleOutbound(Long tenantId, Long deptId, Long productId, int quantity, boolean allowNegative, Long sourceLedgerId, String operator) {
+            return avgUnitCost;
+        }
+
+        @Override
+        public void reverseSaleOutbound(Long tenantId, Long deptId, Long productId, int quantity, BigDecimal originalUnitCost, Long sourceLedgerId, String operator) { }
+
+        @Override
+        public void applyCostAdjustment(Long tenantId, Long deptId, Long productId, BigDecimal amount, String reason, String operator) { }
+
+        @Override
+        public Long applyStocktakeLoss(Long tenantId, Long deptId, Long productId, int quantity, Long sourceLedgerId, String operator) {
+            lossCalls.add(tenantId + ":" + deptId + ":" + productId + ":qty=" + quantity + ":src=" + sourceLedgerId);
+            return nextCostLedgerId++;
+        }
+
+        @Override
+        public Long applyStocktakeGain(Long tenantId, Long deptId, Long productId, int quantity, BigDecimal amount, Long sourceLedgerId, String operator) {
+            // 模拟 amount=null 时按当前平均成本计算的契约
+            BigDecimal effectiveAmount = (amount == null)
+                    ? avgUnitCost.multiply(BigDecimal.valueOf(quantity)).setScale(2, java.math.RoundingMode.HALF_UP)
+                    : amount;
+            gainCalls.add(tenantId + ":" + deptId + ":" + productId + ":qty=" + quantity
+                    + ":amount=" + effectiveAmount + ":src=" + sourceLedgerId);
+            return nextCostLedgerId++;
+        }
+
+        @Override
+        public Long reverseStocktakeAdjustment(Long tenantId, Long deptId, Long productId, int quantity, BigDecimal unitCost, Long sourceLedgerId, Long originalCostLedgerId, String operator) {
+            return nextCostLedgerId++;
+        }
+    }
+
+    /**
+     * Fake FinAccountingPeriodMapper：默认返回 ACTIVE 期间（status="0"）。
+     */
+    static class FakeFinAccountingPeriodMapper implements FinAccountingPeriodMapper {
+        FinAccountingPeriod currentPeriod;
+
+        FakeFinAccountingPeriodMapper() {
+            currentPeriod = new FinAccountingPeriod();
+            currentPeriod.setPeriodId(1L);
+            currentPeriod.setStatus("0"); // ACTIVE
+        }
+
+        @Override
+        public FinAccountingPeriod selectCurrentPeriodByDeptId(Long deptId) {
+            return currentPeriod;
+        }
+
+        // 以下为接口其他方法桩实现
+        @Override public FinAccountingPeriod selectFinAccountingPeriodByPeriodId(Long periodId) { return null; }
+        @Override public FinAccountingPeriod selectLatestCarriedPeriodByDeptId(Long deptId) { return null; }
+        @Override public List<FinAccountingPeriod> selectFinAccountingPeriodList(FinAccountingPeriod p) { return new ArrayList<>(); }
+        @Override public int insertFinAccountingPeriod(FinAccountingPeriod p) { return 0; }
+        @Override public int updateFinAccountingPeriod(FinAccountingPeriod p) { return 0; }
+        @Override public int resetCarryForwardByPeriodId(Long periodId, String updateBy) { return 0; }
+        @Override public int deleteFinAccountingPeriodByPeriodId(Long periodId) { return 0; }
+        @Override public int deleteFinAccountingPeriodByPeriodIds(Long[] periodIds) { return 0; }
+        @Override public BigDecimal selectTotalVerifiedExpense(Long periodId, Long deptId, Date startTime, Date endTime) { return BigDecimal.ZERO; }
+        @Override public BigDecimal selectTotalPurchase(Long periodId, Long deptId, Date startTime, Date endTime) { return BigDecimal.ZERO; }
+        @Override public BigDecimal selectTotalSalePayment(Long periodId, Long deptId, Date startTime, Date endTime) { return BigDecimal.ZERO; }
+        @Override public BigDecimal selectTotalSaleAmount(Long periodId, Long deptId, Date startTime, Date endTime) { return BigDecimal.ZERO; }
+        @Override public BigDecimal selectTotalUnverifiedAdvance(Long periodId, Long deptId, Date startTime, Date endTime) { return BigDecimal.ZERO; }
+        @Override public String selectCurrentPeriodStatusByDeptIds(List<Long> deptIds) { return "0"; }
+        @Override public FinAccountingPeriod selectPeriodById(Long periodId) { return null; }
+        @Override public FinAccountingPeriod selectPeriodForUpdate(Long periodId, Long tenantId, Long deptId) { return null; }
+        @Override public FinAccountingPeriod selectPreviousPeriod(Long deptId, Date startTime, Long periodId) { return null; }
+        @Override public FinAccountingPeriod selectNextPeriod(Long deptId, Date startTime, Long periodId) { return null; }
+        @Override public int updateStartTimeOnly(Long periodId, Date startTime, Date endTime, String updateBy, String remark) { return 0; }
     }
 
     static class FakeFinProductMapper implements FinProductMapper {

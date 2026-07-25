@@ -133,11 +133,4 @@ public interface FinStocktakeMapper {
 
     List<FinStocktakeHistory> listStocktakeHistory(@Param("tenantId") Long tenantId,
                                                      @Param("stocktakeId") Long stocktakeId);
-
-    // ===== 冻结后 movement 汇总（Task 6 使用） =====
-
-    Integer sumMovementAfterFreeze(@Param("tenantId") Long tenantId,
-                                    @Param("deptId") Long deptId,
-                                    @Param("productId") Long productId,
-                                    @Param("freezeTime") java.util.Date freezeTime);
 }

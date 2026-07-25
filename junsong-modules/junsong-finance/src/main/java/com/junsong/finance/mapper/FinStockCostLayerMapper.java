@@ -44,4 +44,13 @@ public interface FinStockCostLayerMapper {
      * 写入一笔成本流水。
      */
     int insertCostLedger(FinStockCostLedger costLedger);
+
+    /**
+     * 按主键查询成本流水（冲销时用于判断原 costChangeType）。
+     * 不加行锁（成本流水为不可变审计记录，仅读）。
+     *
+     * @param costLedgerId 成本流水ID
+     * @return 成本流水，不存在返回 null
+     */
+    FinStockCostLedger selectCostLedgerById(@Param("costLedgerId") Long costLedgerId);
 }

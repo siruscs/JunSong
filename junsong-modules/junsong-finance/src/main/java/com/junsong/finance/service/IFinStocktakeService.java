@@ -143,4 +143,26 @@ public interface IFinStocktakeService {
      * @return 影响行数
      */
     int approveStocktake(Long stocktakeId, StocktakeApprovalRequest request);
+
+    /**
+     * 过账盘点任务（APPROVED → POSTED）。
+     *
+     * 安全契约：
+     * 1. 仅 APPROVED 状态任务允许过账
+     * 2. 会计期间必须为 ACTIVE（0）
+     * 3. 幂等：takeNo 已有库存流水则拒绝重复过账
+     * 4. 对每个行按 (deptId, productId) 排序后锁定 position 行（避免死锁）
+     * 5. 重新计算 movementAfterFreeze 和 adjustedExpected
+     * 6. 重新计算 finalVariance = finalQuantity - adjustedExpected
+     * 7. finalVariance > 0（盘盈）→ STOCK_TAKE_GAIN 流水 + applyStocktakeGain
+     * 8. finalVariance < 0（盘亏）→ STOCK_TAKE_LOSS 流水 + applyStocktakeLoss
+     * 9. finalVariance == 0 → 不写流水
+     * 10. 更新行表 unitCost, varianceAmount, stockLedgerId, costLedgerId
+     * 11. 数量与成本在同一事务内原子过账；任一步失败全量回滚
+     *
+     * @param stocktakeId 盘点任务ID
+     * @param version 头表版本号（乐观锁）
+     * @return 影响行数
+     */
+    int postStocktake(Long stocktakeId, Integer version);
 }

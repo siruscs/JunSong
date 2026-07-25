@@ -295,5 +295,12 @@ class StockCostServiceImplTest {
             costLedgers.add(costLedger);
             return 1;
         }
+
+        @Override
+        public FinStockCostLedger selectCostLedgerById(Long costLedgerId) {
+            return costLedgers.stream()
+                    .filter(c -> costLedgerId.equals(c.getCostLedgerId()))
+                    .findFirst().orElse(null);
+        }
     }
 }

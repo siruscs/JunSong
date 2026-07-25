@@ -69,4 +69,65 @@ public interface IStockCostService {
      */
     void applyCostAdjustment(Long tenantId, Long deptId, Long productId,
                              BigDecimal amount, String reason, String operator);
+
+    /**
+     * 盘点盘亏：按当前移动加权平均成本减少库存金额，库存数量同步减少。
+     * 写入 STOCKTAKE_LOSS_OUT 成本流水（不可变审计记录）。
+     *
+     * 业务规则：
+     * - quantity 必须为正数（表示盘亏的绝对量）
+     * - 按当前 avgUnitCost * quantity 计算盘亏金额
+     * - 平均成本不变（与销售出库一致：出库不改变平均成本）
+     * - 不允许负库存（盘亏后库存 < 0 拒绝）
+     *
+     * @param quantity 盘亏数量（正数）
+     * @param sourceLedgerId 来源库存流水ID（盘点行 stockLedgerId），用于成本可追溯
+     * @param operator 操作者
+     * @return 成本流水ID（FinStockCostLedger.costLedgerId）
+     */
+    Long applyStocktakeLoss(Long tenantId, Long deptId, Long productId,
+                            int quantity, Long sourceLedgerId, String operator);
+
+    /**
+     * 盘点盘盈：按指定金额增加库存金额，库存数量同步增加。
+     * 写入 STOCKTAKE_GAIN_IN 成本流水（不可变审计记录）。
+     *
+     * 业务规则：
+     * - quantity 必须为正数（表示盘盈的绝对量）
+     * - amount=null 时按当前平均成本 × 数量计算入账金额（默认估值，财务可后续调整）
+     * - amount 非 null 时按指定金额入账（财务确认的评估价等）
+     * - 盘盈后重新计算平均成本（视同入库）
+     *
+     * @param quantity 盘盈数量（正数）
+     * @param amount 盘盈金额（2位小数，非负）；null 表示按当前平均成本估值
+     * @param sourceLedgerId 来源库存流水ID（盘点行 stockLedgerId），用于成本可追溯
+     * @param operator 操作者
+     * @return 成本流水ID（FinStockCostLedger.costLedgerId）
+     */
+    Long applyStocktakeGain(Long tenantId, Long deptId, Long productId,
+                            int quantity, BigDecimal amount,
+                            Long sourceLedgerId, String operator);
+
+    /**
+     * 盘点调整冲销：按原固化单位成本反向恢复/扣减库存金额与数量。
+     * 写入 COST_REVERSE_IN 或 COST_REVERSE_OUT 成本流水（取决于原调整方向）。
+     *
+     * 业务规则：
+     * - quantity 为正数（冲销的绝对量）
+     * - unitCost 为原盘点过账时固化的单位成本
+     * - 原盘亏冲销 → 数量增加、金额按原成本回补（COST_REVERSE_IN）
+     * - 原盘盈冲销 → 数量减少、金额按原成本扣减（COST_REVERSE_OUT）
+     * - 不允许冲销后库存 < 0
+     *
+     * @param quantity 冲销数量（正数）
+     * @param unitCost 原固化单位成本
+     * @param sourceLedgerId 来源库存流水ID（冲销行的 stockLedgerId）
+     * @param originalCostLedgerId 原过账成本流水ID
+     * @param operator 操作者
+     * @return 冲销成本流水ID
+     */
+    Long reverseStocktakeAdjustment(Long tenantId, Long deptId, Long productId,
+                                    int quantity, BigDecimal unitCost,
+                                    Long sourceLedgerId, Long originalCostLedgerId,
+                                    String operator);
 }

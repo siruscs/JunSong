@@ -331,16 +331,4 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         order by create_time asc, history_id asc
     </select>
 
-    <!-- ===== 冻结后 movement 汇总（Task 6 使用） ===== -->
-
-    <select id="sumMovementAfterFreeze" resultType="java.lang.Integer">
-        select coalesce(sum(change_quantity), 0)
-        from fin_stock_ledger
-        where tenant_id = #{tenantId}
-          and dept_id = #{deptId}
-          and product_id = #{productId}
-          and create_time &gt;= #{freezeTime}
-          and del_flag = '0'
-    </select>
-
 </mapper>

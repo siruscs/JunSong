@@ -473,5 +473,20 @@ class StockValueReportServiceTest {
 
         @Override
         public void applyCostAdjustment(Long tenantId, Long deptId, Long productId, BigDecimal amount, String reason, String operator) { }
+
+        @Override
+        public Long applyStocktakeLoss(Long tenantId, Long deptId, Long productId, int quantity, Long sourceLedgerId, String operator) {
+            return 1L;
+        }
+
+        @Override
+        public Long applyStocktakeGain(Long tenantId, Long deptId, Long productId, int quantity, BigDecimal amount, Long sourceLedgerId, String operator) {
+            return 1L;
+        }
+
+        @Override
+        public Long reverseStocktakeAdjustment(Long tenantId, Long deptId, Long productId, int quantity, BigDecimal unitCost, Long sourceLedgerId, Long originalCostLedgerId, String operator) {
+            return 1L;
+        }
     }
 }

@@ -67,4 +67,26 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         )
     </insert>
 
+    <!-- 按主键查询成本流水（冲销时判断原方向） -->
+    <select id="selectCostLedgerById" parameterType="java.lang.Long" resultType="com.junsong.finance.domain.FinStockCostLedger">
+        SELECT cost_ledger_id   AS costLedgerId,
+               tenant_id        AS tenantId,
+               dept_id          AS deptId,
+               product_id       AS productId,
+               source_type      AS sourceType,
+               source_ledger_id AS sourceLedgerId,
+               cost_change_type AS costChangeType,
+               quantity         AS quantity,
+               unit_cost        AS unitCost,
+               amount           AS amount,
+               period_id        AS periodId,
+               adjust_reason    AS adjustReason,
+               operator         AS operator,
+               del_flag         AS delFlag,
+               create_by        AS createBy,
+               create_time      AS createTime
+        FROM fin_stock_cost_ledger
+        WHERE cost_ledger_id = #{costLedgerId}
+    </select>
+
 </mapper>

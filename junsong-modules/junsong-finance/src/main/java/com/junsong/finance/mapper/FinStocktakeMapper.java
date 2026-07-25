@@ -94,6 +94,9 @@ public interface FinStocktakeMapper {
     int updateStocktakeItemRecount(@Param("tenantId") Long tenantId,
                                     @Param("itemId") Long itemId,
                                     @Param("recountQuantity") Integer recountQuantity,
+                                    @Param("reasonCode") String reasonCode,
+                                    @Param("reason") String reason,
+                                    @Param("recountIdempotencyKey") String recountIdempotencyKey,
                                     @Param("recountedBy") String recountedBy,
                                     @Param("version") Integer version);
 

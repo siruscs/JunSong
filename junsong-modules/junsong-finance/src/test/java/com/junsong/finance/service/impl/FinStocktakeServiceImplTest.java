@@ -7,11 +7,13 @@ import com.junsong.finance.domain.FinProduct;
 import com.junsong.finance.domain.FinStocktake;
 import com.junsong.finance.domain.FinStocktakeHistory;
 import com.junsong.finance.domain.FinStocktakeItem;
+import com.junsong.finance.domain.vo.StocktakeApprovalRequest;
 import com.junsong.finance.domain.vo.StocktakeAssignRequest;
 import com.junsong.finance.domain.vo.StocktakeCountRequest;
 import com.junsong.finance.domain.vo.StocktakeCreateRequest;
 import com.junsong.finance.domain.vo.StocktakeDetailVO;
 import com.junsong.finance.domain.vo.StocktakeQuery;
+import com.junsong.finance.domain.vo.StocktakeRecountRequest;
 import com.junsong.finance.mapper.FinProductMapper;
 import com.junsong.finance.mapper.FinStockLedgerMapper;
 import com.junsong.finance.mapper.FinStocktakeMapper;
@@ -613,6 +615,414 @@ class FinStocktakeServiceImplTest {
                 "幂等键被其他行占用时应拒绝");
     }
 
+    // ===== 提交 (Task 5) =====
+
+    @Test
+    void submit_countingStatusWithAllItemsCountedGoesSubmitted() {
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-001", "COUNTING");
+        header.setCounterUserId(1L);
+        header.setRecountUserId(3002L);
+        header.setVersion(0);
+        stocktakeMapper.headers.add(header);
+
+        // 一行 actualQuantity=50, expected=50, variance=0（低于阈值）
+        FinStocktakeItem item = buildCountingItem(11L, 1L, PRODUCT_100, 50);
+        item.setActualQuantity(50);
+        item.setVersion(1); // count 后版本递增
+        stocktakeMapper.itemsByStocktake.put(1L, Arrays.asList(item));
+
+        int affected = service.submitStocktake(1L, 0);
+        assertEquals(1, affected);
+        assertEquals("SUBMITTED", header.getStatus(), "方差为 0 应流转至 SUBMITTED");
+        assertEquals(1, header.getVersion(), "version 应递增");
+        assertNotNull(header.getSubmittedBy());
+        assertNotNull(header.getSubmittedTime());
+
+        // 行表应已计算临时方差
+        assertEquals(0, item.getVarianceQuantity(), "方差应为 0");
+        assertEquals(50, item.getAdjustedExpectedQuantity(), "adjustedExpected 应等于 expected + movement");
+        // 历史
+        assertEquals("SUBMIT", stocktakeMapper.insertedHistories.get(stocktakeMapper.insertedHistories.size() - 1).getAction());
+    }
+
+    @Test
+    void submit_withUncountedItemsThrows() {
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-001", "COUNTING");
+        header.setCounterUserId(1L);
+        header.setVersion(0);
+        stocktakeMapper.headers.add(header);
+
+        // 行未录入 actualQuantity
+        FinStocktakeItem item = buildCountingItem(11L, 1L, PRODUCT_100, 50);
+        item.setActualQuantity(null);
+        stocktakeMapper.itemsByStocktake.put(1L, Arrays.asList(item));
+
+        assertThrows(ServiceException.class, () -> service.submitStocktake(1L, 0),
+                "存在未录入行时应拒绝提交");
+        assertEquals("COUNTING", header.getStatus(), "失败时状态不应改变");
+    }
+
+    @Test
+    void submit_withVarianceAboveQuantityThresholdGoesRecounting() {
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-001", "COUNTING");
+        header.setCounterUserId(1L);
+        header.setRecountUserId(3002L); // 已分配复盘人
+        header.setVersion(0);
+        stocktakeMapper.headers.add(header);
+
+        // actual=40, expected=50, variance=-10，|variance|>5 阈值
+        FinStocktakeItem item = buildCountingItem(11L, 1L, PRODUCT_100, 50);
+        item.setActualQuantity(40);
+        item.setReasonCode("DAMAGED");
+        item.setReason("破损");
+        item.setVersion(1);
+        stocktakeMapper.itemsByStocktake.put(1L, Arrays.asList(item));
+
+        int affected = service.submitStocktake(1L, 0);
+        assertEquals(1, affected);
+        assertEquals("RECOUNTING", header.getStatus(), "方差超过阈值且已分配复盘人时应流转至 RECOUNTING");
+        assertEquals(-10, item.getVarianceQuantity());
+    }
+
+    @Test
+    void submit_withVarianceAboveThresholdButNoRecountUserGoesSubmitted() {
+        // 方差超过阈值但未分配复盘人，无法触发复盘，只能 SUBMITTED（由审批人决定是否驳回重盘）
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-001", "COUNTING");
+        header.setCounterUserId(1L);
+        header.setRecountUserId(null); // 未分配复盘人
+        header.setVersion(0);
+        stocktakeMapper.headers.add(header);
+
+        FinStocktakeItem item = buildCountingItem(11L, 1L, PRODUCT_100, 50);
+        item.setActualQuantity(40);
+        item.setReasonCode("DAMAGED");
+        item.setReason("破损");
+        item.setVersion(1);
+        stocktakeMapper.itemsByStocktake.put(1L, Arrays.asList(item));
+
+        int affected = service.submitStocktake(1L, 0);
+        assertEquals(1, affected);
+        assertEquals("SUBMITTED", header.getStatus(), "未分配复盘人时即使方差超阈也走 SUBMITTED");
+    }
+
+    @Test
+    void submit_nonCountingStatusThrows() {
+        stocktakeMapper.headers.add(buildHeader(T1, 1L, DEPT_10, "PD-001", "DRAFT"));
+        assertThrows(ServiceException.class, () -> service.submitStocktake(1L, 0));
+    }
+
+    @Test
+    void submit_versionMismatchThrows() {
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-001", "COUNTING");
+        header.setCounterUserId(1L);
+        header.setVersion(2); // 数据库已更新
+        stocktakeMapper.headers.add(header);
+
+        assertThrows(ServiceException.class, () -> service.submitStocktake(1L, 0));
+    }
+
+    @Test
+    void submit_unauthorizedDeptThrows() {
+        SecurityContextHolder.setUserId("2");
+        SecurityContextHolder.setUserName("bob");
+        remoteUserService.authorizedDepts = Arrays.asList(DEPT_10);
+
+        stocktakeMapper.headers.add(buildHeader(T1, 1L, DEPT_20, "PD-001", "COUNTING"));
+
+        assertThrows(ServiceException.class, () -> service.submitStocktake(1L, 0));
+    }
+
+    // ===== 复盘 (Task 5) =====
+
+    @Test
+    void recount_recountingStatusSucceeds() {
+        SecurityContextHolder.setUserId("3002"); // 复盘人
+        SecurityContextHolder.setUserName("recounter");
+        remoteUserService.authorizedDepts = Arrays.asList(DEPT_10);
+
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-001", "RECOUNTING");
+        header.setCounterUserId(1L);
+        header.setRecountUserId(3002L);
+        header.setVersion(1);
+        stocktakeMapper.headers.add(header);
+
+        FinStocktakeItem item = buildCountingItem(11L, 1L, PRODUCT_100, 50);
+        item.setActualQuantity(40);
+        item.setAdjustedExpectedQuantity(50);
+        item.setVarianceQuantity(-10);
+        item.setVersion(1);
+        stocktakeMapper.itemsByStocktake.put(1L, Arrays.asList(item));
+
+        StocktakeRecountRequest req = new StocktakeRecountRequest();
+        req.setRecountQuantity(48);
+        req.setReasonCode("DAMAGED");
+        req.setReason("复盘确认 48 件");
+        req.setIdempotencyKey("PD-001-100-recount-1");
+        req.setVersion(1);
+
+        int affected = service.recountItem(1L, 11L, req);
+        assertEquals(1, affected);
+        assertEquals(48, item.getRecountQuantity());
+        assertEquals("recounter", item.getRecountedBy());
+        assertEquals(2, item.getVersion(), "行版本应递增");
+    }
+
+    @Test
+    void recount_sameCounterUserThrows() {
+        // 复盘人 = 盘点人，禁止
+        SecurityContextHolder.setUserId("1"); // admin
+        SecurityContextHolder.setUserName("admin");
+
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-001", "RECOUNTING");
+        header.setCounterUserId(1L);
+        header.setRecountUserId(1L); // 同一人（不应发生，但服务端要防御）
+        header.setVersion(1);
+        stocktakeMapper.headers.add(header);
+
+        FinStocktakeItem item = buildCountingItem(11L, 1L, PRODUCT_100, 50);
+        item.setActualQuantity(40);
+        item.setVersion(1);
+        stocktakeMapper.itemsByStocktake.put(1L, Arrays.asList(item));
+
+        StocktakeRecountRequest req = new StocktakeRecountRequest();
+        req.setRecountQuantity(48);
+        req.setIdempotencyKey("PD-001-100-recount-1");
+        req.setVersion(1);
+
+        assertThrows(ServiceException.class, () -> service.recountItem(1L, 11L, req),
+                "复盘人与盘点人相同时应拒绝");
+    }
+
+    @Test
+    void recount_nonRecountingStatusThrows() {
+        stocktakeMapper.headers.add(buildHeader(T1, 1L, DEPT_10, "PD-001", "SUBMITTED"));
+
+        StocktakeRecountRequest req = new StocktakeRecountRequest();
+        req.setRecountQuantity(48);
+        req.setIdempotencyKey("PD-001-100-recount-1");
+        req.setVersion(1);
+
+        assertThrows(ServiceException.class, () -> service.recountItem(1L, 11L, req));
+    }
+
+    @Test
+    void recount_unauthorizedUserThrows() {
+        SecurityContextHolder.setUserId("9999"); // 非复盘人
+        SecurityContextHolder.setUserName("stranger");
+        remoteUserService.authorizedDepts = Arrays.asList(DEPT_10);
+
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-001", "RECOUNTING");
+        header.setCounterUserId(1L);
+        header.setRecountUserId(3002L);
+        header.setVersion(1);
+        stocktakeMapper.headers.add(header);
+
+        FinStocktakeItem item = buildCountingItem(11L, 1L, PRODUCT_100, 50);
+        item.setVersion(1);
+        stocktakeMapper.itemsByStocktake.put(1L, Arrays.asList(item));
+
+        StocktakeRecountRequest req = new StocktakeRecountRequest();
+        req.setRecountQuantity(48);
+        req.setIdempotencyKey("PD-001-100-recount-1");
+        req.setVersion(1);
+
+        assertThrows(ServiceException.class, () -> service.recountItem(1L, 11L, req),
+                "非分配的复盘人不应录入复盘");
+    }
+
+    @Test
+    void recount_versionMismatchThrows() {
+        SecurityContextHolder.setUserId("3002");
+        SecurityContextHolder.setUserName("recounter");
+        remoteUserService.authorizedDepts = Arrays.asList(DEPT_10);
+
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-001", "RECOUNTING");
+        header.setCounterUserId(1L);
+        header.setRecountUserId(3002L);
+        header.setVersion(1);
+        stocktakeMapper.headers.add(header);
+
+        FinStocktakeItem item = buildCountingItem(11L, 1L, PRODUCT_100, 50);
+        item.setVersion(5); // 数据库已更新
+        stocktakeMapper.itemsByStocktake.put(1L, Arrays.asList(item));
+
+        StocktakeRecountRequest req = new StocktakeRecountRequest();
+        req.setRecountQuantity(48);
+        req.setIdempotencyKey("PD-001-100-recount-1");
+        req.setVersion(1); // 客户端旧版本
+
+        assertThrows(ServiceException.class, () -> service.recountItem(1L, 11L, req));
+    }
+
+    @Test
+    void recount_idempotentReplayReturnsSame() {
+        SecurityContextHolder.setUserId("3002");
+        SecurityContextHolder.setUserName("recounter");
+        remoteUserService.authorizedDepts = Arrays.asList(DEPT_10);
+
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-001", "RECOUNTING");
+        header.setCounterUserId(1L);
+        header.setRecountUserId(3002L);
+        header.setVersion(1);
+        stocktakeMapper.headers.add(header);
+
+        FinStocktakeItem item = buildCountingItem(11L, 1L, PRODUCT_100, 50);
+        item.setActualQuantity(40);
+        item.setVersion(1);
+        stocktakeMapper.itemsByStocktake.put(1L, Arrays.asList(item));
+
+        StocktakeRecountRequest req1 = new StocktakeRecountRequest();
+        req1.setRecountQuantity(48);
+        req1.setReasonCode("DAMAGED");
+        req1.setReason("复盘 48");
+        req1.setIdempotencyKey("PD-001-100-recount-1");
+        req1.setVersion(1);
+
+        int first = service.recountItem(1L, 11L, req1);
+        assertEquals(1, first);
+
+        // 相同幂等键、相同负载再次请求 —— 应返回 1，不重复更新
+        StocktakeRecountRequest req2 = new StocktakeRecountRequest();
+        req2.setRecountQuantity(48);
+        req2.setReasonCode("DAMAGED");
+        req2.setReason("复盘 48");
+        req2.setIdempotencyKey("PD-001-100-recount-1");
+        req2.setVersion(1);
+
+        int second = service.recountItem(1L, 11L, req2);
+        assertEquals(1, second, "幂等重放应返回成功");
+    }
+
+    // ===== 审批 (Task 5) =====
+
+    @Test
+    void approve_submittedStatusWithApproveGoesApproved() {
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-001", "SUBMITTED");
+        header.setCounterUserId(1L);
+        header.setVersion(2);
+        stocktakeMapper.headers.add(header);
+
+        FinStocktakeItem item = buildCountingItem(11L, 1L, PRODUCT_100, 50);
+        item.setActualQuantity(48);
+        item.setAdjustedExpectedQuantity(50);
+        item.setVarianceQuantity(-2);
+        item.setReasonCode("DAMAGED");
+        item.setVersion(2);
+        stocktakeMapper.itemsByStocktake.put(1L, Arrays.asList(item));
+
+        StocktakeApprovalRequest req = new StocktakeApprovalRequest();
+        req.setDecision("APPROVE");
+        req.setComment("复盘一致，同意过账");
+        req.setVersion(2);
+
+        int affected = service.approveStocktake(1L, req);
+        assertEquals(1, affected);
+        assertEquals("APPROVED", header.getStatus());
+        assertEquals(48, item.getFinalQuantity(), "finalQuantity 应使用 actualQuantity");
+        assertNotNull(header.getApprovedBy());
+        assertNotNull(header.getApprovedTime());
+    }
+
+    @Test
+    void approve_recountingStatusWithApproveUsesRecountQuantity() {
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-001", "RECOUNTING");
+        header.setCounterUserId(1L);
+        header.setRecountUserId(3002L);
+        header.setVersion(3);
+        stocktakeMapper.headers.add(header);
+
+        FinStocktakeItem item = buildCountingItem(11L, 1L, PRODUCT_100, 50);
+        item.setActualQuantity(40);
+        item.setRecountQuantity(48);
+        item.setAdjustedExpectedQuantity(50);
+        item.setVarianceQuantity(-2); // 重新计算后方差
+        item.setVersion(3);
+        stocktakeMapper.itemsByStocktake.put(1L, Arrays.asList(item));
+
+        StocktakeApprovalRequest req = new StocktakeApprovalRequest();
+        req.setDecision("APPROVE");
+        req.setComment("复盘 48 件，同意过账");
+        req.setVersion(3);
+
+        int affected = service.approveStocktake(1L, req);
+        assertEquals(1, affected);
+        assertEquals("APPROVED", header.getStatus());
+        assertEquals(48, item.getFinalQuantity(), "finalQuantity 应优先使用 recountQuantity");
+        assertEquals(-2, item.getVarianceQuantity(), "variance 应基于 recountQuantity 重算");
+    }
+
+    @Test
+    void approve_withRejectGoesCounting() {
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-001", "SUBMITTED");
+        header.setCounterUserId(1L);
+        header.setVersion(2);
+        stocktakeMapper.headers.add(header);
+
+        FinStocktakeItem item = buildCountingItem(11L, 1L, PRODUCT_100, 50);
+        item.setActualQuantity(48);
+        item.setVersion(2);
+        stocktakeMapper.itemsByStocktake.put(1L, Arrays.asList(item));
+
+        StocktakeApprovalRequest req = new StocktakeApprovalRequest();
+        req.setDecision("REJECT");
+        req.setComment("盘点不规范，请重盘");
+        req.setVersion(2);
+
+        int affected = service.approveStocktake(1L, req);
+        assertEquals(1, affected);
+        assertEquals("COUNTING", header.getStatus(), "REJECT 应回到 COUNTING 重盘");
+    }
+
+    @Test
+    void approve_invalidDecisionThrows() {
+        stocktakeMapper.headers.add(buildHeader(T1, 1L, DEPT_10, "PD-001", "SUBMITTED"));
+
+        StocktakeApprovalRequest req = new StocktakeApprovalRequest();
+        req.setDecision("UNKNOWN");
+        req.setVersion(0);
+
+        assertThrows(ServiceException.class, () -> service.approveStocktake(1L, req));
+    }
+
+    @Test
+    void approve_nonSubmittedStatusThrows() {
+        stocktakeMapper.headers.add(buildHeader(T1, 1L, DEPT_10, "PD-001", "COUNTING"));
+
+        StocktakeApprovalRequest req = new StocktakeApprovalRequest();
+        req.setDecision("APPROVE");
+        req.setVersion(0);
+
+        assertThrows(ServiceException.class, () -> service.approveStocktake(1L, req));
+    }
+
+    @Test
+    void approve_versionMismatchThrows() {
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-001", "SUBMITTED");
+        header.setVersion(5);
+        stocktakeMapper.headers.add(header);
+
+        StocktakeApprovalRequest req = new StocktakeApprovalRequest();
+        req.setDecision("APPROVE");
+        req.setVersion(0);
+
+        assertThrows(ServiceException.class, () -> service.approveStocktake(1L, req));
+    }
+
+    @Test
+    void approve_unauthorizedDeptThrows() {
+        SecurityContextHolder.setUserId("2");
+        SecurityContextHolder.setUserName("bob");
+        remoteUserService.authorizedDepts = Arrays.asList(DEPT_10);
+
+        stocktakeMapper.headers.add(buildHeader(T1, 1L, DEPT_20, "PD-001", "SUBMITTED"));
+
+        StocktakeApprovalRequest req = new StocktakeApprovalRequest();
+        req.setDecision("APPROVE");
+        req.setVersion(0);
+
+        assertThrows(ServiceException.class, () -> service.approveStocktake(1L, req));
+    }
+
     // ===== 辅助方法 =====
 
     private FinProduct buildProduct(Long id, String name) {
@@ -691,10 +1101,11 @@ class FinStocktakeServiceImplTest {
             }
             h.setStatus(toStatus);
             h.setVersion(h.getVersion() + 1);
-            if (submittedBy != null) h.setSubmittedBy(submittedBy);
-            if (approvedBy != null) h.setApprovedBy(approvedBy);
-            if (postedBy != null) h.setPostedBy(postedBy);
-            if (reversedBy != null) h.setReversedBy(reversedBy);
+            java.util.Date now = new java.util.Date();
+            if (submittedBy != null) { h.setSubmittedBy(submittedBy); h.setSubmittedTime(now); }
+            if (approvedBy != null) { h.setApprovedBy(approvedBy); h.setApprovedTime(now); }
+            if (postedBy != null) { h.setPostedBy(postedBy); h.setPostedTime(now); }
+            if (reversedBy != null) { h.setReversedBy(reversedBy); h.setReversedTime(now); }
             if (reversalReason != null) h.setReversalReason(reversalReason);
             return 1;
         }
@@ -762,13 +1173,47 @@ class FinStocktakeServiceImplTest {
 
         @Override
         public int updateStocktakeItemRecount(Long tenantId, Long itemId, Integer recountQuantity,
-                                               String recountedBy, Integer version) { return 0; }
+                                               String reasonCode, String reason,
+                                               String recountIdempotencyKey,
+                                               String recountedBy, Integer version) {
+            FinStocktakeItem item = insertedItems.stream()
+                    .filter(i -> tenantId.equals(i.getTenantId()) && itemId.equals(i.getItemId()))
+                    .findFirst().orElse(null);
+            if (item == null || !version.equals(item.getVersion())) {
+                return 0;
+            }
+            item.setRecountQuantity(recountQuantity);
+            item.setReasonCode(reasonCode);
+            item.setReason(reason);
+            item.setCountIdempotencyKey(recountIdempotencyKey);
+            item.setRecountedBy(recountedBy);
+            item.setRecountedTime(new java.util.Date());
+            item.setVersion(item.getVersion() + 1);
+            return 1;
+        }
 
         @Override
         public int updateStocktakeItemFinal(Long tenantId, Long itemId, Integer finalQuantity, Integer varianceQuantity,
                                             java.math.BigDecimal unitCost, java.math.BigDecimal varianceAmount,
                                             String reasonCode, String reason, Integer movementQuantityAfterFreeze,
-                                            Integer adjustedExpectedQuantity, Integer version) { return 0; }
+                                            Integer adjustedExpectedQuantity, Integer version) {
+            FinStocktakeItem item = insertedItems.stream()
+                    .filter(i -> tenantId.equals(i.getTenantId()) && itemId.equals(i.getItemId()))
+                    .findFirst().orElse(null);
+            if (item == null || !version.equals(item.getVersion())) {
+                return 0;
+            }
+            if (finalQuantity != null) item.setFinalQuantity(finalQuantity);
+            item.setVarianceQuantity(varianceQuantity);
+            if (unitCost != null) item.setUnitCost(unitCost);
+            if (varianceAmount != null) item.setVarianceAmount(varianceAmount);
+            if (reasonCode != null) item.setReasonCode(reasonCode);
+            if (reason != null) item.setReason(reason);
+            if (movementQuantityAfterFreeze != null) item.setMovementQuantityAfterFreeze(movementQuantityAfterFreeze);
+            if (adjustedExpectedQuantity != null) item.setAdjustedExpectedQuantity(adjustedExpectedQuantity);
+            item.setVersion(item.getVersion() + 1);
+            return 1;
+        }
 
         @Override
         public int updateStocktakeItemPostingRefs(Long tenantId, Long itemId, Long stockLedgerId,

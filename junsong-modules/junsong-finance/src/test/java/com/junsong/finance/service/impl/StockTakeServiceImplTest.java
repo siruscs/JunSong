@@ -6,12 +6,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import com.junsong.common.core.context.TenantContext;
 import com.junsong.common.core.exception.ServiceException;
-import com.junsong.common.security.utils.SecurityUtils;
-import com.junsong.finance.domain.FinProduct;
 import com.junsong.finance.domain.vo.StockTakeRequest;
 import com.junsong.finance.mapper.FinProductMapper;
 import com.junsong.finance.mapper.FinStockLedgerMapper;
@@ -19,6 +16,15 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * StockTakeServiceImpl 单元测试（Task 8：旧接口收口）。
+ *
+ * 收口策略：fail-closed 迁移响应。
+ * 旧 POST /stockTake 直接改库存的通道已被关闭，所有调用必须抛出 ServiceException，
+ * 提示使用新工作流 /stocktakes。不得调用 insertFinStockLedger / updatePositionQuantity。
+ *
+ * 消费者：junsong-miniprogram/src/api/stockTake.js（Task 10 替换为 stocktake.js）。
+ */
 @ExtendWith(MockitoExtension.class)
 class StockTakeServiceImplTest {
 
@@ -37,202 +43,40 @@ class StockTakeServiceImplTest {
     }
 
     @Test
-    void rejectsNullRequest() {
-        assertThrows(ServiceException.class, () -> stockTakeService.recordStockTake(null));
-    }
-
-    @Test
-    void rejectsMissingTakeNo() {
-        StockTakeRequest req = buildRequest();
-        req.setTakeNo(null);
-        ServiceException ex = assertThrows(ServiceException.class,
-                () -> stockTakeService.recordStockTake(req));
-        assertTrue(ex.getMessage().contains("盘点单号"));
-    }
-
-    @Test
-    void rejectsNegativeQuantity() {
-        StockTakeRequest req = buildRequest();
-        req.setActualQuantity(-1);
-        assertThrows(ServiceException.class, () -> stockTakeService.recordStockTake(req));
-    }
-
-    @Test
-    void rejectsMissingTenantContext() {
-        TenantContext.setTenantId(null);
-        StockTakeRequest req = buildRequest();
-        assertThrows(ServiceException.class, () -> stockTakeService.recordStockTake(req));
-    }
-
-    @Test
-    void rejectsDuplicateTakeNo() {
-        when(finStockLedgerMapper.countByReferenceNo(1L, "TK-001")).thenReturn(1);
+    void recordStockTake_alwaysThrows_migrationNotice() {
         StockTakeRequest req = buildRequest();
         ServiceException ex = assertThrows(ServiceException.class,
                 () -> stockTakeService.recordStockTake(req));
-        assertTrue(ex.getMessage().contains("已存在"));
+        assertTrue(ex.getMessage().contains("/stocktakes") || ex.getMessage().contains("工作流"),
+                "旧接口必须返回迁移提示，实际消息: " + ex.getMessage());
     }
 
     @Test
-    void rejectsUnauthorizedDeptForNonAdmin() {
-        when(finStockLedgerMapper.countByReferenceNo(1L, "TK-001")).thenReturn(0);
-        try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
-            mocked.when(SecurityUtils::isAdmin).thenReturn(false);
-            mocked.when(SecurityUtils::getDeptId).thenReturn(200L);
-
-            StockTakeRequest req = buildRequest();
-            req.setDeptId(100L);
-            ServiceException ex = assertThrows(ServiceException.class,
-                    () -> stockTakeService.recordStockTake(req));
-            assertTrue(ex.getMessage().contains("无权盘点"));
-        }
+    void recordStockTake_nullRequest_throwsMigrationNotice() {
+        ServiceException ex = assertThrows(ServiceException.class,
+                () -> stockTakeService.recordStockTake(null));
+        assertNotNull(ex.getMessage());
     }
 
     @Test
-    void adminCanTakeAnyAuthorizedDept() {
-        when(finStockLedgerMapper.countByReferenceNo(1L, "TK-001")).thenReturn(0);
-        when(finProductMapper.selectFinProductByProductIdAndDeptId(10L, 100L))
-                .thenReturn(buildProduct());
-        when(finStockLedgerMapper.insertPositionIfAbsent(1L, 100L, 10L)).thenReturn(1);
-        when(finStockLedgerMapper.selectPositionQuantityForUpdate(1L, 100L, 10L)).thenReturn(50);
-        when(finStockLedgerMapper.updatePositionQuantity(1L, 100L, 10L, 55)).thenReturn(1);
-
-        try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
-            mocked.when(SecurityUtils::isAdmin).thenReturn(true);
-            mocked.when(SecurityUtils::getUsername).thenReturn("admin");
-
-            StockTakeRequest req = buildRequest();
-            req.setActualQuantity(55);
-            stockTakeService.recordStockTake(req);
-        }
-        verify(finStockLedgerMapper).insertFinStockLedger(any());
-        verify(finStockLedgerMapper).updatePositionQuantity(1L, 100L, 10L, 55);
-    }
-
-    @Test
-    void rejectsProductNotInDept() {
-        when(finStockLedgerMapper.countByReferenceNo(1L, "TK-001")).thenReturn(0);
-        try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
-            mocked.when(SecurityUtils::isAdmin).thenReturn(true);
-            when(finProductMapper.selectFinProductByProductIdAndDeptId(10L, 100L)).thenReturn(null);
-
-            StockTakeRequest req = buildRequest();
-            ServiceException ex = assertThrows(ServiceException.class,
-                    () -> stockTakeService.recordStockTake(req));
-            assertTrue(ex.getMessage().contains("商品不存在或无权访问"));
-        }
-    }
-
-    @Test
-    void rejectsGainWithoutReason() {
-        when(finStockLedgerMapper.countByReferenceNo(1L, "TK-001")).thenReturn(0);
-        when(finProductMapper.selectFinProductByProductIdAndDeptId(10L, 100L))
-                .thenReturn(buildProduct());
-        when(finStockLedgerMapper.insertPositionIfAbsent(1L, 100L, 10L)).thenReturn(1);
-        when(finStockLedgerMapper.selectPositionQuantityForUpdate(1L, 100L, 10L)).thenReturn(50);
-
-        try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
-            mocked.when(SecurityUtils::isAdmin).thenReturn(true);
-            mocked.when(SecurityUtils::getUsername).thenReturn("admin");
-
-            StockTakeRequest req = buildRequest();
-            req.setActualQuantity(55);
-            req.setReason(null);
-            ServiceException ex = assertThrows(ServiceException.class,
-                    () -> stockTakeService.recordStockTake(req));
-            assertTrue(ex.getMessage().contains("原因"));
-        }
-    }
-
-    @Test
-    void writesGainLedgerWhenActualExceedsCurrent() {
-        when(finStockLedgerMapper.countByReferenceNo(1L, "TK-001")).thenReturn(0);
-        when(finProductMapper.selectFinProductByProductIdAndDeptId(10L, 100L))
-                .thenReturn(buildProduct());
-        when(finStockLedgerMapper.insertPositionIfAbsent(1L, 100L, 10L)).thenReturn(1);
-        when(finStockLedgerMapper.selectPositionQuantityForUpdate(1L, 100L, 10L)).thenReturn(50);
-        when(finStockLedgerMapper.updatePositionQuantity(1L, 100L, 10L, 55)).thenReturn(1);
-
-        try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
-            mocked.when(SecurityUtils::isAdmin).thenReturn(true);
-            mocked.when(SecurityUtils::getUsername).thenReturn("admin");
-
-            StockTakeRequest req = buildRequest();
-            req.setActualQuantity(55);
-            stockTakeService.recordStockTake(req);
-        }
-
-        verify(finStockLedgerMapper).insertFinStockLedger(argThat(ledger ->
-                "STOCK_TAKE_GAIN".equals(ledger.getChangeType())
-                && ledger.getChangeQuantity() == 5
-                && ledger.getBeforeQuantity() == 50
-                && ledger.getAfterQuantity() == 55
-                && "STOCK_TAKE".equals(ledger.getReferenceType())
-                && "TK-001".equals(ledger.getReferenceNo())));
-    }
-
-    @Test
-    void writesLossLedgerWhenActualLessThanCurrent() {
-        when(finStockLedgerMapper.countByReferenceNo(1L, "TK-001")).thenReturn(0);
-        when(finProductMapper.selectFinProductByProductIdAndDeptId(10L, 100L))
-                .thenReturn(buildProduct());
-        when(finStockLedgerMapper.insertPositionIfAbsent(1L, 100L, 10L)).thenReturn(1);
-        when(finStockLedgerMapper.selectPositionQuantityForUpdate(1L, 100L, 10L)).thenReturn(50);
-        when(finStockLedgerMapper.updatePositionQuantity(1L, 100L, 10L, 48)).thenReturn(1);
-
-        try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
-            mocked.when(SecurityUtils::isAdmin).thenReturn(true);
-            mocked.when(SecurityUtils::getUsername).thenReturn("admin");
-
-            StockTakeRequest req = buildRequest();
-            req.setActualQuantity(48);
-            stockTakeService.recordStockTake(req);
-        }
-
-        verify(finStockLedgerMapper).insertFinStockLedger(argThat(ledger ->
-                "STOCK_TAKE_LOSS".equals(ledger.getChangeType())
-                && ledger.getChangeQuantity() == -2
-                && ledger.getBeforeQuantity() == 50
-                && ledger.getAfterQuantity() == 48));
-    }
-
-    @Test
-    void noOpWhenActualEqualsCurrent() {
-        when(finStockLedgerMapper.countByReferenceNo(1L, "TK-001")).thenReturn(0);
-        when(finProductMapper.selectFinProductByProductIdAndDeptId(10L, 100L))
-                .thenReturn(buildProduct());
-        when(finStockLedgerMapper.insertPositionIfAbsent(1L, 100L, 10L)).thenReturn(1);
-        when(finStockLedgerMapper.selectPositionQuantityForUpdate(1L, 100L, 10L)).thenReturn(50);
-
-        try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
-            mocked.when(SecurityUtils::isAdmin).thenReturn(true);
-
-            StockTakeRequest req = buildRequest();
-            req.setActualQuantity(50);
-            Long ledgerId = stockTakeService.recordStockTake(req);
-            assertEquals(0L, ledgerId);
-        }
+    void recordStockTake_neverMutatesStock() {
+        assertThrows(ServiceException.class, () -> stockTakeService.recordStockTake(buildRequest()));
         verify(finStockLedgerMapper, never()).insertFinStockLedger(any());
         verify(finStockLedgerMapper, never()).updatePositionQuantity(anyLong(), anyLong(), anyLong(), anyInt());
+        verify(finStockLedgerMapper, never()).insertPositionIfAbsent(anyLong(), anyLong(), anyLong());
+        verify(finStockLedgerMapper, never()).selectPositionQuantityForUpdate(anyLong(), anyLong(), anyLong());
     }
 
     @Test
-    void rollsBackWhenPositionUpdateFails() {
-        when(finStockLedgerMapper.countByReferenceNo(1L, "TK-001")).thenReturn(0);
-        when(finProductMapper.selectFinProductByProductIdAndDeptId(10L, 100L))
-                .thenReturn(buildProduct());
-        when(finStockLedgerMapper.insertPositionIfAbsent(1L, 100L, 10L)).thenReturn(1);
-        when(finStockLedgerMapper.selectPositionQuantityForUpdate(1L, 100L, 10L)).thenReturn(50);
-        when(finStockLedgerMapper.updatePositionQuantity(1L, 100L, 10L, 55)).thenReturn(0);
+    void recordStockTake_neverReadsProduct() {
+        assertThrows(ServiceException.class, () -> stockTakeService.recordStockTake(buildRequest()));
+        verify(finProductMapper, never()).selectFinProductByProductIdAndDeptId(anyLong(), anyLong());
+    }
 
-        try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
-            mocked.when(SecurityUtils::isAdmin).thenReturn(true);
-            mocked.when(SecurityUtils::getUsername).thenReturn("admin");
-
-            StockTakeRequest req = buildRequest();
-            req.setActualQuantity(55);
-            assertThrows(ServiceException.class, () -> stockTakeService.recordStockTake(req));
-        }
+    @Test
+    void recordStockTake_neverChecksDuplicate() {
+        assertThrows(ServiceException.class, () -> stockTakeService.recordStockTake(buildRequest()));
+        verify(finStockLedgerMapper, never()).countByReferenceNo(anyLong(), anyString());
     }
 
     private StockTakeRequest buildRequest() {
@@ -244,13 +88,5 @@ class StockTakeServiceImplTest {
         req.setUnitCost(new BigDecimal("12.50"));
         req.setReason("季度盘点差异");
         return req;
-    }
-
-    private FinProduct buildProduct() {
-        FinProduct p = new FinProduct();
-        p.setProductId(10L);
-        p.setProductName("测试商品");
-        p.setDeptId(100L);
-        return p;
     }
 }

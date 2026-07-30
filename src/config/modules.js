@@ -43,7 +43,7 @@ export const modules = {
       { key: 'age', label: '年龄', type: 'number' },
       { key: 'address', label: '住址' },
       { key: 'idCard', label: '身份证号', type: 'idcard', sensitive: true },
-      { key: 'cardType', label: '会员卡类型', type: 'select', remoteUrl: '/member/level/list', remoteLabel: 'typeName', remoteValue: 'typeCode', remoteFilterStatus: '0', required: true },
+      { key: 'cardType', label: '会员卡类型', type: 'select', displayKey: 'cardTypeName', remoteUrl: '/member/level/list', remoteLabel: 'typeName', remoteValue: 'typeCode', remoteFilterStatus: '0', required: true },
       { key: 'growthValue', label: '成长值', type: 'number', formHidden: true },
       { key: 'joinDate', label: '入会日期', type: 'date' },
       { key: 'expireDate', label: '有效期至', type: 'date' },

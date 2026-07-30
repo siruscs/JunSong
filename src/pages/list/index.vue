@@ -733,10 +733,10 @@ export default {
         if (!workContext.isCurrent(contextVersion) || String(this.currentDeptId) !== String(requestDeptId)) return false
         if (this.refreshPending) return true
         let list = res.rows || res.data || []
-        if (this.moduleKey === 'member' && query.phone && list.length === 0) {
+        if (this.moduleKey === 'member' && query.memberNo && list.length === 0) {
           const fallbackQuery = { ...query }
-          delete fallbackQuery.phone
-          fallbackQuery.memberNo = query.phone
+          delete fallbackQuery.memberNo
+          fallbackQuery.phone = query.memberNo
           res = await listData(this.config.path, fallbackQuery)
           if (!workContext.isCurrent(contextVersion) || String(this.currentDeptId) !== String(requestDeptId)) return false
           if (this.refreshPending) return true

@@ -30,7 +30,9 @@
     "pages/wechat-bind/index",
     "pages/legal/index",
     "pages/operating-task/index",
-    "pages/field-work/index"
+    "pages/field-work/index",
+    "pages/stocktake/index",
+    "pages/stocktake/detail"
   ],
   "window": {
     "navigationBarTextStyle": "black",

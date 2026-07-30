@@ -66,6 +66,7 @@ export default {
     return {
       loading: false,
       saving: false,
+      saved: false,
       roleGroup: '',
       postGroup: '',
       form: {
@@ -187,6 +188,7 @@ export default {
     },
     async submit() {
       if (!this.validate()) return
+      if (this.saving || this.saved) return
       this.saving = true
       try {
         await request({
@@ -199,6 +201,7 @@ export default {
             sex: this.form.sex
           }
         })
+        this.saved = true
         const userInfo = uni.getStorageSync('userInfo') || {}
         uni.setStorageSync('userInfo', {
           ...userInfo,

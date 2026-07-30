@@ -143,9 +143,8 @@ export function assignCounter(stocktakeId, data = {}) {
  */
 export function startStocktake(stocktakeId, version) {
   return request({
-    url: `/finance/stocktakes/${stocktakeId}/start`,
-    method: 'PUT',
-    data: { version }
+    url: `/finance/stocktakes/${stocktakeId}/start?version=${version}`,
+    method: 'PUT'
   })
 }
 
@@ -172,9 +171,8 @@ export function countItem(stocktakeId, itemId, data = {}) {
  */
 export function submitStocktake(stocktakeId, version) {
   return request({
-    url: `/finance/stocktakes/${stocktakeId}/submit`,
-    method: 'PUT',
-    data: { version }
+    url: `/finance/stocktakes/${stocktakeId}/submit?version=${version}`,
+    method: 'PUT'
   })
 }
 
@@ -182,7 +180,7 @@ export function submitStocktake(stocktakeId, version) {
  * 复盘行录入（RECOUNTING，复盘人须与盘点人不同）。
  * @param {number} stocktakeId
  * @param {number} itemId
- * @param {Object} data { recountQuantity, reason?, idempotencyKey, version }
+ * @param {Object} data { recountQuantity, reasonCode?, reason?, idempotencyKey, version }
  * @returns {Promise<Object>}
  */
 export function recountItem(stocktakeId, itemId, data = {}) {
@@ -215,9 +213,8 @@ export function approveStocktake(stocktakeId, data = {}) {
  */
 export function postStocktake(stocktakeId, version) {
   return request({
-    url: `/finance/stocktakes/${stocktakeId}/post`,
-    method: 'PUT',
-    data: { version }
+    url: `/finance/stocktakes/${stocktakeId}/post?version=${version}`,
+    method: 'PUT'
   })
 }
 
@@ -229,9 +226,8 @@ export function postStocktake(stocktakeId, version) {
  */
 export function cancelStocktake(stocktakeId, version) {
   return request({
-    url: `/finance/stocktakes/${stocktakeId}/cancel`,
-    method: 'PUT',
-    data: { version }
+    url: `/finance/stocktakes/${stocktakeId}/cancel?version=${version}`,
+    method: 'PUT'
   })
 }
 

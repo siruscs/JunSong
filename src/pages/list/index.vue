@@ -765,7 +765,12 @@ export default {
       if (!this.selectedSeckillId) return
       this.claimLoading = true
       try {
-        const res = await request({ url: '/member/seckillRecord/claim/list', method: 'GET', data: { pageNum: 1, pageSize: 100, seckillId: this.selectedSeckillId } })
+        const data = { pageNum: 1, pageSize: 100, seckillId: this.selectedSeckillId }
+        const searchValue = String(this.queryValue || '').trim()
+        if (searchValue) {
+          data[/^[A-Za-z0-9]/.test(searchValue) ? 'memberNo' : 'memberName'] = searchValue
+        }
+        const res = await request({ url: '/member/seckillRecord/claim/list', method: 'GET', data })
         this.claimRows = res.rows || res.data || []
       } finally {
         this.claimLoading = false
@@ -1639,6 +1644,13 @@ export default {
   margin-bottom: 16rpx;
 }
 
+.batch-all-row > picker {
+  display: block;
+  flex: 1;
+  width: 0;
+  min-width: 0;
+}
+
 .batch-all-label {
   flex-shrink: 0;
   width: 140rpx;
@@ -1648,16 +1660,18 @@ export default {
 }
 
 .batch-all-picker {
+  display: block;
+  width: 100%;
   flex: 1;
   min-width: 0;
-  height: 72rpx;
-  line-height: 72rpx;
-  padding: 0 18rpx;
+  height: 84rpx;
+  line-height: 84rpx;
+  padding: 0 24rpx;
   border-radius: 14rpx;
-  background: #F8FAFC;
-  border: 1rpx solid #E2E8F0;
+  background: #F5F8FA;
+  border: 2rpx solid #E2E8F0;
   color: #1A2332;
-  font-size: 26rpx;
+  font-size: 28rpx;
   box-sizing: border-box;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1665,16 +1679,24 @@ export default {
 }
 
 .batch-all-input {
+  display: block;
   flex: 1;
   min-width: 0;
-  height: 72rpx;
-  padding: 0 18rpx;
+  width: 100%;
+  height: 84rpx;
+  line-height: 84rpx;
+  padding: 0 24rpx;
   border-radius: 14rpx;
-  background: #F8FAFC;
-  border: 1rpx solid #E2E8F0;
+  background: #F5F8FA;
+  border: 2rpx solid #E2E8F0;
   color: #1A2332;
-  font-size: 26rpx;
+  font-size: 28rpx;
   box-sizing: border-box;
+}
+
+.batch-all-input:focus {
+  border-color: #087CF0;
+  background: #FFFFFF;
 }
 
 .claim-cancel,

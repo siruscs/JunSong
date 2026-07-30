@@ -55,3 +55,8 @@ test('shows search-specific empty copy and keeps no-permission copy for empty un
   assert.match(source, /searchQuery[\s\S]*换个关键词试试/)
   assert.match(source, /账号已分配小程序模块权限/)
 })
+
+test('only renders the empty state when the filtered workbench has no results', () => {
+  assert.match(source, /<view class="empty" v-if="!hasSearchResults">/)
+  assert.doesNotMatch(source, /<view class="section" v-if="canViewOperatingTask && !searchQuery">[\s\S]*<\/view>\s*\n\s*<view class="empty" v-else>/)
+})

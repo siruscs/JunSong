@@ -3,6 +3,11 @@ import { shouldRecoverAuth } from '@/utils/authSession.js'
 import { workContext } from '@/utils/workContext.js'
 import { mergePersistedUser, resolveDeptCollection } from '@/utils/workContext.js'
 import { classifyRequestError } from '@/utils/requestPolicy.js'
+import {
+  applyIdempotencyHeader,
+  clearIdempotencyKeyOnSuccess,
+  releaseIdempotencyKeyOnFailure
+} from '@/utils/idempotency.js'
 
 const DEFAULT_BASE_URL = 'https://www.junsong.vip/prod-api'
 const REQUEST_TIMEOUT = 30000
@@ -98,11 +103,16 @@ export function request(options) {
       }
     }, timeoutMs)
     
+    // 幂等键：applyIdempotencyHeader 返回注入后的 header 对象，
+    // 从中提取实际使用的 X-Idempotency-Key，供响应拦截时管理键生命周期
+    const idempotencyHeader = applyIdempotencyHeader(options)
+    const usedKey = idempotencyHeader['X-Idempotency-Key'] || idempotencyHeader['x-idempotency-key'] || ''
+
     requestTask = uni.request({
       url: requestUrl,
       method: options.method || 'GET',
       data: options.data || {},
-      header: buildHeader(options.header),
+      header: buildHeader(idempotencyHeader),
       timeout: timeoutMs + 5000,
       success: (res) => {
         clearTimeout(guardTimer)
@@ -110,6 +120,8 @@ export function request(options) {
         const ok = res.statusCode >= 200 && res.statusCode < 300
         const bizOk = data.code === undefined || data.code === 200
         if (ok && bizOk) {
+          // 业务成功：清除暂存键，下次相同请求视为新业务
+          clearIdempotencyKeyOnSuccess(options, usedKey)
           const result = options.withContextMeta
             ? {
                 ...data,
@@ -123,6 +135,8 @@ export function request(options) {
           finish(result, true)
           return
         }
+        // 业务失败：保留暂存键以供同键安全重试
+        releaseIdempotencyKeyOnFailure(options, usedKey)
         // 网关 AuthFilter 返回 HTTP 200 + {"code": 401}（非标准 HTTP 401），
         // 后端 HeaderInterceptor 验证失败也可能返回业务码 401。
         // 同时检查 HTTP 状态码和业务码，确保两种情况都能正确处理。
@@ -141,6 +155,10 @@ export function request(options) {
       },
       fail: (err) => {
         clearTimeout(guardTimer)
+        // 网络层失败：保留幂等键以供同键安全重试
+        // 这是最关键的重试场景——业务可能未执行也可能已执行，
+        // 必须使用同一键让后端按 SUCCEEDED/PROCESSING 状态判定，避免重复执行
+        releaseIdempotencyKeyOnFailure(options, usedKey)
         const isCertificate = String(err?.errMsg || '').includes('certificate') || String(err?.errMsg || '').includes('SSL')
         const classified = classifyRequestError(err)
         const codeByKind = {

@@ -121,7 +121,7 @@
       </view>
     </view>
 
-    <view class="empty" v-else>
+    <view class="empty" v-if="!hasSearchResults">
       <view class="empty-mark">{{ searchQuery ? '搜' : '权' }}</view>
       <text class="empty-title">{{ searchQuery ? '未找到匹配功能' : '暂无可用功能' }}</text>
       <text class="empty-sub">{{ searchQuery ? '换个关键词试试' : '请确认账号已分配小程序模块权限，或重新登录刷新权限。' }}</text>

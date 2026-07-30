@@ -251,6 +251,23 @@
         </view>
       </view>
     </view>
+
+    <view class="claim-mask" v-if="startTimeAdjustModalOpen" @tap="closeStartTimeAdjust">
+      <view class="claim-panel" @tap.stop>
+        <view class="claim-panel-title">起始时间调整</view>
+        <view class="payment-row payment-row-stack">
+          <text class="payment-label">新的起始时间</text>
+          <picker mode="date" :value="startTimeAdjustForm.startDate" @change="onStartTimeDateChange">
+            <view class="payment-picker">{{ startTimeAdjustForm.startDate || '请选择日期' }}<text class="picker-arrow">▸</text></view>
+          </picker>
+        </view>
+        <textarea class="claim-remark" v-model="startTimeAdjustForm.reason" placeholder="请输入调整原因" />
+        <view class="claim-panel-actions">
+          <button class="claim-cancel" @tap="closeStartTimeAdjust">取消</button>
+          <button class="claim-confirm" :disabled="startTimeAdjustSubmitting" @tap="submitStartTimeAdjust">{{ startTimeAdjustSubmitting ? '提交中' : '确认调整' }}</button>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -289,6 +306,9 @@ export default {
       },
       breakEvenModalOpen: false,
       breakEvenResult: null,
+      startTimeAdjustModalOpen: false,
+      startTimeAdjustSubmitting: false,
+      startTimeAdjustForm: { startDate: '', reason: '' },
       dictPaymentMethods: [],
       reverseRequestId: '',
       pendingUnverify: null,
@@ -471,6 +491,7 @@ export default {
       return this.moduleKey === 'expense' && this.isExpenseVerified && hasActionPermission('expense', 'unverify')
     },
     canEdit() {
+      if (this.moduleKey === 'accountingPeriod') return false
       if (this.isInvestorPaymentLocked) return false
       if (this.isExpenseVerified) return false
       return hasActionPermission(this.moduleKey, 'edit')
@@ -779,6 +800,10 @@ export default {
         await this.handleBreakEvenCheck()
         return
       }
+      if (this.moduleKey === 'accountingPeriod' && action.action === 'adjustStartTime') {
+        this.openStartTimeAdjust()
+        return
+      }
       try {
         uni.showLoading({ title: '处理中...' })
         // 优先使用 actionRequest 处理 URL 中的 {id} 占位符
@@ -839,6 +864,42 @@ export default {
     closeBreakEven() {
       this.breakEvenModalOpen = false
       this.breakEvenResult = null
+    },
+    openStartTimeAdjust() {
+      const current = String(this.record?.startTime || '').slice(0, 10)
+      this.startTimeAdjustForm = { startDate: current, reason: '' }
+      this.startTimeAdjustModalOpen = true
+    },
+    closeStartTimeAdjust() {
+      if (this.startTimeAdjustSubmitting) return
+      this.startTimeAdjustModalOpen = false
+    },
+    onStartTimeDateChange(e) {
+      this.startTimeAdjustForm.startDate = e.detail.value
+    },
+    async submitStartTimeAdjust() {
+      const startDate = String(this.startTimeAdjustForm.startDate || '').trim()
+      const reason = String(this.startTimeAdjustForm.reason || '').trim()
+      if (!startDate || !reason) {
+        uni.showToast({ title: '请选择起始时间并填写原因', icon: 'none' })
+        return
+      }
+      this.startTimeAdjustSubmitting = true
+      try {
+        await request({
+          url: `/finance/accountingPeriod/${this.recordId}/opsAdjustStartTime`,
+          method: 'POST',
+          data: { startTime: `${startDate} 00:00:00`, endTime: this.record?.endTime, reason }
+        })
+        uni.showToast({ title: '调整成功', icon: 'success' })
+        this.startTimeAdjustModalOpen = false
+        await this.loadDetail()
+      } catch (e) {
+        console.error('起始时间调整失败', e)
+        uni.showToast({ title: e?.message || '调整失败', icon: 'none' })
+      } finally {
+        this.startTimeAdjustSubmitting = false
+      }
     },
     fmtMoney(val) {
       if (!val && val !== 0) return '0'
@@ -941,14 +1002,6 @@ export default {
       const remainingCents = Math.abs(Math.round(this.remainingAmount * 100))
       if (paymentAbs > remainingCents) {
         return uni.showToast({ title: '缴款金额超过剩余额度', icon: 'none' })
-      }
-      // 退货销售（金额为负）缴款也必须为负；正向销售缴款必须为正
-      const saleAmount = Number(this.record.saleAmount || 0)
-      if (saleAmount < 0 && paymentAmount > 0) {
-        return uni.showToast({ title: '退货销售缴款金额需为负数', icon: 'none' })
-      }
-      if (saleAmount > 0 && paymentAmount < 0) {
-        return uni.showToast({ title: '正向销售缴款金额需为正数', icon: 'none' })
       }
       if (!this.paymentForm.paymentDate) {
         return uni.showToast({ title: '请选择缴款日期', icon: 'none' })

@@ -95,3 +95,12 @@ test('Task10: 小程序详情页复盘人须与盘点人不同（由后端校验
   assert.match(detailPage, /recountQuantity/)
   assert.doesNotMatch(detailPage, /counterUserId.*recount/)
 })
+
+test('Task10: 小程序复盘请求体必须包含 reasonCode（复盘原因代码进入 HTTP 请求体）', () => {
+  // saveRecount 函数中 recountItem 调用必须传入 reasonCode
+  // 找到 recountItem 调用位置，检查其后 300 字符内是否包含 reasonCode
+  const idx = detailPage.indexOf('recountItem(')
+  assert.ok(idx >= 0, 'recountItem 调用必须存在')
+  const snippet = detailPage.substring(idx, idx + 300)
+  assert.match(snippet, /reasonCode/, 'recountItem 调用必须传入 reasonCode（复盘原因代码必须进入 HTTP 请求体）')
+})

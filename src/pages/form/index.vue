@@ -251,6 +251,21 @@
         <text class="btn-icon">✓</text> {{ submitting ? '保存中' : (mode === 'preview' ? '生成核算' : '保存') }}
       </button>
     </view>
+
+    <view class="member-success-mask" v-if="memberCreateSuccess">
+      <view class="member-success-dialog">
+        <text class="member-success-title">会员新增成功</text>
+        <view class="member-success-row">
+          <text class="member-success-label">会员姓名</text>
+          <text class="member-success-name">{{ memberCreateSuccess.memberName }}</text>
+        </view>
+        <view class="member-success-row">
+          <text class="member-success-label">会员编号</text>
+          <text class="member-success-no">{{ memberCreateSuccess.memberNo }}</text>
+        </view>
+        <button class="member-success-confirm" @tap="closeMemberCreateSuccess">知道了</button>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -277,6 +292,8 @@ export default {
       ocrImageUrl: '',
       ocrLoading: false,
       submitting: false,
+      submitted: false,
+      memberCreateSuccess: null,
       memberKeyword: '',
       memberResults: [],
       memberLoading: false,
@@ -445,6 +462,7 @@ export default {
       return false
     },
     isReadonlyField(field) {
+      if (this.config?.readonlyFields?.includes(field.key)) return true
       if (this.moduleKey === 'member' && !this.id && field.serverGenerated) return true
       return this.isSeckillRecordCreate && field.key === 'totalAmount'
     },
@@ -561,9 +579,9 @@ export default {
           if (field.remoteFilterDept) {
             const deptId = this.getCurrentDeptId()
             if (deptId) params.deptId = deptId
-            params.status = '0'
           }
-          const cacheKey = 'remote:' + field.remoteUrl + (field.remoteFilterDept ? ':dept' : '')
+          if (field.remoteFilterStatus) params.status = field.remoteFilterStatus
+          const cacheKey = 'remote:' + field.remoteUrl + (field.remoteFilterDept ? ':dept' : '') + (field.remoteFilterStatus || '')
           let list = this.dictCache[cacheKey]
           if (!list) {
             const res = await request({ url: field.remoteUrl, method: 'GET', data: params })
@@ -581,6 +599,10 @@ export default {
     getCurrentDeptId() {
       const userInfo = uni.getStorageSync('userInfo') || {}
       return userInfo.currentDeptId || userInfo.deptId || null
+    },
+    closeMemberCreateSuccess() {
+      this.memberCreateSuccess = null
+      setTimeout(() => uni.navigateBack(), 300)
     },
     applyDictDefault(field, list) {
       if (this.id || field.key !== 'paymentMethod' || this.form[field.key]) return
@@ -809,7 +831,7 @@ export default {
         uni.showToast({ title: '暂无提交权限', icon: 'none' })
         return
       }
-      if (this.submitting) return
+      if (this.submitting || this.submitted) return
       if (this.isSeckillRecordCreate) this.calculateSeckillTotal()
       if (!this.validate()) return
       this.submitting = true
@@ -818,21 +840,18 @@ export default {
         if (this.id) {
           submitData[this.config.idKey] = this.id
           await updateData(this.config.path, submitData)
+          this.submitted = true
           uni.showToast({ title: '保存成功' })
           setTimeout(() => uni.navigateBack(), 500)
         } else {
           const res = await addData(this.config.path, submitData)
+          this.submitted = true
           const savedData = res.data || submitData
           if (this.moduleKey === 'member') {
-            uni.showModal({
-              title: '会员信息',
-              content: `会员姓名：${savedData.memberName || this.form.memberName}\n会员编号：${savedData.memberNo || this.form.memberNo}`,
-              showCancel: false,
-              confirmText: '知道了',
-              success: () => {
-                setTimeout(() => uni.navigateBack(), 500)
-              }
-            })
+            this.memberCreateSuccess = {
+              memberName: savedData.memberName || this.form.memberName || '-',
+              memberNo: savedData.memberNo || this.form.memberNo || '-'
+            }
           } else {
             uni.showToast({ title: '保存成功' })
             setTimeout(() => uni.navigateBack(), 500)
@@ -1343,6 +1362,18 @@ export default {
   transition: border-color 0.2s;
 }
 
+.control.input {
+  display: block;
+  width: 100%;
+  height: 84rpx;
+  line-height: 84rpx;
+}
+
+.control.input:focus {
+  border-color: #087CF0;
+  background: #FFFFFF;
+}
+
 .control:focus {
   border-color: #087CF0;
   background: #FFFFFF;
@@ -1711,5 +1742,72 @@ export default {
   font-size: 28rpx;
   font-weight: 700;
   color: #087CF0;
+}
+
+.member-success-mask {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx;
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.member-success-dialog {
+  width: 100%;
+  padding: 48rpx 40rpx 32rpx;
+  background: #FFFFFF;
+  border-radius: 28rpx;
+  box-sizing: border-box;
+  box-shadow: 0 24rpx 60rpx rgba(15, 23, 42, 0.24);
+}
+
+.member-success-title {
+  display: block;
+  margin-bottom: 32rpx;
+  text-align: center;
+  font-size: 36rpx;
+  font-weight: 800;
+  color: #0F766E;
+}
+
+.member-success-row {
+  display: flex;
+  align-items: baseline;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #E2E8F0;
+}
+
+.member-success-label {
+  width: 150rpx;
+  flex: none;
+  font-size: 26rpx;
+  color: #64748B;
+}
+
+.member-success-name,
+.member-success-no {
+  flex: 1;
+  font-size: 42rpx;
+  line-height: 1.25;
+  font-weight: 800;
+  color: #DC2626;
+  word-break: break-all;
+}
+
+.member-success-confirm {
+  display: block;
+  width: 100%;
+  height: 78rpx;
+  line-height: 78rpx;
+  margin-top: 36rpx;
+  padding: 0;
+  background: #0F766E;
+  color: #FFFFFF;
+  font-size: 30rpx;
+  font-weight: 700;
+  border-radius: 999rpx;
 }
 </style>

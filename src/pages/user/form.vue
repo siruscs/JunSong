@@ -158,6 +158,7 @@ export default {
       roles: [],
       depts: [],
       saving: false,
+      saved: false,
       sexOptions: [
         { label: '男', value: '0' },
         { label: '女', value: '1' },
@@ -312,7 +313,7 @@ export default {
       return true
     },
     async submit() {
-      if (this.saving) return
+      if (this.saving || this.saved) return
       if (!this.validate()) return
 
       const payload = {
@@ -336,6 +337,7 @@ export default {
           payload.password = this.form.password
           await request({ url: '/system/user', method: 'POST', data: payload })
         }
+        this.saved = true
         uni.showToast({ title: '保存成功' })
         setTimeout(() => uni.navigateBack(), 500)
       } catch (e) {

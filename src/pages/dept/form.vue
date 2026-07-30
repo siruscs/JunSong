@@ -26,11 +26,6 @@
       </view>
 
       <view class="form-item">
-        <text class="form-label">负责人</text>
-        <input class="form-input" v-model="form.leader" placeholder="请输入负责人姓名" />
-      </view>
-
-      <view class="form-item">
         <text class="form-label">联系电话</text>
         <input class="form-input" v-model="form.phone" type="number" placeholder="请输入联系电话" />
       </view>
@@ -86,6 +81,7 @@ export default {
       isAdd: true,
       parentOptions: [],
       saving: false,
+      saved: false,
       form: {
         parentId: 0,
         deptName: '',
@@ -161,7 +157,7 @@ export default {
       return true
     },
     async submitForm() {
-      if (this.saving) return
+      if (this.saving || this.saved) return
       if (!this.validateForm()) return
       if (!this.hasPermission()) {
         uni.showToast({ title: '暂无权限', icon: 'none' })
@@ -182,6 +178,7 @@ export default {
           await request({ url: '/system/dept', method: 'PUT', data })
           uni.showToast({ title: '修改成功' })
         }
+        this.saved = true
         setTimeout(() => {
           uni.navigateBack({ delta: 2 })
         }, 1000)

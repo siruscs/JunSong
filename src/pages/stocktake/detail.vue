@@ -531,6 +531,7 @@ export default {
       try {
         await recountItem(this.stocktakeId, item.itemId, {
           recountQuantity,
+          reasonCode: state.reasonCode || undefined,
           reason: state.reason || undefined,
           idempotencyKey: buildIdempotencyKey(this.stocktakeId, item.productId, 'recount', item.version),
           version: item.version

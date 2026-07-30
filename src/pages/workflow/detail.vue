@@ -121,6 +121,7 @@ export default {
       record: null,
       loading: true,
       submitting: false,
+      submitted: false,
       approveOpen: false,
       rejectOpen: false,
       approveForm: { comment: '' },
@@ -202,10 +203,11 @@ export default {
       this.approveOpen = false
     },
     async submitApprove() {
-      if (this.submitting) return
+      if (this.submitting || this.submitted) return
       this.submitting = true
       try {
         await approveTask(this.taskId, { comment: this.approveForm.comment || '同意' })
+        this.submitted = true
         uni.showToast({ title: '审批通过', icon: 'success' })
         this.closeApprove()
         setTimeout(() => uni.navigateBack(), 1200)
@@ -230,7 +232,7 @@ export default {
       this.rejectForm.targetNode = node?.nodeId || node?.id || node?.key || ''
     },
     async submitReject() {
-      if (this.submitting) return
+      if (this.submitting || this.submitted) return
       const comment = (this.rejectForm.comment || '').trim()
       if (!comment) {
         uni.showToast({ title: '请输入驳回原因', icon: 'none' })
@@ -246,6 +248,7 @@ export default {
           comment,
           targetNode: this.rejectForm.targetNode
         })
+        this.submitted = true
         uni.showToast({ title: '已驳回', icon: 'success' })
         this.closeReject()
         setTimeout(() => uni.navigateBack(), 1200)

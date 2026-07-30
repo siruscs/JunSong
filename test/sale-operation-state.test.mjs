@@ -22,3 +22,9 @@ test('return-sale payment compares against the absolute remaining amount', () =>
   const block = detail.match(/async submitPayment\(\) \{([\s\S]*?)\n    \}/)?.[1] || ''
   assert.match(block, /const remainingCents = Math\.abs\(Math\.round\(this\.remainingAmount \* 100\)\)/)
 })
+
+test('sale payment does not force payment sign to match sale sign', () => {
+  const block = detail.match(/async submitPayment\(\) \{([\s\S]*?)\n    \}/)?.[1] || ''
+  assert.doesNotMatch(block, /退货销售缴款金额需为负数/)
+  assert.doesNotMatch(block, /正向销售缴款金额需为正数/)
+})

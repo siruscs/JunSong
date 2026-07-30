@@ -21,11 +21,6 @@
       </view>
 
       <view class="form-item">
-        <text class="form-label">负责人</text>
-        <text class="form-value">{{ dept.leader || '-' }}</text>
-      </view>
-
-      <view class="form-item">
         <text class="form-label">联系电话</text>
         <text class="form-value">{{ dept.phone || '-' }}</text>
       </view>

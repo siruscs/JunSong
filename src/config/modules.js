@@ -43,7 +43,7 @@ export const modules = {
       { key: 'age', label: '年龄', type: 'number' },
       { key: 'address', label: '住址' },
       { key: 'idCard', label: '身份证号', type: 'idcard', sensitive: true },
-      { key: 'cardType', label: '会员卡类型', type: 'select', remoteUrl: '/member/level/list', remoteLabel: 'typeName', remoteValue: 'typeCode', required: true },
+      { key: 'cardType', label: '会员卡类型', type: 'select', remoteUrl: '/member/level/list', remoteLabel: 'typeName', remoteValue: 'typeCode', remoteFilterStatus: '0', required: true },
       { key: 'growthValue', label: '成长值', type: 'number', formHidden: true },
       { key: 'joinDate', label: '入会日期', type: 'date' },
       { key: 'expireDate', label: '有效期至', type: 'date' },
@@ -156,8 +156,8 @@ export const modules = {
       { key: 'seckillDate', label: '开始日期', type: 'date', required: true },
       { key: 'endDate', label: '结束日期', type: 'date', required: true },
       { key: 'timeSlot', label: '时间段', hidden: true },
-      { key: 'seckillAmount', label: '秒杀金额', type: 'number', required: true },
-      { key: 'seckillPrice', label: '秒杀单价', type: 'number', required: true },
+      { key: 'seckillAmount', label: '原价（每份）', type: 'number', required: true },
+      { key: 'seckillPrice', label: '秒杀价（每份）', type: 'number', required: true },
       { key: 'totalShares', label: '总份额', type: 'number', required: true },
       { key: 'remainShares', label: '剩余份额', type: 'number', hidden: true },
       { key: 'policy', label: '秒杀政策', type: 'textarea' },
@@ -173,6 +173,7 @@ export const modules = {
     permissions: { ...memberCrudPermissions('seckillRecord'), receive: 'member:seckillRecord:receive' },
     idKey: 'recordId',
     searchKey: 'memberName',
+    searchKeys: ['memberName', 'memberNo'],
     addOnly: true,
     summary: ['memberNo', 'shares', 'claimedShares', 'remainingShares'],
     fields: [
@@ -396,10 +397,11 @@ export const modules = {
     title: '核算周期',
     path: '/finance/accountingPeriod',
     detailPath: '/finance/accountingPeriod/detail',
-    permissions: { ...crudPermissions('accountingPeriod'), checkBreakEven: 'finance:accountingPeriod:edit', carryForward: 'finance:profitShare:add' },
+    permissions: { ...crudPermissions('accountingPeriod'), adjustStartTime: 'finance:accountingPeriod:opsAdjustStartTime', checkBreakEven: 'finance:accountingPeriod:edit', carryForward: 'finance:profitShare:add' },
     idKey: 'periodId',
     searchKey: 'periodNo',
     summary: ['periodNo', 'status', 'totalSalePayment', 'netProfit'],
+    readonlyFields: ['deptId', 'periodNo', 'endTime', 'status', 'breakEvenTime', 'carryForwardTime', 'totalVerifiedExpense', 'totalPurchase', 'totalSalePayment', 'totalUnverifiedAdvance', 'netProfit', 'managerProfitRate', 'managerProfitAmount', 'investorProfitAmount'],
     fields: [
       { key: 'deptId', label: '机构ID', type: 'number' },
       { key: 'periodNo', label: '周期编号' },
@@ -418,6 +420,7 @@ export const modules = {
       { key: 'investorProfitAmount', label: '投资人返款', type: 'number' }
     ],
     actions: [
+      { name: '起始时间调整', action: 'adjustStartTime' },
       { name: '回本检测', action: 'checkBreakEven', url: '/finance/accountingPeriod/current/{deptId}/trialBreakEven', idKey: 'deptId', method: 'POST' },
       { name: '结转分润', action: 'carryForward', url: '/finance/accountingPeriod/current/{deptId}/carryForward', idKey: 'deptId', method: 'POST' }
     ]

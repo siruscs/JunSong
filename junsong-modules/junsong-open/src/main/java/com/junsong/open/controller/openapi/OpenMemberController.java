@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 
@@ -93,6 +94,7 @@ public class OpenMemberController extends BaseController
      * @param params   积分变动参数（points积分值、reason原因、idempotencyKey幂等键）
      */
     @PostMapping("/{memberId}/points/records")
+    @Idempotent(scene = "open:member:points-record", highRisk = true)
     public AjaxResult createPointsRecord(@PathVariable("memberId") Long memberId,
             @RequestBody Map<String, Object> params)
     {
@@ -104,6 +106,7 @@ public class OpenMemberController extends BaseController
      * 积分兑换(写入操作)
      */
     @PostMapping("/points-exchanges")
+    @Idempotent(scene = "open:member:points-exchange", highRisk = true)
     public AjaxResult createPointsExchange(@RequestBody Map<String, Object> params)
     {
         return restTemplate.postForObject(MEMBER_BASE + "/pointsExchange", params, AjaxResult.class);

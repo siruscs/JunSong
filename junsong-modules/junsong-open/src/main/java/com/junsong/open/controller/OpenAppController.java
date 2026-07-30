@@ -22,6 +22,7 @@ import com.junsong.common.core.utils.poi.ExcelUtil;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.security.annotation.RequiresPermissions;
 import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.open.domain.OpenApp;
@@ -78,6 +79,7 @@ public class OpenAppController extends BaseController
 
     @PostMapping
     @RequiresPermissions("open:app:add")
+    @Idempotent(scene = "open:app:create")
     public AjaxResult add(@RequestBody OpenApp openApp)
     {
         openApp.setCreateBy(SecurityUtils.getUsername());
@@ -86,6 +88,7 @@ public class OpenAppController extends BaseController
 
     @PutMapping
     @RequiresPermissions("open:app:edit")
+    @Idempotent(scene = "open:app:edit")
     public AjaxResult edit(@RequestBody OpenApp openApp)
     {
         openApp.setUpdateBy(SecurityUtils.getUsername());
@@ -101,6 +104,7 @@ public class OpenAppController extends BaseController
 
     @PutMapping("/approve/{appId}")
     @RequiresPermissions("open:app:approve")
+    @Idempotent(scene = "open:app:approve")
     public AjaxResult approve(@PathVariable("appId") Long appId)
     {
         return toAjax(openAppService.approveApp(appId, SecurityUtils.getUsername()));
@@ -108,6 +112,7 @@ public class OpenAppController extends BaseController
 
     @PutMapping("/reject/{appId}")
     @RequiresPermissions("open:app:approve")
+    @Idempotent(scene = "open:app:reject", highRisk = true, ttlSeconds = 2592000)
     public AjaxResult reject(@PathVariable("appId") Long appId, @RequestParam String rejectReason)
     {
         return toAjax(openAppService.rejectApp(appId, rejectReason, SecurityUtils.getUsername()));
@@ -134,6 +139,7 @@ public class OpenAppController extends BaseController
 
     @PutMapping("/keys/changeStatus")
     @RequiresPermissions("open:app:key:edit")
+    @Idempotent(scene = "open:app:changeKeyStatus", highRisk = true, ttlSeconds = 2592000)
     public AjaxResult changeKeyStatus(@RequestBody OpenAppSecret openAppSecret)
     {
         // R25 审计：捕获变更前快照

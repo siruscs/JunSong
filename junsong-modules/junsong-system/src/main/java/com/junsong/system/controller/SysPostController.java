@@ -16,6 +16,7 @@ import com.junsong.common.core.utils.poi.ExcelUtil;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -72,6 +73,7 @@ public class SysPostController extends BaseController
      */
     @RequiresPermissions("system:post:add")
     @Log(title = "岗位管理", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "system:post:create")
     @PostMapping
     public AjaxResult add(@Validated @RequestBody SysPost post)
     {
@@ -92,6 +94,7 @@ public class SysPostController extends BaseController
      */
     @RequiresPermissions("system:post:edit")
     @Log(title = "岗位管理", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:post:update")
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody SysPost post)
     {
@@ -112,6 +115,7 @@ public class SysPostController extends BaseController
      */
     @RequiresPermissions("system:post:remove")
     @Log(title = "岗位管理", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "system:post:delete")
     @DeleteMapping("/{postIds}")
     public AjaxResult remove(@PathVariable Long[] postIds)
     {

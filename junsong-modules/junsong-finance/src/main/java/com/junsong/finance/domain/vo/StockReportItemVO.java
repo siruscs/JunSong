@@ -29,6 +29,9 @@ public class StockReportItemVO {
     /** 销售净出库 */
     private Integer saleNetOutQuantity;
 
+    /** 区间盘点等非采购销售调整净数量 */
+    private Integer otherAdjustmentNetQuantity;
+
     /** 期末数量 */
     private Integer closingQuantity;
 
@@ -133,6 +136,14 @@ public class StockReportItemVO {
 
     public void setSaleNetOutQuantity(Integer saleNetOutQuantity) {
         this.saleNetOutQuantity = saleNetOutQuantity;
+    }
+
+    public Integer getOtherAdjustmentNetQuantity() {
+        return otherAdjustmentNetQuantity;
+    }
+
+    public void setOtherAdjustmentNetQuantity(Integer otherAdjustmentNetQuantity) {
+        this.otherAdjustmentNetQuantity = otherAdjustmentNetQuantity;
     }
 
     public Integer getClosingQuantity() {

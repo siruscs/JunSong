@@ -177,6 +177,11 @@ public class FinStockLedgerServiceImpl implements IFinStockLedgerService {
         ledger.setReferenceType(refType);
         ledger.setReferenceId(refId);
         ledger.setReferenceNo(refNo);
+        // DB 唯一键兜底：同一单据同一商品同一类型只能生成一条流水
+        // 格式：refType:refId:productId（pid 用于区分同一单据多商品行）
+        if (refType != null && refId != null && productId != null) {
+            ledger.setIdempotencyKey(refType + ":" + refId + ":" + productId);
+        }
         ledger.setDelFlag("0");
         ledger.setCreateBy(resolveOperator(operator));
         finStockLedgerMapper.insertFinStockLedger(ledger);

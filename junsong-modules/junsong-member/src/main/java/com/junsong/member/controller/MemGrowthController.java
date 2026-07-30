@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import com.junsong.common.core.constant.SecurityConstants;
 import com.junsong.common.core.domain.R;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
@@ -78,6 +79,7 @@ public class MemGrowthController extends BaseController
      */
     @RequiresPermissions("member:growth:adjust")
     @Log(title = "成长值调整", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "member:growth:adjust", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/adjust")
     public AjaxResult adjust(@RequestBody java.util.Map<String, Object> params)
     {
@@ -112,6 +114,7 @@ public class MemGrowthController extends BaseController
      */
     @RequiresPermissions("member:growth:edit")
     @Log(title = "成长规则", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "member:growth:update")
     @PutMapping("/rule")
     public AjaxResult updateRule(@RequestBody MemGrowthRule rule)
     {
@@ -124,6 +127,7 @@ public class MemGrowthController extends BaseController
      * 幂等键: SALE:{saleId}
      */
     @InnerAuth
+    @Idempotent(scene = "member:growth:award-sale", highRisk = true)
     @PostMapping("/inner/awardSale")
     public R<Boolean> awardSaleGrowth(@RequestBody SaleGrowthAwardReq request,
                                        @RequestHeader(SecurityConstants.FROM_SOURCE) String source)

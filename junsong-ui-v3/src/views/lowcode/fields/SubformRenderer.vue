@@ -25,7 +25,6 @@
           >
             <el-form-item
               :label="subField.fieldLabel"
-              :prop="`rows.${index}.${subField.fieldKey}`"
               :rules="buildRules(subField)"
               :required="subField.required === '1'"
               class="subform-field-item"
@@ -166,6 +165,18 @@ function formatTotal(val: number): string {
 
 .subform-add-btn {
   margin-top: 8px;
+  /* 主题全局样式可能把 plain 按钮背景改成主色，但保留了低对比度文字。 */
+  color: #ffffff !important;
+  background: var(--el-color-primary) !important;
+  border-color: var(--el-color-primary) !important;
+  font-weight: 600;
+}
+
+.subform-add-btn:hover,
+.subform-add-btn:focus-visible {
+  color: #ffffff !important;
+  background: var(--el-color-primary-dark-2, var(--el-color-primary)) !important;
+  border-color: var(--el-color-primary-dark-2, var(--el-color-primary)) !important;
 }
 
 .subform-summary {

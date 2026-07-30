@@ -2,6 +2,7 @@ package com.junsong.workflow.lowcode.controller;
 
 import com.junsong.common.core.constant.SecurityConstants;
 import com.junsong.common.core.domain.R;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
@@ -20,6 +21,9 @@ import com.junsong.workflow.lowcode.domain.dto.LcBizConfigDTO;
 import com.junsong.workflow.lowcode.service.LcConfigVersionService;
 import com.junsong.workflow.lowcode.service.LcMetadataService;
 import com.junsong.workflow.lowcode.service.LcTemplateService;
+import com.junsong.workflow.lowcode.runtime.LcRuntimePageAssembler;
+import com.junsong.workflow.lowcode.metadata.LcMetadataSchemaValidator;
+import com.alibaba.fastjson2.JSON;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import java.util.List;
@@ -53,8 +57,15 @@ public class LcMetadataController extends BaseController
     @Autowired
     private LcTemplateService templateService;
 
+    @Autowired
+    private LcRuntimePageAssembler runtimePageAssembler;
+
+    @Autowired
+    private LcMetadataSchemaValidator metadataSchemaValidator;
+
     // ===== 业务对象 =====
-    @PreAuthorize("@ss.hasPermi('lowcode:meta:list')")
+    // 任务详情需要按流程处理权限读取已发布业务对象，不能要求处理人额外拥有低代码配置中心权限。
+    @PreAuthorize("@ss.hasPermi('lowcode:meta:list') or @ss.hasPermi('workflow:task:list') or @ss.hasPermi('workflow:instance:start')")
     @GetMapping("/object/list")
     public R<List<LcBizObject>> objectList(LcBizObject query)
     {
@@ -68,7 +79,7 @@ public class LcMetadataController extends BaseController
         return R.ok(lcMetadataService.selectBizObjectById(id));
     }
 
-    @PreAuthorize("@ss.hasPermi('lowcode:meta:list')")
+    @PreAuthorize("@ss.hasPermi('lowcode:meta:list') or @ss.hasPermi('workflow:instance:start')")
     @GetMapping("/object/code/{bizCode}")
     public R<LcBizObject> objectByCode(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode)
     {
@@ -152,6 +163,38 @@ public class LcMetadataController extends BaseController
     public R<List<LcBizPageSchema>> schemaByCode(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode)
     {
         return R.ok(lcMetadataService.selectPageSchemasByBizCode(bizCode));
+    }
+
+    /**
+     * 页面运行时唯一入口：返回 Schema 与字段元数据合并后的可消费模型。
+     */
+    // 流程办理人需要读取已发布的运行时表单；仅返回运行时模型，不开放配置编辑权限。
+    @PreAuthorize("@ss.hasPermi('lowcode:meta:list') or @ss.hasPermi('workflow:task:list') or @ss.hasPermi('workflow:instance:start')")
+    @GetMapping("/runtime/{bizCode}/{pageType}")
+    public R<LcRuntimePageAssembler.RuntimePage> runtimePage(
+            @PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode,
+            @PathVariable("pageType") @Pattern(regexp = "(?i)^(FORM|LIST|DETAIL)$", message = "页面类型非法") String pageType)
+    {
+        String publishedJson = configVersionService.getLatestPublishedConfigJson(bizCode);
+        if (publishedJson == null || publishedJson.isBlank())
+        {
+            return R.fail("未找到已发布页面 Schema: " + bizCode + "/" + pageType);
+        }
+        LcBizConfigDTO published = JSON.parseObject(publishedJson, LcBizConfigDTO.class);
+        if (published == null || published.getPageSchemas() == null)
+        {
+            return R.fail("已发布配置中没有页面 Schema: " + bizCode + "/" + pageType);
+        }
+        LcBizPageSchema schema = published.getPageSchemas().stream()
+                .filter(item -> pageType.equalsIgnoreCase(item.getPageType()))
+                .findFirst().orElse(null);
+        if (schema == null)
+        {
+            return R.fail("已发布配置中没有页面 Schema: " + bizCode + "/" + pageType);
+        }
+        List<LcBizField> fields = published.getFields() == null
+                ? lcMetadataService.selectFieldsByBizCode(bizCode) : published.getFields();
+        return R.ok(runtimePageAssembler.assemble(schema, fields));
     }
 
     @PreAuthorize("@ss.hasPermi('lowcode:meta:list')")
@@ -269,7 +312,7 @@ public class LcMetadataController extends BaseController
     }
 
     // ===== 聚合配置（可视化后台用）=====
-    @PreAuthorize("@ss.hasPermi('lowcode:meta:list')")
+    @PreAuthorize("@ss.hasPermi('lowcode:meta:list') or @ss.hasPermi('workflow:instance:start')")
     @GetMapping("/config/{bizCode}")
     public R<LcBizConfigDTO> configByCode(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode)
     {
@@ -277,6 +320,7 @@ public class LcMetadataController extends BaseController
     }
 
     @PreAuthorize("@ss.hasPermi('lowcode:meta:config')")
+    @Idempotent(scene = "lowcode:meta:config-save")
     @Log(title = "低代码配置", businessType = BusinessType.UPDATE)
     @PostMapping("/config")
     public R<Void> configSave(@RequestBody LcBizConfigDTO config)
@@ -285,8 +329,17 @@ public class LcMetadataController extends BaseController
         return R.ok();
     }
 
+    @PreAuthorize("@ss.hasPermi('lowcode:meta:config')")
+    @PostMapping("/config/validate")
+    public R<Void> configValidate(@RequestBody LcBizConfigDTO config)
+    {
+        metadataSchemaValidator.validate(config);
+        return R.ok();
+    }
+
     // ===== 菜单/权限一键生成（转发到 system 服务）=====
     @PreAuthorize("@ss.hasPermi('lowcode:meta:config')")
+    @Idempotent(scene = "lowcode:meta:menu-generate", highRisk = true, ttlSeconds = 2592000)
     @Log(title = "低代码菜单生成", businessType = BusinessType.INSERT)
     @PostMapping("/menu/generate")
     public R<Long> menuGenerate(@RequestBody LcMenuGenerateRequest req)
@@ -306,6 +359,7 @@ public class LcMetadataController extends BaseController
     // ===== 配置版本管理 =====
     /** 发布当前草稿配置为新版本 */
     @PreAuthorize("@ss.hasPermi('lowcode:meta:publish')")
+    @Idempotent(scene = "lowcode:meta:publish", highRisk = true, ttlSeconds = 2592000)
     @Log(title = "低代码配置发布", businessType = BusinessType.INSERT)
     @PostMapping("/config/publish/{bizCode}")
     public R<LcBizConfigSnapshot> publish(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode,
@@ -318,6 +372,7 @@ public class LcMetadataController extends BaseController
 
     /** 回滚到指定版本 */
     @PreAuthorize("@ss.hasPermi('lowcode:meta:publish')")
+    @Idempotent(scene = "lowcode:meta:rollback", highRisk = true, ttlSeconds = 2592000)
     @Log(title = "低代码配置回滚", businessType = BusinessType.UPDATE)
     @PostMapping("/config/rollback/{bizCode}")
     public R<Void> rollback(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode,

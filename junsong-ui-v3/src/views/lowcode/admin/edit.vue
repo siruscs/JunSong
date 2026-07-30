@@ -8,6 +8,7 @@
       </el-page-header>
       <div class="header-actions">
         <el-button type="primary" :loading="saving" @click="handleSave">保存配置</el-button>
+        <el-button type="info" :loading="validating" @click="handleValidate">发布前预检</el-button>
         <el-button type="success" :loading="generating" @click="handleSaveAndGenerateMenu">保存并生成菜单</el-button>
         <el-button type="warning" :loading="publishing" @click="handlePublish" v-if="isEdit">发布版本</el-button>
         <el-button type="info" @click="loadHistory" v-if="isEdit">版本历史</el-button>
@@ -147,12 +148,19 @@
         <el-table :data="config.nodeAssignees" border size="small">
           <el-table-column label="节点Key" prop="taskKey" width="140">
             <template #default="{ row }">
-              <el-input v-model="row.taskKey" size="small" placeholder="如 approve" />
+              <el-select v-model="row.taskKey" size="small" placeholder="请选择流程节点" style="width: 100%" @change="syncAssigneeTaskName(row)">
+                <el-option v-for="node in workflowNodes" :key="node.taskKey" :label="node.taskName + '（' + node.taskKey + '）'" :value="node.taskKey" />
+              </el-select>
             </template>
           </el-table-column>
-          <el-table-column label="处理人类型" prop="assigneeType" width="160">
+          <el-table-column label="节点名称" prop="taskName" width="140">
             <template #default="{ row }">
-              <el-select v-model="row.assigneeType" size="small" placeholder="选择类型">
+              <el-input v-model="row.taskName" size="small" placeholder="如 部门负责人审批" />
+            </template>
+          </el-table-column>
+          <el-table-column label="处理人类型" prop="assigneeSource" width="160">
+            <template #default="{ row }">
+              <el-select v-model="row.assigneeSource" size="small" placeholder="选择类型">
                 <el-option label="固定用户(FIXED_USER)" value="FIXED_USER" />
                 <el-option label="固定角色(FIXED_ROLE)" value="FIXED_ROLE" />
                 <el-option label="部门负责人(DEPT_LEADER)" value="DEPT_LEADER" />
@@ -165,7 +173,8 @@
           </el-table-column>
           <el-table-column label="处理人值" prop="assigneeValue" min-width="160">
             <template #default="{ row }">
-              <el-input v-model="row.assigneeValue" size="small" placeholder="用户ID/角色Key/字段Key" />
+              <UserSelect v-if="row.assigneeSource === 'FIXED_USER'" v-model="row.assigneeValue" placeholder="请选择用户" />
+              <el-input v-else v-model="row.assigneeValue" size="small" :placeholder="assigneeValuePlaceholder(row.assigneeSource)" />
             </template>
           </el-table-column>
           <el-table-column label="多人审批" prop="multiInstanceType" width="120">
@@ -392,6 +401,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Sort } from '@element-plus/icons-vue'
 import Sortable from 'sortablejs'
 import FormDesigner from '../designer/FormDesigner.vue'
+import UserSelect from '@/components/UserSelect/index.vue'
 
 interface DesignerField {
   __id: string
@@ -410,9 +420,11 @@ interface DesignerField {
 }
 import {
   getBizConfig, saveBizConfig, generateMenu,
+  validateBizConfig,
   publishConfig, listConfigHistory, rollbackConfig,
   type LcBizConfigSnapshot,
 } from '@/api/lowcode/admin'
+import { getWorkflowDefinitionXml } from '@/api/workflow/definition'
 
 const route = useRoute()
 const router = useRouter()
@@ -423,12 +435,18 @@ const isEdit = computed(() => !!bizCode.value)
 const activeTab = ref('basic')
 const loading = ref(false)
 const saving = ref(false)
+const validating = ref(false)
 const generating = ref(false)
 const publishing = ref(false)
 const showHistory = ref(false)
 const historyList = ref<LcBizConfigSnapshot[]>([])
 const useDesigner = ref(false)
 const designerFields = ref<DesignerField[]>([])
+const workflowNodes = ref<Array<{ taskKey: string; taskName: string }>>([])
+
+function requestErrorMessage(error: any, fallback: string) {
+  return error?.response?.data?.msg || error?.response?.data?.message || error?.message || fallback
+}
 
 const config = reactive<any>({
   bizObject: {
@@ -483,6 +501,7 @@ function loadConfig() {
         config.branchRules = data.branchRules || []
         config.actions = data.actions || []
         config.postActions = data.postActions || []
+        loadWorkflowNodes()
         // 同步到设计器
         designerFields.value = (data.fields || []).map((f: any) => ({
           __id: f.fieldKey || 'field_' + Math.random().toString(36).slice(2),
@@ -498,6 +517,37 @@ function loadConfig() {
       loading.value = false
     })
 }
+
+async function loadWorkflowNodes() {
+  workflowNodes.value = []
+  if (!config.bizObject.processKey) return
+  try {
+    const definitions: any = await import('@/api/workflow/definition').then((m) => m.listWorkflowDefinitions({ key: config.bizObject.processKey, latestOnly: true }))
+    const list = definitions?.data || definitions || []
+    const latest = Array.isArray(list) ? list[0] : null
+    if (!latest?.definitionId) return
+    const xmlResult: any = await getWorkflowDefinitionXml(latest.definitionId)
+    const xml = xmlResult?.data?.xml || xmlResult?.xml
+    if (!xml) return
+    const doc = new DOMParser().parseFromString(xml, 'application/xml')
+    workflowNodes.value = Array.from(doc.getElementsByTagNameNS('*', 'userTask')).map((node) => ({
+      taskKey: node.getAttribute('id') || '',
+      taskName: node.getAttribute('name') || node.getAttribute('id') || '',
+    })).filter((node) => node.taskKey)
+  } catch {
+    workflowNodes.value = []
+    ElMessage.warning('流程节点读取失败，请确认流程已发布且当前账号有流程定义查看权限')
+  }
+}
+
+function syncAssigneeTaskName(row: any) {
+  const node = workflowNodes.value.find((item) => item.taskKey === row.taskKey)
+  if (node) row.taskName = node.taskName
+}
+
+watch(() => config.bizObject.processKey, () => {
+  if (config.bizObject.workflowEnabled === '1') loadWorkflowNodes()
+})
 
 function addField() {
   config.fields.push({
@@ -585,6 +635,16 @@ function batchDeleteFields() {
     .catch(() => {})
 }
 
+function assigneeValuePlaceholder(source?: string) {
+  switch (source) {
+    case 'FIXED_ROLE': return '请输入角色 Key'
+    case 'FORM_FIELD_USER': return '请输入表单用户字段 Key'
+    case 'FORM_FIELD_DEPT_LEADER': return '请输入表单部门字段 Key'
+    case 'DEPT_LEADER': return '请输入部门字段或部门范围'
+    default: return '该类型无需填写固定值'
+  }
+}
+
 function handleSave() {
   if (!basicFormRef.value) return
   basicFormRef.value.validate((valid: boolean) => {
@@ -608,16 +668,42 @@ function handleSave() {
         }
         saving.value = false
       })
-      .catch(() => {
+      .catch((error) => {
+        ElMessage.error(requestErrorMessage(error, '保存失败'))
         saving.value = false
       })
   })
 }
 
+async function handleValidate() {
+  if (!basicFormRef.value) return
+  const valid = await basicFormRef.value.validate().catch(() => false)
+  if (!valid) {
+    activeTab.value = 'basic'
+    return
+  }
+  if (useDesigner.value) {
+    config.fields = designerFields.value.map((f) => {
+      const { __id, ...rest } = f
+      return rest
+    })
+  }
+  validating.value = true
+  try {
+    await validateBizConfig(config)
+    ElMessage.success('预检通过：业务对象、字段、页面 Schema、处理人和分支规则均有效')
+  } catch (error: any) {
+    ElMessage.error(requestErrorMessage(error, '预检失败'))
+  } finally {
+    validating.value = false
+  }
+}
+
 function addAssignee() {
   config.nodeAssignees.push({
     taskKey: '',
-    assigneeType: 'FIXED_USER',
+    taskName: '',
+    assigneeSource: 'FIXED_USER',
     assigneeValue: '',
     multiInstanceType: 'none',
     completionCondition: '',
@@ -706,8 +792,8 @@ function handleSaveAndGenerateMenu() {
         }
         generating.value = false
       })
-      .catch(() => {
-        ElMessage.error('生成菜单失败')
+      .catch((error) => {
+        ElMessage.error(requestErrorMessage(error, '生成菜单失败'))
         generating.value = false
       })
   })
@@ -727,7 +813,7 @@ async function handlePublish() {
     await loadConfig()
   } catch (e: any) {
     if (e !== 'cancel' && e !== 'close') {
-      ElMessage.error('发布失败')
+      ElMessage.error(requestErrorMessage(e, '发布失败'))
     }
   } finally {
     publishing.value = false

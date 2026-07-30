@@ -140,6 +140,28 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         limit 50
     </select>
 
+    <!-- R25 每日库存特征数据：供后续可解释补货/损耗建议使用，只读且严格限定租户与门店范围。 -->
+    <select id="selectDailyFeatureDataset" resultType="java.util.LinkedHashMap">
+        select p.dept_id as deptId,
+               p.product_id as productId,
+               p.quantity as stockQuantity,
+               coalesce(sum(case when l.create_time &gt;= date_sub(curdate(), interval 7 day)
+                                  and l.change_type = 'SALE_OUT' then abs(l.change_quantity) else 0 end), 0) as sales7d,
+               coalesce(sum(case when l.create_time &gt;= date_sub(curdate(), interval 28 day)
+                                      and l.change_type = 'SALE_OUT' then abs(l.change_quantity) else 0 end), 0) as sales28d,
+               case when p.quantity &gt; 0 then round(p.quantity / nullif(
+                    coalesce(sum(case when l.create_time &gt;= date_sub(curdate(), interval 28 day)
+                                      and l.change_type = 'SALE_OUT' then abs(l.change_quantity) else 0 end), 0) / 28, 0), 2)
+                    else 0 end as daysOfSupply,
+               'stocktake-v1' as featureVersion
+        from fin_stock_position p
+        left join fin_stock_ledger l on l.dept_id = p.dept_id
+            and l.product_id = p.product_id and l.del_flag = '0'
+        where p.tenant_id = #{params.tenantId}
+        <include refid="paramsDeptScopePosition"/>
+        group by p.dept_id, p.product_id, p.quantity
+    </select>
+
     <insert id="insertPredictionSample" parameterType="com.junsong.finance.domain.FinancePredictionSample" useGeneratedKeys="true" keyProperty="sampleId">
         insert into finance_prediction_sample
         (tenant_id, dept_id, prediction_type, source_id, sample_date, window_days,

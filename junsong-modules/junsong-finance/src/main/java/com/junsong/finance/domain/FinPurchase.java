@@ -67,6 +67,9 @@ public class FinPurchase extends BaseEntity
     /** 删除标志（0代表存在 2代表删除） */
     private String delFlag;
 
+    /** 幂等键（租户内唯一） */
+    private String idempotencyKey;
+
     /** 部门ID */
     private Long deptId;
 
@@ -204,6 +207,16 @@ public class FinPurchase extends BaseEntity
     public void setDelFlag(String delFlag)
     {
         this.delFlag = delFlag;
+    }
+
+    public String getIdempotencyKey()
+    {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey)
+    {
+        this.idempotencyKey = idempotencyKey;
     }
 
     public Long getDeptId()

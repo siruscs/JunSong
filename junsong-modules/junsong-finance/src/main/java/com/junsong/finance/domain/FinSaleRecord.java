@@ -94,6 +94,9 @@ public class FinSaleRecord extends BaseEntity
     /** 删除标志（0代表存在 2代表删除） */
     private String delFlag;
 
+    /** 幂等键（租户内唯一） */
+    private String idempotencyKey;
+
     /** 缴款记录列表 */
     private List<FinSalePayment> payments;
 
@@ -330,6 +333,16 @@ public class FinSaleRecord extends BaseEntity
         this.delFlag = delFlag;
     }
 
+    public String getIdempotencyKey()
+    {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey)
+    {
+        this.idempotencyKey = idempotencyKey;
+    }
+
     public List<FinSalePayment> getPayments()
     {
         return payments;
@@ -361,6 +374,7 @@ public class FinSaleRecord extends BaseEntity
             .append("saleDate", getSaleDate())
             .append("status", getStatus())
             .append("delFlag", getDelFlag())
+            .append("idempotencyKey", getIdempotencyKey())
             .append("createBy", getCreateBy())
             .append("createTime", getCreateTime())
             .append("updateBy", getUpdateBy())

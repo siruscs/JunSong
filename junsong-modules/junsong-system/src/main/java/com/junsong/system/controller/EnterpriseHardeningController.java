@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -74,6 +75,7 @@ public class EnterpriseHardeningController extends BaseController
      * 执行归档
      */
     @RequiresPermissions("system:hardening:archive")
+    @Idempotent(scene = "system:hardening:archive-run", highRisk = true)
     @PostMapping("/archive/run")
     public AjaxResult archiveRun(@RequestBody Map<String, Object> body)
     {
@@ -96,6 +98,7 @@ public class EnterpriseHardeningController extends BaseController
      * 确认告警事件
      */
     @RequiresPermissions("system:hardening:alert")
+    @Idempotent(scene = "system:hardening:alert-ack")
     @PostMapping("/alerts/{eventId}/ack")
     public AjaxResult ackAlert(@PathVariable Long eventId)
     {
@@ -106,6 +109,7 @@ public class EnterpriseHardeningController extends BaseController
      * 解决告警事件
      */
     @RequiresPermissions("system:hardening:alert")
+    @Idempotent(scene = "system:hardening:alert-resolve")
     @PostMapping("/alerts/{eventId}/resolve")
     public AjaxResult resolveAlert(@PathVariable Long eventId)
     {

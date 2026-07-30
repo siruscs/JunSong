@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.security.annotation.RequiresPermissions;
 import com.junsong.system.domain.vo.WorkbenchTaskVO;
@@ -43,6 +44,7 @@ public class SystemWorkbenchController {
      * 扫描工作台 HIGH severity 任务，按用户授权去重写入通知中心。
      */
     @RequiresPermissions("system:workbench:notify")
+    @Idempotent(scene = "system:workbench:notify-high")
     @PostMapping("/notify-high")
     public AjaxResult notifyHigh() {
         int count = notifierService.notifyHighPriorityTasks();

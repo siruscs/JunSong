@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import com.junsong.common.core.utils.DateUtils;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
@@ -66,6 +67,7 @@ public class MemSeckillRecordController extends BaseController {
      */
     @RequiresPermissions("member:seckillRecord:add")
     @Log(title = "秒杀记录", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "member:seckillRecord:create")
     @PostMapping
     public AjaxResult add(@RequestBody MemSeckillRecord memSeckillRecord) {
         if (memSeckillRecord.getDeptId() == null) {
@@ -80,6 +82,7 @@ public class MemSeckillRecordController extends BaseController {
      */
     @RequiresPermissions("member:seckillRecord:add")
     @Log(title = "秒杀记录", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "member:seckillRecord:batch", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/batch")
     public AjaxResult batchAddForAll(@RequestBody MemSeckillRecord memSeckillRecord) {
         if (memSeckillRecord.getDeptId() == null) {
@@ -94,6 +97,7 @@ public class MemSeckillRecordController extends BaseController {
      */
     @RequiresPermissions("member:seckillRecord:edit")
     @Log(title = "秒杀记录", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "member:seckillRecord:update")
     @PutMapping
     public AjaxResult edit(@RequestBody MemSeckillRecord memSeckillRecord) {
         memSeckillRecord.setUpdateBy(SecurityUtils.getUsername());
@@ -105,6 +109,7 @@ public class MemSeckillRecordController extends BaseController {
      */
     @RequiresPermissions("member:seckillRecord:remove")
     @Log(title = "秒杀记录", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "member:seckillRecord:delete")
     @DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable Long[] ids) {
         return toAjax(memSeckillRecordService.deleteMemSeckillRecordByIds(ids));
@@ -115,6 +120,7 @@ public class MemSeckillRecordController extends BaseController {
      */
     @RequiresPermissions("member:seckillRecord:receive")
     @Log(title = "秒杀记录", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "member:seckillRecord:changeStatus")
     @PutMapping("/claim/{recordId}")
     public AjaxResult claim(@PathVariable Long recordId, @RequestBody(required = false) Map<String, Object> body) {
         Integer claimShares = 1;

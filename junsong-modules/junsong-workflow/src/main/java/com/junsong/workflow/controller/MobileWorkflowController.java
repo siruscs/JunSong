@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.junsong.common.core.domain.R;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.workflow.service.task.WorkflowTaskService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -41,6 +42,7 @@ public class MobileWorkflowController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:mobile:approve')")
+    @Idempotent(scene = "workflow:mobile:approve")
     @PostMapping("/task/{taskId}/approve")
     public R<Void> approve(@PathVariable String taskId, @RequestBody(required = false) TaskController.ApproveReq request)
     {
@@ -48,6 +50,7 @@ public class MobileWorkflowController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:mobile:reject')")
+    @Idempotent(scene = "workflow:mobile:reject", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/task/{taskId}/reject")
     public R<Void> reject(@PathVariable String taskId, @RequestBody(required = false) TaskController.RejectReq request)
     {

@@ -5,6 +5,7 @@ import java.util.Map;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
@@ -70,6 +71,7 @@ public class MemSignInController extends BaseController
      */
     @RequiresPermissions("member:signIn:add")
     @Log(title = "会员签到", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "member:sign-in:sign")
     @PostMapping
     public AjaxResult signIn(@RequestBody MemMemberSignIn params)
     {
@@ -91,6 +93,7 @@ public class MemSignInController extends BaseController
      */
     @RequiresPermissions("member:signIn:backfill")
     @Log(title = "批量补录签到", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "member:sign-in:backfill")
     @PostMapping("/backfill")
     public AjaxResult backfill(@RequestBody Map<String, Object> params)
     {

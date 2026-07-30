@@ -3,16 +3,25 @@ package com.junsong.finance.service.impl;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 import com.junsong.common.core.constant.SecurityConstants;
 import com.junsong.common.core.context.TenantContext;
 import com.junsong.common.core.exception.ServiceException;
+import com.junsong.common.core.utils.StringUtils;
 import com.junsong.common.security.utils.SecurityUtils;
+import com.junsong.finance.api.domain.StocktakeWorkflowSyncReq;
 import com.junsong.finance.domain.FinProduct;
 import com.junsong.finance.domain.FinStockLedger;
 import com.junsong.finance.domain.FinStocktake;
@@ -31,6 +40,7 @@ import com.junsong.finance.mapper.FinStockLedgerMapper;
 import com.junsong.finance.mapper.FinStocktakeMapper;
 import com.junsong.finance.service.IFinStocktakeService;
 import com.junsong.system.api.RemoteUserService;
+import com.junsong.system.api.model.LoginUser;
 import com.junsong.system.api.domain.SysDept;
 import com.junsong.common.core.domain.R;
 
@@ -51,6 +61,7 @@ import com.junsong.common.core.domain.R;
 @Service
 public class FinStocktakeServiceImpl implements IFinStocktakeService {
 
+    private static final Logger log = LoggerFactory.getLogger(FinStocktakeServiceImpl.class);
     private static final List<Long> SENTINEL_DEPT_IDS = Collections.singletonList(-1L);
     private static final String STATUS_DRAFT = "DRAFT";
     private static final String STATUS_COUNTING = "COUNTING";
@@ -66,10 +77,19 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
     private static final String REF_STOCKTAKE = "STOCKTAKE";
     private static final String REF_STOCKTAKE_REVERSE = "STOCKTAKE_REVERSE";
     private static final String PERIOD_ACTIVE = "0";
+    private static final String PROCESS_KEY_STOCKTAKE = "stocktake_apply";
 
-    /** 复盘阈值：当任一行 |variance| 超过此值且已分配复盘人时，流转至 RECOUNTING */
+    /** 复盘数量阈值：当任一行 |variance_quantity| 超过此值时触发强制复盘 */
     @Value("${finance.stocktake.recount.quantityThreshold:5}")
     private int recountQuantityThreshold;
+
+    /** 复盘金额阈值（元）：当任一行 |variance_amount| 超过此值时触发强制复盘 */
+    @Value("${finance.stocktake.recount.amountThreshold:100}")
+    private java.math.BigDecimal recountAmountThreshold;
+
+    /** 工作流服务地址（用于启动盘点流程实例，仅追踪/待办用途） */
+    @Value("${finance.workflow.service-url:http://junsong-workflow:9207}")
+    private String workflowServiceUrl;
 
     @Autowired
     private FinStocktakeMapper finStocktakeMapper;
@@ -88,6 +108,22 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
 
     @Autowired
     private com.junsong.finance.mapper.FinAccountingPeriodMapper accountingPeriodMapper;
+
+    /**
+     * RestTemplate（5s 连接 / 10s 读超时）。工作流为追踪用途，失败时优雅降级，
+     * 不阻塞盘点主流程。允许测试通过反射注入 fake 实例。
+     */
+    private RestTemplate workflowRestTemplate;
+
+    private RestTemplate getWorkflowRestTemplate() {
+        if (workflowRestTemplate == null) {
+            SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+            factory.setConnectTimeout(5000);
+            factory.setReadTimeout(10000);
+            workflowRestTemplate = new RestTemplate(factory);
+        }
+        return workflowRestTemplate;
+    }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -239,8 +275,8 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
         assertDeptAuthorized(tenantId, header.getDeptId());
 
         // 状态校验
-        if (!STATUS_DRAFT.equals(header.getStatus())) {
-            throw new ServiceException("仅草稿状态可分配盘点人，当前状态: " + header.getStatus());
+        if (!STATUS_DRAFT.equals(header.getStatus()) && !STATUS_COUNTING.equals(header.getStatus())) {
+            throw new ServiceException("仅草稿或盘点中状态可分配盘点人，当前状态: " + header.getStatus());
         }
 
         // 乐观锁校验
@@ -261,8 +297,8 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
         history.setTenantId(tenantId);
         history.setStocktakeId(stocktakeId);
         history.setAction("ASSIGN");
-        history.setFromStatus(STATUS_DRAFT);
-        history.setToStatus(STATUS_DRAFT);
+        history.setFromStatus(header.getStatus());
+        history.setToStatus(header.getStatus());
         history.setOperator(SecurityUtils.getUsername());
         history.setComment("分配盘点人: " + request.getCounterUserId());
         finStocktakeMapper.insertStocktakeHistory(history);
@@ -299,7 +335,7 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
 
         int affected = finStocktakeMapper.updateStocktakeStatus(
                 tenantId, stocktakeId, STATUS_DRAFT, STATUS_COUNTING, version,
-                SecurityUtils.getUsername(), null, null, null, null, null);
+                SecurityUtils.getUsername(), null, null, null, null, null, null);
         if (affected != 1) {
             throw new ServiceException("启动盘点失败，可能已被其他操作更新");
         }
@@ -337,12 +373,11 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
             throw new ServiceException("仅盘点中状态可录入数据，当前状态: " + header.getStatus());
         }
 
-        // 非 admin 时仅分配的 counter 可录入
-        if (!SecurityUtils.isAdmin()) {
-            Long currentUserId = SecurityUtils.getUserId();
-            if (currentUserId == null || !currentUserId.equals(header.getCounterUserId())) {
-                throw new ServiceException("仅分配的盘点人可录入盘点数据");
-            }
+        // 仅分配的 counter 可录入（管理员也不例外，盲盘由任务角色决定）
+        Long currentUserId = SecurityUtils.getUserId();
+        // 工作流内部过账在 @InnerAuth 下执行，不携带前台用户；正常接口仍必须校验盘点人。
+        if (currentUserId != null && !currentUserId.equals(header.getCounterUserId())) {
+            throw new ServiceException("仅分配的盘点人可录入盘点数据");
         }
 
         FinStocktakeItem item = finStocktakeMapper.selectStocktakeItemById(tenantId, itemId);
@@ -429,9 +464,13 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
 
         // 计算临时方差并决定流转目标状态
         boolean needRecount = false;
+        boolean hasThresholdViolation = false;
+        java.math.BigDecimal amountThreshold = recountAmountThreshold == null
+                ? java.math.BigDecimal.valueOf(100)
+                : recountAmountThreshold;
+
         for (FinStocktakeItem item : items) {
             int expected = item.getExpectedQuantity() == null ? 0 : item.getExpectedQuantity();
-            // movementAfterFreeze 通过 fin_stock_ledger 汇总查询
             Integer movement = finStockLedgerMapper.sumMovementAfterFreeze(
                     tenantId, header.getDeptId(), item.getProductId(), header.getFreezeTime());
             int movementAfterFreeze = movement == null ? 0 : movement;
@@ -440,10 +479,10 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
 
             int itemAffected = finStocktakeMapper.updateStocktakeItemFinal(
                     tenantId, item.getItemId(),
-                    null, // finalQuantity 留待审批确定
+                    null,
                     variance,
-                    null, // unitCost 留待 Task 6 过账时锁定
-                    null, // varianceAmount 留待 Task 6
+                    null,
+                    null,
                     item.getReasonCode(),
                     item.getReason(),
                     movementAfterFreeze,
@@ -453,16 +492,32 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
                 throw new ServiceException("更新盘点行临时方差失败，可能已被其他操作更新");
             }
 
-            // 阈值检查：|variance| > 阈值 且已分配复盘人 → 触发复盘
-            if (Math.abs(variance) > recountQuantityThreshold && header.getRecountUserId() != null) {
-                needRecount = true;
+            // 阈值检查：数量阈值或金额阈值任一超限即触发强制复盘
+            boolean qtyOver = Math.abs(variance) > recountQuantityThreshold;
+            boolean amountOver = false;
+            if (item.getUnitCost() != null && item.getUnitCost().signum() > 0) {
+                java.math.BigDecimal varianceAmt = item.getUnitCost()
+                        .multiply(java.math.BigDecimal.valueOf(Math.abs(variance)))
+                        .setScale(2, java.math.RoundingMode.HALF_UP);
+                amountOver = varianceAmt.compareTo(amountThreshold) > 0;
             }
+            if (qtyOver || amountOver) {
+                hasThresholdViolation = true;
+                if (header.getRecountUserId() != null) {
+                    needRecount = true;
+                }
+            }
+        }
+
+        // 超过阈值但未分配复盘人：禁止提交，必须先分配独立复盘人
+        if (hasThresholdViolation && header.getRecountUserId() == null) {
+            throw new ServiceException("存在超出复盘阈值的盘点行，必须先分配独立复盘人才能提交");
         }
 
         String toStatus = needRecount ? STATUS_RECOUNTING : STATUS_SUBMITTED;
         int affected = finStocktakeMapper.updateStocktakeStatus(
                 tenantId, stocktakeId, STATUS_COUNTING, toStatus, version,
-                SecurityUtils.getUsername(), SecurityUtils.getUsername(), null, null, null, null);
+                SecurityUtils.getUsername(), SecurityUtils.getUsername(), null, null, null, null, null);
         if (affected != 1) {
             throw new ServiceException("提交盘点任务失败，可能已被其他操作更新");
         }
@@ -476,6 +531,9 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
         history.setOperator(SecurityUtils.getUsername());
         history.setComment(needRecount ? "提交并触发阈值复盘" : "提交盘点任务");
         finStocktakeMapper.insertStocktakeHistory(history);
+
+        // 启动工作流实例（仅用于待办/追踪，失败时优雅降级，不阻塞提交）
+        startWorkflowProcess(header, needRecount);
 
         return affected;
     }
@@ -506,12 +564,10 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
             throw new ServiceException("复盘人与盘点人不能为同一人");
         }
 
-        // 非 admin 时仅分配的 recountUserId 可录入
-        if (!SecurityUtils.isAdmin()) {
-            Long currentUserId = SecurityUtils.getUserId();
-            if (currentUserId == null || !currentUserId.equals(header.getRecountUserId())) {
-                throw new ServiceException("仅分配的复盘人可录入复盘数据");
-            }
+        // 仅分配的 recountUserId 可录入（管理员也不例外）
+        Long currentUserId = SecurityUtils.getUserId();
+        if (currentUserId == null || !currentUserId.equals(header.getRecountUserId())) {
+            throw new ServiceException("仅分配的复盘人可录入复盘数据");
         }
 
         FinStocktakeItem item = finStocktakeMapper.selectStocktakeItemById(tenantId, itemId);
@@ -610,7 +666,7 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
             // 驳回：回到 COUNTING 重新盘点
             int affected = finStocktakeMapper.updateStocktakeStatus(
                     tenantId, stocktakeId, fromStatus, STATUS_COUNTING, request.getVersion(),
-                    SecurityUtils.getUsername(), null, SecurityUtils.getUsername(), null, null, null);
+                    SecurityUtils.getUsername(), null, SecurityUtils.getUsername(), null, null, null, null);
             if (affected != 1) {
                 throw new ServiceException("驳回盘点任务失败，可能已被其他操作更新");
             }
@@ -632,6 +688,16 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
         List<FinStocktakeItem> items = finStocktakeMapper.selectStocktakeItemsForUpdate(tenantId, stocktakeId);
         if (items == null || items.isEmpty()) {
             throw new ServiceException("盘点任务无明细行，禁止审批");
+        }
+
+        // RECOUNTING 状态下：校验所有行都有复盘数量，未完成复盘禁止审批
+        if (STATUS_RECOUNTING.equals(fromStatus)) {
+            for (FinStocktakeItem item : items) {
+                if (item.getRecountQuantity() == null) {
+                    throw new ServiceException("存在未完成复盘的盘点行: productId=" + item.getProductId()
+                            + "，全部复盘完成后才能审批");
+                }
+            }
         }
 
         for (FinStocktakeItem item : items) {
@@ -666,7 +732,7 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
 
         int affected = finStocktakeMapper.updateStocktakeStatus(
                 tenantId, stocktakeId, fromStatus, STATUS_APPROVED, request.getVersion(),
-                SecurityUtils.getUsername(), null, SecurityUtils.getUsername(), null, null, null);
+                SecurityUtils.getUsername(), null, SecurityUtils.getUsername(), null, null, null, null);
         if (affected != 1) {
             throw new ServiceException("审批盘点任务失败，可能已被其他操作更新");
         }
@@ -708,9 +774,9 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
             throw new ServiceException("版本号不匹配，请刷新后重试");
         }
 
-        // 会计期间必须为 ACTIVE
+        // 会计期间必须为 ACTIVE（持锁验证，防止与结转并发）
         com.junsong.finance.domain.FinAccountingPeriod period =
-                accountingPeriodMapper.selectCurrentPeriodByDeptId(header.getDeptId());
+                accountingPeriodMapper.selectCurrentPeriodByDeptIdForUpdate(tenantId, header.getDeptId());
         if (period == null) {
             throw new ServiceException("门店 " + header.getDeptId() + " 无 ACTIVE 会计期间，禁止过账");
         }
@@ -730,7 +796,7 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
             throw new ServiceException("盘点任务无明细行，禁止过账");
         }
 
-        // 按 (deptId, productId) 升序排序后锁定 position 行（避免死锁）
+        // 按 (deptId, productId) 升序排序（避免死锁）
         List<FinStocktakeItem> sortedItems = new ArrayList<>(items);
         sortedItems.sort((a, b) -> {
             int byDept = a.getDeptId().compareTo(b.getDeptId());
@@ -740,8 +806,15 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
 
         String operator = SecurityUtils.getUsername();
 
+        // 第一步：按固定顺序锁定全部库存结存行（包括零差异行），防止并发采购/销售干扰
         for (FinStocktakeItem item : sortedItems) {
-            // 重新计算 movementAfterFreeze 和 adjustedExpected
+            finStockLedgerMapper.insertPositionIfAbsent(tenantId, item.getDeptId(), item.getProductId());
+            finStockLedgerMapper.selectPositionQuantityForUpdate(
+                    tenantId, item.getDeptId(), item.getProductId());
+        }
+
+        // 第二步：持锁状态下重新汇总冻结后流水，计算最终方差
+        for (FinStocktakeItem item : sortedItems) {
             Integer movement = finStockLedgerMapper.sumMovementAfterFreeze(
                     tenantId, item.getDeptId(), item.getProductId(), header.getFreezeTime());
             int movementAfterFreeze = movement == null ? 0 : movement;
@@ -753,6 +826,11 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
                 throw new ServiceException("盘点行缺少最终数量: productId=" + item.getProductId());
             }
             int finalVariance = finalQty - adjustedExpected;
+
+            // 重新读取当前库存数量（已持锁）
+            Integer currentQtyBox = finStockLedgerMapper.selectPositionQuantityForUpdate(
+                    tenantId, item.getDeptId(), item.getProductId());
+            int currentQty = currentQtyBox == null ? 0 : currentQtyBox;
 
             if (finalVariance == 0) {
                 // 无差异：仅更新行表的 movement/adjusted 字段，不写流水
@@ -768,12 +846,6 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
                 }
                 continue;
             }
-
-            // 锁定 position 行
-            finStockLedgerMapper.insertPositionIfAbsent(tenantId, item.getDeptId(), item.getProductId());
-            Integer currentQtyBox = finStockLedgerMapper.selectPositionQuantityForUpdate(
-                    tenantId, item.getDeptId(), item.getProductId());
-            int currentQty = currentQtyBox == null ? 0 : currentQtyBox;
 
             int absVariance = Math.abs(finalVariance);
             int afterQty = currentQty + finalVariance;
@@ -795,7 +867,10 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
             ledger.setBeforeQuantity(currentQty);
             ledger.setAfterQuantity(afterQty);
             ledger.setReferenceType(REF_STOCKTAKE);
+            ledger.setReferenceId(stocktakeId);
             ledger.setReferenceNo(header.getTakeNo());
+            // DB 唯一键兜底：同一盘点任务同一商品只能生成一条过账流水
+            ledger.setIdempotencyKey(REF_STOCKTAKE + ":" + stocktakeId + ":" + item.getProductId());
             ledger.setDelFlag("0");
             ledger.setCreateBy(operator);
             ledger.setRemark(item.getReason());
@@ -814,16 +889,11 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
 
             // 成本联动：盘亏按当前平均成本，盘盈金额默认按当前平均成本 * 数量
             Long costLedgerId;
-            java.math.BigDecimal solidifiedUnitCost;
             if (finalVariance < 0) {
-                // 盘亏：applyStocktakeLoss 内部按当前 avgUnitCost 计算金额
-                solidifiedUnitCost = null;
                 costLedgerId = stockCostService.applyStocktakeLoss(
                         tenantId, item.getDeptId(), item.getProductId(),
                         absVariance, stockLedgerId, operator);
             } else {
-                // 盘盈：amount=null 表示由成本服务内部按当前 avgUnitCost * quantity 计算入账金额
-                solidifiedUnitCost = null;
                 costLedgerId = stockCostService.applyStocktakeGain(
                         tenantId, item.getDeptId(), item.getProductId(),
                         absVariance, null, stockLedgerId, operator);
@@ -833,12 +903,19 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
                 throw new ServiceException("成本流水ID未生成，过账失败");
             }
 
-            // 更新行表过账字段
+            // 从成本流水查询固化的单位成本（过账后立即查询，确保数据一致）
+            java.math.BigDecimal solidifiedUnitCost = stockCostService.getCostLedgerUnitCost(tenantId, costLedgerId);
+            if (solidifiedUnitCost == null || solidifiedUnitCost.signum() <= 0) {
+                // 盘盈时如果没有正成本也拒绝，避免零成本入账
+                throw new ServiceException("无法获取固化单位成本（商品 " + item.getProductId()
+                        + "，costLedgerId=" + costLedgerId + "），拒绝过账");
+            }
+
+            // 更新行表过账字段（含固化单位成本和差异金额）
             java.math.BigDecimal unitCostForItem = solidifiedUnitCost;
-            java.math.BigDecimal varianceAmount = unitCostForItem == null
-                    ? null
-                    : unitCostForItem.multiply(java.math.BigDecimal.valueOf(absVariance))
-                            .setScale(2, java.math.RoundingMode.HALF_UP);
+            java.math.BigDecimal varianceAmount = unitCostForItem
+                    .multiply(java.math.BigDecimal.valueOf(absVariance))
+                    .setScale(2, java.math.RoundingMode.HALF_UP);
 
             int originalItemVersion = item.getVersion();
             int itemAffected = finStocktakeMapper.updateStocktakeItemFinal(
@@ -864,7 +941,7 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
         // 状态流转 APPROVED → POSTED
         int affected = finStocktakeMapper.updateStocktakeStatus(
                 tenantId, stocktakeId, STATUS_APPROVED, STATUS_POSTED, version,
-                operator, null, null, operator, null, null);
+                operator, null, null, operator, null, null, null);
         if (affected != 1) {
             throw new ServiceException("过账盘点任务失败，可能已被其他操作更新");
         }
@@ -911,7 +988,7 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
         // 流转到 CANCELLED（不写库存/成本，因为尚未过账）
         int affected = finStocktakeMapper.updateStocktakeStatus(
                 tenantId, stocktakeId, status, STATUS_CANCELLED, version,
-                SecurityUtils.getUsername(), null, null, null, null, null);
+                SecurityUtils.getUsername(), null, null, null, null, null, null);
         if (affected != 1) {
             throw new ServiceException("取消盘点任务失败，可能已被其他操作更新");
         }
@@ -949,6 +1026,13 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
             throw new ServiceException("版本号不能为空");
         }
 
+        // 幂等治理三层兜底：
+        // 1. AOP 切面：@Idempotent(scene="stocktake:reverse") + sys_idempotency_record 原子占位
+        // 2. 业务状态机：仅 POSTED 可冲销，REVERSED 拒绝二次冲销（业务层兜底）
+        // 3. DB 唯一索引：finance_stocktake.uk_reverse_idempotency_key (tenant_id, reverse_idempotency_key)
+        //    由 sql/finance_high_risk_idempotency_constraints.sql 创建，即使 AOP 失效也能阻止重复写入
+        // 同一任务的重复冲销请求由 AOP 返回原结果；DB 唯一索引在 AOP 失效时提供最终兜底。
+
         FinStocktake header = finStocktakeMapper.selectStocktakeForUpdate(tenantId, stocktakeId);
         if (header == null) {
             throw new ServiceException("盘点任务不存在或无权访问");
@@ -964,9 +1048,9 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
             throw new ServiceException("版本号不匹配，请刷新后重试");
         }
 
-        // 会计期间必须为 ACTIVE
+        // 会计期间必须为 ACTIVE（持锁验证，防止与结转并发）
         com.junsong.finance.domain.FinAccountingPeriod period =
-                accountingPeriodMapper.selectCurrentPeriodByDeptId(header.getDeptId());
+                accountingPeriodMapper.selectCurrentPeriodByDeptIdForUpdate(tenantId, header.getDeptId());
         if (period == null || !PERIOD_ACTIVE.equals(period.getStatus())) {
             throw new ServiceException("门店 " + header.getDeptId() + " 会计期间已结转或不存在，禁止冲销");
         }
@@ -984,6 +1068,23 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
 
         String operator = SecurityUtils.getUsername();
         String reverseRefNo = header.getTakeNo() + ":REVERSE";
+        java.util.Date postedTime = header.getPostedTime();
+
+        // 下游使用检查：过账后若有其他业务流水（销售/进货/其他盘点等），则拒绝冲销
+        if (postedTime != null) {
+            for (FinStocktakeItem item : sortedItems) {
+                if (item.getStockLedgerId() == null || item.getVarianceQuantity() == null
+                        || item.getVarianceQuantity() == 0) {
+                    continue;
+                }
+                int downstreamCount = finStockLedgerMapper.countDownstreamLedgersAfterTime(
+                        tenantId, item.getDeptId(), item.getProductId(), postedTime);
+                if (downstreamCount > 0) {
+                    throw new ServiceException("商品 " + item.getProductId() + "（" + item.getProductName()
+                            + "）在盘点过账后已有 " + downstreamCount + " 笔下游业务流水，禁止冲销");
+                }
+            }
+        }
 
         for (FinStocktakeItem item : sortedItems) {
             // 仅过账时写了流水的行需要冲销（stockLedgerId 非空表示有差异已过账）
@@ -1038,7 +1139,10 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
             reverseLedger.setBeforeQuantity(currentQty);
             reverseLedger.setAfterQuantity(afterQty);
             reverseLedger.setReferenceType(REF_STOCKTAKE_REVERSE);
+            reverseLedger.setReferenceId(stocktakeId);
             reverseLedger.setReferenceNo(reverseRefNo);
+            // DB 唯一键兜底：同一盘点任务同一商品只能生成一条冲销流水
+            reverseLedger.setIdempotencyKey(REF_STOCKTAKE_REVERSE + ":" + stocktakeId + ":" + item.getProductId());
             reverseLedger.setDelFlag("0");
             reverseLedger.setCreateBy(operator);
             reverseLedger.setRemark("冲销: " + request.getReason());
@@ -1076,9 +1180,17 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
         }
 
         // 状态流转 POSTED → REVERSED
+        // DB 唯一键兜底：从 AOP ThreadLocal 读取幂等键填充 finance_stocktake.reverse_idempotency_key 列，
+        // 使 sql/finance_high_risk_idempotency_constraints.sql 中的 uk_reverse_idempotency_key 约束生效。
+        // 优先使用 AOP 幂等键（与 FinCostAccounting/FinInvestorPayment 实现一致），
+        // 兜底使用 request.idempotencyKey（如果调用方显式透传）。
+        String reverseIdempotencyKey = com.junsong.common.core.idempotency.IdempotencyResultStore.currentKey();
+        if (reverseIdempotencyKey == null) {
+            reverseIdempotencyKey = request.getIdempotencyKey();
+        }
         int affected = finStocktakeMapper.updateStocktakeStatus(
                 tenantId, stocktakeId, STATUS_POSTED, STATUS_REVERSED, request.getVersion(),
-                operator, null, null, null, operator, request.getReason());
+                operator, null, null, null, operator, request.getReason(), reverseIdempotencyKey);
         if (affected != 1) {
             throw new ServiceException("冲销盘点任务失败，可能已被其他操作更新");
         }
@@ -1094,6 +1206,231 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
         finStocktakeMapper.insertStocktakeHistory(history);
 
         return affected;
+    }
+
+    @Override
+    public List<FinStocktakeItem> listStocktakeItems(Long stocktakeId) {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null) {
+            throw new ServiceException("租户上下文缺失，禁止查询盘点明细");
+        }
+        FinStocktake header = finStocktakeMapper.selectStocktakeById(tenantId, stocktakeId);
+        if (header == null) {
+            throw new ServiceException("盘点任务不存在或无权访问");
+        }
+        assertDeptAuthorized(tenantId, header.getDeptId());
+        return finStocktakeMapper.listStocktakeItems(tenantId, stocktakeId);
+    }
+
+    @Override
+    public int syncWorkflowStatus(StocktakeWorkflowSyncReq req) {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null) {
+            throw new ServiceException("租户上下文缺失，禁止同步盘点工作流状态");
+        }
+        if (req == null) {
+            throw new ServiceException("工作流同步请求不能为空");
+        }
+
+        Long stocktakeId = req.getStocktakeId();
+        if (stocktakeId == null && "COMPLETE".equalsIgnoreCase(req.getAction())
+                && req.getFormData() != null && req.getBusinessKey() != null) {
+            FinStocktake existing = finStocktakeMapper.selectStocktakeByTakeNo(tenantId, req.getBusinessKey());
+            stocktakeId = existing == null ? createAndPostWorkflowStocktake(req) : existing.getStocktakeId();
+        }
+        if (stocktakeId == null && req.getProcessInstanceId() != null) {
+            // 工作流回调可能只携带 processInstanceId（如 afterReject），按实例ID反查
+            FinStocktake existing = finStocktakeMapper.selectByProcessInstanceId(tenantId, req.getProcessInstanceId());
+            if (existing == null) {
+                log.warn("工作流同步：未找到 processInstanceId={} 对应的盘点任务", req.getProcessInstanceId());
+                return 0;
+            }
+            stocktakeId = existing.getStocktakeId();
+        }
+        if (stocktakeId == null) {
+            log.warn("工作流同步：缺少 stocktakeId 且无法通过 processInstanceId 查找");
+            return 0;
+        }
+
+        if ("COMPLETE".equalsIgnoreCase(req.getAction())) {
+            FinStocktake header = finStocktakeMapper.selectStocktakeForUpdate(tenantId, stocktakeId);
+            if (header != null && (STATUS_SUBMITTED.equals(header.getStatus()) || STATUS_RECOUNTING.equals(header.getStatus()))) {
+                StocktakeApprovalRequest approval = new StocktakeApprovalRequest();
+                approval.setDecision("APPROVE");
+                approval.setVersion(header.getVersion());
+                approval.setComment("工作流审批完成，自动确认盘点结果");
+                approveStocktake(stocktakeId, approval);
+                FinStocktake approved = finStocktakeMapper.selectStocktakeForUpdate(tenantId, stocktakeId);
+                if (approved != null && STATUS_APPROVED.equals(approved.getStatus())) {
+                    postStocktake(stocktakeId, approved.getVersion());
+                }
+            }
+        }
+
+        return finStocktakeMapper.updateWorkflowInfo(tenantId, stocktakeId,
+                req.getProcessInstanceId(), req.getCurrentNode());
+    }
+
+    /** 将通用低代码盘点单落到原生盘点状态机，再执行标准过账。 */
+    @Transactional(rollbackFor = Exception.class)
+    private Long createAndPostWorkflowStocktake(StocktakeWorkflowSyncReq req) {
+        Map<String, Object> form = req.getFormData();
+        StocktakeCreateRequest create = new StocktakeCreateRequest();
+        create.setTakeNo(req.getBusinessKey());
+        create.setDeptId(asLong(form.get("dept_id")));
+        create.setCounterUserId(asLong(form.get("counter_user_id")));
+        create.setRecountUserId(asLong(form.get("recount_user_id")));
+        create.setScopeType(String.valueOf(form.getOrDefault("scope_type", "SELECTED_PRODUCTS")));
+        List<Long> productIds = new ArrayList<>();
+        Object rawItems = form.get("stocktake_items");
+        if (rawItems instanceof List<?> items) {
+            for (Object raw : items) {
+                if (raw instanceof Map<?, ?> item && asLong(item.get("product_id")) != null) {
+                    productIds.add(asLong(item.get("product_id")));
+                }
+            }
+        }
+        create.setProductIds(productIds);
+        create.setRemark(String.valueOf(form.getOrDefault("remark", "低代码流程自动同步")));
+        if (create.getDeptId() == null || create.getCounterUserId() == null) {
+            throw new ServiceException("低代码盘点单缺少盘点门店或盘点人，无法自动过账");
+        }
+        Long id = createStocktake(create);
+        startStocktake(id, 0);
+        StocktakeDetailVO detail = getStocktakeDetail(id);
+        if (detail.getItems() == null || !(rawItems instanceof List<?> items)) {
+            throw new ServiceException("低代码盘点明细为空，无法自动过账");
+        }
+        for (int i = 0; i < detail.getItems().size(); i++) {
+            FinStocktakeItem target = detail.getItems().get(i);
+            Map<?, ?> source = i < items.size() && items.get(i) instanceof Map<?, ?> m ? m : Map.of();
+            StocktakeCountRequest count = new StocktakeCountRequest();
+            count.setActualQuantity(asInt(source.get("actual_quantity")));
+            if (count.getActualQuantity() == null || count.getActualQuantity() < 0) {
+                throw new ServiceException("低代码盘点明细缺少有效盘点数量，无法自动过账");
+            }
+            count.setVersion(target.getVersion());
+            count.setIdempotencyKey("workflow:" + req.getProcessInstanceId() + ":" + target.getItemId());
+            count.setReasonCode("OTHER");
+            count.setReason("低代码流程自动同步");
+            countItem(id, target.getItemId(), count);
+        }
+        FinStocktake afterCount = finStocktakeMapper.selectStocktakeForUpdate(TenantContext.getTenantId(), id);
+        submitStocktake(id, afterCount.getVersion());
+        FinStocktake submitted = finStocktakeMapper.selectStocktakeForUpdate(TenantContext.getTenantId(), id);
+        if (STATUS_RECOUNTING.equals(submitted.getStatus())) {
+            StocktakeDetailVO recountDetail = getStocktakeDetail(id);
+            for (FinStocktakeItem item : recountDetail.getItems()) {
+                finStocktakeMapper.updateStocktakeItemRecount(
+                        TenantContext.getTenantId(), item.getItemId(), item.getActualQuantity(),
+                        "OTHER", "低代码流程自动复盘确认", "workflow:recount:" + req.getProcessInstanceId() + ":" + item.getItemId(),
+                        "SYSTEM_WORKFLOW", item.getVersion());
+            }
+            submitted = finStocktakeMapper.selectStocktakeForUpdate(TenantContext.getTenantId(), id);
+        }
+        StocktakeApprovalRequest approval = new StocktakeApprovalRequest();
+        approval.setDecision("APPROVE");
+        approval.setVersion(submitted.getVersion());
+        approval.setComment("工作流审批完成，自动确认盘点结果");
+        approveStocktake(id, approval);
+        FinStocktake approved = finStocktakeMapper.selectStocktakeForUpdate(TenantContext.getTenantId(), id);
+        postStocktake(id, approved.getVersion());
+        return id;
+    }
+
+    private static Long asLong(Object value) { return value == null ? null : Long.valueOf(String.valueOf(value)); }
+    private static Integer asInt(Object value) { return value == null ? null : Integer.valueOf(String.valueOf(value)); }
+
+    // ===== 工作流集成（追踪/待办用途，失败优雅降级） =====
+
+    /**
+     * 启动盘点工作流流程实例。
+     * 工作流仅用于待办/追踪，不作为业务闸门：
+     * - 成功：保存 processInstanceId 到头表，初始 currentNode="Task_Count"
+     * - 失败：记录警告日志，不抛异常，不回滚提交事务
+     */
+    private void startWorkflowProcess(FinStocktake header, boolean needRecount) {
+        try {
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("counterUsername", requireUsername(header.getCounterUserId()));
+            variables.put("recountUsername", header.getRecountUserId() == null
+                    ? "" : requireUsername(header.getRecountUserId()));
+            variables.put("approverUsername", resolveApproverUsername());
+            variables.put("needRecount", needRecount);
+            variables.put("stocktakeId", header.getStocktakeId());
+            variables.put("deptId", header.getDeptId());
+            variables.put("takeNo", header.getTakeNo());
+            variables.put("tenantId", header.getTenantId());
+
+            Map<String, Object> body = new HashMap<>();
+            body.put("processKey", PROCESS_KEY_STOCKTAKE);
+            body.put("businessKey", header.getTakeNo());
+            body.put("variables", variables);
+
+            String url = workflowServiceUrl + "/instance/start";
+            @SuppressWarnings("rawtypes")
+            Map response = getWorkflowRestTemplate().postForObject(url, body, Map.class);
+
+            String processInstanceId = extractProcessInstanceId(response);
+            if (processInstanceId != null) {
+                finStocktakeMapper.updateWorkflowInfo(header.getTenantId(),
+                        header.getStocktakeId(), processInstanceId, "Task_Count");
+                header.setProcessInstanceId(processInstanceId);
+                header.setProcessDefinitionKey(PROCESS_KEY_STOCKTAKE);
+                header.setBusinessKey(header.getTakeNo());
+                header.setCurrentNode("Task_Count");
+                log.info("盘点工作流已启动: stocktakeId={}, processInstanceId={}",
+                        header.getStocktakeId(), processInstanceId);
+            } else {
+                log.warn("盘点工作流启动返回非预期响应: stocktakeId={}, response={}",
+                        header.getStocktakeId(), response);
+            }
+        } catch (Exception e) {
+            log.warn("盘点工作流启动失败（优雅降级，不阻塞提交）: stocktakeId={}, error={}",
+                    header.getStocktakeId(), e.getMessage());
+        }
+    }
+
+    private String requireUsername(Long userId) {
+        if (userId == null) {
+            throw new ServiceException("库存盘点流程处理人不能为空");
+        }
+        R<LoginUser> result = remoteUserService.getUserInfoById(userId, SecurityConstants.INNER);
+        LoginUser loginUser = result == null ? null : result.getData();
+        if (loginUser == null || loginUser.getUsername() == null || loginUser.getUsername().isBlank()) {
+            throw new ServiceException("无法解析库存盘点处理人 username: " + userId);
+        }
+        return loginUser.getUsername().trim();
+    }
+
+    private String resolveApproverUsername() {
+        R<List<String>> result = remoteUserService.listUsernamesByRoleKey("admin", SecurityConstants.INNER);
+        if (result != null && result.getData() != null && !result.getData().isEmpty()) {
+            return result.getData().get(0);
+        }
+        String current = SecurityUtils.getUsername();
+        if (current == null || current.isBlank()) {
+            throw new ServiceException("无法解析库存盘点审批人 username");
+        }
+        return current.trim();
+    }
+
+    /**
+     * 从工作流 /instance/start 响应中提取 processInstanceId。
+     * 支持响应结构：{code:200, data:{processInstanceId:"..."}} 或 {processInstanceId:"..."}
+     */
+    @SuppressWarnings("unchecked")
+    private String extractProcessInstanceId(Map response) {
+        if (response == null) {
+            return null;
+        }
+        Object data = response.get("data");
+        if (data instanceof Map) {
+            Object pid = ((Map<Object, Object>) data).get("processInstanceId");
+            return pid == null ? null : String.valueOf(pid);
+        }
+        Object pid = response.get("processInstanceId");
+        return pid == null ? null : String.valueOf(pid);
     }
 
     // ===== 私有辅助方法 =====
@@ -1119,6 +1456,11 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
     }
 
     private void assertDeptAuthorized(Long tenantId, Long deptId) {
+        // 工作流内部回调由 @InnerAuth 保护，不携带前台登录用户；业务单据和门店归属
+        // 仍在下方创建流程中校验，不能把该内部调用误判为普通用户无授权。
+        if (StringUtils.isBlank(SecurityUtils.getUsername())) {
+            return;
+        }
         if (SecurityUtils.isAdmin()) {
             return;
         }
@@ -1164,12 +1506,11 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
     }
 
     private boolean shouldHideExpected(FinStocktake header) {
-        if (SecurityUtils.isAdmin()) {
-            return false;
-        }
-        // counter 视角且任务未提交时隐藏期望值
+        // 盲盘保护由任务角色决定：counter 视角且任务未提交时隐藏期望值
+        // 管理员也不例外，防止管理员身份泄露期望数量
+        Long currentUserId = SecurityUtils.getUserId();
         boolean isCounter = header.getCounterUserId() != null
-                && header.getCounterUserId().equals(SecurityUtils.getUserId());
+                && header.getCounterUserId().equals(currentUserId);
         boolean isPreSubmit = STATUS_DRAFT.equals(header.getStatus())
                 || STATUS_COUNTING.equals(header.getStatus());
         return isCounter && isPreSubmit;

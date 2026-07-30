@@ -6,6 +6,7 @@ import com.junsong.workflow.lowcode.domain.LcBizNodeAssignee;
 import com.junsong.workflow.lowcode.domain.LcBizObject;
 import com.junsong.workflow.lowcode.engine.LcBranchRuleEngine;
 import com.junsong.workflow.service.identity.DeptUserResolveService;
+import com.junsong.workflow.mapper.WfSysUserMapper;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,14 +23,17 @@ public class LcWorkflowAssembleService
 {
     private final LcMetadataService metadataService;
     private final DeptUserResolveService deptUserResolveService;
+    private final WfSysUserMapper sysUserMapper;
     @Autowired
     private LcExpressionService expressionService;
 
     public LcWorkflowAssembleService(LcMetadataService metadataService,
-                                     DeptUserResolveService deptUserResolveService)
+                                     DeptUserResolveService deptUserResolveService,
+                                     WfSysUserMapper sysUserMapper)
     {
         this.metadataService = metadataService;
         this.deptUserResolveService = deptUserResolveService;
+        this.sysUserMapper = sysUserMapper;
     }
 
     public Map<String, Object> assembleVariables(String bizCode, Map<String, Object> formData)
@@ -177,10 +181,11 @@ public class LcWorkflowAssembleService
         switch (source)
         {
             case "FIXED_USER":
+                return resolveFixedUser(value);
             case "FIXED_ROLE":
                 return value;
             case "FORM_FIELD_USER":
-                return value == null ? null : asText(form.get(value));
+                return value == null ? null : resolveUserIdentity(asText(form.get(value)), "表单处理人不存在");
             case "INITIATOR":
                 return initiator;
             case "INITIATOR_LEADER":
@@ -193,7 +198,7 @@ public class LcWorkflowAssembleService
                 {
                     return null;
                 }
-                String username = asText(form.get(value));
+                String username = resolveUserIdentity(asText(form.get(value)), "表单处理人不存在");
                 return username == null ? null : deptUserResolveService.getDeptLeader(username);
             }
             case "ROLE":
@@ -236,6 +241,26 @@ public class LcWorkflowAssembleService
         }
     }
 
+    /** Flowable 身份统一使用 username；配置中心保存的数字 userId 在启动前转换。 */
+    private String resolveFixedUser(String value)
+    {
+        return resolveUserIdentity(value, "固定处理人不存在");
+    }
+
+    /** Flowable 身份统一使用 username；表单用户字段保存的数字 userId 在启动前转换。 */
+    private String resolveUserIdentity(String value, String missingMessagePrefix)
+    {
+        if (value == null || value.isBlank()) return null;
+        String raw = value.trim();
+        if (!raw.matches("\\d+")) return raw;
+        String username = sysUserMapper.selectUserNameByUserId(Long.valueOf(raw));
+        if (username == null || username.isBlank())
+        {
+            throw new IllegalArgumentException(missingMessagePrefix + ": " + raw);
+        }
+        return username.trim();
+    }
+
     /**
      * 解析会签人员列表。
      */
@@ -272,7 +297,7 @@ public class LcWorkflowAssembleService
             case "FORM_FIELD_USER":
                 if (value != null)
                 {
-                    String username = asText(form.get(value));
+                    String username = resolveUserIdentity(asText(form.get(value)), "表单处理人不存在");
                     if (username != null && !username.isBlank()) result.add(username);
                 }
                 break;

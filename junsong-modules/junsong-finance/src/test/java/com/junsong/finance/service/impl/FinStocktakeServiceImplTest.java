@@ -698,11 +698,10 @@ class FinStocktakeServiceImplTest {
     }
 
     @Test
-    void submit_withVarianceAboveThresholdButNoRecountUserGoesSubmitted() {
-        // 方差超过阈值但未分配复盘人，无法触发复盘，只能 SUBMITTED（由审批人决定是否驳回重盘）
+    void submit_withVarianceAboveThresholdButNoRecountUserThrows() {
         FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-001", "COUNTING");
         header.setCounterUserId(1L);
-        header.setRecountUserId(null); // 未分配复盘人
+        header.setRecountUserId(null);
         header.setVersion(0);
         stocktakeMapper.headers.add(header);
 
@@ -713,9 +712,9 @@ class FinStocktakeServiceImplTest {
         item.setVersion(1);
         stocktakeMapper.itemsByStocktake.put(1L, Arrays.asList(item));
 
-        int affected = service.submitStocktake(1L, 0);
-        assertEquals(1, affected);
-        assertEquals("SUBMITTED", header.getStatus(), "未分配复盘人时即使方差超阈也走 SUBMITTED");
+        ServiceException ex = assertThrows(ServiceException.class, () -> service.submitStocktake(1L, 0));
+        assertTrue(ex.getMessage().contains("必须先分配独立复盘人"),
+                "超过阈值且未分配复盘人时应禁止提交");
     }
 
     @Test
@@ -1712,6 +1711,195 @@ class FinStocktakeServiceImplTest {
         }
     }
 
+    // ===== 复核补充测试 =====
+
+    @Test
+    void approve_recountingWithIncompleteRecount_throws() {
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-APR-01", "RECOUNTING");
+        header.setCounterUserId(1L);
+        header.setRecountUserId(2L);
+        header.setVersion(2);
+        stocktakeMapper.headers.add(header);
+
+        FinStocktakeItem item = buildCountingItem(11L, 1L, PRODUCT_100, 50);
+        item.setActualQuantity(40);
+        item.setRecountQuantity(null);
+        item.setVersion(2);
+        stocktakeMapper.itemsByStocktake.put(1L, Arrays.asList(item));
+
+        StocktakeApprovalRequest req = new StocktakeApprovalRequest();
+        req.setDecision("APPROVE");
+        req.setVersion(2);
+
+        ServiceException ex = assertThrows(ServiceException.class,
+                () -> service.approveStocktake(1L, req));
+        assertTrue(ex.getMessage().contains("复盘") || ex.getMessage().contains("未完成"),
+                "复盘未完成时应禁止审批，实际错误：" + ex.getMessage());
+    }
+
+    @Test
+    void post_loss_solidifiesUnitCostAndVarianceAmount() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-POST-01", "APPROVED");
+        h.setVersion(0);
+        stocktakeMapper.headers.add(h);
+
+        FinStocktakeItem item = buildItem(T1, 1L, DEPT_10, PRODUCT_100, 50);
+        item.setFinalQuantity(40);
+        item.setVarianceQuantity(-10);
+        item.setUnitCost(null);
+        item.setVarianceAmount(null);
+        item.setVersion(1);
+        stocktakeMapper.insertedItems.add(item);
+        stocktakeMapper.itemsByStocktake.computeIfAbsent(1L, k -> new ArrayList<>()).add(item);
+
+        ledgerMapper.positions.put(T1 + ":" + DEPT_10 + ":" + PRODUCT_100, 50);
+        stockCostService.avgUnitCost = new BigDecimal("12.50");
+        productMapper.products.put(PRODUCT_100, buildProduct(PRODUCT_100, "商品A"));
+
+        int affected = service.postStocktake(1L, 0);
+
+        assertEquals(1, affected);
+        assertEquals("POSTED", h.getStatus());
+        assertNotNull(item.getUnitCost(), "过账后应固化单位成本");
+        assertEquals(0, item.getUnitCost().compareTo(new BigDecimal("12.50")),
+                "单位成本应等于移动加权平均成本");
+        assertNotNull(item.getVarianceAmount(), "过账后应计算差异金额");
+        assertEquals(0, item.getVarianceAmount().compareTo(new BigDecimal("125.00")),
+                "差异金额取绝对值 = |差异数量| * 单位成本 = 10 * 12.50 = 125.00，实际：" + item.getVarianceAmount());
+    }
+
+    @Test
+    void post_gain_solidifiesUnitCostAndVarianceAmount() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-POST-02", "APPROVED");
+        h.setVersion(0);
+        stocktakeMapper.headers.add(h);
+
+        FinStocktakeItem item = buildItem(T1, 1L, DEPT_10, PRODUCT_100, 40);
+        item.setFinalQuantity(50);
+        item.setVarianceQuantity(10);
+        item.setUnitCost(null);
+        item.setVarianceAmount(null);
+        item.setVersion(1);
+        stocktakeMapper.insertedItems.add(item);
+        stocktakeMapper.itemsByStocktake.computeIfAbsent(1L, k -> new ArrayList<>()).add(item);
+
+        ledgerMapper.positions.put(T1 + ":" + DEPT_10 + ":" + PRODUCT_100, 40);
+        stockCostService.avgUnitCost = new BigDecimal("10.00");
+        productMapper.products.put(PRODUCT_100, buildProduct(PRODUCT_100, "商品A"));
+
+        int affected = service.postStocktake(1L, 0);
+
+        assertEquals(1, affected);
+        assertEquals("POSTED", h.getStatus());
+        assertNotNull(item.getUnitCost(), "盘盈过账后也应固化单位成本");
+        assertNotNull(item.getVarianceAmount(), "盘盈过账后也应计算差异金额");
+    }
+
+    @Test
+    void reverse_downstreamLedgerExists_throws() {
+        FinStocktake h = buildHeader(T1, 1L, DEPT_10, "PD-R-DS", "POSTED");
+        h.setPostedTime(new Date());
+        h.setVersion(0);
+        stocktakeMapper.headers.add(h);
+
+        FinStocktakeItem item = buildItem(T1, 1L, DEPT_10, PRODUCT_100, 50);
+        item.setFinalQuantity(40);
+        item.setVarianceQuantity(-10);
+        item.setUnitCost(new BigDecimal("10.00"));
+        item.setVarianceAmount(new BigDecimal("-100.00"));
+        item.setStockLedgerId(100L);
+        item.setCostLedgerId(200L);
+        item.setVersion(1);
+        stocktakeMapper.insertedItems.add(item);
+        stocktakeMapper.itemsByStocktake.computeIfAbsent(1L, k -> new ArrayList<>()).add(item);
+
+        ledgerMapper.positions.put(T1 + ":" + DEPT_10 + ":" + PRODUCT_100, 40);
+        stockCostService.avgUnitCost = new BigDecimal("10.00");
+
+        // 设置下游流水存在（> 0）
+        ledgerMapper.downstreamCount = 5;
+
+        StocktakeReverseRequest req = new StocktakeReverseRequest();
+        req.setReason("冲销测试");
+        req.setIdempotencyKey("PD-R-DS-REV-1");
+        req.setVersion(0);
+
+        ServiceException ex = assertThrows(ServiceException.class,
+                () -> service.reverseStocktake(1L, req));
+        assertTrue(ex.getMessage().contains("下游") || ex.getMessage().contains("已使用"),
+                "存在下游流水时应禁止冲销，实际错误：" + ex.getMessage());
+    }
+
+    @Test
+    void count_adminNotAssignedAsCounter_throws() {
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-BLIND-01", "COUNTING");
+        header.setCounterUserId(999L);
+        header.setRecountUserId(null);
+        header.setVersion(0);
+        stocktakeMapper.headers.add(header);
+
+        buildCountingItem(11L, 1L, PRODUCT_100, 50);
+
+        // admin 用户，但不是指定盘点人
+        SecurityContextHolder.setUserId("1");
+        SecurityContextHolder.setUserName("admin");
+
+        StocktakeCountRequest req = buildCountRequest(45, "BLIND-COUNT-001", 0);
+
+        ServiceException ex = assertThrows(ServiceException.class,
+                () -> service.countItem(1L, 11L, req));
+        assertTrue(ex.getMessage().contains("盘点人") || ex.getMessage().contains("权限"),
+                "管理员不是指定盘点人时也应禁止录入，实际错误：" + ex.getMessage());
+    }
+
+    @Test
+    void count_adminAsAssignedCounter_succeeds() {
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-BLIND-02", "COUNTING");
+        header.setCounterUserId(1L);
+        header.setRecountUserId(null);
+        header.setVersion(0);
+        stocktakeMapper.headers.add(header);
+
+        FinStocktakeItem item = buildCountingItem(11L, 1L, PRODUCT_100, 50);
+        item.setActualQuantity(null);
+        item.setVersion(1);
+
+        // admin 用户，同时也是指定盘点人
+        SecurityContextHolder.setUserId("1");
+        SecurityContextHolder.setUserName("admin");
+
+        StocktakeCountRequest req = buildCountRequest(45, "BLIND-COUNT-002", 1);
+        req.setReasonCode("OTHER");
+        req.setReason("正常盘点");
+
+        int affected = service.countItem(1L, 11L, req);
+        assertEquals(1, affected);
+        assertEquals(45, item.getActualQuantity());
+    }
+
+    @Test
+    void submit_amountAboveThresholdTriggersRecount() {
+        FinStocktake header = buildHeader(T1, 1L, DEPT_10, "PD-AMT-TH", "COUNTING");
+        header.setCounterUserId(1L);
+        header.setRecountUserId(2L);
+        header.setVersion(0);
+        stocktakeMapper.headers.add(header);
+
+        FinStocktakeItem item = buildCountingItem(11L, 1L, PRODUCT_100, 100);
+        item.setActualQuantity(90);
+        item.setUnitCost(new BigDecimal("50.00"));
+        item.setReasonCode("DAMAGED");
+        item.setReason("破损");
+        item.setVersion(1);
+        stocktakeMapper.itemsByStocktake.put(1L, Arrays.asList(item));
+
+        // 数量差异 10 未超数量阈值（默认 20），但金额差异 10*50=500 超金额阈值（默认 100）
+        int affected = service.submitStocktake(1L, 0);
+        assertEquals(1, affected);
+        assertEquals("RECOUNTING", header.getStatus(),
+                "金额超阈值且已分配复盘人时应进入复盘状态");
+    }
+
     // ===== 辅助方法 =====
 
     private FinProduct buildProduct(Long id, String name) {
@@ -1729,6 +1917,7 @@ class FinStocktakeServiceImplTest {
         h.setTakeNo(takeNo);
         h.setStatus(status);
         h.setVersion(0);
+        h.setCounterUserId(1L);
         return h;
     }
 
@@ -1795,9 +1984,19 @@ class FinStocktakeServiceImplTest {
         }
 
         @Override
+        public FinStocktake selectByReverseIdempotencyKey(Long tenantId, String reverseIdempotencyKey) {
+            return insertedHeaders.stream()
+                    .filter(h -> tenantId.equals(h.getTenantId())
+                            && reverseIdempotencyKey != null
+                            && reverseIdempotencyKey.equals(h.getReverseIdempotencyKey()))
+                    .findFirst().orElse(null);
+        }
+
+        @Override
         public int updateStocktakeStatus(Long tenantId, Long stocktakeId, String fromStatus, String toStatus,
                                           Integer version, String updateBy, String submittedBy, String approvedBy,
-                                          String postedBy, String reversedBy, String reversalReason) {
+                                          String postedBy, String reversedBy, String reversalReason,
+                                          String reverseIdempotencyKey) {
             FinStocktake h = selectStocktakeById(tenantId, stocktakeId);
             if (h == null || !fromStatus.equals(h.getStatus()) || !version.equals(h.getVersion())) {
                 return 0;
@@ -1810,6 +2009,7 @@ class FinStocktakeServiceImplTest {
             if (postedBy != null) { h.setPostedBy(postedBy); h.setPostedTime(now); }
             if (reversedBy != null) { h.setReversedBy(reversedBy); h.setReversedTime(now); }
             if (reversalReason != null) h.setReversalReason(reversalReason);
+            if (reverseIdempotencyKey != null) h.setReverseIdempotencyKey(reverseIdempotencyKey);
             return 1;
         }
 
@@ -1969,6 +2169,26 @@ class FinStocktakeServiceImplTest {
                     .filter(h -> tenantId.equals(h.getTenantId()) && stocktakeId.equals(h.getStocktakeId()))
                     .collect(java.util.stream.Collectors.toList());
         }
+
+        @Override
+        public int updateWorkflowInfo(Long tenantId, Long stocktakeId, String processInstanceId, String currentNode) {
+            FinStocktake h = selectStocktakeById(tenantId, stocktakeId);
+            if (h == null) {
+                return 0;
+            }
+            if (processInstanceId != null) h.setProcessInstanceId(processInstanceId);
+            if (currentNode != null) h.setCurrentNode(currentNode);
+            return 1;
+        }
+
+        @Override
+        public FinStocktake selectByProcessInstanceId(Long tenantId, String processInstanceId) {
+            return headers.stream()
+                    .filter(h -> tenantId.equals(h.getTenantId())
+                            && processInstanceId != null
+                            && processInstanceId.equals(h.getProcessInstanceId()))
+                    .findFirst().orElse(null);
+        }
     }
 
     static class FakeFinStockLedgerMapper implements FinStockLedgerMapper {
@@ -1976,6 +2196,7 @@ class FinStocktakeServiceImplTest {
         final List<FinStockLedger> insertedLedgers = new ArrayList<>();
         final java.util.Set<String> existingReferenceNos = new java.util.HashSet<>();
         long nextLedgerId = 9000L;
+        int downstreamCount = 0;
 
         @Override public int insertPositionIfAbsent(Long t, Long d, Long p) { return 0; }
         @Override public Integer selectPositionQuantityForUpdate(Long t, Long d, Long p) { return positions.getOrDefault(t+":"+d+":"+p, 0); }
@@ -2008,7 +2229,13 @@ class FinStocktakeServiceImplTest {
         public Integer sumMovementAfterFreeze(Long tenantId, Long deptId, Long productId, Date freezeTime) {
             return 0;
         }
+
+    @Override
+    public int countDownstreamLedgersAfterTime(Long tenantId, Long deptId, Long productId, java.util.Date afterTime) {
+        return downstreamCount;
     }
+
+}
 
     /**
      * Fake IStockCostService：记录调用参数，模拟成本层行为。
@@ -2085,6 +2312,11 @@ class FinStocktakeServiceImplTest {
 
         @Override
         public FinAccountingPeriod selectCurrentPeriodByDeptId(Long deptId) {
+            return currentPeriod;
+        }
+
+        @Override
+        public FinAccountingPeriod selectCurrentPeriodByDeptIdForUpdate(Long tenantId, Long deptId) {
             return currentPeriod;
         }
 

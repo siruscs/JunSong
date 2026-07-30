@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
@@ -129,6 +130,7 @@ public class MemMemberController extends BaseController {
      */
     @RequiresPermissions("member:member:add")
     @Log(title = "会员信息", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "member:member:add")
     @PostMapping
     public AjaxResult add(@RequestBody MemMember memMember) {
         if (!StringUtils.hasText(memMember.getMemberNo())) {
@@ -187,6 +189,7 @@ public class MemMemberController extends BaseController {
      */
     @RequiresPermissions("member:member:edit")
     @Log(title = "会员信息", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "member:member:edit")
     @PutMapping
     public AjaxResult edit(@RequestBody MemMember memMember) {
         if (!memMemberService.checkMemMemberNoUnique(memMember)) {
@@ -201,6 +204,7 @@ public class MemMemberController extends BaseController {
      */
     @RequiresPermissions("member:member:remove")
     @Log(title = "会员信息", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "member:member:delete")
     @DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable Long[] ids) {
         return toAjax(memMemberService.deleteMemMemberByIds(ids));
@@ -211,6 +215,7 @@ public class MemMemberController extends BaseController {
      */
     @RequiresPermissions("member:member:import")
     @Log(title = "会员信息", businessType = BusinessType.IMPORT)
+    @Idempotent(scene = "member:member:import")
     @PostMapping("/importData")
     public AjaxResult importData(MultipartFile file, boolean updateSupport) throws Exception {
         ExcelUtil<MemMember> util = new ExcelUtil<MemMember>(MemMember.class);

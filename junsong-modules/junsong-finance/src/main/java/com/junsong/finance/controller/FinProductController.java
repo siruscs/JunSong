@@ -16,6 +16,7 @@ import com.junsong.common.core.utils.poi.ExcelUtil;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -95,6 +96,7 @@ public class FinProductController extends BaseController
      */
     @RequiresPermissions("finance:product:add")
     @Log(title = "商品", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "finProduct:create")
     @PostMapping
     public AjaxResult add(@Validated @RequestBody FinProduct finProduct)
     {
@@ -112,6 +114,7 @@ public class FinProductController extends BaseController
      */
     @RequiresPermissions("finance:product:edit")
     @Log(title = "商品", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "finProduct:update")
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody FinProduct finProduct)
     {
@@ -131,6 +134,7 @@ public class FinProductController extends BaseController
      */
     @RequiresPermissions("finance:product:remove")
     @Log(title = "商品", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "finProduct:delete")
     @DeleteMapping("/{productIds:\\d+(?:,\\d+)*}")
     public AjaxResult remove(@PathVariable Long[] productIds)
     {

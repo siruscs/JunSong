@@ -189,7 +189,7 @@
           </el-table>
         </el-tab-pane>
         <el-tab-pane label="进货" name="purchase">
-          <el-table v-loading="detailLoading" :data="detail.purchases" height="360">
+          <el-table v-loading="detailLoading" :data="purchaseDetailRows" height="360" border :span-method="purchaseDetailSpan">
             <el-table-column label="进货单号" prop="purchaseNo" min-width="150" />
             <el-table-column label="供应商" prop="supplierName" min-width="150" show-overflow-tooltip />
             <el-table-column label="进货日期" prop="purchaseDate" width="120">
@@ -200,6 +200,15 @@
             </el-table-column>
             <el-table-column label="状态" prop="status" width="100">
               <template #default="scope">{{ getPurchaseStatusText(scope.row.status) }}</template>
+            </el-table-column>
+            <el-table-column label="商品名称" prop="productName" min-width="140" show-overflow-tooltip />
+            <el-table-column label="数量" prop="normalQuantity" width="90" align="right" />
+            <el-table-column label="赠数" prop="giftQuantity" width="90" align="right" />
+            <el-table-column label="单价" prop="price" width="100" align="right">
+              <template #default="scope">¥{{ formatMoney(scope.row.price) }}</template>
+            </el-table-column>
+            <el-table-column label="金额" prop="amount" width="110" align="right">
+              <template #default="scope">¥{{ formatMoney(scope.row.amount) }}</template>
             </el-table-column>
           </el-table>
         </el-tab-pane>
@@ -526,6 +535,24 @@ export default {
         }
       })
       return rows
+    },
+    purchaseDetailRows() {
+      const rows = []
+      ;(this.detail.purchases || []).forEach(purchase => {
+        const details = purchase.details && purchase.details.length ? purchase.details : [{}]
+        details.forEach((item, index) => {
+          const gift = String(item.isGift) === '1'
+          rows.push({
+            ...purchase,
+            ...item,
+            productName: item.productName || '-',
+            normalQuantity: gift ? 0 : (item.quantity || 0),
+            giftQuantity: gift ? (item.quantity || 0) : 0,
+            _purchaseRowspan: index === 0 ? details.length : 0
+          })
+        })
+      })
+      return rows
     }
   },
   created() {
@@ -668,14 +695,14 @@ export default {
         return opt ? opt.label : (v || '')
       }
 
-      const TOTAL_COLS = 9
+      const TOTAL_COLS = 10
       const BORDER = { top: { style: 'thin', color: { argb: 'FFDCDFE6' } }, left: { style: 'thin', color: { argb: 'FFDCDFE6' } }, bottom: { style: 'thin', color: { argb: 'FFDCDFE6' } }, right: { style: 'thin', color: { argb: 'FFDCDFE6' } } }
       const HEADER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F7FA' } }
       const TITLE_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECF5FF' } }
 
       const wb = new ExcelJS.Workbook()
       const ws = wb.addWorksheet('周期明细')
-      ws.columns = [{ width: 20 }, { width: 16 }, { width: 14 }, { width: 20 }, { width: 16 }, { width: 20 }, { width: 14 }, { width: 12 }, { width: 22 }]
+      ws.columns = [{ width: 20 }, { width: 16 }, { width: 14 }, { width: 20 }, { width: 16 }, { width: 20 }, { width: 12 }, { width: 12 }, { width: 12 }, { width: 16 }]
 
       const applyBorder = (r) => { for (let c = 1; c <= TOTAL_COLS; c++) { r.getCell(c).border = BORDER } }
 
@@ -767,10 +794,18 @@ export default {
         r => ({ values: [r.advanceNo, date(r.advanceDate), r.borrower, r.purpose, money(r.advanceAmount), r.status === '1' ? '已核销' : '未核销'], moneyCols: [5] }),
         ['left', 'center', 'left', 'left', 'right', 'center'])
 
-      addSection('进货', ['进货单号', '供应商', '进货日期', '总金额', '状态'],
-        data.purchases || [],
-        r => ({ values: [r.purchaseNo, r.supplierName, date(r.purchaseDate), money(r.totalAmount), this.getPurchaseStatusText(r.status)], moneyCols: [4] }),
-        ['left', 'left', 'center', 'right', 'center'])
+      const purchaseRows = []
+      ;(data.purchases || []).forEach(p => {
+        const details = p.details && p.details.length ? p.details : [{}]
+        details.forEach(d => {
+          const gift = String(d.isGift) === '1'
+          purchaseRows.push({ p, d, normalQuantity: gift ? 0 : (d.quantity || 0), giftQuantity: gift ? (d.quantity || 0) : 0 })
+        })
+      })
+      addSection('进货', ['进货单号', '供应商', '进货日期', '总金额', '状态', '商品名称', '数量', '赠数', '单价', '金额'],
+        purchaseRows,
+        r => ({ values: [r.p.purchaseNo, r.p.supplierName, date(r.p.purchaseDate), money(r.p.totalAmount), this.getPurchaseStatusText(r.p.status), r.d.productName || '-', r.normalQuantity, r.giftQuantity, money(r.d.price), money(r.d.amount)], moneyCols: [4, 9, 10] }),
+        ['left', 'left', 'center', 'right', 'center', 'left', 'right', 'right', 'right', 'right'])
 
       addSection('投资来源', ['投资人', '投资时间', '投资金额', '备注'],
         data.investRecords || [],
@@ -876,6 +911,11 @@ export default {
     salePaymentSpan({ row, columnIndex }) {
       if (columnIndex >= 0 && columnIndex <= 4) {
         return { rowspan: row._rowspan, colspan: row._rowspan > 0 ? 1 : 0 }
+      }
+    },
+    purchaseDetailSpan({ row, columnIndex }) {
+      if (columnIndex >= 0 && columnIndex <= 4) {
+        return { rowspan: row._purchaseRowspan, colspan: row._purchaseRowspan > 0 ? 1 : 0 }
       }
     },
     handleCheckBeforeLock(row) {

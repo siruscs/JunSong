@@ -132,6 +132,10 @@ public class FinAccountingPeriodServiceImpl implements IFinAccountingPeriodServi
         period.setStatus(PeriodStatus.CARRIED);
         period.setUpdateBy(SecurityUtils.getUsername());
         period.setRemark(appendRemark(period.getRemark(), "结转操作"));
+        // DB 唯一键兜底：从 AOP ThreadLocal 读取幂等键填充到业务表
+        period.setTenantId(TenantContext.getTenantId());
+        period.setCarryForwardIdempotencyKey(
+                com.junsong.common.core.idempotency.IdempotencyResultStore.currentKey());
         finAccountingPeriodMapper.updateFinAccountingPeriod(period);
 
         auditTrailRecorder.record("period_carry_forward", "accounting_period", String.valueOf(period.getPeriodId()),
@@ -244,6 +248,11 @@ public class FinAccountingPeriodServiceImpl implements IFinAccountingPeriodServi
         carriedPeriod.setUpdateBy(SecurityUtils.getUsername());
         String remarkMsg = "结转回退操作，原因：" + rollbackReason;
         carriedPeriod.setRemark(appendRemark(carriedPeriod.getRemark(), remarkMsg));
+        // DB 唯一键兜底：从 AOP ThreadLocal 读取幂等键填充到业务表
+        // 注意：回退操作复用 carry_forward_idempotency_key 列，但幂等键值不同（由 AOP scene 区分）
+        carriedPeriod.setTenantId(TenantContext.getTenantId());
+        carriedPeriod.setCarryForwardIdempotencyKey(
+                com.junsong.common.core.idempotency.IdempotencyResultStore.currentKey());
         finAccountingPeriodMapper.updateFinAccountingPeriod(carriedPeriod);
 
         String afterSnapshot = "{\"periodId\":" + carriedPeriod.getPeriodId() + ",\"status\":\"" + carriedPeriod.getStatus()

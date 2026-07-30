@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -68,6 +69,7 @@ public class SysUserDeptController extends BaseController
      */
     @RequiresPermissions("system:userDept:add")
     @Log(title = "用户与部门关联", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "system:user-dept:add")
     @PostMapping
     public AjaxResult add(@Validated @RequestBody SysUserDept sysUserDept)
     {
@@ -79,6 +81,7 @@ public class SysUserDeptController extends BaseController
      */
     @RequiresPermissions("system:userDept:edit")
     @Log(title = "用户与部门关联", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:user-dept:edit")
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody SysUserDept sysUserDept)
     {
@@ -101,6 +104,7 @@ public class SysUserDeptController extends BaseController
      */
     @RequiresPermissions("system:userDept:edit")
     @Log(title = "用户入职", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:user-dept:hire")
     @PostMapping("/hire")
     public AjaxResult hire(@RequestBody SysUserDept sysUserDept)
     {
@@ -112,6 +116,7 @@ public class SysUserDeptController extends BaseController
      */
     @RequiresPermissions("system:userDept:edit")
     @Log(title = "用户离职", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:user-dept:leave")
     @PostMapping("/leave")
     public AjaxResult leave(@RequestBody SysUserDept sysUserDept)
     {
@@ -123,6 +128,7 @@ public class SysUserDeptController extends BaseController
      */
     @RequiresPermissions("system:userDept:add")
     @Log(title = "用户与部门关联", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "system:user-dept:batch-add")
     @PostMapping("/batch")
     public AjaxResult batchAdd(@RequestBody List<SysUserDept> userDeptList)
     {

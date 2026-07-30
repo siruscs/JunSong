@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.junsong.common.core.domain.R;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.page.TableDataInfo;
 import com.junsong.workflow.domain.WfNodeFieldPermission;
@@ -47,6 +48,7 @@ public class WorkflowFieldPermissionController extends BaseController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:fieldPermission:add')")
+    @Idempotent(scene = "workflow:field-permission:add")
     @PostMapping
     public R<Void> add(@RequestBody WfNodeFieldPermission permission)
     {
@@ -54,6 +56,7 @@ public class WorkflowFieldPermissionController extends BaseController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:fieldPermission:edit')")
+    @Idempotent(scene = "workflow:fieldPermission:update")
     @PutMapping
     public R<Void> update(@RequestBody WfNodeFieldPermission permission)
     {

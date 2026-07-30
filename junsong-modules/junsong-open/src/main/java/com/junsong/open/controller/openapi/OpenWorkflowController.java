@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 
@@ -72,6 +73,7 @@ public class OpenWorkflowController extends BaseController
      * @param params 包含 processKey/businessKey/variables
      */
     @PostMapping("/instances")
+    @Idempotent(scene = "open:workflow:start-instance", highRisk = true)
     public AjaxResult startInstance(@RequestBody Map<String, Object> params)
     {
         return restTemplate.postForObject(WORKFLOW_BASE + "/instance/start", params, AjaxResult.class);
@@ -130,6 +132,7 @@ public class OpenWorkflowController extends BaseController
      * 审批通过
      */
     @PostMapping("/tasks/{taskId}/approve")
+    @Idempotent(scene = "open:workflow:approve-task", highRisk = true)
     public AjaxResult approveTask(@PathVariable("taskId") String taskId, @RequestBody Map<String, Object> params)
     {
         return restTemplate.postForObject(WORKFLOW_BASE + "/task/" + taskId + "/approve", params, AjaxResult.class);
@@ -139,6 +142,7 @@ public class OpenWorkflowController extends BaseController
      * 驳回任务
      */
     @PostMapping("/tasks/{taskId}/reject")
+    @Idempotent(scene = "open:workflow:reject-task", highRisk = true)
     public AjaxResult rejectTask(@PathVariable("taskId") String taskId, @RequestBody Map<String, Object> params)
     {
         return restTemplate.postForObject(WORKFLOW_BASE + "/task/" + taskId + "/reject", params, AjaxResult.class);
@@ -148,6 +152,7 @@ public class OpenWorkflowController extends BaseController
      * 转办任务
      */
     @PostMapping("/tasks/{taskId}/transfer")
+    @Idempotent(scene = "open:workflow:transfer-task", highRisk = true)
     public AjaxResult transferTask(@PathVariable("taskId") String taskId, @RequestBody Map<String, Object> params)
     {
         return restTemplate.postForObject(WORKFLOW_BASE + "/task/" + taskId + "/transfer", params, AjaxResult.class);

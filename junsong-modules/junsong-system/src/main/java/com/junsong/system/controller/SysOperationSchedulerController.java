@@ -2,6 +2,7 @@ package com.junsong.system.controller;
 
 import java.util.List;
 
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.security.annotation.RequiresPermissions;
 import com.junsong.system.api.domain.R21TaskResult;
@@ -65,6 +66,7 @@ public class SysOperationSchedulerController
      * 业务 FAILED/PARTIAL 时 HTTP 返回 error（日志仍落 FAILED/PARTIAL）。
      */
     @RequiresPermissions("system:operation-scheduler:trigger")
+    @Idempotent(scene = "system:operation-scheduler:trigger")
     @PostMapping("/{jobCode}/trigger")
     public AjaxResult trigger(@PathVariable String jobCode)
     {

@@ -323,6 +323,7 @@ class FinanceOperationDashboardServiceImplTest {
     // ── Fakes ──
 
     static class FakeRemoteUserService implements RemoteUserService {
+        @Override public R<Boolean> isWechatLoginEnabled(Long tenantId, String source) { return R.ok(false); }
         private final List<Long> deptIds;
         FakeRemoteUserService(List<Long> deptIds) { this.deptIds = deptIds; }
         @Override public R<LoginUser> getUserInfo(String username, String source) { return null; }
@@ -481,7 +482,13 @@ class FinanceOperationDashboardServiceImplTest {
         @Override public FinAccountingPeriod selectPreviousPeriod(Long deptId, Date startTime, Long periodId) { return null; }
         @Override public FinAccountingPeriod selectNextPeriod(Long deptId, Date startTime, Long periodId) { return null; }
         @Override public int updateStartTimeOnly(Long periodId, Date startTime, Date endTime, String updateBy, String remark) { return 0; }
+
+    @Override
+    public com.junsong.finance.domain.FinAccountingPeriod selectCurrentPeriodByDeptIdForUpdate(Long tenantId, Long deptId) {
+        return selectCurrentPeriodByDeptId(deptId);
     }
+
+}
 
     static class FakeFinProfitShareDetailMapper implements FinProfitShareDetailMapper {
         @Override public List<com.junsong.finance.domain.FinProfitShareDetail> selectFinProfitShareDetailByShareId(Long id) { return Collections.emptyList(); }

@@ -16,6 +16,7 @@ import com.junsong.common.core.constant.UserConstants;
 import com.junsong.common.core.utils.StringUtils;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -87,6 +88,7 @@ public class SysMenuController extends BaseController
      */
     @RequiresPermissions("system:menu:add")
     @Log(title = "菜单管理", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "system:menu:create")
     @PostMapping
     public AjaxResult add(@Validated @RequestBody SysMenu menu)
     {
@@ -111,6 +113,7 @@ public class SysMenuController extends BaseController
      */
     @RequiresPermissions("system:menu:edit")
     @Log(title = "菜单管理", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:menu:update")
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody SysMenu menu)
     {
@@ -139,6 +142,7 @@ public class SysMenuController extends BaseController
      */
     @RequiresPermissions("system:menu:edit")
     @Log(title = "保存菜单排序", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:menu:updateSort")
     @PutMapping("/updateSort")
     public AjaxResult updateSort(@RequestBody Map<String, String> params)
     {
@@ -153,6 +157,7 @@ public class SysMenuController extends BaseController
      */
     @RequiresPermissions("system:menu:remove")
     @Log(title = "菜单管理", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "system:menu:delete")
     @DeleteMapping("/{menuId}")
     public AjaxResult remove(@PathVariable("menuId") Long menuId)
     {

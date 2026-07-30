@@ -8,12 +8,20 @@ import java.util.Set;
 
 import com.junsong.workflow.controller.TaskController.ApproveReq;
 import com.junsong.workflow.controller.TaskController.RejectReq;
+import com.junsong.workflow.lowcode.domain.LcBizInstance;
 import com.junsong.workflow.lowcode.sync.ConfigurablePostActionHandler;
+import com.junsong.workflow.mapper.WfNotificationMapper;
+import com.junsong.workflow.mapper.WfSysUserDelegateMapper;
+import com.junsong.workflow.mapper.WfSysUserMapper;
+import com.junsong.workflow.mapper.WfTaskAddSignMapper;
+import com.junsong.workflow.mapper.WfTaskAttachmentMapper;
+import com.junsong.workflow.lowcode.mapper.LcBizInstanceMapper;
 import com.junsong.workflow.security.CurrentWorkflowUser;
 import com.junsong.workflow.security.CurrentWorkflowUserFacade;
 import com.junsong.workflow.security.TaskAuthorizationService;
 import com.junsong.workflow.service.sync.WorkflowBusinessSyncHandler;
 import org.flowable.engine.HistoryService;
+import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.history.HistoricProcessInstance;
@@ -26,6 +34,7 @@ import org.flowable.task.api.history.HistoricTaskInstance;
 import org.flowable.task.api.history.HistoricTaskInstanceQuery;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anySet;
@@ -41,10 +50,17 @@ class WorkflowTaskServiceTest
     private TaskService taskService;
     private RuntimeService runtimeService;
     private HistoryService historyService;
+    private RepositoryService repositoryService;
     private CurrentWorkflowUserFacade currentWorkflowUserFacade;
     private TaskAuthorizationService taskAuthorizationService;
     private WorkflowBusinessSyncHandler workflowBusinessSyncHandler;
     private ConfigurablePostActionHandler postActionHandler;
+    private WfNotificationMapper notificationMapper;
+    private WfSysUserMapper sysUserMapper;
+    private WfSysUserDelegateMapper sysUserDelegateMapper;
+    private WfTaskAttachmentMapper taskAttachmentMapper;
+    private WfTaskAddSignMapper taskAddSignMapper;
+    private LcBizInstanceMapper lcBizInstanceMapper;
     private WorkflowTaskService service;
     private CurrentWorkflowUser actor;
 
@@ -54,12 +70,21 @@ class WorkflowTaskServiceTest
         taskService = mock(TaskService.class);
         runtimeService = mock(RuntimeService.class);
         historyService = mock(HistoryService.class);
+        repositoryService = mock(RepositoryService.class);
         currentWorkflowUserFacade = mock(CurrentWorkflowUserFacade.class);
         taskAuthorizationService = mock(TaskAuthorizationService.class);
         workflowBusinessSyncHandler = mock(WorkflowBusinessSyncHandler.class);
         postActionHandler = mock(ConfigurablePostActionHandler.class);
-        service = new WorkflowTaskService(taskService, runtimeService, historyService, currentWorkflowUserFacade,
-                taskAuthorizationService, List.of(workflowBusinessSyncHandler), postActionHandler);
+        notificationMapper = mock(WfNotificationMapper.class);
+        sysUserMapper = mock(WfSysUserMapper.class);
+        sysUserDelegateMapper = mock(WfSysUserDelegateMapper.class);
+        taskAttachmentMapper = mock(WfTaskAttachmentMapper.class);
+        taskAddSignMapper = mock(WfTaskAddSignMapper.class);
+        lcBizInstanceMapper = mock(LcBizInstanceMapper.class);
+        service = new WorkflowTaskService(taskService, runtimeService, historyService, repositoryService,
+                currentWorkflowUserFacade, taskAuthorizationService, List.of(workflowBusinessSyncHandler),
+                postActionHandler, notificationMapper, sysUserMapper, sysUserDelegateMapper,
+                taskAttachmentMapper, taskAddSignMapper, lcBizInstanceMapper);
         actor = new CurrentWorkflowUser(17L, "wjs", Set.of("finance"), Set.of());
         when(currentWorkflowUserFacade.current()).thenReturn(actor);
     }
@@ -161,7 +186,7 @@ class WorkflowTaskServiceTest
         var response = service.detail("task-1");
 
         assertEquals("task-1", response.getData().get("taskId"));
-        assertEquals(Map.of("days", 3), response.getData().get("variables"));
+        assertEquals(Map.of(), response.getData().get("businessForm"));
         verify(taskAuthorizationService).requireActorVisibleTask("task-1", actor);
         // 验证 N+1 已修复：detail 也使用批量查询（单元素）
         verify(runtimeService, times(1)).createProcessInstanceQuery();
@@ -189,6 +214,10 @@ class WorkflowTaskServiceTest
         req.variables = Map.of("approved", true);
         when(taskAuthorizationService.requireActorTask("task-1", actor)).thenReturn(task);
         when(taskService.getVariables("task-1")).thenReturn(Map.of("refundAmount", 88));
+        TaskQuery nextTasks = mock(TaskQuery.class);
+        when(taskService.createTaskQuery()).thenReturn(nextTasks);
+        when(nextTasks.processInstanceId("pi-1")).thenReturn(nextTasks);
+        when(nextTasks.list()).thenReturn(List.of());
 
         service.approve("task-1", req);
 
@@ -206,6 +235,10 @@ class WorkflowTaskServiceTest
         when(taskAuthorizationService.requireActorTask("task-1", actor)).thenReturn(task);
         when(workflowBusinessSyncHandler.supports("store_opening_apply:2:1")).thenReturn(true);
         when(taskService.getVariables("task-1")).thenReturn(Map.of("regionLeader", "lisi"));
+        TaskQuery nextTasks = mock(TaskQuery.class);
+        when(taskService.createTaskQuery()).thenReturn(nextTasks);
+        when(nextTasks.processInstanceId("pi-1")).thenReturn(nextTasks);
+        when(nextTasks.list()).thenReturn(List.of());
 
         service.approve("task-1", new ApproveReq());
 
@@ -221,10 +254,59 @@ class WorkflowTaskServiceTest
         when(taskAuthorizationService.requireActorTask("task-2", actor)).thenReturn(task);
         when(workflowBusinessSyncHandler.supports("refund_apply:1:1")).thenReturn(true);
         when(taskService.getVariables("task-2")).thenReturn(Map.of("refundAmount", 1888));
+        TaskQuery nextTasks = mock(TaskQuery.class);
+        when(taskService.createTaskQuery()).thenReturn(nextTasks);
+        when(nextTasks.processInstanceId("pi-r-1")).thenReturn(nextTasks);
+        when(nextTasks.list()).thenReturn(List.of());
 
         service.approve("task-2", new ApproveReq());
 
         verify(workflowBusinessSyncHandler).afterApprove(eq("门店负责人审批"), eq("pi-r-1"), eq("wjs"), eq(Map.of("refundAmount", 1888)));
+    }
+
+    @Test
+    void approveStocktakeTaskCompletesWithRequiredGatewayAndApproverVariables()
+    {
+        Task task = task("task-stocktake", "admin", "pi-stocktake", new Date());
+        when(task.getProcessDefinitionId()).thenReturn("stocktake_apply:3:1");
+        when(taskAuthorizationService.requireActorTask("task-stocktake", actor)).thenReturn(task);
+        when(taskService.getVariables("task-stocktake")).thenReturn(Map.of("counterUsername", "admin"));
+        TaskQuery nextTasks = mock(TaskQuery.class);
+        when(taskService.createTaskQuery()).thenReturn(nextTasks);
+        when(nextTasks.processInstanceId("pi-stocktake")).thenReturn(nextTasks);
+        when(nextTasks.list()).thenReturn(List.of());
+
+        service.approve("task-stocktake", new ApproveReq());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(taskService).complete(eq("task-stocktake"), variablesCaptor.capture());
+        assertEquals(Boolean.FALSE, variablesCaptor.getValue().get("needRecount"));
+        assertEquals("admin", variablesCaptor.getValue().get("approverUsername"));
+    }
+
+    @Test
+    void approveStocktakeTaskPreservesExistingNeedRecountVariable()
+    {
+        Task task = task("task-stocktake", "admin", "pi-stocktake", new Date());
+        when(task.getProcessDefinitionId()).thenReturn("stocktake_apply:3:1");
+        when(taskAuthorizationService.requireActorTask("task-stocktake", actor)).thenReturn(task);
+        when(taskService.getVariables("task-stocktake")).thenReturn(Map.of(
+                "needRecount", Boolean.TRUE,
+                "approverUsername", "admin"
+        ));
+        TaskQuery nextTasks = mock(TaskQuery.class);
+        when(taskService.createTaskQuery()).thenReturn(nextTasks);
+        when(nextTasks.processInstanceId("pi-stocktake")).thenReturn(nextTasks);
+        when(nextTasks.list()).thenReturn(List.of());
+
+        service.approve("task-stocktake", new ApproveReq());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> variablesCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(taskService).complete(eq("task-stocktake"), variablesCaptor.capture());
+        assertEquals(Boolean.TRUE, variablesCaptor.getValue().get("needRecount"));
+        assertEquals("admin", variablesCaptor.getValue().get("approverUsername"));
     }
 
     @Test
@@ -237,12 +319,44 @@ class WorkflowTaskServiceTest
         when(task.getProcessDefinitionId()).thenReturn("store_opening_apply:2:1");
         when(workflowBusinessSyncHandler.supports("store_opening_apply:2:1")).thenReturn(true);
 
-        service.reject("task-1", req);
+        var response = service.reject("task-1", req);
 
+        assertEquals(com.junsong.common.core.domain.R.FAIL, response.getCode());
         verify(taskAuthorizationService).requireActorTask("task-1", actor);
-        verify(taskService).addComment("task-1", "pi-1", "reject", "退回");
-        verify(runtimeService).deleteProcessInstance("pi-1", "驳回: 退回");
+        verify(taskService, never()).addComment("task-1", "pi-1", "reject", "退回");
+        verify(runtimeService, never()).deleteProcessInstance("pi-1", "驳回: 退回");
+        verify(workflowBusinessSyncHandler, never()).afterReject("pi-1", "wjs");
+    }
+
+    @Test
+    void rejectToInitiatorModifyMarksBusinessRejectedAndClearsRuntimeTask()
+    {
+        Task task = task("task-1", "wjs", "pi-1", new Date());
+        RejectReq req = new RejectReq();
+        req.comment = "资料不完整";
+        req.targetType = "INITIATOR_MODIFY";
+        req.resubmitMode = "FULL_RESTART";
+        LcBizInstance instance = new LcBizInstance();
+        instance.setId(100L);
+        instance.setWorkflowStatus("IN_APPROVAL");
+
+        when(taskAuthorizationService.requireActorTask("task-1", actor)).thenReturn(task);
+        when(task.getProcessDefinitionId()).thenReturn("stocktake_apply:3:1");
+        when(lcBizInstanceMapper.selectByProcessInstanceId("pi-1")).thenReturn(instance);
+        when(workflowBusinessSyncHandler.supports("stocktake_apply:3:1")).thenReturn(true);
+
+        var response = service.reject("task-1", req);
+
+        assertEquals(com.junsong.common.core.domain.R.SUCCESS, response.getCode());
+        assertEquals("REJECTED", instance.getWorkflowStatus());
+        assertEquals("发起人修改", instance.getCurrentTaskName());
+        assertEquals("资料不完整", instance.getLastRejectReason());
+        assertEquals("FULL_RESTART", instance.getLastRejectMode());
+        verify(taskService).addComment("task-1", "pi-1", "reject", "资料不完整");
+        verify(runtimeService).deleteProcessInstance("pi-1", "驳回给发起人修改: 资料不完整");
+        verify(lcBizInstanceMapper).updateLcBizInstance(instance);
         verify(workflowBusinessSyncHandler).afterReject("pi-1", "wjs");
+        verify(postActionHandler).onAfterReject("pi-1", "wjs");
     }
 
     @Test
@@ -256,12 +370,12 @@ class WorkflowTaskServiceTest
     @Test
     void requestBodiesNoLongerExposeUserField()
     {
-        assertEquals(List.of("comment", "variables"),
+        assertEquals(List.of("attachments", "comment", "variables"),
                 Arrays.stream(ApproveReq.class.getDeclaredFields())
                         .map(field -> field.getName())
                         .sorted()
                         .toList());
-        assertEquals(List.of("comment"),
+        assertEquals(List.of("comment", "targetActivityId", "resubmitMode", "targetType", "attachments"),
                 Arrays.stream(RejectReq.class.getDeclaredFields())
                         .map(field -> field.getName())
                         .toList());

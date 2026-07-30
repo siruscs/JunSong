@@ -355,7 +355,7 @@ import { Plus, Refresh, Setting } from '@element-plus/icons-vue'
 import { parseTime, resetForm as resetFormUtil } from '@/utils/junsong'
 import {
   activateWorkflowDefinition,
-  deleteWorkflowDeployment,
+  deleteWorkflowDefinition,
   deployWorkflowDefinition,
   getWorkflowDefinitionDetail,
   getWorkflowDefinitionXml,
@@ -604,13 +604,17 @@ async function handleActivate(row: WorkflowDefinitionSummary) {
 }
 
 async function handleDelete(row: WorkflowDefinitionSummary) {
+  if (!row.definitionId) {
+    ElMessage.error('缺少流程定义 ID，已阻止删除')
+    return
+  }
   await ElMessageBox.confirm(
-    `确认删除部署"${row.processName || row.processKey}"吗？删除后对应流程定义将不可恢复。`,
+    `确认删除流程"${row.processName || row.processKey}" v${row.version} 吗？定义ID：${row.definitionId}。删除后不可恢复。`,
     '删除确认',
     { type: 'warning' },
   )
-  await deleteWorkflowDeployment(row.deploymentId, true)
-  ElMessage.success('流程部署已删除')
+  await deleteWorkflowDefinition(row.definitionId, false)
+  ElMessage.success('流程定义已删除')
   await getList()
 }
 

@@ -2,6 +2,7 @@ package com.junsong.finance.controller;
 
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.security.annotation.RequiresPermissions;
 import com.junsong.finance.domain.vo.*;
 import com.junsong.finance.service.IFinanceReportService;
@@ -107,6 +108,7 @@ public class FinanceReportController extends BaseController {
     }
 
     @RequiresPermissions("finance:stock:costAdjust")
+    @Idempotent(scene = "report:costAdjustment", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/stock/cost-adjustment")
     public AjaxResult createCostAdjustment(@RequestBody CostAdjustmentRequest request) {
         financeReportService.createCostAdjustment(

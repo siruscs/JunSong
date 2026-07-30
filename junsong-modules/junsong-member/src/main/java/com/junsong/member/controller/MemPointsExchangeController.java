@@ -4,6 +4,7 @@ import java.util.List;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
@@ -52,6 +53,7 @@ public class MemPointsExchangeController extends BaseController {
 
     @RequiresPermissions("member:pointsExchange:add")
     @Log(title = "积分兑换", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "member:pointsExchange:create")
     @PostMapping
     public AjaxResult add(@RequestBody MemPointsExchange memPointsExchange) {
         try
@@ -71,6 +73,7 @@ public class MemPointsExchangeController extends BaseController {
 
     @RequiresPermissions("member:pointsExchange:edit")
     @Log(title = "积分兑换", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "member:points-exchange:edit")
     @PutMapping
     public AjaxResult edit(@RequestBody MemPointsExchange memPointsExchange) {
         if (!memPointsExchangeService.checkMemPointsExchangeNoUnique(memPointsExchange)) {
@@ -82,6 +85,7 @@ public class MemPointsExchangeController extends BaseController {
 
     @RequiresPermissions("member:pointsExchange:remove")
     @Log(title = "积分兑换", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "member:pointsExchange:delete")
     @DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable Long[] ids) {
         for (Long exchangeId : ids) {

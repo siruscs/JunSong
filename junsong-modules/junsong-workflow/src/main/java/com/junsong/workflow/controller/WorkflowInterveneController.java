@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.junsong.common.core.domain.R;
+import com.junsong.common.core.idempotency.Idempotent;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
@@ -28,6 +29,7 @@ public class WorkflowInterveneController
     private HistoryService historyService;
 
     @PreAuthorize("@ss.hasPermi('workflow:instance:intervene')")
+    @Idempotent(scene = "workflow:intervene:jump", highRisk = true)
     @PostMapping("/{processInstanceId}/jump")
     public R<Void> jump(
             @PathVariable String processInstanceId,
@@ -62,6 +64,7 @@ public class WorkflowInterveneController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:instance:intervene')")
+    @Idempotent(scene = "workflow:intervene:suspend", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/{processInstanceId}/suspend")
     public R<Void> suspend(@PathVariable String processInstanceId)
     {
@@ -70,6 +73,7 @@ public class WorkflowInterveneController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:instance:intervene')")
+    @Idempotent(scene = "workflow:intervene:activate")
     @PostMapping("/{processInstanceId}/activate")
     public R<Void> activate(@PathVariable String processInstanceId)
     {

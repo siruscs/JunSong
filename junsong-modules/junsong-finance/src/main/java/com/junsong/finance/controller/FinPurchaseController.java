@@ -10,12 +10,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.junsong.common.core.utils.poi.ExcelUtil;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -82,8 +84,10 @@ public class FinPurchaseController extends BaseController
      */
     @RequiresPermissions("finance:purchase:add")
     @Log(title = "进货单", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "purchase:create", highRisk = true, ttlSeconds = 2592000)
     @PostMapping
-    public AjaxResult add(@Validated @RequestBody FinPurchase finPurchase)
+    public AjaxResult add(@RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey,
+                          @Validated @RequestBody FinPurchase finPurchase)
     {
         if (!finPurchaseService.checkPurchaseNoUnique(finPurchase))
         {
@@ -91,6 +95,7 @@ public class FinPurchaseController extends BaseController
         }
         finPurchase.setCreateBy(SecurityUtils.getUsername());
         finPurchase.setDeptId(SecurityUtils.getDeptId());
+        finPurchase.setIdempotencyKey(idempotencyKey);
         if (finPurchase.getDetails() != null)
         {
             finPurchase.getDetails().forEach(detail -> detail.setCreateBy(SecurityUtils.getUsername()));
@@ -103,6 +108,7 @@ public class FinPurchaseController extends BaseController
      */
     @RequiresPermissions("finance:purchase:edit")
     @Log(title = "进货单", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "purchase:update")
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody FinPurchase finPurchase)
     {
@@ -125,6 +131,7 @@ public class FinPurchaseController extends BaseController
      */
     @RequiresPermissions("finance:purchase:remove")
     @Log(title = "进货单", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "purchase:delete")
     @DeleteMapping("/{purchaseIds}")
     public AjaxResult remove(@PathVariable Long[] purchaseIds)
     {

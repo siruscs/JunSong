@@ -5,6 +5,9 @@ import java.io.InputStream;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
@@ -35,6 +38,13 @@ import org.springframework.stereotype.Service;
 @Service
 public class WorkflowDefinitionService
 {
+    private static final Pattern CONDITION_EXPRESSION_PATTERN = Pattern.compile(
+            "<conditionExpression\\b[\\s\\S]*?\\$\\{([\\s\\S]*?)}[\\s\\S]*?</conditionExpression>");
+    private static final Pattern STRING_LITERAL_PATTERN = Pattern.compile("(['\"]).*?\\1");
+    private static final Pattern EXPRESSION_TOKEN_PATTERN = Pattern.compile("\\b[A-Za-z][A-Za-z0-9_]*\\b");
+    private static final Set<String> SAFE_EXPRESSION_TOKENS = Set.of(
+            "true", "false", "null", "execution", "getVariable");
+
     private final RepositoryService repositoryService;
     private final ProcessEngine processEngine;
     private final BpmnTimerAssembleService timerAssembleService;
@@ -243,6 +253,29 @@ public class WorkflowDefinitionService
         {
             throw new ServiceException("部署不存在: " + deploymentId);
         }
+        long definitionCount = repositoryService.createProcessDefinitionQuery()
+                .deploymentId(deploymentId)
+                .count();
+        if (definitionCount != 1)
+        {
+            throw new ServiceException("该部署包含 " + definitionCount
+                    + " 个流程定义，禁止按部署删除；请先拆分部署后再删除单个流程");
+        }
+        repositoryService.deleteDeployment(deploymentId, Boolean.TRUE.equals(cascade));
+    }
+
+    public void deleteDefinition(String definitionId, Boolean cascade)
+    {
+        ProcessDefinition definition = requireDefinition(definitionId);
+        String deploymentId = definition.getDeploymentId();
+        long definitionCount = repositoryService.createProcessDefinitionQuery()
+                .deploymentId(deploymentId)
+                .count();
+        if (definitionCount != 1)
+        {
+            throw new ServiceException("该部署包含 " + definitionCount
+                    + " 个流程定义，禁止按部署删除；请先拆分部署后再删除单个流程");
+        }
         repositoryService.deleteDeployment(deploymentId, Boolean.TRUE.equals(cascade));
     }
 
@@ -281,6 +314,7 @@ public class WorkflowDefinitionService
 
     private org.flowable.bpmn.model.Process validateProcess(String xml)
     {
+        validateSafeConditionExpressions(xml);
         BpmnModel model = parseRequiredModel(xml);
         org.flowable.bpmn.model.Process process = model.getMainProcess();
         if (process == null || process.getId() == null || process.getId().isBlank())
@@ -302,6 +336,30 @@ public class WorkflowDefinitionService
             throw new ServiceException("流程定义缺少结束节点");
         }
         return process;
+    }
+
+    private void validateSafeConditionExpressions(String xml)
+    {
+        if (xml == null || xml.isBlank())
+        {
+            return;
+        }
+        Matcher conditionMatcher = CONDITION_EXPRESSION_PATTERN.matcher(xml);
+        while (conditionMatcher.find())
+        {
+            String expression = conditionMatcher.group(1);
+            String expressionWithoutStringLiterals = STRING_LITERAL_PATTERN.matcher(expression).replaceAll("");
+            Matcher tokenMatcher = EXPRESSION_TOKEN_PATTERN.matcher(expressionWithoutStringLiterals);
+            while (tokenMatcher.find())
+            {
+                String token = tokenMatcher.group();
+                if (!SAFE_EXPRESSION_TOKENS.contains(token))
+                {
+                    throw new ServiceException("网关条件表达式禁止直接读取变量: " + token
+                            + "，请使用 execution.getVariable('" + token + "')");
+                }
+            }
+        }
     }
 
     private BpmnModel parseRequiredModel(String xml)

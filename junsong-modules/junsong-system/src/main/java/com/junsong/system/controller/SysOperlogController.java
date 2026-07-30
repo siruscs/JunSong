@@ -14,6 +14,7 @@ import com.junsong.common.core.utils.poi.ExcelUtil;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.InnerAuth;
@@ -62,6 +63,7 @@ public class SysOperlogController extends BaseController
 
     @RequiresPermissions("system:operlog:remove")
     @Log(title = "操作日志", businessType = BusinessType.CLEAN)
+    @Idempotent(scene = "system:operlog:clean")
     @DeleteMapping("/clean")
     public AjaxResult clean()
     {
@@ -70,6 +72,7 @@ public class SysOperlogController extends BaseController
     }
 
     @InnerAuth
+    @Idempotent(scene = "system:operlog:add")
     @PostMapping
     public AjaxResult add(@RequestBody SysOperLog operLog)
     {

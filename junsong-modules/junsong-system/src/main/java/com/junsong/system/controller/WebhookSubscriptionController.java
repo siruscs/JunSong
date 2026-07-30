@@ -14,6 +14,7 @@ import com.junsong.common.core.utils.poi.ExcelUtil;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -66,6 +67,7 @@ public class WebhookSubscriptionController extends BaseController
 
     @RequiresPermissions("system:webhook:add")
     @Log(title = "Webhook订阅", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "system:webhook-subscription:add")
     @PostMapping
     public AjaxResult add(@RequestBody WebhookSubscription webhookSubscription)
     {
@@ -74,6 +76,7 @@ public class WebhookSubscriptionController extends BaseController
 
     @RequiresPermissions("system:webhook:edit")
     @Log(title = "Webhook订阅", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:webhook-subscription:edit")
     @PutMapping
     public AjaxResult edit(@RequestBody WebhookSubscription webhookSubscription)
     {
@@ -90,6 +93,7 @@ public class WebhookSubscriptionController extends BaseController
 
     @RequiresPermissions("system:webhook:edit")
     @Log(title = "Webhook订阅", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:webhook-subscription:change-status")
     @PutMapping("/changeStatus")
     public AjaxResult changeStatus(@RequestBody WebhookSubscription webhookSubscription)
     {
@@ -114,6 +118,7 @@ public class WebhookSubscriptionController extends BaseController
 
     @RequiresPermissions("system:webhook:test")
     @Log(title = "Webhook订阅", businessType = BusinessType.OTHER)
+    @Idempotent(scene = "system:webhook-subscription:test-event")
     @PostMapping("/test")
     public AjaxResult testEvent(@RequestBody WebhookSubscription testReq)
     {

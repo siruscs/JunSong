@@ -10,10 +10,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -46,16 +48,20 @@ public class FinInvestRecordController extends BaseController
 
     @RequiresPermissions("finance:investRecord:add")
     @Log(title = "投资来源记录", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "investRecord:create", highRisk = true, ttlSeconds = 2592000)
     @PostMapping
-    public AjaxResult add(@Validated @RequestBody FinInvestRecord finInvestRecord)
+    public AjaxResult add(@RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey,
+                          @Validated @RequestBody FinInvestRecord finInvestRecord)
     {
         finInvestRecord.setDeptId(SecurityUtils.getDeptId());
         finInvestRecord.setCreateBy(SecurityUtils.getUsername());
+        finInvestRecord.setIdempotencyKey(idempotencyKey);
         return toAjax(finInvestRecordService.insertFinInvestRecord(finInvestRecord));
     }
 
     @RequiresPermissions("finance:investRecord:edit")
     @Log(title = "投资来源记录", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "investRecord:update")
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody FinInvestRecord finInvestRecord)
     {
@@ -65,6 +71,7 @@ public class FinInvestRecordController extends BaseController
 
     @RequiresPermissions("finance:investRecord:remove")
     @Log(title = "投资来源记录", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "investRecord:delete")
     @DeleteMapping("/{investIds}")
     public AjaxResult remove(@PathVariable Long[] investIds)
     {

@@ -1,6 +1,7 @@
 package com.junsong.finance.mapper;
 
 import java.util.List;
+import org.apache.ibatis.annotations.Param;
 import com.junsong.finance.domain.FinPurchase;
 import com.junsong.finance.domain.FinPurchaseDetail;
 
@@ -102,7 +103,7 @@ public interface FinPurchaseMapper
     
     /**
      * 统计今天的进货单数量
-     * 
+     *
      * @return 数量
      */
     public int countTodayPurchases();

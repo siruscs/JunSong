@@ -1,6 +1,7 @@
 package com.junsong.workflow.lowcode.controller;
 
 import com.junsong.common.core.domain.R;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.workflow.lowcode.domain.LcBizInstance;
 import com.junsong.workflow.lowcode.service.LcBizService;
@@ -56,7 +57,8 @@ public class LcBizController extends BaseController
         return R.ok(instance);
     }
 
-    @PreAuthorize("@ss.hasPermi('lowcode:biz:add')")
+    @PreAuthorize("@ss.hasPermi('lowcode:biz:add') or @ss.hasPermi('workflow:instance:start')")
+    @Idempotent(scene = "lowcode:biz:save")
     @PostMapping("/{bizCode}")
     public R<Long> save(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode, @RequestBody Map<String, Object> formData)
     {
@@ -64,6 +66,7 @@ public class LcBizController extends BaseController
     }
 
     @PreAuthorize("@ss.hasPermi('lowcode:biz:edit')")
+    @Idempotent(scene = "lowcode:biz:update")
     @PutMapping("/{bizCode}/{id}")
     public R<Void> update(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode, @PathVariable("id") @Positive(message = "ID必须为正整数") Long id,
                           @RequestBody Map<String, Object> formData)
@@ -72,13 +75,15 @@ public class LcBizController extends BaseController
     }
 
     @PreAuthorize("@ss.hasPermi('lowcode:biz:remove')")
+    @Idempotent(scene = "lowcode:biz:delete")
     @DeleteMapping("/{bizCode}/{ids}")
     public R<Void> delete(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode, @PathVariable("ids") Long[] ids)
     {
         return bizService.delete(bizCode, ids);
     }
 
-    @PreAuthorize("@ss.hasPermi('lowcode:biz:submit')")
+    @PreAuthorize("@ss.hasPermi('lowcode:biz:submit') or @ss.hasPermi('workflow:instance:start')")
+    @Idempotent(scene = "lowcode:biz:submit", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/{bizCode}/{id}/submit")
     public R<Map<String, Object>> submit(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode, @PathVariable("id") @Positive(message = "ID必须为正整数") Long id)
     {
@@ -86,6 +91,7 @@ public class LcBizController extends BaseController
     }
 
     @PreAuthorize("@ss.hasPermi('lowcode:biz:submit')")
+    @Idempotent(scene = "lowcode:biz:withdraw", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/{bizCode}/{id}/withdraw")
     public R<Void> withdraw(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode, @PathVariable("id") @Positive(message = "ID必须为正整数") Long id)
     {
@@ -93,6 +99,7 @@ public class LcBizController extends BaseController
     }
 
     @PreAuthorize("@ss.hasPermi('lowcode:biz:fulfill')")
+    @Idempotent(scene = "lowcode:biz:fulfill", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/{bizCode}/{id}/fulfill")
     public R<Void> fulfill(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode, @PathVariable("id") @Positive(message = "ID必须为正整数") Long id,
                            @RequestBody(required = false) Map<String, Object> formData)

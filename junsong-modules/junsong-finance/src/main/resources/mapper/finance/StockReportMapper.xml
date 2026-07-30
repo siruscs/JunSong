@@ -51,9 +51,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             COALESCE(snap.quantity, led_open.opening_quantity, 0) AS openingQuantity,
             COALESCE(rng.purchase_net_in, 0) AS purchaseNetInQuantity,
             COALESCE(rng.sale_net_out, 0) AS saleNetOutQuantity,
+            COALESCE(rng.other_adjustment_net, 0) AS otherAdjustmentNetQuantity,
             COALESCE(snap.quantity, led_open.opening_quantity, 0)
                 + COALESCE(rng.purchase_net_in, 0)
-                - COALESCE(rng.sale_net_out, 0) AS closingQuantity,
+                - COALESCE(rng.sale_net_out, 0)
+                + COALESCE(rng.other_adjustment_net, 0) AS closingQuantity,
             rng.last_inbound_time AS lastInboundTime,
             rng.last_outbound_time AS lastOutboundTime,
             CASE WHEN rng.last_outbound_time IS NULL
@@ -63,14 +65,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             CASE
                 WHEN COALESCE(snap.quantity, led_open.opening_quantity, 0)
                      + COALESCE(rng.purchase_net_in, 0)
-                     - COALESCE(rng.sale_net_out, 0) &lt; 0 THEN 'NEGATIVE_STOCK'
+                     - COALESCE(rng.sale_net_out, 0)
+                     + COALESCE(rng.other_adjustment_net, 0) &lt; 0 THEN 'NEGATIVE_STOCK'
                 WHEN COALESCE(snap.quantity, led_open.opening_quantity, 0)
                      + COALESCE(rng.purchase_net_in, 0)
-                     - COALESCE(rng.sale_net_out, 0) = 0 THEN 'ZERO_STOCK'
+                     - COALESCE(rng.sale_net_out, 0)
+                     + COALESCE(rng.other_adjustment_net, 0) = 0 THEN 'ZERO_STOCK'
                 WHEN prod.min_stock IS NOT NULL
                      AND COALESCE(snap.quantity, led_open.opening_quantity, 0)
                      + COALESCE(rng.purchase_net_in, 0)
-                     - COALESCE(rng.sale_net_out, 0) &lt; prod.min_stock THEN 'LOW_STOCK'
+                     - COALESCE(rng.sale_net_out, 0)
+                     + COALESCE(rng.other_adjustment_net, 0) &lt; prod.min_stock THEN 'LOW_STOCK'
                 WHEN rng.last_outbound_time IS NULL
                      OR DATEDIFF(#{query.endDate}, rng.last_outbound_time) &gt; 30 THEN 'STALE'
                 ELSE 'NORMAL'
@@ -80,7 +85,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                      AND snap_end.end_snapshot_quantity &lt;&gt;
                      COALESCE(snap.quantity, led_open.opening_quantity, 0)
                      + COALESCE(rng.purchase_net_in, 0)
-                     - COALESCE(rng.sale_net_out, 0) THEN 'ANOMALY'
+                     - COALESCE(rng.sale_net_out, 0)
+                     + COALESCE(rng.other_adjustment_net, 0) THEN 'ANOMALY'
                 ELSE 'OK'
             END AS reconciliationStatus
         FROM (
@@ -137,6 +143,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                         WHEN 'SALE_OUT' THEN -change_quantity
                         WHEN 'SALE_REVERSE' THEN -change_quantity
                         ELSE 0 END) AS sale_net_out,
+                SUM(CASE change_type
+                        WHEN 'STOCK_TAKE_GAIN' THEN change_quantity
+                        WHEN 'STOCK_TAKE_LOSS' THEN change_quantity
+                        WHEN 'STOCK_TAKE_REVERSE' THEN change_quantity
+                        ELSE 0 END) AS other_adjustment_net,
                 MAX(CASE WHEN change_type IN ('PURCHASE_IN','SALE_REVERSE') THEN create_time END) AS last_inbound_time,
                 MAX(CASE WHEN change_type IN ('SALE_OUT','PURCHASE_REVERSE') THEN create_time END) AS last_outbound_time
             FROM fin_stock_ledger
@@ -164,7 +175,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             COALESCE(SUM(p.openingQuantity), 0) AS openingQuantity,
             COALESCE(SUM(p.purchaseNetInQuantity), 0) AS purchaseNetInQuantity,
             COALESCE(SUM(p.saleNetOutQuantity), 0) AS saleNetOutQuantity,
-            0 AS otherAdjustmentNetQuantity,
+            COALESCE(SUM(p.otherAdjustmentNetQuantity), 0) AS otherAdjustmentNetQuantity,
             COALESCE(SUM(p.closingQuantity), 0) AS closingQuantity,
             SUM(CASE WHEN p.stockStatus = 'NEGATIVE_STOCK' THEN 1 ELSE 0 END) AS negativeStockCount,
             SUM(CASE WHEN p.stockStatus = 'LOW_STOCK' THEN 1 ELSE 0 END) AS lowStockCount,

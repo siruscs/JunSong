@@ -18,6 +18,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="referenceType"   column="reference_type"   />
         <result property="referenceId"     column="reference_id"     />
         <result property="referenceNo"     column="reference_no"     />
+        <result property="idempotencyKey"  column="idempotency_key"  />
         <result property="delFlag"         column="del_flag"         />
         <result property="createBy"        column="create_by"        />
         <result property="createTime"      column="create_time"      />
@@ -81,6 +82,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="referenceType != null">reference_type,</if>
             <if test="referenceId != null">reference_id,</if>
             <if test="referenceNo != null">reference_no,</if>
+            <if test="idempotencyKey != null">idempotency_key,</if>
             <if test="delFlag != null">del_flag,</if>
             <if test="createBy != null">create_by,</if>
             create_time,
@@ -99,6 +101,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="referenceType != null">#{referenceType},</if>
             <if test="referenceId != null">#{referenceId},</if>
             <if test="referenceNo != null">#{referenceNo},</if>
+            <if test="idempotencyKey != null">#{idempotencyKey},</if>
             <if test="delFlag != null">#{delFlag},</if>
             <if test="createBy != null">#{createBy},</if>
             sysdate(),
@@ -228,5 +231,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
           and product_id = #{productId}
           and create_time &gt;= #{freezeTime}
           and del_flag = '0'
+    </select>
+
+    <!-- 统计某时间点之后的非盘点类下游流水数量（冲销前检查） -->
+    <select id="countDownstreamLedgersAfterTime" resultType="int">
+        select count(*)
+        from fin_stock_ledger
+        where tenant_id = #{tenantId}
+          and dept_id = #{deptId}
+          and product_id = #{productId}
+          and create_time &gt;= #{afterTime}
+          and del_flag = '0'
+          and change_type not in ('STOCK_TAKE_GAIN', 'STOCK_TAKE_LOSS', 'STOCK_TAKE_REVERSE')
     </select>
 </mapper>

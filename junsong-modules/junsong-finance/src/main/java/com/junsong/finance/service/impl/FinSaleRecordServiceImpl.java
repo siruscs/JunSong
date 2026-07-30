@@ -107,7 +107,10 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
 
     /**
      * 新增销售记录
-     * 
+     *
+     * 幂等治理：由 @Idempotent(scene="sale:create") AOP 切面 + sys_idempotency_record 原子占位 +
+     * fin_sale_record.uk_idempotency_key 唯一约束三层兜底，Service 层不再手写查重。
+     *
      * @param finSaleRecord 销售记录
      * @return 结果
      */
@@ -117,6 +120,7 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
     {
         // 自动设置部门ID
         finSaleRecord.setDeptId(SecurityUtils.getDeptId());
+
         fillCurrentPeriod(finSaleRecord);
         finAccountingPeriodService.assertPeriodEditable(finSaleRecord.getPeriodId());
 
@@ -200,9 +204,9 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
         {
             throw new ServiceException("销售出库失败：销售记录缺少商品，无法扣减库存");
         }
-        if (finSaleRecord.getSaleQuantity() == null || finSaleRecord.getSaleQuantity() <= 0)
+        if (finSaleRecord.getSaleQuantity() == null || finSaleRecord.getSaleQuantity() == 0)
         {
-            throw new ServiceException("销售出库失败：销售记录缺少有效数量，无法扣减库存");
+            throw new ServiceException("销售出库失败：销售数量不能为0");
         }
         int giftQuantity = finSaleRecord.getGiftQuantity() != null ? finSaleRecord.getGiftQuantity() : 0;
         if (giftQuantity < 0)
@@ -329,7 +333,7 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
         
         // 计算单价：单价 = 销售金额 / 销售数量
         BigDecimal saleAmount = finSaleRecord.getSaleAmount();
-        if (saleAmount != null && saleQuantity != null && saleQuantity > 0)
+        if (saleAmount != null && saleQuantity != null && saleQuantity != 0)
         {
             BigDecimal unitPrice = saleAmount.divide(new BigDecimal(saleQuantity), 2, BigDecimal.ROUND_HALF_UP);
             finSaleRecord.setUnitPrice(unitPrice);
@@ -450,17 +454,21 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
 
     /**
      * 添加缴款记录
-     * 
+     *
+     * 幂等治理：由 @Idempotent(scene="sale:payment") AOP 切面 + sys_idempotency_record 原子占位 +
+     * fin_sale_payment.uk_idempotency_key 唯一约束三层兜底，Service 层不再手写查重。
+     *
      * @param saleId 销售记录主键
      * @param paymentAmount 缴款金额
      * @param paymentMethod 付款方式
      * @param remark 备注
      * @param paymentDate 缴款日期
+     * @param idempotencyKey 幂等键（由 Controller 从请求头透传，用于 DB 列写入）
      * @return 结果
      */
     @Transactional
     @Override
-    public int addPayment(Long saleId, BigDecimal paymentAmount, String paymentMethod, String remark, Date paymentDate)
+    public int addPayment(Long saleId, BigDecimal paymentAmount, String paymentMethod, String remark, Date paymentDate, String idempotencyKey)
     {
         // 查询销售记录（行锁保护，防止并发缴款超额）
         FinSaleRecord sale = finSaleRecordMapper.selectFinSaleRecordBySaleIdForUpdate(saleId);
@@ -511,6 +519,7 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
         payment.setPaymentMethod(paymentMethod);
         payment.setPaymentDate(paymentDate != null ? paymentDate : new Date());
         payment.setRemark(remark);
+        payment.setIdempotencyKey(idempotencyKey);
 
         // 生成缴款单号（带重试机制防止并发重复）
         int retryCount = 0;

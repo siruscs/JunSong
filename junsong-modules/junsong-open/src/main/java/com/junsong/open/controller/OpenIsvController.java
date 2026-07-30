@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.security.annotation.RequiresPermissions;
 import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.open.domain.OpenIsv;
@@ -43,6 +44,7 @@ public class OpenIsvController extends BaseController
      * ISV 自助注册（公开接口，无需登录）
      */
     @PostMapping("/register")
+    @Idempotent(scene = "open:isv:register", highRisk = true)
     public AjaxResult register(@RequestBody OpenIsv openIsv)
     {
         return toAjax(openIsvService.insertOpenIsv(openIsv));
@@ -50,6 +52,7 @@ public class OpenIsvController extends BaseController
 
     @PostMapping
     @RequiresPermissions("open:isv:add")
+    @Idempotent(scene = "open:isv:create")
     public AjaxResult add(@RequestBody OpenIsv openIsv)
     {
         return toAjax(openIsvService.insertOpenIsv(openIsv));
@@ -57,6 +60,7 @@ public class OpenIsvController extends BaseController
 
     @PutMapping
     @RequiresPermissions("open:isv:edit")
+    @Idempotent(scene = "open:isv:edit")
     public AjaxResult edit(@RequestBody OpenIsv openIsv)
     {
         return toAjax(openIsvService.updateOpenIsv(openIsv));
@@ -64,6 +68,7 @@ public class OpenIsvController extends BaseController
 
     @PutMapping("/approve/{id}")
     @RequiresPermissions("open:isv:approve")
+    @Idempotent(scene = "open:isv:approve", highRisk = true)
     public AjaxResult approve(@PathVariable("id") Long id)
     {
         return toAjax(openIsvService.approveIsv(id, SecurityUtils.getUsername()));
@@ -71,6 +76,7 @@ public class OpenIsvController extends BaseController
 
     @PutMapping("/reject/{id}")
     @RequiresPermissions("open:isv:approve")
+    @Idempotent(scene = "open:isv:reject", highRisk = true)
     public AjaxResult reject(@PathVariable("id") Long id, @RequestParam String rejectReason)
     {
         return toAjax(openIsvService.rejectIsv(id, rejectReason, SecurityUtils.getUsername()));
@@ -78,6 +84,7 @@ public class OpenIsvController extends BaseController
 
     @DeleteMapping("/{ids}")
     @RequiresPermissions("open:isv:remove")
+    @Idempotent(scene = "open:isv:delete")
     public AjaxResult remove(@PathVariable("ids") Long[] ids)
     {
         return toAjax(openIsvService.deleteOpenIsvByIds(ids));

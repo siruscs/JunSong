@@ -1,2 +1,3 @@
 com.junsong.common.core.utils.SpringUtils
 com.junsong.common.core.config.TenantConfig
+com.junsong.common.core.idempotency.IdempotencyAutoConfiguration

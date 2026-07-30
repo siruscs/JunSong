@@ -171,5 +171,11 @@ class StockSnapshotServiceImplTest {
         @Override public int updateLedgerUnitCost(Long a, java.math.BigDecimal b){return 0;}
         @Override public int countByReferenceNo(Long a, String b){return 0;}
         @Override public Integer sumMovementAfterFreeze(Long a, Long b, Long c, java.util.Date d){return 0;}
+
+    @Override
+    public int countDownstreamLedgersAfterTime(Long tenantId, Long deptId, Long productId, java.util.Date afterTime) {
+        return 0;
     }
+
+}
 }

@@ -9,7 +9,6 @@ validate_environment "${ENV}"
 UI_DIR="${PROJECT_ROOT}/junsong-ui-v3"
 CONTAINER_NAME="junsong-nginx"
 CONTAINER_DEST="/home/junsong/projects/junsong-ui"
-REMOTE_DIST="${PROD_DEPLOY_DIR}/nginx/html/dist"
 
 cd "${UI_DIR}"
 if [ "${DEPLOY_SKIP_BUILD}" != "1" ]; then
@@ -38,6 +37,7 @@ if [ "${ENV}" = "dev" ]; then
     exit 0
 fi
 
+REMOTE_DIST="${PROD_DEPLOY_DIR}/nginx/html/dist"
 timestamp=$(date '+%Y%m%d%H%M%S')
 archive="/tmp/junsong-ui-${timestamp}.tar.gz"
 remote_archive="${PROD_DEPLOY_DIR}/.deploy-tmp/junsong-ui-${timestamp}.tar.gz"

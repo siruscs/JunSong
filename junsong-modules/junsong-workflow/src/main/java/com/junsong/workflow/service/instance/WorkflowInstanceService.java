@@ -8,6 +8,8 @@ import com.junsong.common.core.domain.R;
 import com.junsong.workflow.controller.ProcessInstanceController.StartInstanceReq;
 import com.junsong.workflow.mapper.WfNotificationMapper;
 import com.junsong.workflow.mapper.WfSysUserMapper;
+import com.junsong.workflow.lowcode.domain.LcBizInstance;
+import com.junsong.workflow.lowcode.mapper.LcBizInstanceMapper;
 import com.junsong.workflow.security.CurrentWorkflowUser;
 import com.junsong.workflow.security.CurrentWorkflowUserFacade;
 import com.junsong.workflow.security.ProcessAuthorizationService;
@@ -40,6 +42,7 @@ public class WorkflowInstanceService
     private final ProcessAuthorizationService processAuthorizationService;
     private final WfNotificationMapper notificationMapper;
     private final WfSysUserMapper sysUserMapper;
+    private final LcBizInstanceMapper lcBizInstanceMapper;
 
     public WorkflowInstanceService(
             RuntimeService runtimeService,
@@ -49,7 +52,8 @@ public class WorkflowInstanceService
             CurrentWorkflowUserFacade currentWorkflowUserFacade,
             ProcessAuthorizationService processAuthorizationService,
             WfNotificationMapper notificationMapper,
-            WfSysUserMapper sysUserMapper)
+            WfSysUserMapper sysUserMapper,
+            LcBizInstanceMapper lcBizInstanceMapper)
     {
         this.runtimeService = runtimeService;
         this.repositoryService = repositoryService;
@@ -59,6 +63,7 @@ public class WorkflowInstanceService
         this.processAuthorizationService = processAuthorizationService;
         this.notificationMapper = notificationMapper;
         this.sysUserMapper = sysUserMapper;
+        this.lcBizInstanceMapper = lcBizInstanceMapper;
     }
 
     /**
@@ -212,6 +217,12 @@ public class WorkflowInstanceService
             {
                 return R.fail("流程实例不存在: " + id);
             }
+        }
+        LcBizInstance business = lcBizInstanceMapper.selectByProcessInstanceId(id);
+        if (business != null)
+        {
+            result.put("businessForm", business.getFormDataMap());
+            result.put("businessInstance", business);
         }
         return R.ok(result);
     }

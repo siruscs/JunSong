@@ -14,6 +14,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="paymentMethod" column="payment_method" />
         <result property="paymentDate" column="payment_date" />
         <result property="delFlag" column="del_flag" />
+        <result property="idempotencyKey" column="idempotency_key" />
         <result property="createBy" column="create_by" />
         <result property="createTime" column="create_time" />
         <result property="updateBy" column="update_by" />
@@ -22,7 +23,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
     
     <sql id="selectFinSalePaymentVo">
-        select p.payment_id, p.dept_id, p.period_id, p.sale_id, p.payment_no, p.payment_amount, p.payment_method, p.payment_date, p.del_flag, p.create_by, p.create_time, p.update_by, p.update_time, p.remark
+        select p.payment_id, p.dept_id, p.period_id, p.sale_id, p.payment_no, p.payment_amount, p.payment_method, p.payment_date, p.del_flag, p.idempotency_key, p.create_by, p.create_time, p.update_by, p.update_time, p.remark
         from fin_sale_payment p
     </sql>
 
@@ -75,6 +76,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="paymentMethod != null and paymentMethod != ''">payment_method,</if>
             <if test="paymentDate != null">payment_date,</if>
             <if test="delFlag != null">del_flag,</if>
+            <if test="idempotencyKey != null and idempotencyKey != ''">idempotency_key,</if>
             <if test="createBy != null">create_by,</if>
             create_time,
             <if test="remark != null">remark,</if>
@@ -88,6 +90,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="paymentMethod != null and paymentMethod != ''">#{paymentMethod},</if>
             <if test="paymentDate != null">#{paymentDate},</if>
             <if test="delFlag != null">#{delFlag},</if>
+            <if test="idempotencyKey != null and idempotencyKey != ''">#{idempotencyKey},</if>
             <if test="createBy != null">#{createBy},</if>
             sysdate(),
             <if test="remark != null">#{remark},</if>

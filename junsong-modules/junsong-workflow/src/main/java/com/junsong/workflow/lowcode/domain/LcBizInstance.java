@@ -16,6 +16,9 @@ public class LcBizInstance extends AbstractWorkflowBusinessEntity
     private String bizCode;
     private String orderNo;
     private String formData;
+    private Integer approvalRound = 1;
+    private String lastRejectReason;
+    private String lastRejectMode;
     private String delFlag;
 
     public Long getId()
@@ -70,6 +73,13 @@ public class LcBizInstance extends AbstractWorkflowBusinessEntity
     {
         this.formData = formData;
     }
+
+    public Integer getApprovalRound() { return approvalRound; }
+    public void setApprovalRound(Integer approvalRound) { this.approvalRound = approvalRound; }
+    public String getLastRejectReason() { return lastRejectReason; }
+    public void setLastRejectReason(String lastRejectReason) { this.lastRejectReason = lastRejectReason; }
+    public String getLastRejectMode() { return lastRejectMode; }
+    public void setLastRejectMode(String lastRejectMode) { this.lastRejectMode = lastRejectMode; }
 
     public String getDelFlag()
     {

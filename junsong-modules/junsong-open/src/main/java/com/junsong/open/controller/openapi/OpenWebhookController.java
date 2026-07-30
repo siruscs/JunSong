@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.junsong.common.core.exception.ServiceException;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.open.context.OpenApiRequestContextHolder;
@@ -34,6 +35,7 @@ public class OpenWebhookController extends BaseController
      * @param params 包含 callbackUrl(回调地址) 和 events(订阅事件列表)
      */
     @PostMapping("/subscriptions")
+    @Idempotent(scene = "open:webhook:subscription:add")
     public AjaxResult createWebhookSubscription(@RequestBody Map<String, Object> params)
     {
         String callbackUrl = params.get("callbackUrl") != null ? params.get("callbackUrl").toString() : null;

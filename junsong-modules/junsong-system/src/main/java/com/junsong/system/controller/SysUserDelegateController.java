@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.system.domain.SysUserDelegate;
 import com.junsong.system.service.ISysUserDelegateService;
@@ -59,6 +60,7 @@ public class SysUserDelegateController extends BaseController
      * 新增委托代理
      */
     @RequiresPermissions("system:delegate:add")
+    @Idempotent(scene = "system:user-delegate:add")
     @PostMapping
     public AjaxResult add(@RequestBody SysUserDelegate delegate)
     {
@@ -70,6 +72,7 @@ public class SysUserDelegateController extends BaseController
      * 修改委托代理
      */
     @RequiresPermissions("system:delegate:edit")
+    @Idempotent(scene = "system:user-delegate:edit")
     @PutMapping
     public AjaxResult edit(@RequestBody SysUserDelegate delegate)
     {

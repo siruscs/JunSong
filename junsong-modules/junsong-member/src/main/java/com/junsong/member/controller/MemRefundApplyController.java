@@ -7,6 +7,8 @@ import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
 import com.junsong.common.core.workflow.WorkflowSubmitSnapshot;
 import com.junsong.common.core.workflow.WorkflowSyncSnapshot;
+import com.junsong.common.core.idempotency.Idempotent;
+import com.junsong.common.core.idempotency.IdempotencyRetryPolicy;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.InnerAuth;
@@ -51,6 +53,7 @@ public class MemRefundApplyController extends BaseController
 
     @RequiresPermissions("member:refund:add")
     @Log(title = "会员退款申请", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "member:refund:create")
     @PostMapping
     public AjaxResult add(@Valid @RequestBody MemRefundApply refundApply)
     {
@@ -61,6 +64,7 @@ public class MemRefundApplyController extends BaseController
 
     @RequiresPermissions("member:refund:edit")
     @Log(title = "会员退款申请", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "member:refund:edit", highRisk = true)
     @PutMapping
     public AjaxResult edit(@Valid @RequestBody MemRefundApply refundApply)
     {
@@ -79,6 +83,7 @@ public class MemRefundApplyController extends BaseController
 
     @RequiresPermissions("member:refund:submit")
     @Log(title = "会员退款申请", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "member:refund:submit", highRisk = true)
     @PostMapping("/{id}/submit")
     public AjaxResult submit(@PathVariable("id") Long id, @RequestBody SubmitPayload payload)
     {
@@ -93,6 +98,7 @@ public class MemRefundApplyController extends BaseController
 
     @RequiresPermissions("member:refund:withdraw")
     @Log(title = "会员退款申请", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "member:refund:withdraw", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/{id}/withdraw")
     public AjaxResult withdraw(@PathVariable("id") Long id)
     {
@@ -100,6 +106,7 @@ public class MemRefundApplyController extends BaseController
     }
 
     @InnerAuth
+    @Idempotent(scene = "member:refund:workflow-sync", retryPolicy = IdempotencyRetryPolicy.ALLOW_SAME_KEY)
     @PostMapping("/workflow/sync")
     public R<Boolean> syncWorkflowStatus(@RequestBody WorkflowSyncPayload payload)
     {

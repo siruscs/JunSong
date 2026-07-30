@@ -16,6 +16,7 @@ import com.junsong.common.core.utils.poi.ExcelUtil;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -81,6 +82,7 @@ public class SysRoleController extends BaseController
      */
     @RequiresPermissions("system:role:add")
     @Log(title = "角色管理", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "system:role:create")
     @PostMapping
     public AjaxResult add(@Validated @RequestBody SysRole role)
     {
@@ -102,6 +104,7 @@ public class SysRoleController extends BaseController
      */
     @RequiresPermissions("system:role:edit")
     @Log(title = "角色管理", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:role:update")
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody SysRole role)
     {
@@ -124,6 +127,7 @@ public class SysRoleController extends BaseController
      */
     @RequiresPermissions("system:role:edit")
     @Log(title = "角色管理", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:role:dataScope")
     @PutMapping("/dataScope")
     public AjaxResult dataScope(@RequestBody SysRole role)
     {
@@ -137,6 +141,7 @@ public class SysRoleController extends BaseController
      */
     @RequiresPermissions("system:role:edit")
     @Log(title = "角色管理", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:role:changeStatus", highRisk = true, ttlSeconds = 2592000)
     @PutMapping("/changeStatus")
     public AjaxResult changeStatus(@RequestBody SysRole role)
     {
@@ -151,6 +156,7 @@ public class SysRoleController extends BaseController
      */
     @RequiresPermissions("system:role:remove")
     @Log(title = "角色管理", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "system:role:delete")
     @DeleteMapping("/{roleIds}")
     public AjaxResult remove(@PathVariable Long[] roleIds)
     {
@@ -195,6 +201,7 @@ public class SysRoleController extends BaseController
      */
     @RequiresPermissions("system:role:edit")
     @Log(title = "角色管理", businessType = BusinessType.GRANT)
+    @Idempotent(scene = "system:role:cancelAuth")
     @PutMapping("/authUser/cancel")
     public AjaxResult cancelAuthUser(@RequestBody SysUserRole userRole)
     {
@@ -206,6 +213,7 @@ public class SysRoleController extends BaseController
      */
     @RequiresPermissions("system:role:edit")
     @Log(title = "角色管理", businessType = BusinessType.GRANT)
+    @Idempotent(scene = "system:role:batch", highRisk = true, ttlSeconds = 2592000)
     @PutMapping("/authUser/cancelAll")
     public AjaxResult cancelAuthUserAll(Long roleId, Long[] userIds)
     {
@@ -217,6 +225,7 @@ public class SysRoleController extends BaseController
      */
     @RequiresPermissions("system:role:edit")
     @Log(title = "角色管理", businessType = BusinessType.GRANT)
+    @Idempotent(scene = "system:role:batch", highRisk = true, ttlSeconds = 2592000)
     @PutMapping("/authUser/selectAll")
     public AjaxResult selectAuthUserAll(Long roleId, Long[] userIds)
     {

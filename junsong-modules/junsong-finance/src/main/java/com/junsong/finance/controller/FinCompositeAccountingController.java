@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -105,6 +106,7 @@ public class FinCompositeAccountingController extends BaseController
      */
     @RequiresPermissions("finance:compositeAccounting:add")
     @Log(title = "复合核算池", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "compositeAccounting:create")
     @PostMapping
     public AjaxResult add(@RequestBody FinCompositeAccountingPool pool) {
         pool.setCreateBy(SecurityUtils.getUsername());
@@ -116,6 +118,7 @@ public class FinCompositeAccountingController extends BaseController
      */
     @RequiresPermissions("finance:compositeAccounting:edit")
     @Log(title = "复合核算池", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "compositeAccounting:update")
     @PutMapping
     public AjaxResult edit(@RequestBody FinCompositeAccountingPool pool) {
         if (!canAccessPool(pool.getPoolId())) return error("核算池不存在或无权操作");
@@ -128,6 +131,7 @@ public class FinCompositeAccountingController extends BaseController
      */
     @RequiresPermissions("finance:compositeAccounting:remove")
     @Log(title = "复合核算池", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "compositeAccounting:delete")
     @DeleteMapping("/{poolIds}")
     public AjaxResult remove(@PathVariable Long[] poolIds) {
         if (!SecurityUtils.isAdmin()) {
@@ -143,6 +147,7 @@ public class FinCompositeAccountingController extends BaseController
      */
     @RequiresPermissions("finance:compositeAccounting:edit")
     @Log(title = "复合核算池-绑定店面", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "compositeAccounting:bindDepts")
     @PostMapping("/{poolId}/bindDepts")
     public AjaxResult bindDepts(@PathVariable Long poolId, @RequestBody List<Long> deptIds) {
         if (!canAccessPool(poolId)) return error("核算池不存在或无权操作");
@@ -160,6 +165,7 @@ public class FinCompositeAccountingController extends BaseController
      */
     @RequiresPermissions("finance:compositeAccounting:edit")
     @Log(title = "复合核算池-绑定投资人", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "compositeAccounting:bindInvestors")
     @PostMapping("/{poolId}/bindInvestors")
     public AjaxResult bindInvestors(@PathVariable Long poolId,
                                     @RequestBody List<IFinCompositeAccountingService.InvestorInput> investors) {
@@ -171,6 +177,7 @@ public class FinCompositeAccountingController extends BaseController
      * 试算手动纳入结果(不落库)
      */
     @RequiresPermissions("finance:compositeAccounting:include")
+    @Idempotent(scene = "compositeAccounting:trialInclude", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/{poolId}/trialInclude")
     public AjaxResult trialInclude(@PathVariable Long poolId, @RequestBody List<Long> periodIds) {
         if (!canAccessPool(poolId)) return error("核算池不存在或无权操作");
@@ -183,6 +190,7 @@ public class FinCompositeAccountingController extends BaseController
      */
     @RequiresPermissions("finance:compositeAccounting:include")
     @Log(title = "复合核算池-确认纳入周期", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "compositeAccounting:confirmInclude", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/{poolId}/confirmInclude")
     public AjaxResult confirmInclude(@PathVariable Long poolId, @RequestBody List<Long> periodIds) {
         if (!canAccessPool(poolId)) return error("核算池不存在或无权操作");
@@ -194,6 +202,7 @@ public class FinCompositeAccountingController extends BaseController
      */
     @RequiresPermissions("finance:compositeAccounting:edit")
     @Log(title = "复合核算池-重新计算", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "compositeAccounting:recalculate")
     @PostMapping("/{poolId}/recalculate")
     public AjaxResult recalculate(@PathVariable Long poolId) {
         if (!canAccessPool(poolId)) return error("核算池不存在或无权操作");
@@ -205,6 +214,7 @@ public class FinCompositeAccountingController extends BaseController
      */
     @RequiresPermissions("finance:compositeAccounting:confirm")
     @Log(title = "复合核算池-确认回本", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "compositeAccounting:confirmBreakEven", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/{poolId}/confirmBreakEven")
     public AjaxResult confirmBreakEven(@PathVariable Long poolId) {
         if (!canAccessPool(poolId)) return error("核算池不存在或无权操作");
@@ -216,6 +226,7 @@ public class FinCompositeAccountingController extends BaseController
      */
     @RequiresPermissions("finance:compositeAccounting:close")
     @Log(title = "复合核算池-关闭", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "compositeAccounting:close", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/{poolId}/close")
     public AjaxResult close(@PathVariable Long poolId) {
         if (!canAccessPool(poolId)) return error("核算池不存在或无权操作");

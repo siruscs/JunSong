@@ -19,6 +19,7 @@ import com.junsong.common.core.utils.poi.ExcelUtil;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -80,6 +81,7 @@ public class SysJobController extends BaseController
      */
     @RequiresPermissions("monitor:job:add")
     @Log(title = "定时任务", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "job:job:create")
     @PostMapping
     public AjaxResult add(@RequestBody SysJob job) throws SchedulerException, TaskException
     {
@@ -116,6 +118,7 @@ public class SysJobController extends BaseController
      */
     @RequiresPermissions("monitor:job:edit")
     @Log(title = "定时任务", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "job:job:update")
     @PutMapping
     public AjaxResult edit(@RequestBody SysJob job) throws SchedulerException, TaskException
     {
@@ -152,6 +155,7 @@ public class SysJobController extends BaseController
      */
     @RequiresPermissions("monitor:job:changeStatus")
     @Log(title = "定时任务", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "job:job:changeStatus", highRisk = true, ttlSeconds = 2592000)
     @PutMapping("/changeStatus")
     public AjaxResult changeStatus(@RequestBody SysJob job) throws SchedulerException
     {
@@ -165,6 +169,7 @@ public class SysJobController extends BaseController
      */
     @RequiresPermissions("monitor:job:changeStatus")
     @Log(title = "定时任务", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "job:job:run", highRisk = true, ttlSeconds = 2592000)
     @PutMapping("/run")
     public AjaxResult run(@RequestBody SysJob job) throws SchedulerException
     {
@@ -177,6 +182,7 @@ public class SysJobController extends BaseController
      */
     @RequiresPermissions("monitor:job:remove")
     @Log(title = "定时任务", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "job:job:delete")
     @DeleteMapping("/{jobIds}")
     public AjaxResult remove(@PathVariable Long[] jobIds) throws SchedulerException
     {

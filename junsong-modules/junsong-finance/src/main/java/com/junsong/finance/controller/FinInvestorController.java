@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -46,6 +47,7 @@ public class FinInvestorController extends BaseController
 
     @RequiresPermissions("finance:investor:add")
     @Log(title = "投资人", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "investor:create")
     @PostMapping
     public AjaxResult add(@Validated @RequestBody FinInvestor finInvestor)
     {
@@ -56,6 +58,7 @@ public class FinInvestorController extends BaseController
 
     @RequiresPermissions("finance:investor:edit")
     @Log(title = "投资人", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "investor:update")
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody FinInvestor finInvestor)
     {
@@ -65,6 +68,7 @@ public class FinInvestorController extends BaseController
 
     @RequiresPermissions("finance:investor:remove")
     @Log(title = "投资人", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "investor:delete")
     @DeleteMapping("/{investorIds}")
     public AjaxResult remove(@PathVariable Long[] investorIds)
     {

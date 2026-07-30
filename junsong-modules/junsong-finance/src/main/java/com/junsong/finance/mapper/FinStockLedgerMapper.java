@@ -194,4 +194,21 @@ public interface FinStockLedgerMapper {
                                     @Param("deptId") Long deptId,
                                     @Param("productId") Long productId,
                                     @Param("freezeTime") java.util.Date freezeTime);
+
+    /**
+     * 统计某时间点之后某商品的非盘点类库存流水数量（用于冲销下游使用检查）。
+     *
+     * 排除 STOCK_TAKE_GAIN / STOCK_TAKE_LOSS / STOCK_TAKE_REVERSE 类型，
+     * 因为这些是盘点自身的流水，不算下游使用。
+     *
+     * @param tenantId 租户ID
+     * @param deptId 门店ID
+     * @param productId 商品ID
+     * @param afterTime 起始时间（盘点过账时间）
+     * @return 下游流水数量
+     */
+    int countDownstreamLedgersAfterTime(@Param("tenantId") Long tenantId,
+                                         @Param("deptId") Long deptId,
+                                         @Param("productId") Long productId,
+                                         @Param("afterTime") java.util.Date afterTime);
 }

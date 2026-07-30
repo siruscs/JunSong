@@ -82,6 +82,48 @@ export const constantRoutes: any[] = [
     meta: { title: '锁定屏幕' },
   },
   {
+    // 工作台页面固定挂载，接口与按钮权限仍由后端严格控制。
+    path: '/finance/report/stock/stocktake',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/finance/stocktake/index.vue'),
+        name: 'FinanceStocktake',
+        meta: { title: '库存盘点', activeMenu: '/finance/report/stock/stocktake' },
+      },
+    ],
+  },
+  {
+    // 兼容库存报表旧入口，统一落到同一个盘点工作台。
+    path: '/finance/stocktake/index',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/finance/stocktake/index.vue'),
+        name: 'FinanceStocktakeLegacyEntry',
+        meta: { title: '库存盘点', activeMenu: '/finance/report/stock/stocktake' },
+      },
+    ],
+  },
+  {
+    // 期初库存工作台固定挂载，接口与按钮权限仍由后端严格控制。
+    path: '/finance/stockInit/index',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/finance/stockInit/index.vue'),
+        name: 'FinanceStockInit',
+        meta: { title: '期初库存', activeMenu: '/finance/stockInit/index' },
+      },
+    ],
+  },
+  {
     path: '/member',
     component: Layout,
     hidden: true,

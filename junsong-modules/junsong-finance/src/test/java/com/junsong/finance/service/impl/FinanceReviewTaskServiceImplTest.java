@@ -1117,6 +1117,7 @@ class FinanceReviewTaskServiceImplTest {
     // ─── Fake RemoteUserService (returns configurable dept list) ──────────
 
     static class FakeRemoteUserService implements RemoteUserService {
+        @Override public R<Boolean> isWechatLoginEnabled(Long tenantId, String source) { return R.ok(false); }
 
         private final List<Long> authorizedDeptIds;
 

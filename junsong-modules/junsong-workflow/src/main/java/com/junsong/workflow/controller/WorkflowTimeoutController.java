@@ -3,6 +3,7 @@ package com.junsong.workflow.controller;
 import java.util.List;
 
 import com.junsong.common.core.domain.R;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.page.TableDataInfo;
 import com.junsong.workflow.domain.WfNodeTimeout;
@@ -35,6 +36,7 @@ public class WorkflowTimeoutController extends BaseController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:timeout:add')")
+    @Idempotent(scene = "workflow:timeout:add")
     @PostMapping
     public R<Void> add(@RequestBody WfNodeTimeout timeout)
     {
@@ -42,6 +44,7 @@ public class WorkflowTimeoutController extends BaseController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:timeout:edit')")
+    @Idempotent(scene = "workflow:timeout:update")
     @PutMapping
     public R<Void> update(@RequestBody WfNodeTimeout timeout)
     {
@@ -49,6 +52,7 @@ public class WorkflowTimeoutController extends BaseController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:timeout:remove')")
+    @Idempotent(scene = "workflow:timeout:delete")
     @DeleteMapping("/{id}")
     public R<Void> delete(@PathVariable Long id)
     {

@@ -17,6 +17,7 @@ import com.junsong.common.core.utils.poi.ExcelUtil;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -66,6 +67,7 @@ public class FinInvestorPaymentController extends BaseController
 
     @RequiresPermissions("finance:investorPayment:add")
     @Log(title = "投资人返款", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "investorPayment:create", highRisk = true, ttlSeconds = 2592000)
     @PostMapping
     public AjaxResult add(@Validated @RequestBody FinInvestorPayment finInvestorPayment)
     {
@@ -79,6 +81,7 @@ public class FinInvestorPaymentController extends BaseController
 
     @RequiresPermissions("finance:investorPayment:edit")
     @Log(title = "投资人返款", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "investorPayment:update")
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody FinInvestorPayment finInvestorPayment)
     {
@@ -92,6 +95,7 @@ public class FinInvestorPaymentController extends BaseController
 
     @RequiresPermissions("finance:investorPayment:remove")
     @Log(title = "投资人返款", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "investorPayment:delete")
 	@DeleteMapping("/{paymentIds}")
     public AjaxResult remove(@PathVariable Long[] paymentIds)
     {

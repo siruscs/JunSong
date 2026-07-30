@@ -16,6 +16,7 @@ import com.junsong.common.core.utils.poi.ExcelUtil;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -69,6 +70,7 @@ public class SysDictTypeController extends BaseController
      */
     @RequiresPermissions("system:dict:add")
     @Log(title = "字典类型", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "system:dictType:create")
     @PostMapping
     public AjaxResult add(@Validated @RequestBody SysDictType dict)
     {
@@ -85,6 +87,7 @@ public class SysDictTypeController extends BaseController
      */
     @RequiresPermissions("system:dict:edit")
     @Log(title = "字典类型", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:dictType:update")
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody SysDictType dict)
     {
@@ -101,6 +104,7 @@ public class SysDictTypeController extends BaseController
      */
     @RequiresPermissions("system:dict:remove")
     @Log(title = "字典类型", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "system:dictType:delete")
     @DeleteMapping("/{dictIds}")
     public AjaxResult remove(@PathVariable Long[] dictIds)
     {
@@ -113,6 +117,7 @@ public class SysDictTypeController extends BaseController
      */
     @RequiresPermissions("system:dict:remove")
     @Log(title = "字典类型", businessType = BusinessType.CLEAN)
+    @Idempotent(scene = "system:dict:refresh-cache")
     @DeleteMapping("/refreshCache")
     public AjaxResult refreshCache()
     {

@@ -11,6 +11,7 @@ import com.junsong.common.core.context.TenantContext;
 import com.junsong.common.core.utils.StringUtils;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -60,6 +61,7 @@ public class SysWechatSessionController extends BaseController
      */
     @RequiresPermissions("system:user:wechatSession:revokeAll")
     @Log(title = "微信会话一键失效", businessType = BusinessType.OTHER)
+    @Idempotent(scene = "system:wechat-session:revoke-all")
     @PostMapping("/revoke-all")
     public AjaxResult revokeAll(@RequestParam(value = "reason", required = false) String reason)
     {

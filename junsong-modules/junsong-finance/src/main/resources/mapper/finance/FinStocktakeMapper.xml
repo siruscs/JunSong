@@ -23,6 +23,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="reversedBy"       column="reversed_by"       />
         <result property="reversedTime"     column="reversed_time"     />
         <result property="reversalReason"   column="reversal_reason"   />
+        <result property="reverseIdempotencyKey" column="reverse_idempotency_key" />
+        <result property="processInstanceId" column="process_instance_id" />
+        <result property="processDefinitionKey" column="process_definition_key" />
+        <result property="businessKey"      column="business_key"      />
+        <result property="currentNode"      column="current_node"      />
         <result property="version"          column="version"           />
         <result property="remark"           column="remark"            />
         <result property="createBy"         column="create_by"         />
@@ -145,6 +150,21 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
           and take_no = #{takeNo}
     </select>
 
+    <select id="selectStocktakeByTakeNo" resultType="com.junsong.finance.domain.FinStocktake">
+        select *
+        from finance_stocktake
+        where tenant_id = #{tenantId}
+          and take_no = #{takeNo}
+        limit 1
+    </select>
+
+    <select id="selectByReverseIdempotencyKey" resultMap="FinStocktakeResult">
+        select * from finance_stocktake
+        where tenant_id = #{tenantId}
+          and reverse_idempotency_key = #{reverseIdempotencyKey}
+        limit 1
+    </select>
+
     <update id="updateStocktakeStatus">
         update finance_stocktake
         set status = #{toStatus},
@@ -154,6 +174,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="postedBy != null">posted_by = #{postedBy}, posted_time = sysdate(),</if>
             <if test="reversedBy != null">reversed_by = #{reversedBy}, reversed_time = sysdate(),</if>
             <if test="reversalReason != null">reversal_reason = #{reversalReason},</if>
+            <if test="reverseIdempotencyKey != null">reverse_idempotency_key = #{reverseIdempotencyKey},</if>
             update_by = #{updateBy},
             update_time = sysdate()
         where tenant_id = #{tenantId}
@@ -178,6 +199,24 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
           and status = 'DRAFT'
           and version = #{version}
     </update>
+
+    <!-- 更新工作流信息：由工作流同步回写调用，仅更新 process_instance_id 和 current_node -->
+    <update id="updateWorkflowInfo">
+        update finance_stocktake
+        set
+            <if test="processInstanceId != null">process_instance_id = #{processInstanceId},</if>
+            <if test="currentNode != null">current_node = #{currentNode},</if>
+            update_time = sysdate()
+        where tenant_id = #{tenantId}
+          and stocktake_id = #{stocktakeId}
+    </update>
+
+    <select id="selectByProcessInstanceId" resultMap="FinStocktakeResult">
+        select * from finance_stocktake
+        where tenant_id = #{tenantId}
+          and process_instance_id = #{processInstanceId}
+        limit 1
+    </select>
 
     <!-- ===== 行表 ===== -->
 

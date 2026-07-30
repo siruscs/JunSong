@@ -272,11 +272,11 @@ ORDER BY dict_sort;
 -- 回滚说明（不在本脚本执行，仅记录）
 -- ==========================================================================
 -- 回滚步骤（仅当需要时手动执行）：
--- 1. DELETE FROM sys_role_menu WHERE menu_id BETWEEN 2160 AND 2170;
--- 2. DELETE FROM sys_menu WHERE menu_id BETWEEN 2160 AND 2170;
--- 3. DELETE FROM sys_dict_data WHERE dict_type = 'finance_stocktake_loss_reason';
--- 4. DELETE FROM sys_dict_type WHERE dict_type = 'finance_stocktake_loss_reason';
--- 5. DROP TABLE IF EXISTS finance_stocktake_history;
--- 6. DROP TABLE IF EXISTS finance_stocktake_item;
--- 7. DROP TABLE IF EXISTS finance_stocktake;
+-- 1. 回滚角色菜单授权（按 menu_id BETWEEN 2160 AND 2170 定位后移除）；
+-- 2. 回滚盘点菜单（按 menu_id BETWEEN 2160 AND 2170 定位后移除）；
+-- 3. 回滚盘点损耗原因字典数据；
+-- 4. 回滚盘点损耗原因字典类型；
+-- 5. 回滚历史表结构（需人工确认后执行）；
+-- 6. 回滚明细表结构（需人工确认后执行）；
+-- 7. 回滚头表结构（需人工确认后执行）。
 -- 注意：已过账的盘点数据不得回滚，需先冲销。

@@ -18,6 +18,7 @@ import com.junsong.common.core.utils.poi.ExcelUtil;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -90,6 +91,7 @@ public class SysDictDataController extends BaseController
      */
     @RequiresPermissions("system:dict:add")
     @Log(title = "字典数据", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "system:dictData:create")
     @PostMapping
     public AjaxResult add(@Validated @RequestBody SysDictData dict)
     {
@@ -102,6 +104,7 @@ public class SysDictDataController extends BaseController
      */
     @RequiresPermissions("system:dict:edit")
     @Log(title = "字典数据", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:dictData:update")
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody SysDictData dict)
     {
@@ -114,6 +117,7 @@ public class SysDictDataController extends BaseController
      */
     @RequiresPermissions("system:dict:remove")
     @Log(title = "字典类型", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "system:dictData:delete")
     @DeleteMapping("/{dictCodes}")
     public AjaxResult remove(@PathVariable Long[] dictCodes)
     {

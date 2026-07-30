@@ -18,6 +18,9 @@ public interface LcBizConfigSnapshotMapper
     /** 查询最新已发布版本号 */
     Integer selectMaxVersionByBizCode(@Param("bizCode") String bizCode);
 
+    /** 查询最新已发布版本号，避免草稿版本污染运行时配置。 */
+    Integer selectMaxPublishedVersionByBizCode(@Param("bizCode") String bizCode);
+
     /** 插入快照 */
     int insertSnapshot(LcBizConfigSnapshot snapshot);
 }

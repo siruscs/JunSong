@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.security.annotation.RequiresPermissions;
 import com.junsong.system.domain.SysHealthRuleConfig;
 import com.junsong.system.service.ISysHealthRuleConfigService;
@@ -43,12 +44,14 @@ public class SysHealthRuleConfigController extends BaseController {
     }
 
     @RequiresPermissions("system:healthRule:edit")
+    @Idempotent(scene = "system:health-rule:edit")
     @PutMapping
     public AjaxResult edit(@RequestBody SysHealthRuleConfig config) {
         return toAjax(service.updateHealthRule(config));
     }
 
     @RequiresPermissions("system:healthRule:edit")
+    @Idempotent(scene = "system:health-rule:toggle")
     @PutMapping("/{ruleId}/toggle")
     public AjaxResult toggle(@PathVariable Long ruleId, @RequestBody Map<String, String> body) {
         String enabled = body.get("enabled");

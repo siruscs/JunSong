@@ -64,7 +64,7 @@ public interface FinExpenseMapper
 
     /**
      * 校验费用单号是否唯一
-     * 
+     *
      * @param expenseNo 费用单号
      * @return 结果
      */

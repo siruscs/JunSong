@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -30,6 +31,7 @@ import com.junsong.finance.domain.FinInvestRecord;
 import com.junsong.finance.domain.FinInvestorPayment;
 import com.junsong.finance.domain.FinProfitShareRecord;
 import com.junsong.finance.domain.FinPurchase;
+import com.junsong.finance.domain.FinPurchaseDetail;
 import com.junsong.finance.domain.FinSalePayment;
 import com.junsong.finance.domain.FinSaleRecord;
 import com.junsong.finance.domain.bo.AccountingPeriodStartTimeAdjustRequest;
@@ -40,6 +42,7 @@ import com.junsong.finance.service.IFinExpenseService;
 import com.junsong.finance.service.IFinInvestRecordService;
 import com.junsong.finance.service.IFinInvestorPaymentService;
 import com.junsong.finance.mapper.FinProfitShareDetailMapper;
+import com.junsong.finance.mapper.FinPurchaseDetailMapper;
 import com.junsong.finance.service.IFinProfitShareRecordService;
 import com.junsong.finance.service.IFinPurchaseService;
 import com.junsong.finance.service.IFinSalePaymentService;
@@ -61,6 +64,9 @@ public class FinAccountingPeriodController extends BaseController
 
     @Autowired
     private IFinPurchaseService finPurchaseService;
+
+    @Autowired
+    private FinPurchaseDetailMapper finPurchaseDetailMapper;
 
     @Autowired
     private IFinInvestRecordService finInvestRecordService;
@@ -151,7 +157,13 @@ public class FinAccountingPeriodController extends BaseController
         FinPurchase purchaseQuery = new FinPurchase();
         purchaseQuery.setDeptId(period.getDeptId());
         purchaseQuery.setPeriodId(period.getPeriodId());
-        detail.setPurchases(finPurchaseService.selectFinPurchaseList(purchaseQuery));
+        List<FinPurchase> purchases = finPurchaseService.selectFinPurchaseList(purchaseQuery);
+        // 周期明细必须返回商品行，避免前端只能展示进货单头信息。
+        for (FinPurchase purchase : purchases)
+        {
+            purchase.setDetails(finPurchaseDetailMapper.selectFinPurchaseDetailByPurchaseId(purchase.getPurchaseId()));
+        }
+        detail.setPurchases(purchases);
 
         FinInvestRecord investQuery = new FinInvestRecord();
         investQuery.setDeptId(period.getDeptId());
@@ -213,6 +225,7 @@ public class FinAccountingPeriodController extends BaseController
 
     @RequiresPermissions("finance:accountingPeriod:init")
     @Log(title = "财务核算周期-初始化", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "accountingPeriod:initCurrent", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/current/{deptId}/init")
     public AjaxResult initCurrent(@PathVariable Long deptId)
     {
@@ -221,6 +234,7 @@ public class FinAccountingPeriodController extends BaseController
 
     @RequiresPermissions("finance:accountingPeriod:query")
     @Log(title = "财务核算周期-试算回本", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "accountingPeriod:trialBreakEven", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/current/{deptId}/trialBreakEven")
     public AjaxResult trialBreakEven(@PathVariable Long deptId)
     {
@@ -229,6 +243,7 @@ public class FinAccountingPeriodController extends BaseController
 
     @RequiresPermissions("finance:accountingPeriod:carryForward")
     @Log(title = "财务核算周期-结转", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "accountingPeriod:carryForward", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/current/{deptId}/carryForward")
     public AjaxResult carryForward(@PathVariable Long deptId)
     {
@@ -237,6 +252,7 @@ public class FinAccountingPeriodController extends BaseController
 
     @RequiresPermissions("finance:accountingPeriod:rollback")
     @Log(title = "财务核算周期-结转回退", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "accountingPeriod:rollbackCarryForward", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/current/{deptId}/rollbackCarryForward")
     public AjaxResult rollbackCarryForward(@PathVariable Long deptId,
                                            @RequestParam(required = false) String reason)
@@ -246,6 +262,7 @@ public class FinAccountingPeriodController extends BaseController
 
     @RequiresPermissions("finance:accountingPeriod:add")
     @Log(title = "财务核算周期", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "accountingPeriod:create")
     @PostMapping
     public AjaxResult add(@Validated @RequestBody FinAccountingPeriod finAccountingPeriod)
     {
@@ -255,6 +272,7 @@ public class FinAccountingPeriodController extends BaseController
 
     @RequiresPermissions("finance:accountingPeriod:edit")
     @Log(title = "财务核算周期", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "accountingPeriod:update")
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody FinAccountingPeriod finAccountingPeriod)
     {
@@ -264,6 +282,7 @@ public class FinAccountingPeriodController extends BaseController
 
     @RequiresPermissions("finance:accountingPeriod:remove")
     @Log(title = "财务核算周期", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "accountingPeriod:delete")
     @DeleteMapping("/{periodIds}")
     public AjaxResult remove(@PathVariable Long[] periodIds)
     {
@@ -276,6 +295,7 @@ public class FinAccountingPeriodController extends BaseController
      */
     @RequiresPermissions("finance:accountingPeriod:opsAdjustStartTime")
     @Log(title = "财务核算周期-运维调整起始时间", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "accountingPeriod:opsAdjustStartTime", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/{periodId}/opsAdjustStartTime")
     public AjaxResult opsAdjustStartTime(@PathVariable Long periodId,
                                          @Validated @RequestBody AccountingPeriodStartTimeAdjustRequest request)

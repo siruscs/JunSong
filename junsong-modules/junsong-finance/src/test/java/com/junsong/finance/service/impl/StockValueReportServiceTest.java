@@ -453,7 +453,13 @@ class StockValueReportServiceTest {
 
         @Override
         public int updateStartTimeOnly(Long periodId, java.util.Date startTime, java.util.Date endTime, String updateBy, String remark) { return 0; }
+
+    @Override
+    public com.junsong.finance.domain.FinAccountingPeriod selectCurrentPeriodByDeptIdForUpdate(Long tenantId, Long deptId) {
+        return selectCurrentPeriodByDeptId(deptId);
     }
+
+}
 
     /** IStockCostService 桩：所有方法均为 no-op，仅用于满足依赖注入。 */
     static class FakeStockCostService implements IStockCostService {

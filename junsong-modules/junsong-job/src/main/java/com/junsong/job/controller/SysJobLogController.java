@@ -13,6 +13,7 @@ import com.junsong.common.core.utils.poi.ExcelUtil;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -71,6 +72,7 @@ public class SysJobLogController extends BaseController
      */
     @RequiresPermissions("monitor:job:remove")
     @Log(title = "定时任务调度日志", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "job:jobLog:delete")
     @DeleteMapping("/{jobLogIds}")
     public AjaxResult remove(@PathVariable Long[] jobLogIds)
     {
@@ -82,6 +84,7 @@ public class SysJobLogController extends BaseController
      */
     @RequiresPermissions("monitor:job:remove")
     @Log(title = "调度日志", businessType = BusinessType.CLEAN)
+    @Idempotent(scene = "job:jobLog:clean", highRisk = true, ttlSeconds = 2592000)
     @DeleteMapping("/clean")
     public AjaxResult clean()
     {

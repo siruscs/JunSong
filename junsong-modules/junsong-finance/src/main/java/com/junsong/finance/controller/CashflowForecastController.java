@@ -1,5 +1,6 @@
 package com.junsong.finance.controller;
 
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -23,6 +24,7 @@ public class CashflowForecastController extends BaseController {
     }
 
     @RequiresPermissions("finance:cashflowForecast:snapshot")
+    @Idempotent(scene = "finance:cashflowForecast:snapshot")
     @PostMapping("/cashflow-forecast/snapshot")
     public AjaxResult snapshot(@RequestBody(required = false) CashflowForecastQueryParams params) {
         int count = cashflowForecastService.createSnapshot(params == null ? new CashflowForecastQueryParams() : params);

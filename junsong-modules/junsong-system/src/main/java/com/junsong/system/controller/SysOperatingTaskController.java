@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.security.annotation.RequiresPermissions;
 import com.junsong.system.domain.SysOperatingTask;
 import com.junsong.system.domain.SysOperatingTaskLog;
@@ -85,6 +86,7 @@ public class SysOperatingTaskController extends BaseController
      * 幂等创建经营任务（内部调用，复用 list 权限）
      */
     @RequiresPermissions("system:operatingTask:list")
+    @Idempotent(scene = "system:operating-task:create")
     @PostMapping("/create")
     public AjaxResult create(@RequestBody SysOperatingTask task)
     {
@@ -96,6 +98,7 @@ public class SysOperatingTaskController extends BaseController
      * 认领任务
      */
     @RequiresPermissions("system:operatingTask:claim")
+    @Idempotent(scene = "system:operating-task:claim")
     @PutMapping("/claim/{taskId}")
     public AjaxResult claim(@PathVariable Long taskId)
     {
@@ -107,6 +110,7 @@ public class SysOperatingTaskController extends BaseController
      * 完成任务
      */
     @RequiresPermissions("system:operatingTask:complete")
+    @Idempotent(scene = "system:operating-task:complete")
     @PutMapping("/complete/{taskId}")
     public AjaxResult complete(@PathVariable Long taskId, @RequestBody Map<String, String> body)
     {
@@ -119,6 +123,7 @@ public class SysOperatingTaskController extends BaseController
      * 驳回任务
      */
     @RequiresPermissions("system:operatingTask:reject")
+    @Idempotent(scene = "system:operating-task:reject")
     @PutMapping("/reject/{taskId}")
     public AjaxResult reject(@PathVariable Long taskId, @RequestBody Map<String, String> body)
     {
@@ -131,6 +136,7 @@ public class SysOperatingTaskController extends BaseController
      * 重开任务
      */
     @RequiresPermissions("system:operatingTask:reopen")
+    @Idempotent(scene = "system:operating-task:reopen")
     @PutMapping("/reopen/{taskId}")
     public AjaxResult reopen(@PathVariable Long taskId, @RequestBody Map<String, String> body)
     {

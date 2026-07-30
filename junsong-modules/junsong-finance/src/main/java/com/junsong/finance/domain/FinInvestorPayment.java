@@ -75,6 +75,12 @@ public class FinInvestorPayment extends BaseEntity
     @Excel(name = "本次投资占比", cellType = ColumnType.NUMERIC)
     private BigDecimal investRatio;
 
+    /** 租户ID（多租户隔离） */
+    private Long tenantId;
+
+    /** 幂等键（租户内唯一）：DB 唯一索引 uk_investor_payment_idempotency_key 兜底 */
+    private String idempotencyKey;
+
     /** 删除标志（0代表存在 2代表删除） */
     private String delFlag;
 
@@ -229,6 +235,26 @@ public class FinInvestorPayment extends BaseEntity
     public void setDelFlag(String delFlag)
     {
         this.delFlag = delFlag;
+    }
+
+    public Long getTenantId()
+    {
+        return tenantId;
+    }
+
+    public void setTenantId(Long tenantId)
+    {
+        this.tenantId = tenantId;
+    }
+
+    public String getIdempotencyKey()
+    {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey)
+    {
+        this.idempotencyKey = idempotencyKey;
     }
 
     @Override

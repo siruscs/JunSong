@@ -195,6 +195,7 @@ class FinanceDrillDownServiceImplTest
 
     static class ConfigurableRemoteUserService implements RemoteUserService
     {
+        @Override public R<Boolean> isWechatLoginEnabled(Long tenantId, String source) { return R.ok(false); }
         R<List<SysDept>> deptListResponse = R.ok(Collections.emptyList());
 
         @Override

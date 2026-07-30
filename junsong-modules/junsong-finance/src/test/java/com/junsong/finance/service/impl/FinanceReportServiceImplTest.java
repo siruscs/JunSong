@@ -540,6 +540,7 @@ class FinanceReportServiceImplTest
 
     private static final class EmptyRemoteUserService implements RemoteUserService
     {
+        @Override public R<Boolean> isWechatLoginEnabled(Long tenantId, String source) { return R.ok(false); }
         @Override
         public R<LoginUser> getUserInfo(String username, String source)
         {
@@ -575,6 +576,7 @@ class FinanceReportServiceImplTest
 
     static class ConfigurableRemoteUserService implements RemoteUserService
     {
+        @Override public R<Boolean> isWechatLoginEnabled(Long tenantId, String source) { return R.ok(false); }
         R<List<SysDept>> deptListResponse = R.ok(Collections.emptyList());
 
         @Override

@@ -21,6 +21,10 @@ public class FinStockLedger extends BaseEntity {
     private String referenceType;
     private Long referenceId;
     private String referenceNo;
+    /** 幂等键（租户内唯一）：由 Service 层填充，格式 reference_type + ':' + reference_id。
+     *  DB 唯一索引 uk_stock_ledger_idempotency_key (tenant_id, idempotency_key) 兜底，
+     *  即使 AOP 幂等失效也能阻止重复写入流水。 */
+    private String idempotencyKey;
     private String delFlag;
 
     public Long getLedgerId() { return ledgerId; }
@@ -62,6 +66,9 @@ public class FinStockLedger extends BaseEntity {
     public String getReferenceNo() { return referenceNo; }
     public void setReferenceNo(String referenceNo) { this.referenceNo = referenceNo; }
 
+    public String getIdempotencyKey() { return idempotencyKey; }
+    public void setIdempotencyKey(String idempotencyKey) { this.idempotencyKey = idempotencyKey; }
+
     public String getDelFlag() { return delFlag; }
     public void setDelFlag(String delFlag) { this.delFlag = delFlag; }
 
@@ -81,6 +88,7 @@ public class FinStockLedger extends BaseEntity {
             .append("referenceType", getReferenceType())
             .append("referenceId", getReferenceId())
             .append("referenceNo", getReferenceNo())
+            .append("idempotencyKey", getIdempotencyKey())
             .append("delFlag", getDelFlag())
             .append("createBy", getCreateBy())
             .append("createTime", getCreateTime())

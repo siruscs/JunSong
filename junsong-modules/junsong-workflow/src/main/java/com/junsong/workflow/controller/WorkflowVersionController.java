@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.junsong.common.core.domain.R;
+import com.junsong.common.core.idempotency.Idempotent;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +42,7 @@ public class WorkflowVersionController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:definition:edit')")
+    @Idempotent(scene = "workflow:version:suspend")
     @PostMapping("/{definitionId}/suspend")
     public R<Void> suspendVersion(@PathVariable String definitionId)
     {
@@ -49,6 +51,7 @@ public class WorkflowVersionController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:definition:edit')")
+    @Idempotent(scene = "workflow:version:activate", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/{definitionId}/activate")
     public R<Void> activateVersion(@PathVariable String definitionId)
     {

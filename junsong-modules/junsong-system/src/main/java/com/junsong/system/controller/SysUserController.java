@@ -33,6 +33,7 @@ import com.junsong.common.core.utils.ip.IpUtils;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.redis.service.RedisService;
@@ -154,6 +155,7 @@ public class SysUserController extends BaseController
 
     @Log(title = "用户管理", businessType = BusinessType.IMPORT)
     @RequiresPermissions("system:user:import")
+    @Idempotent(scene = "system:user:import")
     @PostMapping("/importData")
     public AjaxResult importData(MultipartFile file, boolean updateSupport) throws Exception
     {
@@ -268,6 +270,7 @@ public class SysUserController extends BaseController
      * 注册用户信息
      */
     @InnerAuth
+    @Idempotent(scene = "system:user:register")
     @PostMapping("/register")
     public R<Boolean> register(@RequestBody SysUser sysUser, HttpServletRequest request)
     {
@@ -478,6 +481,7 @@ public class SysUserController extends BaseController
      * @param deptId 店面ID
      * @return 结果
      */
+    @Idempotent(scene = "system:user:switch-dept", highRisk = true)
     @PostMapping("switchDept/{deptId}")
     public AjaxResult switchDept(@PathVariable Long deptId)
     {
@@ -582,6 +586,7 @@ public class SysUserController extends BaseController
      */
     @RequiresPermissions("system:user:add")
     @Log(title = "用户管理", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "system:user:add")
     @PostMapping
     public AjaxResult add(@Validated @RequestBody SysUser user)
     {
@@ -609,6 +614,7 @@ public class SysUserController extends BaseController
      */
     @RequiresPermissions("system:user:edit")
     @Log(title = "用户管理", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:user:edit")
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody SysUser user)
     {
@@ -652,6 +658,7 @@ public class SysUserController extends BaseController
      */
     @RequiresPermissions("system:user:edit")
     @Log(title = "用户管理", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:user:reset-pwd", highRisk = true)
     @PutMapping("/resetPwd")
     public AjaxResult resetPwd(@RequestBody SysUser user)
     {
@@ -667,6 +674,7 @@ public class SysUserController extends BaseController
      */
     @RequiresPermissions("system:user:edit")
     @Log(title = "用户管理", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:user:change-status", highRisk = true)
     @PutMapping("/changeStatus")
     public AjaxResult changeStatus(@RequestBody SysUser user)
     {
@@ -696,6 +704,7 @@ public class SysUserController extends BaseController
      */
     @RequiresPermissions("system:user:edit")
     @Log(title = "用户管理", businessType = BusinessType.GRANT)
+    @Idempotent(scene = "system:user:insert-auth-role")
     @PutMapping("/authRole")
     public AjaxResult insertAuthRole(Long userId, Long[] roleIds)
     {

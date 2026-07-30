@@ -10,6 +10,7 @@ import com.junsong.workflow.controller.dto.definition.DeployDefinitionResp;
 import com.junsong.workflow.controller.dto.definition.ValidateDefinitionReq;
 import com.junsong.workflow.controller.dto.definition.ValidateDefinitionResp;
 import com.junsong.workflow.service.definition.WorkflowDefinitionService;
+import org.flowable.engine.ProcessEngine;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -22,13 +23,15 @@ import static org.mockito.Mockito.when;
 class ProcessDefinitionControllerTest
 {
     private WorkflowDefinitionService workflowDefinitionService;
+    private ProcessEngine processEngine;
     private ProcessDefinitionController controller;
 
     @BeforeEach
     void setUp()
     {
         workflowDefinitionService = mock(WorkflowDefinitionService.class);
-        controller = new ProcessDefinitionController(workflowDefinitionService);
+        processEngine = mock(ProcessEngine.class);
+        controller = new ProcessDefinitionController(workflowDefinitionService, processEngine);
     }
 
     @Test

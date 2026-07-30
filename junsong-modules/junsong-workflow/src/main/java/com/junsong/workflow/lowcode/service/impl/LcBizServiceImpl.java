@@ -1,6 +1,7 @@
 package com.junsong.workflow.lowcode.service.impl;
 
 import com.alibaba.fastjson2.JSON;
+import com.junsong.common.core.constant.SecurityConstants;
 import com.junsong.common.core.domain.R;
 import com.junsong.common.core.exception.ServiceException;
 import com.junsong.common.core.utils.StringUtils;
@@ -16,6 +17,8 @@ import com.junsong.workflow.lowcode.service.LcMetadataService;
 import com.junsong.workflow.lowcode.service.LcWorkflowAssembleService;
 import com.junsong.workflow.lowcode.sync.ConfigurablePostActionHandler;
 import com.junsong.workflow.lowcode.validator.LcSubmitValidator;
+import com.junsong.finance.api.RemoteStocktakeService;
+import com.junsong.finance.api.domain.StocktakeWorkflowSyncReq;
 import com.junsong.workflow.security.CurrentWorkflowUser;
 import com.junsong.workflow.security.CurrentWorkflowUserFacade;
 import java.time.LocalDate;
@@ -49,6 +52,7 @@ public class LcBizServiceImpl implements LcBizService
     private final CurrentWorkflowUserFacade userFacade;
     private final ConfigurablePostActionHandler postActionHandler;
     private final LcConfigVersionService configVersionService;
+    private final RemoteStocktakeService remoteStocktakeService;
     /** 提交前校验器注册表：按 type() 索引 */
     private final Map<String, LcSubmitValidator> validatorRegistry;
 
@@ -63,6 +67,7 @@ public class LcBizServiceImpl implements LcBizService
             CurrentWorkflowUserFacade userFacade,
             ConfigurablePostActionHandler postActionHandler,
             LcConfigVersionService configVersionService,
+            RemoteStocktakeService remoteStocktakeService,
             List<LcSubmitValidator> validators)
     {
         this.instanceService = instanceService;
@@ -75,6 +80,7 @@ public class LcBizServiceImpl implements LcBizService
         this.userFacade = userFacade;
         this.postActionHandler = postActionHandler;
         this.configVersionService = configVersionService;
+        this.remoteStocktakeService = remoteStocktakeService;
         this.validatorRegistry = new HashMap<>();
         if (validators != null)
         {
@@ -208,6 +214,13 @@ public class LcBizServiceImpl implements LcBizService
         CurrentWorkflowUser user = userFacade.current();
         Map<String, Object> variables = assembleService.assembleVariables(bizCode, formData, user.username());
         variables.put("initiator", user.username());
+        variables.put("formData", formData);
+        variables.put("businessKey", instance.getOrderNo());
+        // 盘点流程的网关必须始终收到布尔值；Flowable 对未定义的 UEL 变量会直接失败。
+        if ("stocktake_apply".equals(processKey))
+        {
+            variables.put("needRecount", isProvided(formData.get("recount_user_id")));
+        }
 
         // 发起流程（参考 ProcessInstanceController.start）
         ProcessDefinition def = repositoryService.createProcessDefinitionQuery()
@@ -229,7 +242,13 @@ public class LcBizServiceImpl implements LcBizService
             // 回写快照
             instance.setProcessInstanceId(pi.getId());
             instance.setProcessDefinitionKey(def.getKey());
+            boolean resubmission = "REJECTED".equals(instance.getWorkflowStatus())
+                    || (instance.getApprovalRound() != null && instance.getApprovalRound() > 0
+                    && ((instance.getLastRejectMode() != null && !instance.getLastRejectMode().isBlank())
+                    || (instance.getLastRejectReason() != null && !instance.getLastRejectReason().isBlank())));
             instance.setWorkflowStatus("IN_APPROVAL");
+            int currentRound = instance.getApprovalRound() == null ? 0 : instance.getApprovalRound();
+            instance.setApprovalRound(resubmission ? Math.max(currentRound + 1, 2) : Math.max(currentRound, 1));
             // 取发起后的第一个活动任务名
             Task firstTask = taskService.createTaskQuery().processInstanceId(pi.getId()).active().singleResult();
             instance.setCurrentTaskName(firstTask != null ? firstTask.getName() : "已提交");
@@ -248,6 +267,23 @@ public class LcBizServiceImpl implements LcBizService
         {
             Authentication.setAuthenticatedUserId(null);
         }
+    }
+
+    private boolean isProvided(Object value)
+    {
+        if (value == null)
+        {
+            return false;
+        }
+        if (value instanceof String text)
+        {
+            return !text.isBlank();
+        }
+        if (value instanceof java.util.Collection<?> collection)
+        {
+            return !collection.isEmpty();
+        }
+        return true;
     }
 
     @Override
@@ -345,8 +381,26 @@ public class LcBizServiceImpl implements LcBizService
         }
         instance.setWorkflowStatus(workflowStatus);
         instance.setCurrentTaskName(currentTaskName);
+        if ("APPROVED".equals(workflowStatus)
+                && ((instance.getLastRejectMode() != null && !instance.getLastRejectMode().isBlank())
+                || (instance.getLastRejectReason() != null && !instance.getLastRejectReason().isBlank()))
+                && (instance.getApprovalRound() == null || instance.getApprovalRound() < 2))
+        {
+            instance.setApprovalRound(2);
+        }
         instance.setUpdateBy(operator);
         instanceService.updateWorkflowSnapshot(instance);
+        if ("APPROVED".equals(workflowStatus) && "stocktake".equals(instance.getBizCode()))
+        {
+            StocktakeWorkflowSyncReq request = new StocktakeWorkflowSyncReq();
+            request.setBusinessKey(instance.getOrderNo());
+            request.setProcessInstanceId(processInstanceId);
+            request.setFormData(instance.getFormDataMap());
+            request.setCurrentNode(currentTaskName);
+            request.setAction("COMPLETE");
+            remoteStocktakeService.syncWorkflowStatus(request, SecurityConstants.INNER,
+                    "workflow:stocktake:" + processInstanceId + ":complete");
+        }
     }
 
     /**

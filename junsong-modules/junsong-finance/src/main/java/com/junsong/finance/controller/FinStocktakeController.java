@@ -1,21 +1,31 @@
 package com.junsong.finance.controller;
 
 import java.util.List;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.junsong.common.core.constant.SecurityConstants;
+import com.junsong.common.core.domain.R;
+import com.junsong.common.core.idempotency.Idempotent;
+import com.junsong.common.core.idempotency.IdempotencyRetryPolicy;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
+import com.junsong.common.security.annotation.InnerAuth;
 import com.junsong.common.security.annotation.RequiresPermissions;
+import com.junsong.common.core.utils.poi.ExcelUtil;
+import com.junsong.finance.api.domain.StocktakeWorkflowSyncReq;
 import com.junsong.finance.domain.FinStocktake;
+import com.junsong.finance.domain.FinStocktakeItem;
 import com.junsong.finance.domain.vo.StocktakeApprovalRequest;
 import com.junsong.finance.domain.vo.StocktakeAssignRequest;
 import com.junsong.finance.domain.vo.StocktakeCountRequest;
@@ -54,6 +64,7 @@ public class FinStocktakeController extends BaseController {
 
     @RequiresPermissions("finance:stocktake:add")
     @Log(title = "库存盘点-创建", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "stocktake:create", highRisk = true, ttlSeconds = 2592000)
     @PostMapping
     public AjaxResult create(@RequestBody StocktakeCreateRequest request) {
         Long stocktakeId = finStocktakeService.createStocktake(request);
@@ -68,6 +79,30 @@ public class FinStocktakeController extends BaseController {
         return getDataTable(list);
     }
 
+    /**
+     * 导出盘点任务列表
+     */
+    @RequiresPermissions("finance:stocktake:export")
+    @Log(title = "库存盘点-导出", businessType = BusinessType.EXPORT)
+    @PostMapping("/export")
+    public void export(HttpServletResponse response, StocktakeQuery query) {
+        List<FinStocktake> list = finStocktakeService.listStocktakes(query);
+        ExcelUtil<FinStocktake> util = new ExcelUtil<FinStocktake>(FinStocktake.class);
+        util.exportExcel(response, list, "库存盘点数据");
+    }
+
+    /**
+     * 导出盘点任务明细行
+     */
+    @RequiresPermissions("finance:stocktake:export")
+    @Log(title = "库存盘点-明细导出", businessType = BusinessType.EXPORT)
+    @PostMapping("/{stocktakeId}/items/export")
+    public void exportItems(HttpServletResponse response, @PathVariable Long stocktakeId) {
+        List<FinStocktakeItem> list = finStocktakeService.listStocktakeItems(stocktakeId);
+        ExcelUtil<FinStocktakeItem> util = new ExcelUtil<FinStocktakeItem>(FinStocktakeItem.class);
+        util.exportExcel(response, list, "盘点明细数据");
+    }
+
     @RequiresPermissions("finance:stocktake:query")
     @GetMapping("/{stocktakeId}")
     public AjaxResult detail(@PathVariable Long stocktakeId) {
@@ -77,6 +112,7 @@ public class FinStocktakeController extends BaseController {
 
     @RequiresPermissions("finance:stocktake:assign")
     @Log(title = "库存盘点-分配", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "stocktake:assign")
     @PutMapping("/{stocktakeId}/assign")
     public AjaxResult assign(@PathVariable Long stocktakeId,
                               @RequestBody StocktakeAssignRequest request) {
@@ -85,6 +121,7 @@ public class FinStocktakeController extends BaseController {
 
     @RequiresPermissions("finance:stocktake:count")
     @Log(title = "库存盘点-启动", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "stocktake:start", highRisk = true, ttlSeconds = 2592000)
     @PutMapping("/{stocktakeId}/start")
     public AjaxResult start(@PathVariable Long stocktakeId,
                              @org.springframework.web.bind.annotation.RequestParam Integer version) {
@@ -93,6 +130,7 @@ public class FinStocktakeController extends BaseController {
 
     @RequiresPermissions("finance:stocktake:count")
     @Log(title = "库存盘点-行录入", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "stocktake:count", highRisk = true, ttlSeconds = 2592000)
     @PutMapping("/{stocktakeId}/items/{itemId}/count")
     public AjaxResult count(@PathVariable Long stocktakeId,
                              @PathVariable Long itemId,
@@ -106,6 +144,7 @@ public class FinStocktakeController extends BaseController {
      */
     @RequiresPermissions("finance:stocktake:submit")
     @Log(title = "库存盘点-提交", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "stocktake:submit", highRisk = true, ttlSeconds = 2592000)
     @PutMapping("/{stocktakeId}/submit")
     public AjaxResult submit(@PathVariable Long stocktakeId,
                               @org.springframework.web.bind.annotation.RequestParam Integer version) {
@@ -118,6 +157,7 @@ public class FinStocktakeController extends BaseController {
      */
     @RequiresPermissions("finance:stocktake:recount")
     @Log(title = "库存盘点-复盘", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "stocktake:recount", highRisk = true, ttlSeconds = 2592000)
     @PutMapping("/{stocktakeId}/items/{itemId}/recount")
     public AjaxResult recount(@PathVariable Long stocktakeId,
                                @PathVariable Long itemId,
@@ -131,6 +171,7 @@ public class FinStocktakeController extends BaseController {
      */
     @RequiresPermissions("finance:stocktake:approve")
     @Log(title = "库存盘点-审批", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "stocktake:approve", highRisk = true, ttlSeconds = 2592000)
     @PutMapping("/{stocktakeId}/approve")
     public AjaxResult approve(@PathVariable Long stocktakeId,
                                @RequestBody StocktakeApprovalRequest request) {
@@ -143,6 +184,7 @@ public class FinStocktakeController extends BaseController {
      */
     @RequiresPermissions("finance:stocktake:post")
     @Log(title = "库存盘点-过账", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "stocktake:post", highRisk = true, ttlSeconds = 2592000)
     @PutMapping("/{stocktakeId}/post")
     public AjaxResult post(@PathVariable Long stocktakeId,
                            @org.springframework.web.bind.annotation.RequestParam Integer version) {
@@ -155,6 +197,7 @@ public class FinStocktakeController extends BaseController {
      */
     @RequiresPermissions("finance:stocktake:add")
     @Log(title = "库存盘点-取消", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "stocktake:cancel", ttlSeconds = 2592000)
     @PutMapping("/{stocktakeId}/cancel")
     public AjaxResult cancel(@PathVariable Long stocktakeId,
                               @org.springframework.web.bind.annotation.RequestParam Integer version) {
@@ -167,9 +210,23 @@ public class FinStocktakeController extends BaseController {
      */
     @RequiresPermissions("finance:stocktake:reverse")
     @Log(title = "库存盘点-整单冲销", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "stocktake:reverse", highRisk = true, ttlSeconds = 2592000)
     @PutMapping("/{stocktakeId}/reverse")
     public AjaxResult reverse(@PathVariable Long stocktakeId,
                                @RequestBody StocktakeReverseRequest request) {
         return toAjax(finStocktakeService.reverseStocktake(stocktakeId, request));
+    }
+
+    /**
+     * 工作流状态同步（内部端点）。
+     * 由 workflow 模块通过 Feign 回调，更新 process_instance_id 与 current_node。
+     * 不改变盘点状态机，仅用于待办/追踪。
+     */
+    @InnerAuth
+    @Idempotent(scene = "finance:stocktake:workflow-sync", retryPolicy = IdempotencyRetryPolicy.ALLOW_SAME_KEY)
+    @PostMapping("/internal/workflow/sync")
+    public R<Boolean> syncWorkflowStatus(@RequestBody StocktakeWorkflowSyncReq request,
+                                          @RequestHeader(SecurityConstants.FROM_SOURCE) String source) {
+        return R.ok(finStocktakeService.syncWorkflowStatus(request) > 0);
     }
 }

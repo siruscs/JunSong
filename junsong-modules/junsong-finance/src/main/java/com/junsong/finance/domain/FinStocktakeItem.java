@@ -3,6 +3,8 @@ package com.junsong.finance.domain;
 import java.math.BigDecimal;
 import java.util.Date;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.junsong.common.core.annotation.Excel;
+import com.junsong.common.core.annotation.Excel.ColumnType;
 import com.junsong.common.core.web.domain.BaseEntity;
 
 /**
@@ -24,29 +26,49 @@ import com.junsong.common.core.web.domain.BaseEntity;
 public class FinStocktakeItem extends BaseEntity {
     private static final long serialVersionUID = 1L;
 
+    @Excel(name = "行ID", cellType = ColumnType.NUMERIC)
     private Long itemId;
+    @Excel(name = "盘点ID", cellType = ColumnType.NUMERIC)
     private Long stocktakeId;
     private Long tenantId;
+    @Excel(name = "门店ID", cellType = ColumnType.NUMERIC)
     private Long deptId;
+    @Excel(name = "商品ID", cellType = ColumnType.NUMERIC)
     private Long productId;
+    @Excel(name = "商品名称")
     private String productName;
+    @Excel(name = "账面数量", cellType = ColumnType.NUMERIC)
     private Integer expectedQuantity;
+    @Excel(name = "冻结后变动", cellType = ColumnType.NUMERIC)
     private Integer movementQuantityAfterFreeze;
+    @Excel(name = "调整后期望", cellType = ColumnType.NUMERIC)
     private Integer adjustedExpectedQuantity;
+    @Excel(name = "实盘数量", cellType = ColumnType.NUMERIC)
     private Integer actualQuantity;
+    @Excel(name = "复盘数量", cellType = ColumnType.NUMERIC)
     private Integer recountQuantity;
+    @Excel(name = "最终数量", cellType = ColumnType.NUMERIC)
     private Integer finalQuantity;
+    @Excel(name = "差异数量", cellType = ColumnType.NUMERIC)
     private Integer varianceQuantity;
+    @Excel(name = "单位成本")
     private BigDecimal unitCost;
+    @Excel(name = "差异金额")
     private BigDecimal varianceAmount;
+    @Excel(name = "原因编码")
     private String reasonCode;
+    @Excel(name = "原因说明")
     private String reason;
     private String attachments;
+    @Excel(name = "盘点人")
     private String countedBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Excel(name = "盘点时间", width = 30, dateFormat = "yyyy-MM-dd HH:mm:ss")
     private Date countedTime;
+    @Excel(name = "复盘人")
     private String recountedBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Excel(name = "复盘时间", width = 30, dateFormat = "yyyy-MM-dd HH:mm:ss")
     private Date recountedTime;
     private Long stockLedgerId;
     private Long costLedgerId;

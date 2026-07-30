@@ -267,6 +267,7 @@ class StoreHealthThresholdSuggestionTest {
     // ── Fake RemoteUserService ──
 
     static class FakeRemoteUserService implements RemoteUserService {
+        @Override public R<Boolean> isWechatLoginEnabled(Long tenantId, String source) { return R.ok(false); }
         private final List<Long> deptIds;
 
         FakeRemoteUserService(List<Long> deptIds) {

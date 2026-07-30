@@ -53,6 +53,7 @@ import {
   updateBizInstance,
   type LcBizField,
 } from '@/api/lowcode'
+import { getRuntimePage } from '@/api/lowcode/admin'
 import { buildFieldRules, defaultValueFor, evalComputed, parseFieldExt } from './schema'
 
 export interface FieldPermission {
@@ -142,14 +143,28 @@ function buildEmptyModel() {
 async function loadFields() {
   loading.value = true
   try {
-    const res: any = await listBizFields(props.bizCode)
-    allFields.value = res.data || res.rows || []
+    const [res, runtimeRes] = await Promise.all([
+      listBizFields(props.bizCode),
+      getRuntimePage(props.bizCode, 'FORM').catch(() => null),
+    ])
+    const fieldResponse: any = res
+    allFields.value = fieldResponse.data || fieldResponse.rows || []
+    const runtimeFields = runtimeRes?.data?.fields || runtimeRes?.fields
+    if (Array.isArray(runtimeFields) && runtimeFields.length) {
+      const fieldMap = new Map(allFields.value.map((field) => [field.fieldKey, field]))
+      const resolvedFields = runtimeFields
+        .filter((runtimeField: any) => runtimeField.visible !== false)
+        .map((runtimeField: any) => fieldMap.get(runtimeField.fieldKey))
+        .filter(Boolean) as LcBizField[]
+      if (resolvedFields.length) allFields.value = resolvedFields
+    }
     buildEmptyModel()
     if (props.recordId) {
       const detail: any = await getBizInstance(props.bizCode, props.recordId)
       const data = detail.data || {}
       const parsed = data.formData ? JSON.parse(data.formData) : {}
       Object.assign(formModel, parsed)
+      if (!formModel.take_no && data.orderNo) formModel.take_no = data.orderNo
     }
     recalcComputed()
   } finally {

@@ -1,7 +1,9 @@
 package com.junsong.finance.service;
 
 import java.util.List;
+import com.junsong.finance.api.domain.StocktakeWorkflowSyncReq;
 import com.junsong.finance.domain.FinStocktake;
+import com.junsong.finance.domain.FinStocktakeItem;
 import com.junsong.finance.domain.vo.StocktakeApprovalRequest;
 import com.junsong.finance.domain.vo.StocktakeAssignRequest;
 import com.junsong.finance.domain.vo.StocktakeCountRequest;
@@ -199,4 +201,25 @@ public interface IFinStocktakeService {
      * @return 影响行数
      */
     int reverseStocktake(Long stocktakeId, StocktakeReverseRequest request);
+
+    /**
+     * 查询盘点任务明细行列表（用于导出）。
+     *
+     * @param stocktakeId 盘点任务ID
+     * @return 盘点行列表
+     */
+    List<FinStocktakeItem> listStocktakeItems(Long stocktakeId);
+
+    /**
+     * 工作流状态同步（由 workflow 模块通过 Feign 回调）。
+     *
+     * 安全契约：
+     * 1. 仅更新 process_instance_id 和 current_node 字段，不改变状态机
+     * 2. 内部端点（@InnerAuth），不接受外部请求
+     * 3. action=SUBMIT 时回写 process_instance_id；其余 action 仅回写 current_node
+     *
+     * @param req 工作流同步请求
+     * @return 影响行数（>0 表示成功）
+     */
+    int syncWorkflowStatus(StocktakeWorkflowSyncReq req);
 }

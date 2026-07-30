@@ -87,7 +87,10 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
 
     /**
      * 新增进货单
-     * 
+     *
+     * 幂等治理：由 @Idempotent(scene="purchase:create") AOP 切面 + sys_idempotency_record 原子占位 +
+     * fin_purchase.uk_idempotency_key 唯一约束三层兜底，Service 层不再手写查重。
+     *
      * @param finPurchase 进货单
      * @return 结果
      */

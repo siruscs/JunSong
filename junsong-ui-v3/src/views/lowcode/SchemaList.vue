@@ -57,7 +57,8 @@
           min-width="140"
         >
           <template #default="{ row }">
-            <FieldRenderer :field="field" :model-value="parseRow(row)[field.fieldKey]" readonly />
+            <span v-if="field.fieldType === 'subform'" class="lc-subform-summary">{{ rowFieldValue(row, field) }}</span>
+            <FieldRenderer v-else :field="field" :model-value="rowFieldValue(row, field)" :form-values="parseRow(row)" readonly />
           </template>
         </el-table-column>
         <el-table-column label="当前节点" prop="currentTaskName" min-width="140" />
@@ -135,6 +136,9 @@ import {
   type LcBizObject,
 } from '@/api/lowcode'
 import { isTrue, lcCanEdit, lcCanSubmit, lcCanWithdraw, lcFormatDateTime, lcStatusMeta } from './schema'
+import { getRuntimePage } from '@/api/lowcode/admin'
+import { listProductSelector } from '@/api/finance/product'
+import { useSubmitLock } from '@/composables/useSubmitLock'
 
 const props = defineProps<{ bizCode?: string }>()
 const route = useRoute()
@@ -236,6 +240,7 @@ function deleteSavedQuery(name: string) {
 
 const formDialog = reactive<{ visible: boolean; recordId: number | null }>({ visible: false, recordId: null })
 const detailDrawer = reactive<{ visible: boolean; recordId: number | null }>({ visible: false, recordId: null })
+const { execute: executeAction } = useSubmitLock()
 
 // 动作配置
 interface BizAction {
@@ -257,9 +262,20 @@ function isActionVisible(action: BizAction, status: string | undefined): boolean
 }
 
 function visibleActions(status: string | undefined): BizAction[] {
-  return bizActions.value
+  const configured = bizActions.value
     .filter(a => isActionVisible(a, status))
     .sort((a, b) => a.sortOrder - b.sortOrder)
+  const terminalFallback: BizAction[] = []
+  const configuredCodes = new Set(configured.map(action => action.actionCode))
+  if (!configuredCodes.has('VIEW_DETAIL')) terminalFallback.push({ actionCode: 'VIEW_DETAIL', actionName: '查看', actionType: 'VIEW', triggerStatus: '', apiEndpoint: '', buttonStyle: 'primary', buttonIcon: '', sortOrder: 1 })
+  if (!configuredCodes.has('EDIT') && ['DRAFT', 'REJECTED', 'WITHDRAWN'].includes(String(status || '').toUpperCase())) terminalFallback.push({ actionCode: 'EDIT', actionName: '修改', actionType: 'EDIT', triggerStatus: '', apiEndpoint: '', buttonStyle: 'primary', buttonIcon: '', sortOrder: 10 })
+  if (!configuredCodes.has('SUBMIT') && ['DRAFT', 'REJECTED', 'WITHDRAWN'].includes(String(status || '').toUpperCase())) terminalFallback.push({ actionCode: 'SUBMIT', actionName: '重新提交', actionType: 'SUBMIT', triggerStatus: '', apiEndpoint: '', buttonStyle: 'success', buttonIcon: '', sortOrder: 20 })
+  if (status !== 'REJECTED') return [...configured, ...terminalFallback].sort((a, b) => a.sortOrder - b.sortOrder)
+  const codes = new Set([...configured, ...terminalFallback].map(action => action.actionCode))
+  const fallback: BizAction[] = []
+  if (!codes.has('EDIT')) fallback.push({ actionCode: 'EDIT', actionName: '修改', actionType: 'EDIT', triggerStatus: 'REJECTED', apiEndpoint: '', buttonStyle: 'primary', buttonIcon: '', sortOrder: 10 })
+  if (!codes.has('SUBMIT')) fallback.push({ actionCode: 'SUBMIT', actionName: '重新提交', actionType: 'SUBMIT', triggerStatus: 'REJECTED', apiEndpoint: '', buttonStyle: 'success', buttonIcon: '', sortOrder: 20 })
+  return [...configured, ...fallback].sort((a, b) => a.sortOrder - b.sortOrder)
 }
 
 const actionColumnWidth = computed(() => Math.max(320, bizActions.value.length * 80))
@@ -306,6 +322,7 @@ const listFields = computed(() =>
 )
 
 const rowCache = new WeakMap<object, Record<string, any>>()
+const productNameMap = ref<Record<string, string>>({})
 function parseRow(row: LcBizInstance): Record<string, any> {
   if (!row) return {}
   const cached = rowCache.get(row)
@@ -322,13 +339,42 @@ function parseRow(row: LcBizInstance): Record<string, any> {
   return parsed
 }
 
+function rowFieldValue(row: LcBizInstance, field: LcBizField) {
+  const parsed = parseRow(row)
+  if (field.fieldKey === 'take_no') return parsed.take_no || row.orderNo
+  if (field.fieldType === 'subform') {
+    const rows = Array.isArray(parsed[field.fieldKey]) ? parsed[field.fieldKey] : []
+    return rows.map((item: any, index: number) => {
+      const product = item.productName || item.product_name || productNameMap.value[String(item.product_id)] || item.product_id || ('第' + (index + 1) + '行')
+      const quantity = item.actual_quantity ?? item.quantity ?? '-'
+      return product + ' × ' + quantity
+    }).join('；') || '-'
+  }
+  return parsed[field.fieldKey]
+}
+
 async function loadMeta() {
-  const [objRes, fieldRes]: any[] = await Promise.all([
-    getBizObject(bizCode.value),
-    listBizFields(bizCode.value),
-  ])
+  // 普通 Flowable 流程也可能复用列表路由；只有确认存在低代码对象后才请求运行时 Schema，
+  // 避免把 task 等流程标识误报为“未发布页面 Schema”。
+  const objRes: any = await getBizObject(bizCode.value)
   bizObject.value = objRes.data || null
+  if (!bizObject.value) {
+    allFields.value = []
+    return
+  }
+  const [fieldRes, runtimeRes]: any[] = await Promise.all([
+    listBizFields(bizCode.value),
+    getRuntimePage(bizCode.value, 'LIST').catch(() => null),
+  ])
   allFields.value = fieldRes.data || fieldRes.rows || []
+  const runtimeFields = runtimeRes?.data?.fields || runtimeRes?.fields
+  if (Array.isArray(runtimeFields) && runtimeFields.length) {
+    const fieldMap = new Map(allFields.value.map((field) => [field.fieldKey, field]))
+    allFields.value = runtimeFields
+      .filter((runtimeField: any) => runtimeField.visible !== false)
+      .map((runtimeField: any) => fieldMap.get(runtimeField.fieldKey))
+      .filter(Boolean) as LcBizField[]
+  }
 }
 
 async function loadBizActions() {
@@ -343,6 +389,13 @@ async function getList() {
     const res: any = await listBizInstances(bizCode.value, queryParams)
     rows.value = res.rows || res.data || []
     total.value = res.total || 0
+    if (bizCode.value === 'stocktake') {
+      try {
+        const products: any = await listProductSelector()
+        const options = products.data || products.rows || []
+        productNameMap.value = Object.fromEntries(options.map((item: any) => [String(item.productId ?? item.id), item.productName ?? item.name]))
+      } catch { productNameMap.value = {} }
+    }
   } finally {
     loading.value = false
   }
@@ -373,26 +426,32 @@ function handleView(row: LcBizInstance) {
 
 async function handleSubmit(row: LcBizInstance) {
   if (!row.id) return
-  await ElMessageBox.confirm(`确认提交单据「${row.orderNo || row.id}」进入审批流吗？`, '提交审批确认', { type: 'warning' })
-  await submitBizInstance(bizCode.value, row.id)
-  ElMessage.success('流程已发起')
-  await getList()
+  await executeAction(`${bizCode.value}:submit:${row.id}`, async () => {
+    await ElMessageBox.confirm(`确认提交单据「${row.orderNo || row.id}」进入审批流吗？`, '提交审批确认', { type: 'warning' })
+    await submitBizInstance(bizCode.value, row.id!)
+    ElMessage.success('流程已发起')
+    await getList()
+  })
 }
 
 async function handleWithdraw(row: LcBizInstance) {
   if (!row.id) return
-  await ElMessageBox.confirm('撤回后会终止当前流程实例，确认继续吗？', '撤回确认', { type: 'warning' })
-  await withdrawBizInstance(bizCode.value, row.id)
-  ElMessage.success('单据已撤回')
-  await getList()
+  await executeAction(`${bizCode.value}:withdraw:${row.id}`, async () => {
+    await ElMessageBox.confirm('撤回后会终止当前流程实例，确认继续吗？', '撤回确认', { type: 'warning' })
+    await withdrawBizInstance(bizCode.value, row.id!)
+    ElMessage.success('单据已撤回')
+    await getList()
+  })
 }
 
 async function handleDelete(row: LcBizInstance) {
   if (!row.id) return
-  await ElMessageBox.confirm(`确认删除单据「${row.orderNo || row.id}」吗？`, '删除确认', { type: 'warning' })
-  await deleteBizInstance(bizCode.value, row.id)
-  ElMessage.success('删除成功')
-  await getList()
+  await executeAction(`${bizCode.value}:delete:${row.id}`, async () => {
+    await ElMessageBox.confirm(`确认删除单据「${row.orderNo || row.id}」吗？`, '删除确认', { type: 'warning' })
+    await deleteBizInstance(bizCode.value, row.id!)
+    ElMessage.success('删除成功')
+    await getList()
+  })
 }
 
 function goToWorkflow(processInstanceId?: string) {
@@ -406,6 +465,17 @@ async function bootstrap() {
   await loadMeta()
   await loadBizActions()
   await getList()
+  const orderNo = typeof route.query.orderNo === 'string' ? route.query.orderNo : ''
+  if (orderNo) {
+    const row = rows.value.find((item) => item.orderNo === orderNo || String(item.orderNo || '').trim() === orderNo.trim())
+    if (row) {
+      if (route.query.readonly === '1') handleView(row)
+      else if (canEdit(row.workflowStatus)) handleEdit(row)
+      else handleView(row)
+    } else {
+      ElMessage.warning('未找到对应业务单据，请刷新后重试')
+    }
+  }
 }
 
 watch(bizCode, () => bootstrap())

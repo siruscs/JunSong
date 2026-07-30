@@ -56,6 +56,9 @@ public class FinSalePayment extends BaseEntity
     /** 删除标志（0代表存在 2代表删除） */
     private String delFlag;
 
+    /** 幂等键（租户内唯一） */
+    private String idempotencyKey;
+
     public Long getPaymentId()
     {
         return paymentId;
@@ -149,6 +152,16 @@ public class FinSalePayment extends BaseEntity
         this.delFlag = delFlag;
     }
 
+    public String getIdempotencyKey()
+    {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey)
+    {
+        this.idempotencyKey = idempotencyKey;
+    }
+
     @Override
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
@@ -161,6 +174,7 @@ public class FinSalePayment extends BaseEntity
             .append("paymentMethod", getPaymentMethod())
             .append("paymentDate", getPaymentDate())
             .append("delFlag", getDelFlag())
+            .append("idempotencyKey", getIdempotencyKey())
             .append("createBy", getCreateBy())
             .append("createTime", getCreateTime())
             .append("updateBy", getUpdateBy())

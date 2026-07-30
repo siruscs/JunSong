@@ -327,7 +327,13 @@ class FinAuditTrailTest {
         @Override public FinAccountingPeriod selectPreviousPeriod(Long deptId, Date startTime, Long periodId) { return null; }
         @Override public FinAccountingPeriod selectNextPeriod(Long deptId, Date startTime, Long periodId) { return null; }
         @Override public int updateStartTimeOnly(Long periodId, Date startTime, Date endTime, String updateBy, String remark) { return 0; }
+
+    @Override
+    public com.junsong.finance.domain.FinAccountingPeriod selectCurrentPeriodByDeptIdForUpdate(Long tenantId, Long deptId) {
+        return selectCurrentPeriodByDeptId(deptId);
     }
+
+}
 
     static class FakeProfitShareServiceForAudit implements com.junsong.finance.service.IFinProfitShareRecordService {
         @Override public com.junsong.finance.domain.FinProfitShareRecord selectFinProfitShareRecordByShareId(Long id) { return null; }

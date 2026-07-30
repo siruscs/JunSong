@@ -231,14 +231,15 @@ function handleSaveCount(row: StocktakeItemVO) {
     ElMessage.warning('请输入实际数量')
     return
   }
-  if (!validateReasonRequired(row, state.reasonCode)) {
+  const reasonCode = state.reasonCode || row.reasonCode || null
+  if (!validateReasonRequired(row, reasonCode)) {
     ElMessage.warning('方差不为 0 时请选择原因代码')
     return
   }
   savingMap[row.itemId] = true
   const request: StocktakeCountRequest = {
     actualQuantity: state.actualQuantity,
-    reasonCode: state.reasonCode || undefined,
+    reasonCode: reasonCode || undefined,
     reason: state.reason || undefined,
     idempotencyKey: buildIdempotencyKey(row.productId, row.version, 'count'),
     version: row.version,
@@ -255,6 +256,7 @@ function handleSaveRecount(row: StocktakeItemVO) {
   savingMap[row.itemId] = true
   const request: StocktakeRecountRequest = {
     recountQuantity: state.recountQuantity,
+    reasonCode: state.reasonCode || row.reasonCode || undefined,
     reason: state.reason || undefined,
     idempotencyKey: buildIdempotencyKey(row.productId, row.version, 'recount'),
     version: row.version,

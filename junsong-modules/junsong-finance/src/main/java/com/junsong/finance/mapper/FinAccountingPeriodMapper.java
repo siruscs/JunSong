@@ -10,6 +10,8 @@ public interface FinAccountingPeriodMapper
 {
     public FinAccountingPeriod selectFinAccountingPeriodByPeriodId(Long periodId);
     public FinAccountingPeriod selectCurrentPeriodByDeptId(Long deptId);
+    FinAccountingPeriod selectCurrentPeriodByDeptIdForUpdate(@Param("tenantId") Long tenantId,
+            @Param("deptId") Long deptId);
     public FinAccountingPeriod selectLatestCarriedPeriodByDeptId(Long deptId);
     public List<FinAccountingPeriod> selectFinAccountingPeriodList(FinAccountingPeriod finAccountingPeriod);
     public int insertFinAccountingPeriod(FinAccountingPeriod finAccountingPeriod);

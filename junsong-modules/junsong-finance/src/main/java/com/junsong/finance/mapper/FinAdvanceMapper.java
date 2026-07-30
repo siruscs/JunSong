@@ -62,7 +62,7 @@ public interface FinAdvanceMapper
 
     /**
      * 校验借支单号是否唯一
-     * 
+     *
      * @param advanceNo 借支单号
      * @return 结果
      */

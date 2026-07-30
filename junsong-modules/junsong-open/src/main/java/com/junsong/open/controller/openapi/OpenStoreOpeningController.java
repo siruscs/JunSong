@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 
@@ -68,6 +69,7 @@ public class OpenStoreOpeningController extends BaseController
      * 新增门店开店申请
      */
     @PostMapping
+    @Idempotent(scene = "open:store-opening:add", highRisk = true)
     public AjaxResult addStoreOpening(@RequestBody Map<String, Object> params)
     {
         return restTemplate.postForObject(SYSTEM_BASE + "/storeOpening", params, AjaxResult.class);
@@ -77,6 +79,7 @@ public class OpenStoreOpeningController extends BaseController
      * 提交审批
      */
     @PostMapping("/{id}/submit")
+    @Idempotent(scene = "open:store-opening:submit", highRisk = true)
     public AjaxResult submitStoreOpening(@PathVariable("id") Long id, @RequestBody(required = false) Map<String, Object> params)
     {
         return restTemplate.postForObject(SYSTEM_BASE + "/storeOpening/" + id + "/submit", params, AjaxResult.class);
@@ -86,6 +89,7 @@ public class OpenStoreOpeningController extends BaseController
      * 撤回申请
      */
     @PostMapping("/{id}/withdraw")
+    @Idempotent(scene = "open:store-opening:withdraw", highRisk = true)
     public AjaxResult withdrawStoreOpening(@PathVariable("id") Long id, @RequestBody(required = false) Map<String, Object> params)
     {
         return restTemplate.postForObject(SYSTEM_BASE + "/storeOpening/" + id + "/withdraw", params, AjaxResult.class);

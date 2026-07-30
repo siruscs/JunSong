@@ -11,3 +11,4 @@ com.junsong.system.api.factory.RemoteOperationAlertFallbackFactory
 com.junsong.member.api.factory.RemoteRefundApplyFallbackFactory
 com.junsong.member.api.factory.RemoteMemberGrowthFallbackFactory
 com.junsong.member.api.factory.RemoteMemberPredictionFallbackFactory
+com.junsong.finance.api.factory.RemoteStocktakeFallbackFactory

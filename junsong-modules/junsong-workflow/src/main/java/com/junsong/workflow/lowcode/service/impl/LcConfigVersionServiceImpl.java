@@ -13,6 +13,7 @@ import com.junsong.workflow.lowcode.domain.LcBizPostAction;
 import com.junsong.workflow.lowcode.domain.dto.LcBizConfigDTO;
 import com.junsong.workflow.lowcode.mapper.LcBizConfigSnapshotMapper;
 import com.junsong.workflow.lowcode.mapper.LcBizObjectMapper;
+import com.junsong.workflow.lowcode.metadata.LcMetadataSchemaValidator;
 import com.junsong.workflow.lowcode.service.LcConfigVersionService;
 import com.junsong.workflow.lowcode.service.LcMetadataService;
 import com.junsong.workflow.lowcode.service.LcNativeTableGenerator;
@@ -40,6 +41,9 @@ public class LcConfigVersionServiceImpl implements LcConfigVersionService
     @Autowired
     private LcNativeTableGenerator nativeTableGenerator;
 
+    @Autowired
+    private LcMetadataSchemaValidator metadataSchemaValidator;
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public LcBizConfigSnapshot publish(String bizCode, String publishRemark, String operator)
@@ -50,6 +54,9 @@ public class LcConfigVersionServiceImpl implements LcConfigVersionService
         {
             throw new IllegalArgumentException("业务配置不存在: " + bizCode);
         }
+
+        // 发布必须再次校验完整聚合配置，避免历史脏数据绕过保存校验进入运行态。
+        metadataSchemaValidator.validate(config);
 
         // 2. 计算新版本号
         Integer maxVersion = snapshotMapper.selectMaxVersionByBizCode(bizCode);
@@ -134,7 +141,7 @@ public class LcConfigVersionServiceImpl implements LcConfigVersionService
     @Override
     public String getLatestPublishedConfigJson(String bizCode)
     {
-        Integer maxVersion = snapshotMapper.selectMaxVersionByBizCode(bizCode);
+        Integer maxVersion = snapshotMapper.selectMaxPublishedVersionByBizCode(bizCode);
         if (maxVersion == null || maxVersion == 0)
         {
             return null;

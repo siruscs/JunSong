@@ -230,7 +230,21 @@ export const dynamicRoutes: any[] = [
         path: 'detail/:id(\\d+)',
         component: () => import('@/views/finance/stocktake/detail.vue'),
         name: 'FinanceStocktakeDetail',
-        meta: { title: '盘点详情', activeMenu: '/finance/stocktake/index' },
+        meta: { title: '盘点详情', activeMenu: '/finance/report/stock/stocktake' },
+      },
+    ],
+  },
+  {
+    // 期初库存详情页（隐藏路由，从列表页跳转）
+    path: '/finance/stockInit',
+    component: () => import('@/layout/index.vue'),
+    meta: { hidden: true, permissions: ['finance:stockInit:query'] },
+    children: [
+      {
+        path: 'detail/:id(\\d+)',
+        component: () => import('@/views/finance/stockInit/detail.vue'),
+        name: 'FinanceStockInitDetail',
+        meta: { title: '期初库存详情', activeMenu: '/finance/stockInit/index' },
       },
     ],
   },

@@ -19,6 +19,7 @@ import com.junsong.common.core.domain.R;
 import com.junsong.common.core.utils.StringUtils;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.InnerAuth;
@@ -99,6 +100,7 @@ public class SysDeptController extends BaseController
      */
     @RequiresPermissions("system:dept:add")
     @Log(title = "部门管理", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "system:dept:add")
     @PostMapping
     public AjaxResult add(@Validated @RequestBody SysDept dept)
     {
@@ -115,6 +117,7 @@ public class SysDeptController extends BaseController
      */
     @RequiresPermissions("system:dept:edit")
     @Log(title = "部门管理", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:dept:edit")
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody SysDept dept)
     {
@@ -141,6 +144,7 @@ public class SysDeptController extends BaseController
      */
     @RequiresPermissions("system:dept:edit")
     @Log(title = "保存部门排序", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:dept:update-sort")
     @PutMapping("/updateSort")
     public AjaxResult updateSort(@RequestBody Map<String, String> params)
     {

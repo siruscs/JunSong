@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -112,6 +113,38 @@ public class GlobalExceptionHandler
         }
         log.error("请求参数类型不匹配'{}',发生系统异常.", requestURI, e);
         return wrapTraceId(AjaxResult.error(String.format("请求参数类型不匹配，参数[%s]要求类型为：'%s'，但输入值为：'%s'", e.getName(), e.getRequiredType().getName(), value)));
+    }
+
+    /**
+     * 唯一键冲突异常（DB 层幂等兜底）
+     *
+     * 当高风险业务表的幂等键唯一索引拦截到重复提交时，返回友好的业务结果而非 500 错误。
+     * 幂等键冲突意味着 AOP 层（@Idempotent）未能拦截（如 Redis 故障、极端并发），
+     * DB 唯一索引作为最后一道防线阻止了重复写入。
+     */
+    @ExceptionHandler(DuplicateKeyException.class)
+    public AjaxResult handleDuplicateKeyException(DuplicateKeyException e, HttpServletRequest request)
+    {
+        String requestURI = request.getRequestURI();
+        String message = e.getMessage() != null ? e.getMessage() : "";
+        // 幂等键唯一索引名称
+        boolean isIdempotencyConflict = message.contains("uk_stock_ledger_idempotency_key")
+                || message.contains("uk_accounting_period_carry_forward_key")
+                || message.contains("uk_cost_accounting_idempotency_key")
+                || message.contains("uk_investor_payment_idempotency_key")
+                || message.contains("uk_reverse_idempotency_key")
+                || message.contains("uk_idempotency_tenant_scene_key")
+                || message.contains("idempotency_key")
+                || message.contains("reverse_idempotency_key")
+                || message.contains("carry_forward_idempotency_key");
+        if (isIdempotencyConflict)
+        {
+            log.warn("请求地址'{}',幂等键唯一索引拦截重复提交（DB 层兜底生效）。", requestURI);
+            return wrapTraceId(AjaxResult.error(HttpStatus.CONFLICT, "操作已处理，请勿重复提交"));
+        }
+        // 非幂等键的唯一键冲突（如业务编码冲突），由 Service 层重试逻辑处理
+        log.error("请求地址'{}',唯一键冲突'{}'", requestURI, message);
+        return wrapTraceId(AjaxResult.error("数据唯一性冲突，请稍后重试"));
     }
 
     /**

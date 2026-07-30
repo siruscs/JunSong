@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
@@ -68,6 +69,7 @@ public class MemPointsGoodsController extends BaseController {
      */
     @RequiresPermissions("member:pointsGoods:add")
     @Log(title = "积分物品", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "member:points-goods:add")
     @PostMapping
     public AjaxResult add(@RequestBody MemPointsGoods memPointsGoods) {
         if (memPointsGoods.getGoodsCode() == null || memPointsGoods.getGoodsCode().isEmpty()) {
@@ -102,6 +104,7 @@ public class MemPointsGoodsController extends BaseController {
      */
     @RequiresPermissions("member:pointsGoods:edit")
     @Log(title = "积分物品", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "member:pointsGoods:update")
     @PutMapping
     public AjaxResult edit(@RequestBody MemPointsGoods memPointsGoods) {
         if (!memPointsGoodsService.checkMemPointsGoodsNoUnique(memPointsGoods)) {
@@ -116,6 +119,7 @@ public class MemPointsGoodsController extends BaseController {
      */
     @RequiresPermissions("member:pointsGoods:remove")
     @Log(title = "积分物品", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "member:pointsGoods:delete")
     @DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable Long[] ids) {
         return toAjax(memPointsGoodsService.deleteMemPointsGoodsByIds(ids));

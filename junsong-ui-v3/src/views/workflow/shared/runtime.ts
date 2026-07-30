@@ -51,14 +51,21 @@ export function safeWorkflowText(value?: string | number | null) {
 const workflowBusinessRouteRegistry: Record<string, { path: string; queryKey: string }> = {
   store_opening_apply: { path: '/system/storeOpening', queryKey: 'orderNo' },
   refund_apply: { path: '/member/refund', queryKey: 'refundNo' },
+  gift_apply: { path: '/lowcode/gift_apply', queryKey: 'orderNo' },
+  stocktake_apply: { path: '/lowcode/stocktake', queryKey: 'orderNo' },
 }
 
 export function resolveWorkflowBusinessTarget(processDefinitionKey?: string | null, businessKey?: string | null) {
   const route = processDefinitionKey ? workflowBusinessRouteRegistry[processDefinitionKey] : undefined
-  if (!route || !businessKey) return undefined
+  if (!businessKey || !processDefinitionKey) return undefined
+  // 未登记的通用低代码流程仍必须能回到原业务单据，尤其是驳回后的发起人修改入口。
+  const fallback = route || (/^[a-zA-Z0-9_-]+$/.test(processDefinitionKey)
+    ? { path: `/lowcode/${processDefinitionKey}`, queryKey: 'orderNo' }
+    : undefined)
+  if (!fallback) return undefined
   return {
-    path: route.path,
-    query: { [route.queryKey]: businessKey },
+    path: fallback.path,
+    query: { [fallback.queryKey]: businessKey },
   }
 }
 

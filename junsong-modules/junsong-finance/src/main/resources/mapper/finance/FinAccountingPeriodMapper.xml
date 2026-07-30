@@ -11,6 +11,8 @@
         <result property="breakEvenTime" column="break_even_time"/>
         <result property="carryForwardTime" column="carry_forward_time"/>
         <result property="carryForwardBy" column="carry_forward_by"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="carryForwardIdempotencyKey" column="carry_forward_idempotency_key"/>
         <result property="totalVerifiedExpense" column="total_verified_expense"/>
         <result property="totalPurchase" column="total_purchase"/>
         <result property="totalSalePayment" column="total_sale_payment"/>
@@ -50,6 +52,8 @@
             <if test="breakEvenTime != null">break_even_time=#{breakEvenTime},</if>
             <if test="carryForwardTime != null">carry_forward_time=#{carryForwardTime},</if>
             <if test="carryForwardBy != null">carry_forward_by=#{carryForwardBy},</if>
+            <if test="tenantId != null">tenant_id=#{tenantId},</if>
+            <if test="carryForwardIdempotencyKey != null">carry_forward_idempotency_key=#{carryForwardIdempotencyKey},</if>
             <if test="totalVerifiedExpense != null">total_verified_expense=#{totalVerifiedExpense},</if>
             <if test="totalPurchase != null">total_purchase=#{totalPurchase},</if>
             <if test="totalSalePayment != null">total_sale_payment=#{totalSalePayment},</if>
@@ -179,6 +183,17 @@
         where p.dept_id = #{deptId} and p.del_flag = '0' and p.status = '0'
         order by p.start_time desc
         limit 1
+    </select>
+
+    <select id="selectCurrentPeriodByDeptIdForUpdate" resultMap="FinAccountingPeriodResult">
+        SELECT p.* FROM fin_accounting_period p
+        WHERE p.tenant_id = #{tenantId}
+          AND p.dept_id = #{deptId}
+          AND p.del_flag = '0'
+          AND p.status = '0'
+        ORDER BY p.start_time DESC
+        LIMIT 1
+        FOR UPDATE
     </select>
 
     <select id="selectLatestCarriedPeriodByDeptId" parameterType="Long" resultMap="FinAccountingPeriodResult">

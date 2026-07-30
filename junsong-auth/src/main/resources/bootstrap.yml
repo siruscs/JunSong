@@ -22,3 +22,8 @@ spring:
       - optional:nacos:application-${SPRING_PROFILES_ACTIVE:dev}.yml
       - optional:nacos:redis-${SPRING_PROFILES_ACTIVE:dev}.yml
       - optional:nacos:junsong-auth-${SPRING_PROFILES_ACTIVE:dev}.yml
+
+# 认证服务无数据源，禁用幂等框架（避免 IdempotencyAspect 因缺少 IdempotencyRecordService 而启动失败）
+junsong:
+  idempotency:
+    enabled: false

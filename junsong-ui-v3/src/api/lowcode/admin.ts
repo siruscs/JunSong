@@ -39,9 +39,30 @@ export function getBizConfig(bizCode: string) {
   return request({ url: '/workflow/lowcode/meta/config/' + bizCode, method: 'get' })
 }
 
+// 读取后端统一装配的页面运行时模型
+export function getRuntimePage(bizCode: string, pageType: 'FORM' | 'LIST' | 'DETAIL') {
+  return request({
+    url: '/workflow/lowcode/meta/runtime/' + bizCode + '/' + pageType,
+    method: 'get',
+  })
+}
+
 // 事务性保存完整配置
 export function saveBizConfig(data: any) {
-  return request({ url: '/workflow/lowcode/meta/config', method: 'post', data })
+  // 配置保存是用户明确发起的新编辑动作；每次点击都生成新键，
+  // 避免上一次业务失败留下的可重试键阻塞下一次已修改的配置。
+  return request({
+    url: '/workflow/lowcode/meta/config',
+    method: 'post',
+    data,
+    idempotencyScene: 'lowcode-config-save',
+    idempotencyNewKey: true,
+  })
+}
+
+// 发布前只读校验，不写入数据库
+export function validateBizConfig(data: any) {
+  return request({ url: '/workflow/lowcode/meta/config/validate', method: 'post', data })
 }
 
 // 删除业务对象

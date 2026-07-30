@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.junsong.common.core.domain.R;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.redis.service.RedisService;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -369,6 +370,7 @@ public class SysDashboardController
 
     @PostMapping("/governance/action")
     @RequiresPermissions("system:dashboard:governance")
+    @Idempotent(scene = "system:dashboard:governance")
     public R<String> recordGovernanceAction(@RequestBody SysGovernanceTaskLog log)
     {
         if (log.getTaskType() == null || log.getTaskType().trim().isEmpty())

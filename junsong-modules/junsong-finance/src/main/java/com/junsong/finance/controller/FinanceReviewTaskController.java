@@ -4,6 +4,7 @@ import com.junsong.common.core.domain.R;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.security.annotation.RequiresPermissions;
 import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.finance.domain.FinanceReviewTask;
@@ -95,6 +96,7 @@ public class FinanceReviewTaskController extends BaseController {
      * 从诊断结果生成复盘任务
      */
     @RequiresPermissions("finance:reviewTask:add")
+    @Idempotent(scene = "reviewTask:generate")
     @PostMapping("/generate")
     public AjaxResult generate(@RequestBody ReportQueryParams params) {
         List<Long> deptIds = params.getDeptIds();
@@ -115,6 +117,7 @@ public class FinanceReviewTaskController extends BaseController {
      * 从会员动作生成复盘任务
      */
     @RequiresPermissions("finance:reviewTask:add")
+    @Idempotent(scene = "reviewTask:createFromMemberAction")
     @PostMapping("/from-member-action")
     public AjaxResult createFromMemberAction(@RequestBody Map<String, Object> req) {
         if (!SecurityUtils.isAdmin()) {
@@ -130,6 +133,7 @@ public class FinanceReviewTaskController extends BaseController {
      * 标记任务为处理中
      */
     @RequiresPermissions("finance:reviewTask:edit")
+    @Idempotent(scene = "reviewTask:markInProgress")
     @PostMapping("/{taskId}/in-progress")
     public AjaxResult markInProgress(@PathVariable Long taskId) {
         if (!canAccessTask(taskId)) return AjaxResult.error("任务不存在或无权操作");
@@ -143,6 +147,7 @@ public class FinanceReviewTaskController extends BaseController {
      * 标记任务为已完成
      */
     @RequiresPermissions("finance:reviewTask:edit")
+    @Idempotent(scene = "reviewTask:markDone")
     @PostMapping("/{taskId}/done")
     public AjaxResult markDone(@PathVariable Long taskId, @RequestBody Map<String, String> body) {
         if (!canAccessTask(taskId)) return AjaxResult.error("任务不存在或无权操作");
@@ -157,6 +162,7 @@ public class FinanceReviewTaskController extends BaseController {
      * 标记任务为已忽略
      */
     @RequiresPermissions("finance:reviewTask:edit")
+    @Idempotent(scene = "reviewTask:markIgnored")
     @PostMapping("/{taskId}/ignored")
     public AjaxResult markIgnored(@PathVariable Long taskId, @RequestBody Map<String, String> body) {
         if (!canAccessTask(taskId)) return AjaxResult.error("任务不存在或无权操作");
@@ -171,6 +177,7 @@ public class FinanceReviewTaskController extends BaseController {
      * 重开已完成或已忽略的任务
      */
     @RequiresPermissions("finance:reviewTask:edit")
+    @Idempotent(scene = "reviewTask:reopen")
     @PostMapping("/{taskId}/reopen")
     public AjaxResult reopen(@PathVariable Long taskId, @RequestBody Map<String, String> body) {
         if (!canAccessTask(taskId)) return AjaxResult.error("任务不存在或无权操作");
@@ -220,6 +227,7 @@ public class FinanceReviewTaskController extends BaseController {
      * R13-E: 从逾期应收生成催收复盘任务
      */
     @RequiresPermissions("finance:reviewTask:add")
+    @Idempotent(scene = "reviewTask:generateReceivableCollection")
     @PostMapping("/generate/receivable-collection")
     public AjaxResult generateReceivableCollectionTasks(@RequestBody Map<String, Object> body) {
         Long deptId = SecurityUtils.isAdmin()

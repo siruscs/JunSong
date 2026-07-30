@@ -347,7 +347,13 @@ class FinStockLedgerServiceImplTest {
             return 0;
         }
 
+
+    @Override
+    public int countDownstreamLedgersAfterTime(Long tenantId, Long deptId, Long productId, java.util.Date afterTime) {
+        return 0;
     }
+
+}
 
     static class FakeStockCostService implements IStockCostService {
         @Override

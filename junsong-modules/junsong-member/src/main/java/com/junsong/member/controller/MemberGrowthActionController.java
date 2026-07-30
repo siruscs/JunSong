@@ -1,5 +1,6 @@
 package com.junsong.member.controller;
 
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -67,6 +68,7 @@ public class MemberGrowthActionController extends BaseController
      * 生成增长动作
      */
     @RequiresPermissions("member:growthAction:generate")
+    @Idempotent(scene = "member:growth-action:generate")
     @PostMapping("/growth-action/generate")
     public AjaxResult generate(@RequestBody GrowthActionGenerateParams params)
     {
@@ -85,6 +87,7 @@ public class MemberGrowthActionController extends BaseController
      * 执行增长动作
      */
     @RequiresPermissions("member:growthAction:execute")
+    @Idempotent(scene = "member:growthAction:execute", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/growth-action/execute")
     public AjaxResult execute(@RequestBody GrowthActionExecuteParams params)
     {

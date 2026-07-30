@@ -1,6 +1,6 @@
 <template>
   <div class="workflow-runtime-page app-container">
-    <section class="runtime-overview">
+    <section class="runtime-overview runtime-overview--compact">
       <el-card v-for="card in overviewCards" :key="card.key" class="runtime-overview-card" shadow="hover">
         <div class="runtime-overview-card__label">{{ card.label }}</div>
         <div class="runtime-overview-card__value">{{ card.value }}</div>
@@ -9,6 +9,9 @@
     </section>
 
     <el-card class="runtime-table-card" shadow="never">
+      <div class="runtime-table-card__toolbar">
+        <el-button type="primary" @click="router.push('/workflow/start')">发起新流程</el-button>
+      </div>
       <el-tabs v-model="activeTab" @tab-change="handleTabChange">
         <el-tab-pane label="待办任务" name="todo" />
         <el-tab-pane label="已办任务" name="done" />
@@ -83,7 +86,7 @@
       >
         <template v-if="activeTab !== 'applied'">
           <el-table-column v-if="activeTab === 'todo'" type="selection" width="48" :selectable="canSelectRow" />
-          <el-table-column label="任务名称" min-width="220">
+          <el-table-column label="流程名称" min-width="220">
             <template #default="{ row }">
               <div v-if="row.__isGroupHeader" class="runtime-group-header">
                 <el-icon><Folder /></el-icon>
@@ -91,7 +94,7 @@
                 <el-tag size="small" type="info" effect="plain">{{ row.__groupCount }} 项</el-tag>
               </div>
               <div v-else class="runtime-title">
-                <el-button link type="primary" @click="openTaskDetail(row)">{{ safeWorkflowText(row.taskName) }}</el-button>
+                <el-button link type="primary" @click="openTaskDetail(row)">{{ safeWorkflowText(row.processDefinitionName || row.processName || row.taskName) }}</el-button>
                 <el-tag v-if="row.delegated" size="small" type="warning" style="margin-left: 6px">[代]{{ row.delegatorName }}</el-tag>
                 <div class="runtime-title__sub">{{ row.taskId }}</div>
               </div>
@@ -132,14 +135,6 @@
             <template #default="{ row }">
               <el-button link type="primary" @click="openTaskDetail(row)">详情</el-button>
               <el-button
-                v-if="canOpenBusiness(row)"
-                link
-                type="primary"
-                @click="goToBusiness(row)"
-              >
-                业务单
-              </el-button>
-              <el-button
                 v-if="activeTab === 'todo' && canClaim(row)"
                 link
                 type="primary"
@@ -152,31 +147,10 @@
                 v-if="activeTab === 'todo'"
                 link
                 type="success"
-                @click="openApproveDialog(row)"
+                @click="openTaskDetail(row)"
                 v-hasPermi="['workflow:task:approve']"
               >
-                审批通过
-              </el-button>
-              <el-button
-                v-if="activeTab === 'todo'"
-                link
-                type="danger"
-                @click="openRejectDialog(row)"
-                v-hasPermi="['workflow:task:reject']"
-              >
-                驳回
-              </el-button>
-              <el-button
-                v-if="activeTab === 'todo'"
-                link
-                type="warning"
-                @click="openTransferDialog(row)"
-                v-hasPermi="['workflow:task:delegate']"
-              >
-                转办
-              </el-button>
-              <el-button link type="info" @click="goToHistory(row.processInstanceId)" v-hasPermi="['workflow:history:list']">
-                历史
+                查看表单并审批
               </el-button>
             </template>
           </el-table-column>
@@ -191,7 +165,7 @@
                 <el-tag size="small" type="info" effect="plain">{{ row.__groupCount }} 项</el-tag>
               </div>
               <div v-else class="runtime-title">
-                <el-button link type="primary" @click="goToHistory(row.processInstanceId)">
+                <el-button link type="primary" @click="openTaskDetail(row)">
                   {{ safeWorkflowText(row.processDefinitionName || row.processDefinitionKey) }}
                 </el-button>
                 <div class="runtime-title__sub">{{ row.processInstanceId }}</div>
@@ -226,8 +200,14 @@
           </el-table-column>
           <el-table-column label="操作" min-width="180" fixed="right">
             <template #default="{ row }">
-              <el-button link type="primary" @click="goToHistory(row.processInstanceId)">历史</el-button>
-              <el-button v-if="canOpenBusiness(row)" link type="primary" @click="goToBusiness(row)">业务单</el-button>
+              <el-button
+                v-if="activeTab === 'applied' && String(row.workflowStatus || '').toUpperCase() === 'REJECTED' && canOpenBusiness(row)"
+                link
+                type="primary"
+                @click="goToBusinessEdit(row)"
+              >
+                修改/重新提交
+              </el-button>
             </template>
           </el-table-column>
         </template>
@@ -236,7 +216,7 @@
       <el-empty v-if="!loading && !filteredRows.length" description="当前分页暂无任务数据" />
     </el-card>
 
-    <el-drawer v-model="detailDrawer.visible" title="任务详情" size="720px">
+    <el-drawer v-model="detailDrawer.visible" title="任务详情" size="88vw" class="workflow-task-drawer">
       <el-skeleton :loading="detailDrawer.loading" animated :rows="10">
         <template #default>
           <template v-if="detailDrawer.data">
@@ -264,16 +244,27 @@
               </el-descriptions-item>
             </el-descriptions>
 
-            <el-divider content-position="left">流程变量摘要</el-divider>
-            <el-descriptions :column="1" border v-if="taskVariableEntries.length">
-              <el-descriptions-item v-for="entry in taskVariableEntries" :key="entry.key" :label="entry.key">
-                {{ entry.value }}
-              </el-descriptions-item>
-            </el-descriptions>
-            <el-empty v-else description="当前任务暂无流程变量" :image-size="72" />
+            <template v-if="businessFields.length">
+              <el-divider content-position="left">业务表单</el-divider>
+              <el-form label-width="120px" class="workflow-business-form">
+                <el-row :gutter="16">
+                  <el-col v-for="field in businessFields" :key="field.fieldKey" :span="businessFieldSpan(field)">
+                    <el-form-item :label="field.fieldLabel">
+                      <FieldRenderer :model-value="field.fieldKey === 'take_no' ? (detailDrawer.data.businessForm?.take_no ?? detailDrawer.data.businessForm?.orderNo ?? detailDrawer.data.businessKey) : detailDrawer.data.businessForm?.[field.fieldKey]" :field="field" :form-values="detailDrawer.data.businessForm || {}" :readonly="true" />
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+              </el-form>
+            </template>
+            <el-empty v-else description="暂无已发布的业务表单配置或业务数据" :image-size="72" />
 
-            <el-divider content-position="left">原始变量 JSON</el-divider>
-            <el-input :model-value="rawVariablesText" type="textarea" :rows="8" readonly />
+            <el-divider content-position="left">流程图</el-divider>
+            <WorkflowTrackingViewer
+              :xml="trackingXml"
+              :completed-activity-ids="completedActivityIds"
+              :active-activity-ids="activeActivityIds"
+              :loading="detailDrawer.loading"
+            />
 
             <el-divider content-position="left">附件</el-divider>
             <div v-if="detailDrawer.data.attachments?.length">
@@ -307,6 +298,22 @@
                 </div>
               </el-timeline-item>
             </el-timeline>
+            <el-timeline v-else-if="historyActivities.length" class="comment-timeline">
+              <el-timeline-item
+                v-for="activity in historyActivities"
+                :key="`${activity.activityId}-${activity.startTime}`"
+                :timestamp="`${formatWorkflowDateTime(activity.startTime)} → ${formatWorkflowDateTime(activity.endTime)}`"
+                placement="top"
+              >
+                <div class="comment-item">
+                  <div class="comment-head">
+                    <span class="comment-user">{{ safeWorkflowText(activity.activityName || activity.activityId) }}</span>
+                    <el-tag size="small" effect="light">{{ safeWorkflowText(activity.assignee || '系统') }}</el-tag>
+                  </div>
+                  <div class="comment-msg">{{ activity.endTime ? '已完成' : '处理中' }}</div>
+                </div>
+              </el-timeline-item>
+            </el-timeline>
             <el-empty v-else description="暂无审批历史" :image-size="72" />
 
             <!-- 会签进度 -->
@@ -335,16 +342,13 @@
               </div>
             </template>
 
-            <div class="runtime-drawer-actions">
+            <div class="runtime-drawer-actions workflow-task-drawer__actions">
               <el-button
                 v-if="canOpenBusiness(detailDrawer.data)"
                 type="primary"
                 @click="goToBusiness(detailDrawer.data)"
               >
                 查看业务单
-              </el-button>
-              <el-button type="primary" plain @click="goToHistory(detailDrawer.data.processInstanceId)">
-                查看历史记录
               </el-button>
               <template v-if="activeTab === 'todo' && detailDrawer.data.assignee">
                 <el-divider direction="vertical" />
@@ -360,6 +364,9 @@
                 </el-button>
                 <el-button type="danger" plain @click="openRejectFromDetail">
                   驳回
+                </el-button>
+                <el-button type="warning" plain @click="openTransferDialog(detailDrawer.data as any)" v-hasPermi="['workflow:task:delegate']">
+                  转办
                 </el-button>
                 <el-button type="warning" plain @click="openAddSignDialog">
                   加签
@@ -415,7 +422,15 @@
     <el-dialog v-model="rejectDialog.visible" title="驳回任务" width="600px">
       <el-form label-width="100px" class="runtime-form-margin">
         <el-form-item label="驳回目标" required>
-          <el-radio-group v-model="rejectDialog.form.targetActivityId">
+          <el-radio-group v-model="rejectDialog.form.targetType" style="margin-bottom: 12px">
+            <el-radio-button label="INITIATOR_MODIFY">驳回给发起人修改</el-radio-button>
+            <el-radio-button label="RETURN_TO_NODE" :disabled="rejectDialog.targets.length === 0">退回指定节点</el-radio-button>
+          </el-radio-group>
+          <el-radio-group v-if="rejectDialog.form.targetType === 'INITIATOR_MODIFY'" v-model="rejectDialog.form.resubmitMode" style="margin-bottom: 12px">
+            <el-radio-button label="FULL_RESTART">重新走完整流程</el-radio-button>
+            <el-radio-button label="RETURN_TO_NODE">重新提交到驳回节点</el-radio-button>
+          </el-radio-group>
+          <el-radio-group v-if="rejectDialog.form.targetType === 'RETURN_TO_NODE'" v-model="rejectDialog.form.targetActivityId">
             <el-radio-button
               v-for="t in rejectDialog.targets"
               :key="t.activityId"
@@ -424,8 +439,8 @@
               {{ t.typeLabel }}（{{ t.activityName }}）
             </el-radio-button>
           </el-radio-group>
-          <div v-if="rejectDialog.targets.length === 0 && !rejectDialog.loading" class="text-muted" style="margin-top: 8px;">
-            暂无可驳回目标，将终止流程实例
+          <div v-if="rejectDialog.targets.length === 0 && !rejectDialog.loading && rejectDialog.form.targetType === 'RETURN_TO_NODE'" class="text-muted" style="margin-top: 8px;">
+            暂无可退回的历史节点，请选择驳回给发起人修改
           </div>
         </el-form-item>
         <el-form-item label="驳回意见">
@@ -450,7 +465,7 @@
       <template #footer>
         <el-button @click="rejectDialog.visible = false">取消</el-button>
         <el-button type="danger" @click="submitReject">
-          {{ rejectDialog.form.targetActivityId ? '确认驳回' : '确认终止流程' }}
+          确认驳回
         </el-button>
       </template>
     </el-dialog>
@@ -590,6 +605,10 @@ import { Refresh, Document, Folder, Check } from '@element-plus/icons-vue'
 import RightToolbar from '@/components/RightToolbar/index.vue'
 import FileUpload from '@/components/FileUpload/index.vue'
 import SchemaForm from '@/views/lowcode/SchemaForm.vue'
+import FieldRenderer from '@/views/lowcode/fields/FieldRenderer.vue'
+import { getRuntimePage } from '@/api/lowcode/admin'
+import { resolveWorkflowBizCode } from '@/utils/workflowBiz'
+import { getBizConfig } from '@/api/lowcode/admin'
 import { resetForm as resetFormUtil } from '@/utils/junsong'
 import {
   approveWorkflowTask,
@@ -610,10 +629,13 @@ import {
 import { urgeWorkflowTask } from '@/api/workflow/urge'
 import { ccWorkflowTask } from '@/api/workflow/cc'
 import { addSignWorkflowTask } from '@/api/workflow/addsign'
-import { listWorkflowHistoryComments } from '@/api/workflow/history'
+import { listWorkflowHistoryActivities, listWorkflowHistoryComments, type WorkflowHistoryActivityRow } from '@/api/workflow/history'
 import { listUser } from '@/api/system/user'
 import type { WorkflowTodoTaskRow } from '@/api/workflow/task'
 import { formatWorkflowDateTime, formatWorkflowDuration, mapWorkflowCommentType, mapWorkflowTaskTabStatus, resolveWorkflowBusinessTarget, safeWorkflowText } from '../shared/runtime'
+import { parseFieldExt } from '@/views/lowcode/schema'
+import WorkflowTrackingViewer from '../history/WorkflowTrackingViewer.vue'
+import { getWorkflowDefinitionXml } from '@/api/workflow/definition'
 
 type TaskTab = 'todo' | 'done' | 'applied'
 type TaskRow = (WorkflowTodoTaskRow | WorkflowDoneTaskRow | WorkflowAppliedTaskRow) & Record<string, any>
@@ -651,6 +673,8 @@ const rejectDialog = reactive({
   form: {
     comment: '',
     targetActivityId: '',
+    targetType: 'INITIATOR_MODIFY' as 'INITIATOR_MODIFY' | 'RETURN_TO_NODE',
+    resubmitMode: 'RETURN_TO_NODE' as 'FULL_RESTART' | 'RETURN_TO_NODE',
     attachments: [] as string[],
   },
 })
@@ -697,6 +721,11 @@ const batchApproveDialog = reactive({
 })
 
 const historyComments = ref<any[]>([])
+const historyActivities = ref<WorkflowHistoryActivityRow[]>([])
+const businessFields = ref<any[]>([])
+const trackingXml = ref('')
+const activeActivityIds = ref<string[]>([])
+const completedActivityIds = computed(() => historyActivities.value.filter((item) => item.endTime).map((item) => item.activityId))
 
 const resubmitDialog = reactive({
   visible: false,
@@ -846,16 +875,6 @@ const overviewCards = computed(() => {
   ]
 })
 
-const taskVariableEntries = computed(() => {
-  const variables = detailDrawer.data?.variables || {}
-  return Object.entries(variables).map(([key, value]) => ({
-    key,
-    value: typeof value === 'object' ? JSON.stringify(value) : safeWorkflowText(value as any),
-  }))
-})
-
-const rawVariablesText = computed(() => JSON.stringify(detailDrawer.data?.variables || {}, null, 2))
-
 function canClaim(row: WorkflowTodoTaskRow) {
   return !row.assignee
 }
@@ -902,6 +921,16 @@ function priorityTagLabel(priority?: number | null) {
   if (priority >= 75) return '特急'
   if (priority >= 50) return '紧急'
   return '普通'
+}
+
+function businessFieldSpan(field: any): number {
+  const ext = parseFieldExt(field)
+  const span = Number(ext.span)
+  if (span >= 4 && span <= 24) return span
+  if (['textarea', 'richtext', 'address', 'file', 'image', 'subform'].includes(String(field.fieldType || '').toLowerCase())) {
+    return 24
+  }
+  return 12
 }
 
 function openBatchApproveDialog() {
@@ -955,11 +984,31 @@ function handleTabChange() {
 }
 
 async function openTaskDetail(row: TaskRow) {
+  // 已办任务已从运行时任务表结束，不能再调用待办详情接口；统一进入历史详情。
+  if (activeTab.value !== 'todo') {
+    goToHistory(row.processInstanceId)
+    return
+  }
   detailDrawer.visible = true
   detailDrawer.loading = true
   historyComments.value = []
+  historyActivities.value = []
+  trackingXml.value = ''
+  activeActivityIds.value = []
   try {
     detailDrawer.data = await getWorkflowTaskDetail(row.taskId).then((res) => res.data)
+    businessFields.value = []
+    const bizCode = await resolveWorkflowBizCode(detailDrawer.data?.processDefinitionKey)
+    if (bizCode) {
+      try {
+        const config: any = await getRuntimePage(bizCode, 'FORM')
+        businessFields.value = ((config?.data || config)?.fields || [])
+          .filter((field: any) => field.stage !== 'FULFILLMENT')
+          .sort((a: any, b: any) => (a.orderNum || 0) - (b.orderNum || 0))
+      } catch {
+        businessFields.value = []
+      }
+    }
     const inlineComments = (detailDrawer.data as any)?.comments
     if (Array.isArray(inlineComments) && inlineComments.length) {
       historyComments.value = inlineComments
@@ -969,6 +1018,23 @@ async function openTaskDetail(row: TaskRow) {
         historyComments.value = res.data || []
       } catch {
         historyComments.value = []
+      }
+    }
+    if (row.processInstanceId) {
+      try {
+        const res: any = await listWorkflowHistoryActivities(row.processInstanceId)
+        historyActivities.value = res.data || []
+      } catch {
+        historyActivities.value = []
+      }
+    }
+    activeActivityIds.value = historyActivities.value.filter((item) => !item.endTime).map((item) => item.activityId)
+    if (detailDrawer.data.processDefinitionId) {
+      try {
+        const xmlRes: any = await getWorkflowDefinitionXml(detailDrawer.data.processDefinitionId)
+        trackingXml.value = xmlRes.data?.xml || ''
+      } catch {
+        trackingXml.value = ''
       }
     }
   } finally {
@@ -989,6 +1055,12 @@ function canOpenBusiness(row?: Partial<TaskRow> | null) {
 }
 
 function goToBusiness(row?: Partial<TaskRow> | null) {
+  const target = resolveWorkflowBusinessTarget(row?.processDefinitionKey, row?.businessKey)
+  if (!target) return
+  router.push({ ...target, query: { ...(target as any).query, readonly: '1' } })
+}
+
+function goToBusinessEdit(row?: Partial<TaskRow> | null) {
   const target = resolveWorkflowBusinessTarget(row?.processDefinitionKey, row?.businessKey)
   if (!target) return
   router.push(target)
@@ -1015,7 +1087,7 @@ function isRejectedToInitiator(task: WorkflowTaskDetail | null): boolean {
 
 function resolveResubmitTarget(task: WorkflowTaskDetail | null) {
   if (!task) return null
-  const variables = (task.variables || {}) as Record<string, any>
+  const variables = (task.businessForm || {}) as Record<string, any>
   const bizCode = variables.bizCode || variables.biz_code || task.processDefinitionKey
   let recordId: any = variables.recordId ?? variables.record_id ?? variables.businessId ?? variables.business_id
   if (recordId == null && task.businessKey) {
@@ -1087,6 +1159,8 @@ async function openRejectDialog(row: WorkflowTodoTaskRow) {
   rejectDialog.row = row
   rejectDialog.form.comment = ''
   rejectDialog.form.targetActivityId = ''
+  rejectDialog.form.targetType = 'INITIATOR_MODIFY'
+  rejectDialog.form.resubmitMode = 'FULL_RESTART'
   rejectDialog.form.attachments = []
   rejectDialog.targets = []
   rejectDialog.loading = true
@@ -1124,6 +1198,8 @@ async function openRejectFromDetail() {
   rejectDialog.row = row as WorkflowTodoTaskRow
   rejectDialog.form.comment = ''
   rejectDialog.form.targetActivityId = ''
+  rejectDialog.form.targetType = 'INITIATOR_MODIFY'
+  rejectDialog.form.resubmitMode = 'FULL_RESTART'
   rejectDialog.form.attachments = []
   rejectDialog.targets = []
   rejectDialog.loading = true
@@ -1171,22 +1247,25 @@ async function submitApprove() {
 
 async function submitReject() {
   if (!rejectDialog.row) return
-  const hasTarget = !!rejectDialog.form.targetActivityId
+  const returnToNode = rejectDialog.form.targetType === 'RETURN_TO_NODE'
+  const hasTarget = returnToNode && !!rejectDialog.form.targetActivityId
   const confirmText = hasTarget
     ? `确认驳回至【${rejectDialog.targets.find((t: any) => t.activityId === rejectDialog.form.targetActivityId)?.activityName || rejectDialog.form.targetActivityId}】吗？`
-    : '未选择驳回目标，将终止整个流程实例，确认继续吗？'
+    : '确认驳回给发起人修改，并允许修改后重新提交吗？'
   await ElMessageBox.confirm(confirmText, '驳回确认', {
     type: 'warning',
-    confirmButtonText: hasTarget ? '确认驳回' : '确认终止',
+    confirmButtonText: '确认驳回',
     cancelButtonText: '取消',
   })
   await rejectWorkflowTask(rejectDialog.row.taskId, {
     comment: rejectDialog.form.comment || undefined,
-    targetActivityId: rejectDialog.form.targetActivityId || undefined,
+    targetActivityId: hasTarget ? rejectDialog.form.targetActivityId : undefined,
+    targetType: rejectDialog.form.targetType,
+    resubmitMode: rejectDialog.form.resubmitMode,
     attachments: buildAttachmentsPayload(rejectDialog.form.attachments),
   })
   rejectDialog.visible = false
-  ElMessage.success(hasTarget ? '任务已驳回至指定节点' : '任务已驳回，流程已终止')
+  ElMessage.success(hasTarget ? '任务已驳回至指定节点' : '任务已驳回给发起人修改')
   loadCurrentTab()
 }
 
@@ -1283,9 +1362,34 @@ onMounted(() => {
 }
 
 .runtime-overview {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
+}
+
+.runtime-overview--compact {
+  gap: 12px;
+}
+
+.runtime-overview--compact :deep(.el-card__body) {
+  padding: 14px 16px;
+}
+
+.runtime-overview--compact .runtime-overview-card__value {
+  margin-top: 4px;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.runtime-overview--compact .runtime-overview-card__hint {
+  margin-top: 4px;
+}
+
+.runtime-table-card__toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
 }
 
 .runtime-overview-card__label {
@@ -1318,8 +1422,35 @@ onMounted(() => {
 
 .runtime-drawer-actions {
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   justify-content: flex-end;
   margin-top: 16px;
+}
+
+:deep(.workflow-task-drawer .el-drawer__body) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
+}
+
+:deep(.workflow-task-drawer .el-skeleton) {
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+  padding: 20px 24px 92px;
+}
+
+.workflow-task-drawer__actions {
+  position: sticky;
+  bottom: -1px;
+  z-index: 5;
+  margin: 24px -24px -92px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--el-border-color-lighter);
+  background: var(--el-bg-color);
+  box-shadow: 0 -4px 12px rgb(0 0 0 / 6%);
 }
 
 .runtime-form-margin {

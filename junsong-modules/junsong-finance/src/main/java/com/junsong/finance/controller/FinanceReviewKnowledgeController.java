@@ -4,6 +4,7 @@ import com.junsong.common.core.domain.R;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.security.annotation.RequiresPermissions;
 import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.finance.domain.FinanceReviewKnowledge;
@@ -62,6 +63,7 @@ public class FinanceReviewKnowledgeController extends BaseController {
      * 新增知识
      */
     @RequiresPermissions("finance:reviewKnowledge:add")
+    @Idempotent(scene = "reviewKnowledge:create")
     @PostMapping
     public AjaxResult add(@RequestBody FinanceReviewKnowledge knowledge) {
         knowledgeService.addKnowledge(knowledge);
@@ -72,6 +74,7 @@ public class FinanceReviewKnowledgeController extends BaseController {
      * 更新知识
      */
     @RequiresPermissions("finance:reviewKnowledge:edit")
+    @Idempotent(scene = "reviewKnowledge:update")
     @PutMapping
     public AjaxResult edit(@RequestBody FinanceReviewKnowledge knowledge) {
         knowledgeService.updateKnowledge(knowledge);
@@ -82,6 +85,7 @@ public class FinanceReviewKnowledgeController extends BaseController {
      * 从复盘任务沉淀知识
      */
     @RequiresPermissions("finance:reviewKnowledge:add")
+    @Idempotent(scene = "reviewKnowledge:createFromTask")
     @PostMapping("/from-task/{taskId}")
     public AjaxResult createFromTask(@PathVariable Long taskId, @RequestBody Map<String, String> body) {
         FinanceReviewKnowledge knowledge = knowledgeService.createFromTask(taskId, body);

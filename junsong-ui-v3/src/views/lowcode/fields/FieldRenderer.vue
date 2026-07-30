@@ -3,7 +3,7 @@
   <div v-show="isVisible" class="lc-field-root">
 
   <!-- 只读展示模式（详情页） -->
-  <template v-if="readonly">
+  <template v-if="readonly && field.fieldType !== 'subform'">
     <span class="lc-field-readonly">{{ displayText }}</span>
   </template>
 
@@ -80,7 +80,7 @@
 
   <!-- 系统数据引用：人员 -->
   <el-select
-    v-else-if="field.fieldType === 'sys-ref' && ext.source === 'user'"
+    v-else-if="field.fieldType === 'sys-ref' && isUserRef"
     v-model="proxyValue"
     :multiple="!!ext.multiple"
     filterable
@@ -111,7 +111,7 @@
 
   <!-- 系统数据引用：角色 / 岗位 -->
   <el-select
-    v-else-if="field.fieldType === 'sys-ref' && (ext.source === 'role' || ext.source === 'post')"
+    v-else-if="field.fieldType === 'sys-ref' && (ext.source === 'role' || ext.source === 'post' || ext.source === 'product')"
     v-model="proxyValue"
     :multiple="!!ext.multiple"
     filterable
@@ -299,6 +299,7 @@ import SubformRenderer from './SubformRenderer.vue'
 import MapPicker from '@/components/MapPicker/index.vue'
 import { useDict } from '@/composables/useDict'
 import { listUser } from '@/api/system/user'
+import { listProductSelector } from '@/api/finance/product'
 import { useLowcodeRefDataStore } from '@/stores/lowcodeRefData'
 import type { LcBizField } from '@/api/lowcode'
 import { parseFieldExt } from '../schema'
@@ -403,12 +404,12 @@ const refLoading = ref(false)
 const deptTreeLocal = ref<any[]>([])
 
 async function searchUsers(keyword?: string) {
-  if (props.field.fieldType !== 'sys-ref' || ext.value.source !== 'user') return
+  if (props.field.fieldType !== 'sys-ref' || !isUserRef.value) return
   refLoading.value = true
   try {
     const res: any = await listUser({ userName: keyword, pageNum: 1, pageSize: 20 })
     const rows = res.rows || res.data || []
-    const valueField = ext.value.valueField || 'userName'
+    const valueField = ext.value.valueField || (props.field.componentType === 'user-select' ? 'userId' : 'userName')
     const labelField = ext.value.labelField || 'nickName'
     refOptions.value = rows.map((r: any) => ({ label: r[labelField] ?? r.userName, value: r[valueField] }))
   } finally {
@@ -426,6 +427,20 @@ async function loadPostOptions() {
   refOptions.value = refDataStore.postList.map((r: any) => ({ label: r.postName, value: ext.value.valueField === 'postId' ? r.postId : r.postCode }))
 }
 
+async function loadProductOptions() {
+  refLoading.value = true
+  try {
+    const res: any = await listProductSelector()
+    const rows = res.data || res.rows || []
+    refOptions.value = rows.map((r: any) => ({
+      label: r.productName ?? r.name ?? String(r.productId),
+      value: r.productId,
+    }))
+  } finally {
+    refLoading.value = false
+  }
+}
+
 async function loadDeptTree() {
   await refDataStore.loadDeptTree()
   deptTreeLocal.value = refDataStore.deptTree
@@ -435,12 +450,13 @@ onMounted(() => {
   if (props.field.fieldType === 'region' || props.field.fieldType === 'address') {
     refDataStore.loadRegionTree()
   }
-  if (props.readonly || props.field.fieldType !== 'sys-ref') return
+  if (props.field.fieldType !== 'sys-ref') return
   const source = ext.value.source
   if (source === 'dept') loadDeptTree()
   else if (source === 'role') loadRoleOptions()
   else if (source === 'post') loadPostOptions()
-  else if (source === 'user' && props.modelValue) searchUsers()
+  else if (source === 'product') loadProductOptions()
+  else if (isUserRef.value && props.modelValue) searchUsers()
 })
 
 // ===== 复合字段：region / address / geo =====
@@ -561,6 +577,7 @@ function labelPathFromCascader(options: any[], codes: string[] | null): string {
 
 // ===== 只读展示文本 =====
 const displayText = computed(() => formatDisplay(props.field, props.modelValue, dictOptions.value, refOptions.value))
+const isUserRef = computed(() => ext.value.source === 'user' || props.field.componentType === 'user-select')
 
 function formatDisplay(field: LcBizField, value: any, dicts: any[], refs: any[]): string {
   if (value === null || value === undefined || value === '') return '-'
@@ -587,13 +604,31 @@ function formatDisplay(field: LcBizField, value: any, dicts: any[], refs: any[])
     case 'file':
     case 'image':
       return Array.isArray(value) ? `${value.length} 个文件` : '1 个文件'
+    case 'subform':
+      return Array.isArray(value)
+        ? value.map((row: any, index: number) => `${row.productName || row.product_id || `第${index + 1}行`}：${row.actual_quantity ?? '-'}`).join('；') || '-'
+        : String(value)
     case 'sys-ref': {
       const hit = refs.find((r) => String(r.value) === String(value))
-      return hit ? hit.label : String(value)
+      if (hit) return hit.label
+      if (parseFieldExt(field).source === 'dept') {
+        const dept = findTreeOption(deptTreeLocal.value, value)
+        if (dept) return dept.label || dept.deptName || String(value)
+      }
+      return String(value)
     }
     default:
       return String(value)
   }
+}
+
+function findTreeOption(nodes: any[], value: any): any | null {
+  for (const node of nodes || []) {
+    if (String(node.id ?? node.value ?? node.deptId) === String(value)) return node
+    const child = findTreeOption(node.children, value)
+    if (child) return child
+  }
+  return null
 }
 </script>
 

@@ -8,8 +8,9 @@ import org.apache.ibatis.annotations.Param;
  */
 public interface WfNotificationMapper
 {
-    @Insert("INSERT INTO sys_notification(user_id, title, content, type, link_url, biz_id, is_read, create_time) " +
-            "VALUES(#{userId}, #{title}, #{content}, #{type}, #{linkUrl}, #{bizId}, '0', NOW())")
+    @Insert("INSERT IGNORE INTO sys_notification(user_id, title, content, type, link_url, biz_id, is_read, create_time) " +
+            "VALUES(#{userId}, #{title}, #{content}, #{type}, #{linkUrl}, " +
+            "#{bizId}, '0', NOW())")
     int insertNotification(@Param("userId") Long userId,
                            @Param("title") String title,
                            @Param("content") String content,

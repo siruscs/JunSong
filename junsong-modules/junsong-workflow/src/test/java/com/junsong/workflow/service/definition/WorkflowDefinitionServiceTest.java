@@ -12,6 +12,8 @@ import com.junsong.workflow.controller.dto.definition.DeployDefinitionReq;
 import com.junsong.workflow.controller.dto.definition.DeployDefinitionResp;
 import com.junsong.workflow.controller.dto.definition.ValidateDefinitionReq;
 import com.junsong.workflow.lowcode.service.BpmnTimerAssembleService;
+import com.junsong.workflow.lowcode.service.BpmnMultiInstanceAssembleService;
+import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.DeploymentBuilder;
@@ -23,6 +25,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -43,15 +46,20 @@ class WorkflowDefinitionServiceTest
             """;
 
     private RepositoryService repositoryService;
+    private ProcessEngine processEngine;
     private BpmnTimerAssembleService bpmnTimerAssembleService;
+    private BpmnMultiInstanceAssembleService bpmnMultiInstanceAssembleService;
     private WorkflowDefinitionService service;
 
     @BeforeEach
     void setUp()
     {
         repositoryService = mock(RepositoryService.class);
+        processEngine = mock(ProcessEngine.class);
         bpmnTimerAssembleService = mock(BpmnTimerAssembleService.class);
-        service = new WorkflowDefinitionService(repositoryService, bpmnTimerAssembleService);
+        bpmnMultiInstanceAssembleService = mock(BpmnMultiInstanceAssembleService.class);
+        service = new WorkflowDefinitionService(repositoryService, processEngine, bpmnTimerAssembleService,
+                bpmnMultiInstanceAssembleService);
     }
 
     @Test
@@ -63,6 +71,32 @@ class WorkflowDefinitionServiceTest
                 () -> service.validate(request));
 
         assertEquals("BPMN XML 不能为空", exception.getMessage());
+    }
+
+    @Test
+    void validateRejectsDirectVariableAccessInGatewayCondition()
+    {
+        String xml = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                             targetNamespace="Examples">
+                  <process id="stocktake_apply" name="库存盘点申请">
+                    <startEvent id="start" />
+                    <sequenceFlow id="flow1" sourceRef="start" targetRef="gateway" />
+                    <exclusiveGateway id="gateway" />
+                    <sequenceFlow id="flow2" sourceRef="gateway" targetRef="end">
+                      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${needRecount == true}]]></conditionExpression>
+                    </sequenceFlow>
+                    <endEvent id="end" />
+                  </process>
+                </definitions>
+                """;
+
+        ServiceException exception = assertThrows(ServiceException.class,
+                () -> service.validate(new ValidateDefinitionReq(xml, "stocktake_apply", "库存盘点申请")));
+
+        assertEquals("网关条件表达式禁止直接读取变量: needRecount，请使用 execution.getVariable('needRecount')", exception.getMessage());
     }
 
     @Test
@@ -115,6 +149,7 @@ class WorkflowDefinitionServiceTest
         when(definition.getVersion()).thenReturn(5);
         // BPMN 定时器装配 mock（返回原 XML，不做修改）
         when(bpmnTimerAssembleService.assembleTimers(VALID_XML, "leave_apply")).thenReturn(VALID_XML);
+        when(bpmnMultiInstanceAssembleService.assembleMultiInstance(VALID_XML, "leave_apply")).thenReturn(VALID_XML);
 
         DeployDefinitionResp response = service.deploy(new DeployDefinitionReq(VALID_XML, "leave_apply", "请假", "请假流程", null));
 
@@ -155,5 +190,25 @@ class WorkflowDefinitionServiceTest
 
         assertEquals("def-1", response.get(0).definitionId());
         assertEquals("leave_apply", response.get(0).processKey());
+    }
+
+    @Test
+    void deleteDefinitionRejectsDeploymentWithMultipleDefinitions()
+    {
+        ProcessDefinitionQuery requireQuery = mock(ProcessDefinitionQuery.class);
+        ProcessDefinitionQuery countQuery = mock(ProcessDefinitionQuery.class);
+        ProcessDefinition definition = mock(ProcessDefinition.class);
+        when(repositoryService.createProcessDefinitionQuery()).thenReturn(requireQuery, countQuery);
+        when(requireQuery.processDefinitionId("def-1")).thenReturn(requireQuery);
+        when(requireQuery.singleResult()).thenReturn(definition);
+        when(definition.getDeploymentId()).thenReturn("dep-1");
+        when(countQuery.deploymentId("dep-1")).thenReturn(countQuery);
+        when(countQuery.count()).thenReturn(2L);
+
+        ServiceException exception = assertThrows(ServiceException.class,
+                () -> service.deleteDefinition("def-1", false));
+
+        assertEquals("该部署包含 2 个流程定义，禁止按部署删除；请先拆分部署后再删除单个流程", exception.getMessage());
+        verify(repositoryService, never()).deleteDeployment("dep-1", false);
     }
 }

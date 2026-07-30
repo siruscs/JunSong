@@ -3,6 +3,7 @@ package com.junsong.finance.controller;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.security.annotation.RequiresPermissions;
 import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.finance.domain.vo.ReceivableCollectionSyncParams;
@@ -46,6 +47,7 @@ public class ReceivableCollectionController extends BaseController {
     }
 
     @RequiresPermissions("finance:receivableCollection:sync")
+    @Idempotent(scene = "receivableCollection:sync")
     @PostMapping("/receivable-collection/sync")
     public AjaxResult sync(@RequestBody(required = false) ReceivableCollectionSyncParams params) {
         int count = receivableCollectionService.syncFromReceivables(scoped(params));
@@ -53,6 +55,7 @@ public class ReceivableCollectionController extends BaseController {
     }
 
     @RequiresPermissions("finance:receivableCollection:edit")
+    @Idempotent(scene = "receivableCollection:follow")
     @PostMapping("/receivable-collection/{collectionId}/follow")
     public AjaxResult follow(@PathVariable Long collectionId, @RequestBody ReceivableCollectionUpdateParams params) {
         if (!receivableCollectionService.canAccess(collectionId, SecurityUtils.getDeptId())) {

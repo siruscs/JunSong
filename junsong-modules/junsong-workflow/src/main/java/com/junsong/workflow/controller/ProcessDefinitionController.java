@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.junsong.common.core.domain.R;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.core.exception.ServiceException;
 import com.junsong.workflow.controller.dto.definition.DefinitionSummaryResp;
 import com.junsong.workflow.controller.dto.definition.DefinitionXmlResp;
@@ -94,7 +95,7 @@ public class ProcessDefinitionController
         }
     }
 
-    @PreAuthorize("@ss.hasPermi('workflow:definition:export')")
+    @PreAuthorize("@ss.hasPermi('workflow:definition:export') or @ss.hasPermi('workflow:task:list') or @ss.hasPermi('workflow:instance:start')")
     @GetMapping("/{id}/xml")
     public R<DefinitionXmlResp> xml(@PathVariable("id") String id)
     {
@@ -109,6 +110,7 @@ public class ProcessDefinitionController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:definition:deploy')")
+    @Idempotent(scene = "workflow:definition:deploy", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/deploy")
     public R<DeployDefinitionResp> deploy(@RequestBody DeployDefinitionReq request)
     {
@@ -116,6 +118,7 @@ public class ProcessDefinitionController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:definition:edit')")
+    @Idempotent(scene = "workflow:definition:suspend")
     @PostMapping("/{id}/suspend")
     public R<Void> suspend(@PathVariable("id") String id)
     {
@@ -124,6 +127,7 @@ public class ProcessDefinitionController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:definition:edit')")
+    @Idempotent(scene = "workflow:definition:activate")
     @PostMapping("/{id}/activate")
     public R<Void> activate(@PathVariable("id") String id)
     {
@@ -132,6 +136,18 @@ public class ProcessDefinitionController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:definition:remove')")
+    @Idempotent(scene = "workflow:definition:delete")
+    @DeleteMapping("/{id}")
+    public R<Void> deleteDefinition(
+            @PathVariable("id") String id,
+            @RequestParam(defaultValue = "false") Boolean cascade)
+    {
+        workflowDefinitionService.deleteDefinition(id, cascade);
+        return R.ok();
+    }
+
+    @PreAuthorize("@ss.hasPermi('workflow:definition:remove')")
+    @Idempotent(scene = "workflow:definition:delete-deployment")
     @DeleteMapping("/deployment/{deploymentId}")
     public R<Void> deleteDeployment(
             @PathVariable("deploymentId") String deploymentId,

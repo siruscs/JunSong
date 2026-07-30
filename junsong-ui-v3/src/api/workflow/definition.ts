@@ -119,3 +119,11 @@ export function deleteWorkflowDeployment(deploymentId: string, cascade = false) 
     params: { cascade },
   })
 }
+
+export function deleteWorkflowDefinition(definitionId: string, cascade = false) {
+  return request({
+    url: `/workflow/definition/${definitionId}`,
+    method: 'delete',
+    params: { cascade },
+  })
+}

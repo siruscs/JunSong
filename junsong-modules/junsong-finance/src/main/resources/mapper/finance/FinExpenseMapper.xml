@@ -20,6 +20,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="verifyBy" column="verify_by" />
         <result property="verifyTime" column="verify_time" />
         <result property="attachments" column="attachments" />
+        <result property="idempotencyKey" column="idempotency_key" />
         <result property="delFlag" column="del_flag" />
         <result property="createBy" column="create_by" />
         <result property="createTime" column="create_time" />
@@ -29,7 +30,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
     
     <sql id="selectFinExpenseVo">
-        select e.expense_id, e.dept_id, e.period_id, e.expense_no, e.expense_date, e.expense_type, e.expense_content, e.payment_method, e.expense_amount, e.advance_id, e.status, e.verify_by, e.verify_time, e.attachments, e.del_flag, e.create_by, e.create_time, e.update_by, e.update_time, e.remark,
+        select e.expense_id, e.dept_id, e.period_id, e.expense_no, e.expense_date, e.expense_type, e.expense_content, e.payment_method, e.expense_amount, e.advance_id, e.status, e.verify_by, e.verify_time, e.attachments, e.idempotency_key, e.del_flag, e.create_by, e.create_time, e.update_by, e.update_time, e.remark,
                a.advance_no
         from fin_expense e
         left join fin_advance a on e.advance_id = a.advance_id
@@ -147,6 +148,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="verifyBy != null">verify_by,</if>
             <if test="verifyTime != null">verify_time,</if>
             <if test="attachments != null">attachments,</if>
+            <if test="idempotencyKey != null and idempotencyKey != ''">idempotency_key,</if>
             <if test="delFlag != null">del_flag,</if>
             <if test="createBy != null">create_by,</if>
             create_time,
@@ -166,6 +168,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="verifyBy != null">#{verifyBy},</if>
             <if test="verifyTime != null">#{verifyTime},</if>
             <if test="attachments != null">#{attachments},</if>
+            <if test="idempotencyKey != null and idempotencyKey != ''">#{idempotencyKey},</if>
             <if test="delFlag != null">#{delFlag},</if>
             <if test="createBy != null">#{createBy},</if>
             sysdate(),

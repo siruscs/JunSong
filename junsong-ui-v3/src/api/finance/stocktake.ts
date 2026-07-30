@@ -122,6 +122,7 @@ export interface StocktakeCountRequest {
 
 export interface StocktakeRecountRequest {
   recountQuantity: number
+  reasonCode?: string
   reason?: string
   idempotencyKey: string
   version: number

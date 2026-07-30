@@ -31,6 +31,10 @@ public class FinAccountingPeriod extends BaseEntity
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date carryForwardTime;
     private String carryForwardBy;
+    /** 租户ID（多租户隔离） */
+    private Long tenantId;
+    /** 结转/回退幂等键（租户+门店+动作+期间内唯一）：DB 唯一索引 uk_accounting_period_carry_forward_key 兜底 */
+    private String carryForwardIdempotencyKey;
     private BigDecimal totalVerifiedExpense;
     private BigDecimal totalPurchase;
     private BigDecimal totalSalePayment;
@@ -60,6 +64,10 @@ public class FinAccountingPeriod extends BaseEntity
     public void setCarryForwardTime(Date carryForwardTime) { this.carryForwardTime = carryForwardTime; }
     public String getCarryForwardBy() { return carryForwardBy; }
     public void setCarryForwardBy(String carryForwardBy) { this.carryForwardBy = carryForwardBy; }
+    public Long getTenantId() { return tenantId; }
+    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
+    public String getCarryForwardIdempotencyKey() { return carryForwardIdempotencyKey; }
+    public void setCarryForwardIdempotencyKey(String carryForwardIdempotencyKey) { this.carryForwardIdempotencyKey = carryForwardIdempotencyKey; }
     public BigDecimal getTotalVerifiedExpense() { return totalVerifiedExpense; }
     public void setTotalVerifiedExpense(BigDecimal totalVerifiedExpense) { this.totalVerifiedExpense = totalVerifiedExpense; }
     public BigDecimal getTotalPurchase() { return totalPurchase; }

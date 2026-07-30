@@ -120,10 +120,15 @@
             >
               运行任务
             </el-button>
-            <el-button link type="info" @click="goToHistory(row)" v-hasPermi="['workflow:history:list']">
-              历史
-            </el-button>
             <el-button v-if="canOpenBusiness(row)" link type="primary" @click="goToBusiness(row)">业务单</el-button>
+            <el-button
+              v-if="!isRunning(row) && ['REJECTED', 'WITHDRAWN'].includes(String(row.workflowStatus || '').toUpperCase()) && canOpenBusiness(row)"
+              link
+              type="primary"
+              @click="goToBusiness(row)"
+            >
+              修改/重新提交
+            </el-button>
             <el-button
               v-if="isRunning(row)"
               link
@@ -149,7 +154,7 @@
       <el-empty v-if="!loading && !filteredList.length" description="暂无流程实例数据" />
     </el-card>
 
-    <el-drawer v-model="detailDrawer.visible" title="流程实例详情" size="680px">
+    <el-drawer v-model="detailDrawer.visible" title="流程实例详情" size="88vw">
       <el-skeleton :loading="detailDrawer.loading" animated :rows="8">
         <template #default>
           <el-descriptions v-if="detailDrawer.data" :column="2" border>
@@ -195,6 +200,20 @@
             </el-descriptions-item>
           </el-descriptions>
 
+          <el-divider content-position="left">业务表单</el-divider>
+          <div v-if="detailDrawer.data.businessFields.length" class="runtime-business-form">
+            <el-form label-position="top">
+              <el-row :gutter="16">
+                <el-col v-for="field in detailDrawer.data.businessFields" :key="field.fieldKey" :span="businessFieldSpan(field)">
+                  <el-form-item :label="field.fieldLabel || field.fieldKey">
+                  <FieldRenderer :model-value="field.fieldKey === 'take_no' ? (detailDrawer.data.businessForm?.take_no ?? detailDrawer.data.businessForm?.orderNo ?? detailDrawer.data.instance?.businessKey) : detailDrawer.data.businessForm?.[field.fieldKey]" :field="field" :form-values="detailDrawer.data.businessForm || {}" :readonly="true" />
+                  </el-form-item>
+                </el-col>
+              </el-row>
+            </el-form>
+          </div>
+          <el-empty v-else description="暂无配置化业务表单" :image-size="60" />
+
           <el-divider content-position="left">运行中任务</el-divider>
           <div v-if="detailDrawer.tasks.length" class="runtime-task-list">
             <div v-for="task in detailDrawer.tasks" :key="task.taskId" class="runtime-task-item">
@@ -216,7 +235,6 @@
             >
               查看业务单
             </el-button>
-            <el-button type="primary" plain @click="goToHistory(detailDrawer.data?.instance)">查看历史记录</el-button>
           </div>
         </template>
       </el-skeleton>
@@ -228,6 +246,10 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import FieldRenderer from '@/views/lowcode/fields/FieldRenderer.vue'
+import { parseFieldExt } from '@/views/lowcode/schema'
+import { getRuntimePage } from '@/api/lowcode/admin'
+import { resolveWorkflowBizCode } from '@/utils/workflowBiz'
 import { Refresh } from '@element-plus/icons-vue'
 import RightToolbar from '@/components/RightToolbar/index.vue'
 import { resetForm as resetFormUtil } from '@/utils/junsong'
@@ -256,7 +278,7 @@ type WorkflowRuntimeRow = WorkflowInstanceRow & { source: 'running' | 'finished'
 interface DetailDrawerState {
   visible: boolean
   loading: boolean
-  data: WorkflowInstanceDetail | null
+  data: (WorkflowInstanceDetail & { businessFields: any[] }) | null
   tasks: WorkflowRunningTask[]
 }
 
@@ -273,6 +295,14 @@ const detailDrawer = reactive<DetailDrawerState>({
   data: null,
   tasks: [],
 })
+
+function businessFieldSpan(field: any): number {
+  const ext = parseFieldExt(field)
+  const span = Number(ext.span)
+  if (span >= 4 && span <= 24) return span
+  if (['textarea', 'richtext', 'address', 'file', 'image', 'subform'].includes(String(field.fieldType || '').toLowerCase())) return 24
+  return 12
+}
 
 const queryParams = reactive({
   processKey: '',
@@ -409,7 +439,14 @@ async function openDetail(row: WorkflowRuntimeRow) {
   detailDrawer.tasks = []
   try {
     const detailRes = await getWorkflowInstanceDetail(row.processInstanceId)
-    detailDrawer.data = detailRes.data
+    detailDrawer.data = { ...detailRes.data, businessFields: [] } as any
+    const bizCode = await resolveWorkflowBizCode(detailDrawer.data?.instance?.processDefinitionKey)
+    if (bizCode) {
+      try {
+        const config: any = await getRuntimePage(bizCode, 'FORM')
+        detailDrawer.data.businessFields = ((config?.data || config)?.fields || []).filter((field: any) => field.stage !== 'FULFILLMENT')
+      } catch { detailDrawer.data.businessFields = [] }
+    }
     if (detailRes.data?.running) {
       const tasksRes = await listWorkflowRunningTasks(row.processInstanceId)
       detailDrawer.tasks = tasksRes.data || []

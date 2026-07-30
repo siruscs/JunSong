@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -46,6 +47,7 @@ public class SysRegionController extends BaseController
 
     @RequiresPermissions("system:region:add")
     @Log(title = "地址维护", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "system:region:add")
     @PostMapping
     public AjaxResult add(@RequestBody SysRegion region)
     {
@@ -54,6 +56,7 @@ public class SysRegionController extends BaseController
 
     @RequiresPermissions("system:region:edit")
     @Log(title = "地址维护", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:region:edit")
     @PutMapping
     public AjaxResult edit(@RequestBody SysRegion region)
     {
@@ -62,6 +65,7 @@ public class SysRegionController extends BaseController
 
     @RequiresPermissions("system:region:remove")
     @Log(title = "地址维护", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "system:region:remove")
     @DeleteMapping("/{code}")
     public AjaxResult remove(@PathVariable String code)
     {

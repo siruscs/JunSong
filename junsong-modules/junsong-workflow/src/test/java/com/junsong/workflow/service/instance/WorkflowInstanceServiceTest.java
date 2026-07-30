@@ -9,6 +9,9 @@ import com.junsong.workflow.controller.ProcessInstanceController.StartInstanceRe
 import com.junsong.workflow.security.CurrentWorkflowUser;
 import com.junsong.workflow.security.CurrentWorkflowUserFacade;
 import com.junsong.workflow.security.ProcessAuthorizationService;
+import com.junsong.workflow.mapper.WfNotificationMapper;
+import com.junsong.workflow.mapper.WfSysUserMapper;
+import com.junsong.workflow.lowcode.mapper.LcBizInstanceMapper;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
@@ -37,6 +40,9 @@ class WorkflowInstanceServiceTest
     private TaskService taskService;
     private CurrentWorkflowUserFacade currentWorkflowUserFacade;
     private ProcessAuthorizationService processAuthorizationService;
+    private WfNotificationMapper notificationMapper;
+    private WfSysUserMapper sysUserMapper;
+    private LcBizInstanceMapper lcBizInstanceMapper;
     private WorkflowInstanceService service;
     private CurrentWorkflowUser actor;
 
@@ -49,8 +55,12 @@ class WorkflowInstanceServiceTest
         taskService = mock(TaskService.class);
         currentWorkflowUserFacade = mock(CurrentWorkflowUserFacade.class);
         processAuthorizationService = mock(ProcessAuthorizationService.class);
+        notificationMapper = mock(WfNotificationMapper.class);
+        sysUserMapper = mock(WfSysUserMapper.class);
+        lcBizInstanceMapper = mock(LcBizInstanceMapper.class);
         service = new WorkflowInstanceService(runtimeService, repositoryService, historyService, taskService,
-                currentWorkflowUserFacade, processAuthorizationService);
+                currentWorkflowUserFacade, processAuthorizationService, notificationMapper, sysUserMapper,
+                lcBizInstanceMapper);
         actor = new CurrentWorkflowUser(17L, "wjs", Set.of("finance"), Set.of());
         when(currentWorkflowUserFacade.current()).thenReturn(actor);
     }
@@ -75,6 +85,11 @@ class WorkflowInstanceServiceTest
         when(definition.getName()).thenReturn("请假");
         when(runtimeService.startProcessInstanceById("def-1", "LEAVE-1",
                 Map.of("initiator", "wjs", "days", 3))).thenReturn(instance);
+        when(instance.getId()).thenReturn("pi-1");
+        TaskQuery taskQuery = mock(TaskQuery.class);
+        when(taskService.createTaskQuery()).thenReturn(taskQuery);
+        when(taskQuery.processInstanceId("pi-1")).thenReturn(taskQuery);
+        when(taskQuery.list()).thenReturn(List.of());
 
         service.start(request);
 
@@ -141,7 +156,7 @@ class WorkflowInstanceServiceTest
     @Test
     void requestBodyNoLongerExposesInitiatorField()
     {
-        assertEquals(List.of("businessKey", "processKey", "variables"),
+        assertEquals(List.of("businessKey", "processDefinitionId", "processKey", "variables"),
                 java.util.Arrays.stream(StartInstanceReq.class.getDeclaredFields())
                         .map(field -> field.getName())
                         .sorted()

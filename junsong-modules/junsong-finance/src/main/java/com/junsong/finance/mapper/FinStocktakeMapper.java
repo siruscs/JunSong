@@ -38,6 +38,18 @@ public interface FinStocktakeMapper {
 
     int countByTakeNo(@Param("tenantId") Long tenantId, @Param("takeNo") String takeNo);
 
+    FinStocktake selectStocktakeByTakeNo(@Param("tenantId") Long tenantId, @Param("takeNo") String takeNo);
+
+    /**
+     * 按冲销幂等键查询盘点任务（幂等冲销成功后，重试可返回原结果）。
+     *
+     * @param tenantId 租户ID
+     * @param reverseIdempotencyKey 冲销幂等键
+     * @return 匹配的盘点任务；不存在返回 null
+     */
+    FinStocktake selectByReverseIdempotencyKey(@Param("tenantId") Long tenantId,
+                                                @Param("reverseIdempotencyKey") String reverseIdempotencyKey);
+
     int updateStocktakeStatus(@Param("tenantId") Long tenantId,
                                @Param("stocktakeId") Long stocktakeId,
                                @Param("fromStatus") String fromStatus,
@@ -48,7 +60,8 @@ public interface FinStocktakeMapper {
                                @Param("approvedBy") String approvedBy,
                                @Param("postedBy") String postedBy,
                                @Param("reversedBy") String reversedBy,
-                               @Param("reversalReason") String reversalReason);
+                               @Param("reversalReason") String reversalReason,
+                               @Param("reverseIdempotencyKey") String reverseIdempotencyKey);
 
     /**
      * 分配盘点人和复盘人（仅 DRAFT 状态允许，带乐观锁谓词）。
@@ -68,6 +81,31 @@ public interface FinStocktakeMapper {
                        @Param("version") Integer version,
                        @Param("updateBy") String updateBy);
 
+    /**
+     * 更新盘点任务的工作流信息（process_instance_id、current_node）。
+     * 由工作流同步回写调用，不带乐观锁谓词（工作流回调是幂等的）。
+     *
+     * @param tenantId 租户ID
+     * @param stocktakeId 盘点任务ID
+     * @param processInstanceId 工作流实例ID（可空，仅 SUBMIT 时写入）
+     * @param currentNode 当前流程节点（可空）
+     * @return 影响行数
+     */
+    int updateWorkflowInfo(@Param("tenantId") Long tenantId,
+                            @Param("stocktakeId") Long stocktakeId,
+                            @Param("processInstanceId") String processInstanceId,
+                            @Param("currentNode") String currentNode);
+
+    /**
+     * 按工作流实例ID查询盘点任务（工作流同步回调时使用）。
+     *
+     * @param tenantId 租户ID
+     * @param processInstanceId 工作流实例ID
+     * @return 匹配的盘点任务；不存在返回 null
+     */
+    FinStocktake selectByProcessInstanceId(@Param("tenantId") Long tenantId,
+                                            @Param("processInstanceId") String processInstanceId);
+
     // ===== 行表 =====
 
     int insertStocktakeItem(FinStocktakeItem item);
@@ -79,7 +117,7 @@ public interface FinStocktakeMapper {
                                                @Param("stocktakeId") Long stocktakeId);
 
     List<FinStocktakeItem> selectStocktakeItemsForUpdate(@Param("tenantId") Long tenantId,
-                                                          @Param("stocktakeId") Long stocktakeId);
+                                                           @Param("stocktakeId") Long stocktakeId);
 
     int updateStocktakeItemCount(@Param("tenantId") Long tenantId,
                                   @Param("itemId") Long itemId,

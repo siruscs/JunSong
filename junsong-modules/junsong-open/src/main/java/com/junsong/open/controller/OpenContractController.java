@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.security.annotation.RequiresPermissions;
 import com.junsong.open.domain.OpenContract;
 import com.junsong.open.service.IOpenContractService;
@@ -40,6 +41,7 @@ public class OpenContractController extends BaseController
 
     @PostMapping
     @RequiresPermissions("open:contract:add")
+    @Idempotent(scene = "open:contract:add")
     public AjaxResult add(@RequestBody OpenContract openContract)
     {
         return toAjax(openContractService.insertOpenContract(openContract));
@@ -47,6 +49,7 @@ public class OpenContractController extends BaseController
 
     @PutMapping
     @RequiresPermissions("open:contract:edit")
+    @Idempotent(scene = "open:contract:edit")
     public AjaxResult edit(@RequestBody OpenContract openContract)
     {
         return toAjax(openContractService.updateOpenContract(openContract));
@@ -54,6 +57,7 @@ public class OpenContractController extends BaseController
 
     @PutMapping("/activate/{id}")
     @RequiresPermissions("open:contract:edit")
+    @Idempotent(scene = "open:contract:activate", highRisk = true)
     public AjaxResult activate(@PathVariable("id") Long id)
     {
         return toAjax(openContractService.activateContract(id));
@@ -61,6 +65,7 @@ public class OpenContractController extends BaseController
 
     @PutMapping("/terminate/{id}")
     @RequiresPermissions("open:contract:edit")
+    @Idempotent(scene = "open:contract:terminate", highRisk = true, ttlSeconds = 2592000)
     public AjaxResult terminate(@PathVariable("id") Long id)
     {
         return toAjax(openContractService.terminateContract(id));
@@ -68,6 +73,7 @@ public class OpenContractController extends BaseController
 
     @DeleteMapping("/{ids}")
     @RequiresPermissions("open:contract:remove")
+    @Idempotent(scene = "open:contract:delete")
     public AjaxResult remove(@PathVariable("ids") Long[] ids)
     {
         return toAjax(openContractService.deleteOpenContractByIds(ids));

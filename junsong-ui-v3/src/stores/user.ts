@@ -41,15 +41,17 @@ export const useUserStore = defineStore('user', () => {
     setExpiresIn(data.expires_in)
   }
 
-  async function getInfo() {
+  async function getInfo(loadPermissions = true) {
     const res: any = await getInfoApi()
     const user = res.user
     const avatarVal = normalizeAvatar(user.avatar)
-    if (res.roles && res.roles.length > 0) {
-      roles.value = res.roles
-      permissions.value = res.permissions
-    } else {
-      roles.value = ['ROLE_DEFAULT']
+    if (loadPermissions) {
+      if (res.roles && res.roles.length > 0) {
+        roles.value = res.roles
+        permissions.value = res.permissions
+      } else {
+        roles.value = ['ROLE_DEFAULT']
+      }
     }
     id.value = user.userId
     name.value = user.userName

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.common.core.idempotency.mapper.IdempotencyRecordMapper">
+
+    <resultMap type="com.junsong.common.core.idempotency.IdempotencyRecord" id="IdempotencyRecordResult">
+        <id     property="recordId"       column="record_id"      />
+        <result property="tenantId"       column="tenant_id"      />
+        <result property="scene"          column="scene"          />
+        <result property="idempotencyKey" column="idempotency_key"/>
+        <result property="status"         column="status"         />
+        <result property="fingerprint"    column="fingerprint"    />
+        <result property="resourceType"   column="resource_type"  />
+        <result property="resourceId"     column="resource_id"    />
+        <result property="resultSummary"  column="result_summary" />
+        <result property="errorSummary"   column="error_summary"  />
+        <result property="createdTime"    column="created_time"   />
+        <result property="updatedTime"    column="updated_time"   />
+        <result property="expireTime"     column="expire_time"    />
+    </resultMap>
+
+    <!-- 原子插入占位：唯一键冲突时返回 0（由 MySQL 唯一索引兜底） -->
+    <insert id="insertIfAbsent" parameterType="com.junsong.common.core.idempotency.IdempotencyRecord"
+            useGeneratedKeys="true" keyProperty="recordId">
+        INSERT IGNORE INTO sys_idempotency_record
+            (tenant_id, scene, idempotency_key, status, fingerprint,
+             resource_type, resource_id, result_summary, error_summary,
+             created_time, updated_time, expire_time)
+        VALUES
+            (#{tenantId}, #{scene}, #{idempotencyKey}, #{status}, #{fingerprint},
+             #{resourceType}, #{resourceId}, #{resultSummary}, #{errorSummary},
+             NOW(), NOW(),
+             <choose>
+                 <when test="expireTime != null">#{expireTime}</when>
+                 <otherwise>DATE_ADD(NOW(), INTERVAL 86400 SECOND)</otherwise>
+             </choose>)
+    </insert>
+
+    <select id="selectByUniqueKey" resultMap="IdempotencyRecordResult">
+        SELECT record_id, tenant_id, scene, idempotency_key, status, fingerprint,
+               resource_type, resource_id, result_summary, error_summary,
+               created_time, updated_time, expire_time
+          FROM sys_idempotency_record
+         WHERE tenant_id = #{tenantId}
+           AND scene = #{scene}
+           AND idempotency_key = #{idempotencyKey}
+         LIMIT 1
+    </select>
+
+    <update id="updateStatus">
+        UPDATE sys_idempotency_record
+           SET status = #{toStatus},
+               <if test="errorSummary != null">error_summary = #{errorSummary},</if>
+               updated_time = NOW()
+         WHERE record_id = #{recordId}
+           AND status = #{fromStatus}
+    </update>
+
+    <!--
+        重新占位（FAILED → PROCESSING）：CAS 操作，用于同键安全重试场景。
+        并发安全：多线程同时重试同一 FAILED 记录，只有第一个成功。
+        清空旧业务结果引用和错误摘要，避免重试后状态混淆。
+        刷新指纹和过期时间，确保重试期间不会被归档。
+    -->
+    <update id="reacquire">
+        UPDATE sys_idempotency_record
+           SET status = 'PROCESSING',
+               fingerprint = #{newFingerprint},
+               resource_type = NULL,
+               resource_id = NULL,
+               result_summary = NULL,
+               error_summary = NULL,
+               updated_time = NOW(),
+               expire_time = #{expireTime}
+         WHERE record_id = #{recordId}
+           AND status = 'FAILED'
+    </update>
+
+    <update id="updateResult">
+        UPDATE sys_idempotency_record
+           SET resource_type = #{resourceType},
+               resource_id = #{resourceId},
+               <if test="resultSummary != null">result_summary = #{resultSummary},</if>
+               updated_time = NOW()
+         WHERE record_id = #{recordId}
+    </update>
+
+    <delete id="archiveExpired">
+        DELETE FROM sys_idempotency_record
+         WHERE status IN ('SUCCEEDED', 'FAILED')
+           AND expire_time IS NOT NULL
+           AND expire_time &lt; NOW() - INTERVAL 1 DAY
+         LIMIT #{batchSize}
+    </delete>
+
+</mapper>

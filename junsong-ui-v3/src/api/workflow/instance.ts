@@ -17,6 +17,7 @@ export interface WorkflowInstanceRow {
 export interface WorkflowInstanceDetail {
   running: boolean
   instance: WorkflowInstanceRow
+  businessForm?: Record<string, any>
 }
 
 export interface WorkflowRunningTask {
@@ -37,6 +38,7 @@ export interface StartWorkflowInstancePayload {
   processKey: string
   businessKey?: string
   variables?: Record<string, any>
+  idempotencyNewKey?: boolean
 }
 
 export function listWorkflowInstances(params?: WorkflowInstanceQuery) {
@@ -71,9 +73,11 @@ export function listWorkflowRunningTasks(processInstanceId: string) {
 }
 
 export function startWorkflowInstance(data: StartWorkflowInstancePayload) {
+  const { idempotencyNewKey, ...payload } = data
   return request({
     url: '/workflow/instance/start',
     method: 'post',
-    data,
+    data: payload,
+    ...(idempotencyNewKey ? { idempotencyNewKey: true } : {}),
   })
 }

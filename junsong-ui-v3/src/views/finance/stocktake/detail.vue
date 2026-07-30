@@ -13,7 +13,7 @@
       <!-- 操作按钮区 -->
       <div class="action-bar">
         <el-button
-          v-if="detail.status === 'DRAFT'"
+          v-if="detail.status === 'DRAFT' || detail.status === 'COUNTING'"
           type="primary"
           size="small"
           @click="openAssignDialog"
@@ -25,7 +25,6 @@
           size="small"
           :loading="actionLoading"
           @click="handleStart"
-          v-hasPermi="['finance:stocktake:count']"
         >启动盘点</el-button>
         <el-button
           v-if="detail.status === 'COUNTING'"
@@ -70,10 +69,18 @@
 
       <!-- 头部信息卡片 -->
       <el-card shadow="never" class="info-card">
+        <el-alert
+          v-if="detail.status === 'DRAFT' || detail.status === 'COUNTING'"
+          title="盘点流程：先启动盘点，再在下方“实际数量”中录入现场盘点结果；保存后提交，审批通过后点击过账，系统才会正式生成库存变更流水。"
+          type="info"
+          :closable="false"
+          show-icon
+          class="stocktake-flow-tip"
+        />
         <el-descriptions :column="3" border>
           <el-descriptions-item label="门店">{{ getDeptName(detail.deptId) }}</el-descriptions-item>
-          <el-descriptions-item label="盘点人">{{ detail.counterUserName || detail.counterUserId }}</el-descriptions-item>
-          <el-descriptions-item label="复盘人">{{ detail.recountUserName || detail.recountUserId || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="盘点人">{{ detail.counterUserName || userLabel(detail.counterUserId) }}</el-descriptions-item>
+          <el-descriptions-item label="复盘人">{{ detail.recountUserName || '-' }}</el-descriptions-item>
           <el-descriptions-item label="冻结时间">{{ formatTime(detail.freezeTime) }}</el-descriptions-item>
           <el-descriptions-item label="提交时间">{{ formatTime(detail.submittedTime) }}</el-descriptions-item>
           <el-descriptions-item label="审批时间">{{ formatTime(detail.approvedTime) }}</el-descriptions-item>
@@ -129,11 +136,15 @@
     <!-- 分配对话框 -->
     <el-dialog title="分配盘点人/复盘人" v-model="assignOpen" width="480px" append-to-body>
       <el-form ref="assignFormRef" :model="assignForm" :rules="assignRules" label-width="100px">
-        <el-form-item label="盘点人ID" prop="counterUserIdInput">
-          <el-input v-model="assignForm.counterUserIdInput" placeholder="盘点人用户ID" />
+        <el-form-item label="盘点人" prop="counterUserIdInput">
+          <el-select v-model="assignForm.counterUserIdInput" filterable placeholder="选择盘点人" style="width: 100%">
+            <el-option v-for="u in userOptions" :key="u.userId" :label="userOptionLabel(u)" :value="String(u.userId)" />
+          </el-select>
         </el-form-item>
-        <el-form-item label="复盘人ID" prop="recountUserIdInput">
-          <el-input v-model="assignForm.recountUserIdInput" placeholder="复盘人用户ID（可选）" />
+        <el-form-item label="复盘人" prop="recountUserIdInput">
+          <el-select v-model="assignForm.recountUserIdInput" filterable clearable placeholder="选择复盘人（超阈值时必填）" style="width: 100%">
+            <el-option v-for="u in independentRecountUsers" :key="u.userId" :label="userOptionLabel(u)" :value="String(u.userId)" />
+          </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -189,6 +200,7 @@ import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { parseTime } from '@/utils/junsong'
 import { useUserStore } from '@/stores/user'
+import { listUser } from '@/api/system/user'
 import StocktakeItemsTable from './components/StocktakeItemsTable.vue'
 import {
   approveStocktake,
@@ -216,6 +228,8 @@ const userStore = useUserStore()
 const loading = ref(false)
 const actionLoading = ref(false)
 const detail = ref<StocktakeDetailVO | null>(null)
+const userOptions = ref<any[]>([])
+const independentRecountUsers = computed(() => userOptions.value.filter((u) => String(u.userId) !== String(detail.value?.counterUserId)))
 const itemsTableRef = ref<InstanceType<typeof StocktakeItemsTable>>()
 
 const assignOpen = ref(false)
@@ -312,12 +326,43 @@ function loadDetail() {
     return
   }
   loading.value = true
-  getStocktakeDetail(stocktakeId.value)
+    getStocktakeDetail(stocktakeId.value)
     .then((res: any) => {
-      detail.value = res.data as StocktakeDetailVO
+      // 后端详情返回 { stocktake, items, history, hideExpected }，
+      // 页面使用扁平头表对象；这里统一转换，避免头部字段和状态为空。
+      const payload = res.data?.data || res.data || {}
+      const header = payload.stocktake || payload
+      detail.value = {
+        ...header,
+        items: payload.items || header.items || [],
+        histories: payload.history || payload.histories || header.histories || [],
+        hideExpected: Boolean(payload.hideExpected),
+      } as StocktakeDetailVO
     })
     .finally(() => {
       loading.value = false
+    })
+}
+
+function userOptionLabel(user: any) {
+  return user.nickName ? `${user.nickName}（${user.userName}）` : user.userName || `用户 ${user.userId}`
+}
+
+function userLabel(userId: number | null | undefined) {
+  if (!userId) return '-'
+  const user = userOptions.value.find((u) => String(u.userId) === String(userId))
+  if (user) return userOptionLabel(user)
+  if (String(userStore.id) === String(userId)) return `${userStore.nickName || userStore.name}（${userStore.name}）`
+  return `用户 ${userId}`
+}
+
+function loadUserOptions() {
+  listUser({ pageNum: 1, pageSize: 200 })
+    .then((res: any) => {
+      userOptions.value = res.rows || res.data?.rows || []
+    })
+    .catch(() => {
+      userOptions.value = []
     })
 }
 
@@ -509,7 +554,10 @@ function submitReverse() {
   })
 }
 
-onMounted(loadDetail)
+onMounted(() => {
+  loadUserOptions()
+  loadDetail()
+})
 </script>
 
 <style scoped>

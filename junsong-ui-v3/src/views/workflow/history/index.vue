@@ -1,7 +1,7 @@
 <template>
   <div class="workflow-history-page app-container">
     <el-card class="runtime-table-card" shadow="never">
-      <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="88px" v-show="showSearch">
+      <el-form v-if="!singleInstanceMode" ref="queryFormRef" :model="queryParams" :inline="true" label-width="88px" v-show="showSearch">
         <el-form-item label="流程标识" prop="processKey">
           <el-input v-model="queryParams.processKey" placeholder="请输入流程标识" clearable @keyup.enter="getList" />
         </el-form-item>
@@ -27,14 +27,14 @@
         </el-form-item>
       </el-form>
 
-      <RightToolbar v-model:showSearch="showSearch" @query="getList">
+      <RightToolbar v-if="!singleInstanceMode" v-model:showSearch="showSearch" @query="getList">
         <el-button type="success" :icon="Refresh" @click="getList" v-hasPermi="['workflow:history:list']">
           刷新
         </el-button>
       </RightToolbar>
 
-      <div class="history-layout">
-        <div class="history-layout__table">
+      <div class="history-layout" :class="{ 'history-layout--single': singleInstanceMode }">
+        <div v-if="!singleInstanceMode" class="history-layout__table">
           <el-table v-loading="loading" :data="filteredRows" highlight-current-row @current-change="handleCurrentChange">
             <el-table-column label="流程名称" min-width="220">
               <template #default="{ row }">
@@ -108,7 +108,31 @@
                 <el-descriptions-item label="发起人">
                   {{ safeWorkflowText(selectedSummary.initiator) }}
                 </el-descriptions-item>
+                <el-descriptions-item v-if="currentActivities.length" label="当前步骤">
+                  {{ currentActivities.map((item) => safeWorkflowText(item.activityName || item.activityId)).join('、') }}
+                </el-descriptions-item>
+                <el-descriptions-item v-if="currentActivities.length" label="当前处理人">
+                  {{ currentActivities.map((item) => safeWorkflowText(item.assignee || '待认领')).join('、') }}
+                </el-descriptions-item>
+                <el-descriptions-item v-else-if="selectedSummary.running" label="当前步骤">
+                  流程运行中，暂无可识别的当前节点
+                </el-descriptions-item>
+                <el-descriptions-item v-else label="流程结果">
+                  流程已结束
+                </el-descriptions-item>
               </el-descriptions>
+
+              <el-divider content-position="left">业务表单</el-divider>
+              <el-form v-if="businessFields.length" label-position="top" class="history-business-form">
+                <el-row :gutter="16">
+                  <el-col v-for="field in businessFields" :key="field.fieldKey" :span="businessFieldSpan(field)">
+                    <el-form-item :label="field.fieldLabel || field.fieldKey">
+                      <FieldRenderer :model-value="field.fieldKey === 'take_no' ? (selectedSummary.businessForm?.take_no ?? selectedSummary.businessForm?.orderNo ?? selectedSummary.businessKey) : selectedSummary.businessForm?.[field.fieldKey]" :field="field" :form-values="selectedSummary.businessForm || {}" :readonly="true" />
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+              </el-form>
+              <el-empty v-else description="暂无配置化业务表单" :image-size="60" />
 
               <el-divider content-position="left">流程跟踪图</el-divider>
               <WorkflowTrackingViewer
@@ -149,7 +173,7 @@
               </div>
               <el-empty v-else-if="!detailLoading" description="暂无审批意见" :image-size="72" />
             </template>
-            <el-empty v-else description="请选择左侧一条流程实例查看历史轨迹" :image-size="88" />
+            <el-empty v-else :description="singleInstanceMode ? '未找到指定流程历史' : '请选择左侧一条流程实例查看历史轨迹'" :image-size="88" />
           </el-card>
         </div>
       </div>
@@ -163,6 +187,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { Refresh } from '@element-plus/icons-vue'
 import RightToolbar from '@/components/RightToolbar/index.vue'
 import WorkflowTrackingViewer from './WorkflowTrackingViewer.vue'
+import FieldRenderer from '@/views/lowcode/fields/FieldRenderer.vue'
+import { parseFieldExt } from '@/views/lowcode/schema'
+import { getRuntimePage } from '@/api/lowcode/admin'
+import { resolveWorkflowBizCode } from '@/utils/workflowBiz'
 import { resetForm as resetFormUtil } from '@/utils/junsong'
 import { getWorkflowDefinitionXml } from '@/api/workflow/definition'
 import { getWorkflowInstanceDetail, type WorkflowInstanceRow } from '@/api/workflow/instance'
@@ -191,11 +219,21 @@ const showSearch = ref(true)
 const queryFormRef = ref()
 const rows = ref<WorkflowHistoryInstanceRow[]>([])
 const selectedRow = ref<WorkflowHistoryInstanceRow | null>(null)
-const selectedSummary = ref<(WorkflowInstanceRow & { initiator?: string | null; running?: boolean }) | null>(null)
+const selectedSummary = ref<(WorkflowInstanceRow & { initiator?: string | null; running?: boolean; businessForm?: Record<string, any> }) | null>(null)
 const activityRows = ref<WorkflowHistoryActivityRow[]>([])
+const currentActivities = computed(() => activityRows.value.filter((item) => !item.endTime))
 const commentRows = ref<WorkflowHistoryCommentRow[]>([])
 const trackingXml = ref('')
 const activeActivityIds = ref<string[]>([])
+const businessFields = ref<any[]>([])
+
+function businessFieldSpan(field: any): number {
+  const ext = parseFieldExt(field)
+  const span = Number(ext.span)
+  if (span >= 4 && span <= 24) return span
+  if (['textarea', 'richtext', 'address', 'file', 'image', 'subform'].includes(String(field.fieldType || '').toLowerCase())) return 24
+  return 12
+}
 
 const queryParams = reactive({
   processKey: '',
@@ -203,6 +241,8 @@ const queryParams = reactive({
   businessKey: '',
   dateRange: [] as string[],
 })
+
+const singleInstanceMode = computed(() => Boolean(String(route.query.processInstanceId || '').trim()))
 
 const filteredRows = computed(() => {
   return rows.value.filter((item) => {
@@ -225,21 +265,17 @@ const filteredRows = computed(() => {
 async function getList() {
   loading.value = true
   try {
+    const queryInstanceId = String(route.query.processInstanceId || '').trim()
+    if (queryInstanceId) {
+      rows.value = []
+      await loadByInstanceId(queryInstanceId)
+      return
+    }
     const res = await listWorkflowHistoryInstances({
       processKey: queryParams.processKey || undefined,
       limit: 100,
     })
     rows.value = res.data || []
-    const queryInstanceId = String(route.query.processInstanceId || '').trim()
-    if (queryInstanceId) {
-      const nextRow = rows.value.find((item) => item.processInstanceId === queryInstanceId)
-      if (nextRow) {
-        await selectRow(nextRow)
-      } else {
-        await loadByInstanceId(queryInstanceId)
-      }
-      return
-    }
     const nextRow = rows.value[0]
     if (nextRow) {
       await selectRow(nextRow)
@@ -258,6 +294,7 @@ function clearDetail() {
   commentRows.value = []
   trackingXml.value = ''
   activeActivityIds.value = []
+  businessFields.value = []
 }
 
 function canOpenBusiness(row?: Partial<WorkflowHistoryInstanceRow & WorkflowInstanceRow> | null) {
@@ -314,9 +351,17 @@ async function loadDetail(processInstanceId: string) {
           ...detail.instance,
           initiator: detail.instance.startUserId,
           running: detail.running,
+          businessForm: detail.businessForm || {},
         }
       : null
     selectedSummary.value = summary
+    businessFields.value = []
+    if (summary?.processDefinitionKey) {
+      try {
+        const config: any = await getRuntimePage(await resolveWorkflowBizCode(summary.processDefinitionKey), 'FORM')
+        businessFields.value = ((config?.data || config)?.fields || []).filter((field: any) => field.stage !== 'FULFILLMENT')
+      } catch { businessFields.value = [] }
+    }
     activeActivityIds.value = uniqueActivityIds(
       activityRows.value.filter((item) => !item.endTime).map((item) => item.activityId),
     )
@@ -371,12 +416,19 @@ onMounted(() => {
 
 .history-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(360px, 0.9fr);
+  grid-template-columns: minmax(420px, 0.9fr) minmax(560px, 1.1fr);
   gap: 16px;
+  align-items: start;
+}
+
+.history-layout--single {
+  display: block;
 }
 
 .history-detail-card {
-  min-height: 100%;
+  min-height: 520px;
+  max-height: calc(100vh - 180px);
+  overflow: auto;
 }
 
 .history-detail-card__header {

@@ -1,6 +1,7 @@
 package com.junsong.workflow.controller;
 
 import com.junsong.common.core.domain.R;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.workflow.service.instance.WorkflowInstanceService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -34,6 +35,7 @@ public class ProcessInstanceController
      * }
      */
     @PreAuthorize("@ss.hasPermi('workflow:instance:start')")
+    @Idempotent(scene = "workflow:instance:start")
     @PostMapping("/start")
     public R<Map<String, Object>> start(@RequestBody StartInstanceReq req)
     {
@@ -66,6 +68,7 @@ public class ProcessInstanceController
      * 终止流程实例
      */
     @PreAuthorize("@ss.hasPermi('workflow:instance:terminate')")
+    @Idempotent(scene = "workflow:instance:terminate", highRisk = true)
     @PostMapping("/{id}/terminate")
     public R<Void> terminate(@PathVariable("id") String id, @RequestParam(required = false) String reason)
     {
@@ -87,6 +90,7 @@ public class ProcessInstanceController
      * 发起人撤回流程（下一节点未处理前）
      */
     @PreAuthorize("@ss.hasPermi('workflow:instance:withdraw')")
+    @Idempotent(scene = "workflow:instance:withdraw", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/{id}/withdraw")
     public R<Void> withdraw(@PathVariable("id") String id)
     {

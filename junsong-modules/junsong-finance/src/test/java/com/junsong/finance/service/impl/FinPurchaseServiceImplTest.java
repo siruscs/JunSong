@@ -368,5 +368,11 @@ class FinPurchaseServiceImplTest {
             return 0;
         }
 
+
+    @Override
+    public int countDownstreamLedgersAfterTime(Long tenantId, Long deptId, Long productId, java.util.Date afterTime) {
+        return 0;
     }
+
+}
 }

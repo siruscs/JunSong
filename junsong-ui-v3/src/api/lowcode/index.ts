@@ -72,8 +72,8 @@ export function getBizInstance(bizCode: string, id: number) {
   return request({ url: `${BASE}/biz/${bizCode}/${id}`, method: 'get' })
 }
 
-export function saveBizInstance(bizCode: string, formData: LcFormData) {
-  return request({ url: `${BASE}/biz/${bizCode}`, method: 'post', data: formData })
+export function saveBizInstance(bizCode: string, formData: LcFormData, options?: { idempotencyNewKey?: boolean }) {
+  return request({ url: `${BASE}/biz/${bizCode}`, method: 'post', data: formData, ...(options?.idempotencyNewKey ? { idempotencyNewKey: true } : {}) })
 }
 
 export function updateBizInstance(bizCode: string, id: number, formData: LcFormData) {
@@ -85,8 +85,8 @@ export function deleteBizInstance(bizCode: string, ids: number | number[]) {
   return request({ url: `${BASE}/biz/${bizCode}/${idPath}`, method: 'delete' })
 }
 
-export function submitBizInstance(bizCode: string, id: number) {
-  return request({ url: `${BASE}/biz/${bizCode}/${id}/submit`, method: 'post' })
+export function submitBizInstance(bizCode: string, id: number, options?: { idempotencyNewKey?: boolean }) {
+  return request({ url: `${BASE}/biz/${bizCode}/${id}/submit`, method: 'post', ...(options?.idempotencyNewKey ? { idempotencyNewKey: true } : {}) })
 }
 
 export function withdrawBizInstance(bizCode: string, id: number) {

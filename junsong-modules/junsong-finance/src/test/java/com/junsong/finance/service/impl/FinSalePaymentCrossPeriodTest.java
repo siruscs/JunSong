@@ -103,7 +103,7 @@ class FinSalePaymentCrossPeriodTest {
     void addPayment_onCarriedSalePeriod_succeeds_andBindsCurrentPeriod() {
         seedSale(5001L, new BigDecimal("100.00"), new BigDecimal("30.00"));
 
-        int rows = service.addPayment(5001L, new BigDecimal("20.00"), "wechat", "补缴", new Date());
+        int rows = service.addPayment(5001L, new BigDecimal("20.00"), "wechat", "补缴", new Date(), null);
 
         assertEquals(1, rows);
         assertEquals(1, paymentMapper.inserted.size());
@@ -116,7 +116,7 @@ class FinSalePaymentCrossPeriodTest {
     void addPayment_keepsSaleOriginalPeriod_unchanged() {
         seedSale(5002L, new BigDecimal("100.00"), new BigDecimal("30.00"));
 
-        service.addPayment(5002L, new BigDecimal("20.00"), "cash", null, new Date());
+        service.addPayment(5002L, new BigDecimal("20.00"), "cash", null, new Date(), null);
 
         assertEquals(OLD_PERIOD, saleMapper.sales.get(5002L).getPeriodId(), "销售单 period_id 必须保持原周期");
     }
@@ -125,7 +125,7 @@ class FinSalePaymentCrossPeriodTest {
     void addPayment_updatesPaidAmountAndStatus_partial() {
         seedSale(5003L, new BigDecimal("100.00"), new BigDecimal("30.00"));
 
-        service.addPayment(5003L, new BigDecimal("20.00"), "cash", null, new Date());
+        service.addPayment(5003L, new BigDecimal("20.00"), "cash", null, new Date(), null);
 
         // 累计已缴 30 + 20 = 50 < 100 → 部分缴款
         assertEquals(0, new BigDecimal("50.00").compareTo(saleMapper.paidUpdates.get(5003L)));
@@ -136,7 +136,7 @@ class FinSalePaymentCrossPeriodTest {
     void addPayment_fullyPaid_marksPaidOff() {
         seedSale(5004L, new BigDecimal("100.00"), new BigDecimal("30.00"));
 
-        service.addPayment(5004L, new BigDecimal("70.00"), "cash", null, new Date());
+        service.addPayment(5004L, new BigDecimal("70.00"), "cash", null, new Date(), null);
 
         assertEquals(0, new BigDecimal("100.00").compareTo(saleMapper.paidUpdates.get(5004L)));
         assertEquals(PaymentStatus.PAID, saleMapper.statusUpdates.get(5004L));
@@ -161,7 +161,7 @@ class FinSalePaymentCrossPeriodTest {
         saleMapper.sales.get(5012L).setSaleAmount(new BigDecimal("700.00"));
 
         service.refreshSalePaymentState(5012L);
-        service.addPayment(5012L, new BigDecimal("-100.00"), "cash", "销售金额调整", new Date());
+        service.addPayment(5012L, new BigDecimal("-100.00"), "cash", "销售金额调整", new Date(), null);
 
         assertEquals(PaymentStatus.PAID, saleMapper.statusUpdates.get(5012L));
         assertEquals(new BigDecimal("700.00"), saleMapper.paidUpdates.get(5012L));
@@ -243,7 +243,7 @@ class FinSalePaymentCrossPeriodTest {
     void addPayment_usesLockedSaleReadBeforeOverpaymentCheck() {
         seedSale(5010L, new BigDecimal("100.00"), new BigDecimal("30.00"));
 
-        service.addPayment(5010L, new BigDecimal("20.00"), "wechat", "补缴", new Date());
+        service.addPayment(5010L, new BigDecimal("20.00"), "wechat", "补缴", new Date(), null);
 
         assertTrue(saleMapper.lockedReadCalled, "addPayment must read sale row FOR UPDATE before checking unpaid amount");
     }

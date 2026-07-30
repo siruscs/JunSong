@@ -10,12 +10,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.junsong.common.core.utils.poi.ExcelUtil;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -115,11 +117,14 @@ public class FinSaleRecordController extends BaseController
      */
     @RequiresPermissions("finance:sale:add")
     @Log(title = "销售记录", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "sale:create", highRisk = true, ttlSeconds = 2592000)
     @PostMapping
-    public AjaxResult add(@Validated @RequestBody FinSaleRecord finSaleRecord)
+    public AjaxResult add(@RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey,
+                          @Validated @RequestBody FinSaleRecord finSaleRecord)
     {
         finSaleRecord.setDeptId(SecurityUtils.getDeptId());
         finSaleRecord.setCreateBy(SecurityUtils.getUsername());
+        finSaleRecord.setIdempotencyKey(idempotencyKey);
         if (!finSaleRecordService.checkSaleNoUnique(finSaleRecord))
         {
             return error("新增销售记录'" + finSaleRecord.getSaleNo() + "'失败，销售单号已存在");
@@ -132,6 +137,7 @@ public class FinSaleRecordController extends BaseController
      */
     @RequiresPermissions("finance:sale:edit")
     @Log(title = "销售记录", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "sale:update")
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody FinSaleRecord finSaleRecord)
     {
@@ -154,6 +160,7 @@ public class FinSaleRecordController extends BaseController
      */
     @RequiresPermissions("finance:sale:remove")
     @Log(title = "销售记录", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "sale:delete")
 	@DeleteMapping("/{saleIds}")
     public AjaxResult remove(@PathVariable Long[] saleIds)
     {
@@ -177,8 +184,10 @@ public class FinSaleRecordController extends BaseController
      */
     @RequiresPermissions("finance:sale:edit")
     @Log(title = "添加缴款", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "sale:payment", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/payment/{saleId}")
-    public AjaxResult addPayment(@PathVariable Long saleId, @RequestBody java.util.Map<String, Object> params)
+    public AjaxResult addPayment(@RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey,
+                                 @PathVariable Long saleId, @RequestBody java.util.Map<String, Object> params)
     {
         FinSaleRecord existing = finSaleRecordService.selectFinSaleRecordBySaleId(saleId);
         if (existing == null || (!SecurityUtils.isAdmin() && !java.util.Objects.equals(existing.getDeptId(), SecurityUtils.getDeptId())))
@@ -206,7 +215,7 @@ public class FinSaleRecordController extends BaseController
         {
             paymentDate = new java.util.Date();
         }
-        return toAjax(finSaleRecordService.addPayment(saleId, paymentAmount, paymentMethod, remark, paymentDate));
+        return toAjax(finSaleRecordService.addPayment(saleId, paymentAmount, paymentMethod, remark, paymentDate, idempotencyKey));
     }
 
     /**
@@ -214,6 +223,7 @@ public class FinSaleRecordController extends BaseController
      */
     @RequiresPermissions("finance:sale:payment")
     @Log(title = "修改缴款", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "sale:payment:update", highRisk = true, ttlSeconds = 2592000)
     @PutMapping("/payment/{paymentId}")
     public AjaxResult updatePayment(@PathVariable Long paymentId, @RequestBody java.util.Map<String, Object> params)
     {
@@ -250,6 +260,7 @@ public class FinSaleRecordController extends BaseController
      */
     @RequiresPermissions("finance:sale:payment")
     @Log(title = "删除缴款", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "sale:payment:delete")
     @DeleteMapping("/payment/{paymentId}")
     public AjaxResult deletePayment(@PathVariable Long paymentId)
     {

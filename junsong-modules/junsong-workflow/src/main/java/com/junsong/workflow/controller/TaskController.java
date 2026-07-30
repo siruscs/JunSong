@@ -4,6 +4,9 @@ import java.util.List;
 import java.util.Map;
 
 import com.junsong.common.core.domain.R;
+import com.junsong.common.core.idempotency.Idempotent;
+import com.junsong.common.log.annotation.Log;
+import com.junsong.common.log.enums.BusinessType;
 import com.junsong.workflow.service.task.WorkflowTaskService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,6 +29,7 @@ public class TaskController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:task:approve')")
+    @Idempotent(scene = "workflow:task:batchApprove", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/batch-approve")
     public R<Map<String, Object>> batchApprove(@RequestBody BatchApproveReq request)
     {
@@ -67,6 +71,7 @@ public class TaskController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:task:claim')")
+    @Idempotent(scene = "workflow:task:claim", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/{taskId}/claim")
     public R<Void> claim(@PathVariable("taskId") String taskId)
     {
@@ -74,6 +79,8 @@ public class TaskController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:task:approve')")
+    @Idempotent(scene = "workflow:task:approve", highRisk = true, ttlSeconds = 2592000)
+    @Log(title = "流程审批", businessType = BusinessType.UPDATE)
     @PostMapping("/{taskId}/approve")
     public R<Void> approve(
             @PathVariable("taskId") String taskId,
@@ -83,6 +90,8 @@ public class TaskController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:task:reject')")
+    @Idempotent(scene = "workflow:task:reject", highRisk = true, ttlSeconds = 2592000)
+    @Log(title = "流程驳回", businessType = BusinessType.UPDATE)
     @PostMapping("/{taskId}/reject")
     public R<Void> reject(
             @PathVariable("taskId") String taskId,
@@ -99,6 +108,7 @@ public class TaskController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:task:claim')")
+    @Idempotent(scene = "workflow:task:transfer", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/{taskId}/transfer")
     public R<Void> transfer(
             @PathVariable("taskId") String taskId,
@@ -108,6 +118,7 @@ public class TaskController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:task:claim')")
+    @Idempotent(scene = "workflow:task:delegate", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/{taskId}/delegate")
     public R<Void> delegate(
             @PathVariable("taskId") String taskId,
@@ -117,6 +128,7 @@ public class TaskController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:task:claim')")
+    @Idempotent(scene = "workflow:task:resolve", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/{taskId}/resolve")
     public R<Void> resolve(@PathVariable("taskId") String taskId)
     {
@@ -124,6 +136,7 @@ public class TaskController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:task:urge')")
+    @Idempotent(scene = "workflow:task:urge", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/{taskId}/urge")
     public R<Void> urge(
             @PathVariable("taskId") String taskId,
@@ -133,6 +146,7 @@ public class TaskController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:task:cc')")
+    @Idempotent(scene = "workflow:task:cc", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/{taskId}/cc")
     public R<Void> cc(
             @PathVariable("taskId") String taskId,
@@ -142,6 +156,7 @@ public class TaskController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:task:addsign')")
+    @Idempotent(scene = "workflow:task:addsign", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/{taskId}/addsign")
     public R<Void> addsign(
             @PathVariable("taskId") String taskId,
@@ -161,6 +176,8 @@ public class TaskController
     {
         public String comment;
         public String targetActivityId;
+        /** FULL_RESTART：从首个审批节点重走；RETURN_TO_NODE：退回指定节点。 */
+        public String resubmitMode;
         public String targetType;
         public List<Map<String, String>> attachments;
     }

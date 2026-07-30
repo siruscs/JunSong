@@ -105,6 +105,18 @@ class FinSaleRecordServiceImplTest {
     }
 
     @Test
+    void returnSaleWithNegativeQuantity_generatesInboundAdjustmentLedger() {
+        seedStock(1L, 100L, 20);
+        FinSaleRecord s = sale(8005L, "SO-RETURN-1", 1L, 100L, "可乐", -3);
+
+        service.applySaleStockOut(s);
+
+        assertEquals(1, mapper.inserted.size());
+        assertEquals(3, mapper.inserted.get(0).getChangeQuantity());
+        assertEquals(23, mapper.position(1L, 100L));
+    }
+
+    @Test
     void saleWithGift_deductsTotalQuantity() {
         seedStock(1L, 100L, 20);
         FinSaleRecord s = saleWithGift(8001L, "SO-1", 1L, 100L, "可乐", 3, 2);
@@ -480,5 +492,11 @@ class FinSaleRecordServiceImplTest {
             return 0;
         }
 
+
+    @Override
+    public int countDownstreamLedgersAfterTime(Long tenantId, Long deptId, Long productId, java.util.Date afterTime) {
+        return 0;
     }
+
+}
 }

@@ -15,6 +15,7 @@ import com.junsong.common.core.utils.StringUtils;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -61,6 +62,7 @@ public class SysTenantController extends BaseController
      */
     @RequiresPermissions("system:tenant:add")
     @Log(title = "租户管理", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "system:tenant:add")
     @PostMapping
     public AjaxResult add(@Validated @RequestBody SysTenant tenant)
     {
@@ -85,6 +87,7 @@ public class SysTenantController extends BaseController
      */
     @RequiresPermissions("system:tenant:edit")
     @Log(title = "租户管理", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:tenant:edit")
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody SysTenant tenant)
     {
@@ -112,6 +115,7 @@ public class SysTenantController extends BaseController
      */
     @RequiresPermissions("system:tenant:edit")
     @Log(title = "租户管理", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:tenant:change-status", highRisk = true)
     @PutMapping("/changeStatus")
     public AjaxResult changeStatus(@RequestBody SysTenant tenant)
     {

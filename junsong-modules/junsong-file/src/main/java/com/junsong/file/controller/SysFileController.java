@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import com.junsong.common.core.domain.R;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.core.utils.StringUtils;
 import com.junsong.common.core.utils.file.FileUtils;
 import com.junsong.file.service.ISysFileService;
@@ -30,6 +31,7 @@ public class SysFileController
     /**
      * 文件上传请求
      */
+    @Idempotent(scene = "file:file:upload", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("upload")
     public R<SysFile> upload(MultipartFile file)
     {
@@ -53,6 +55,7 @@ public class SysFileController
      * 文件删除请求
      */
     @RequiresPermissions("system:file:remove")
+    @Idempotent(scene = "file:file:delete", highRisk = true, ttlSeconds = 2592000)
     @DeleteMapping("delete")
     public R<Boolean> delete(String fileUrl)
     {

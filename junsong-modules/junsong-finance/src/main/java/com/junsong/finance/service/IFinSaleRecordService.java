@@ -76,15 +76,16 @@ public interface IFinSaleRecordService
 
     /**
      * 添加缴款记录
-     * 
+     *
      * @param saleId 销售记录主键
      * @param paymentAmount 缴款金额
      * @param paymentMethod 付款方式
      * @param remark 备注
      * @param paymentDate 缴款日期
+     * @param idempotencyKey 幂等键（可选，来自请求头 X-Idempotency-Key）
      * @return 结果
      */
-    public int addPayment(Long saleId, java.math.BigDecimal paymentAmount, String paymentMethod, String remark, java.util.Date paymentDate);
+    public int addPayment(Long saleId, java.math.BigDecimal paymentAmount, String paymentMethod, String remark, java.util.Date paymentDate, String idempotencyKey);
 
     /**
      * 修改缴款记录

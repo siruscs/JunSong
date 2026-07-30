@@ -26,7 +26,7 @@ public interface LcMetadataService
 
     LcBizObject selectBizObjectByBizCode(String bizCode);
 
-    /** 列出所有启用流程的 GENERIC 业务对象（供通用 SyncHandler 匹配 processKey） */
+    /** 列出所有启用流程的低代码业务对象（供通用 SyncHandler 匹配 processKey） */
     List<LcBizObject> selectGenericWorkflowObjects();
 
     int insertBizObject(LcBizObject bizObject);

@@ -2,6 +2,7 @@ package com.junsong.finance.mapper;
 
 import java.math.BigDecimal;
 import java.util.List;
+import org.apache.ibatis.annotations.Param;
 import com.junsong.finance.domain.FinSalePayment;
 
 /**

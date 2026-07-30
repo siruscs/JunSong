@@ -17,6 +17,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="totalInvest" column="total_invest" />
         <result property="currentAdvance" column="current_advance" />
         <result property="returnSituation" column="return_situation" />
+        <result property="tenantId" column="tenant_id" />
+        <result property="idempotencyKey" column="idempotency_key" />
         <result property="delFlag" column="del_flag" />
         <result property="createBy" column="create_by" />
         <result property="createTime" column="create_time" />
@@ -118,6 +120,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="totalInvest != null">total_invest,</if>
             <if test="currentAdvance != null">current_advance,</if>
             <if test="returnSituation != null">return_situation,</if>
+            <if test="tenantId != null">tenant_id,</if>
+            <if test="idempotencyKey != null">idempotency_key,</if>
             <if test="delFlag != null">del_flag,</if>
             <if test="createBy != null">create_by,</if>
             create_time,
@@ -135,6 +139,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="totalInvest != null">#{totalInvest},</if>
             <if test="currentAdvance != null">#{currentAdvance},</if>
             <if test="returnSituation != null">#{returnSituation},</if>
+            <if test="tenantId != null">#{tenantId},</if>
+            <if test="idempotencyKey != null">#{idempotencyKey},</if>
             <if test="delFlag != null">#{delFlag},</if>
             <if test="createBy != null">#{createBy},</if>
             sysdate(),

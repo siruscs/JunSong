@@ -36,7 +36,7 @@ export interface WorkflowDoneTaskRow {
 export interface WorkflowAppliedTaskRow extends WorkflowInstanceRow {}
 
 export interface WorkflowTaskDetail extends WorkflowTodoTaskRow {
-  variables?: Record<string, any>
+  businessForm?: Record<string, any>
   attachments?: any[]
   multiInstance?: {
     total: number
@@ -55,6 +55,7 @@ export interface WorkflowApprovePayload {
 export interface WorkflowRejectPayload {
   comment?: string
   targetActivityId?: string
+  resubmitMode?: 'FULL_RESTART' | 'RETURN_TO_NODE'
   targetType?: string
   attachments?: any[]
 }

@@ -1,6 +1,7 @@
 package com.junsong.finance.controller;
 
 import com.junsong.common.core.domain.R;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -50,6 +51,7 @@ public class StoreFinanceReportController extends BaseController {
     }
 
     @RequiresPermissions("finance:reviewTask:add")
+    @Idempotent(scene = "finance:reviewTask:generate")
     @PostMapping("/authorized/health-tasks/generate")
     public AjaxResult generateHealthReviewTasks(@RequestBody StoreHealthTaskGenerateParams params) {
         return AjaxResult.success(storeFinanceReportService.generateHealthReviewTasks(params));

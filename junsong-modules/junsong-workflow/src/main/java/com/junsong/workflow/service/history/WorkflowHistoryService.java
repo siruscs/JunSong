@@ -7,6 +7,8 @@ import java.util.Map;
 import com.junsong.common.core.domain.R;
 import com.junsong.workflow.security.CurrentWorkflowUserFacade;
 import com.junsong.workflow.security.ProcessAuthorizationService;
+import com.junsong.workflow.lowcode.domain.LcBizInstance;
+import com.junsong.workflow.lowcode.mapper.LcBizInstanceMapper;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.history.HistoricActivityInstance;
@@ -28,17 +30,20 @@ public class WorkflowHistoryService
     private final TaskService taskService;
     private final CurrentWorkflowUserFacade currentWorkflowUserFacade;
     private final ProcessAuthorizationService processAuthorizationService;
+    private final LcBizInstanceMapper lcBizInstanceMapper;
 
     public WorkflowHistoryService(
             HistoryService historyService,
             TaskService taskService,
             CurrentWorkflowUserFacade currentWorkflowUserFacade,
-            ProcessAuthorizationService processAuthorizationService)
+            ProcessAuthorizationService processAuthorizationService,
+            LcBizInstanceMapper lcBizInstanceMapper)
     {
         this.historyService = historyService;
         this.taskService = taskService;
         this.currentWorkflowUserFacade = currentWorkflowUserFacade;
         this.processAuthorizationService = processAuthorizationService;
+        this.lcBizInstanceMapper = lcBizInstanceMapper;
     }
 
     /**
@@ -90,7 +95,8 @@ public class WorkflowHistoryService
     public R<List<Map<String, Object>>> finishedInstances(String processKey, Integer limit)
     {
         String username = currentWorkflowUserFacade.current().username();
-        var q = historyService.createHistoricProcessInstanceQuery().finished();
+        // 历史页面同时展示运行中和已结束实例；只查 finished 会导致刚发起/审批中的流程列表为空。
+        var q = historyService.createHistoricProcessInstanceQuery();
         if (processKey != null && !processKey.isBlank())
         {
             q.processDefinitionKey(processKey);
@@ -107,6 +113,8 @@ public class WorkflowHistoryService
             m.put("endTime", p.getEndTime());
             m.put("durationMs", p.getDurationInMillis());
             m.put("initiator", p.getStartUserId());
+            LcBizInstance business = lcBizInstanceMapper.selectByProcessInstanceId(p.getId());
+            if (business != null) m.put("businessForm", business.getFormDataMap());
             return m;
         }).toList();
         return R.ok(rows);

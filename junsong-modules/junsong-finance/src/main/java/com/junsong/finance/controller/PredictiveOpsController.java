@@ -1,5 +1,6 @@
 package com.junsong.finance.controller;
 
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -40,6 +41,7 @@ public class PredictiveOpsController extends BaseController {
      * 生成预测快照（持久化样本和因子，不修改业务表）。
      */
     @RequiresPermissions("finance:predictiveOps:snapshot")
+    @Idempotent(scene = "finance:predictiveOps:snapshot")
     @PostMapping("/predictive-ops/snapshot")
     public AjaxResult snapshot(@RequestBody(required = false) PredictiveOpsQueryParams params) {
         int count = predictiveOpsService.createSnapshot(

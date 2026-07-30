@@ -115,7 +115,13 @@ class FinAccountingPeriodOpsAdjustStartTimeTest
         @Override public BigDecimal selectTotalUnverifiedAdvance(Long periodId, Long deptId, Date startTime, Date endTime) { return BigDecimal.ZERO; }
         @Override public String selectCurrentPeriodStatusByDeptIds(java.util.List<Long> deptIds) { return null; }
         @Override public FinAccountingPeriod selectPeriodById(Long periodId) { return null; }
+
+    @Override
+    public com.junsong.finance.domain.FinAccountingPeriod selectCurrentPeriodByDeptIdForUpdate(Long tenantId, Long deptId) {
+        return selectCurrentPeriodByDeptId(deptId);
     }
+
+}
 
     static class FakeShareMapper implements FinProfitShareRecordMapper
     {

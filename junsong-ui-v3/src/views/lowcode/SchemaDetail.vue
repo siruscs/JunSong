@@ -19,7 +19,7 @@
 
       <el-descriptions :column="1" border>
         <el-descriptions-item v-for="field in detailFields" :key="field.fieldKey" :label="field.fieldLabel">
-          <FieldRenderer :field="field" :model-value="formData[field.fieldKey]" readonly />
+          <FieldRenderer :field="field" :model-value="detailFieldValue(field)" :form-values="formData" readonly />
         </el-descriptions-item>
       </el-descriptions>
 
@@ -61,6 +61,7 @@ import {
   type LcBizField,
   type LcBizInstance,
 } from '@/api/lowcode'
+import { getRuntimePage } from '@/api/lowcode/admin'
 import { buildFieldRules, defaultValueFor, lcCanFulfill, lcFormatDateTime, lcStatusMeta } from './schema'
 
 const props = defineProps<{
@@ -108,6 +109,11 @@ const fulfillFields = computed(() =>
 
 const showFulfillForm = computed(() => lcCanFulfill(record.value?.workflowStatus) && fulfillFields.value.length > 0)
 
+function detailFieldValue(field: LcBizField) {
+  if (field.fieldKey === 'take_no') return formData.take_no || record.value?.orderNo
+  return formData[field.fieldKey]
+}
+
 const fulfillRules = computed<FormRules>(() => {
   const result: FormRules = {}
   fulfillFields.value.forEach((field) => {
@@ -121,11 +127,21 @@ async function loadDetail() {
   if (!props.recordId) return
   loading.value = true
   try {
-    const [fieldsRes, detailRes]: any[] = await Promise.all([
+    const [fieldsRes, detailRes, runtimeRes]: any[] = await Promise.all([
       listBizFields(props.bizCode),
       getBizInstance(props.bizCode, props.recordId),
+      getRuntimePage(props.bizCode, 'DETAIL').catch(() => null),
     ])
     allFields.value = fieldsRes.data || fieldsRes.rows || []
+    const runtimeFields = runtimeRes?.data?.fields || runtimeRes?.fields
+    if (Array.isArray(runtimeFields) && runtimeFields.length) {
+      const fieldMap = new Map(allFields.value.map((field) => [field.fieldKey, field]))
+      const resolvedFields = runtimeFields
+        .filter((runtimeField: any) => runtimeField.visible !== false)
+        .map((runtimeField: any) => fieldMap.get(runtimeField.fieldKey))
+        .filter(Boolean) as LcBizField[]
+      if (resolvedFields.length) allFields.value = resolvedFields
+    }
     record.value = detailRes.data || null
     Object.keys(formData).forEach((key) => delete formData[key])
     const parsed = record.value?.formData ? JSON.parse(record.value.formData) : {}

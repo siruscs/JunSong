@@ -11,6 +11,7 @@ export interface WorkflowHistoryInstanceRow {
   durationMs?: number | null
   initiator?: string | null
   running?: boolean
+  businessForm?: Record<string, any>
 }
 
 export interface WorkflowHistoryActivityRow {

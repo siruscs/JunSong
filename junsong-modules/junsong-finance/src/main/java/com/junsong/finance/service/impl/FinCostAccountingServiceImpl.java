@@ -48,6 +48,9 @@ public class FinCostAccountingServiceImpl implements IFinCostAccountingService
     public int insertFinCostAccounting(FinCostAccounting finCostAccounting)
     {
         finCostAccounting.setDeptId(SecurityUtils.getDeptId());
+        // DB 唯一键兜底：从 AOP ThreadLocal 读取幂等键填充到业务表
+        finCostAccounting.setTenantId(com.junsong.common.core.context.TenantContext.getTenantId());
+        finCostAccounting.setIdempotencyKey(com.junsong.common.core.idempotency.IdempotencyResultStore.currentKey());
 
         FinAccountingPeriod currentPeriod = finAccountingPeriodService.initCurrentPeriod(finCostAccounting.getDeptId());
         finCostAccounting.setStartDate(currentPeriod.getStartTime());

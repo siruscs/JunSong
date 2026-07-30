@@ -4,6 +4,7 @@ import java.util.List;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
@@ -62,6 +63,7 @@ public class MemPointsRecordController extends BaseController {
      */
     @RequiresPermissions("member:pointsRecord:add")
     @Log(title = "积分记录", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "member:pointsRecord:create")
     @PostMapping
     public AjaxResult add(@RequestBody MemPointsRecord memPointsRecord) {
         if (!memPointsRecordService.checkMemPointsRecordNoUnique(memPointsRecord)) {
@@ -79,6 +81,7 @@ public class MemPointsRecordController extends BaseController {
      */
     @RequiresPermissions("member:pointsRecord:edit")
     @Log(title = "积分记录", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "member:points-record:edit")
     @PutMapping
     public AjaxResult edit(@RequestBody MemPointsRecord memPointsRecord) {
         if (!memPointsRecordService.checkMemPointsRecordNoUnique(memPointsRecord)) {
@@ -93,6 +96,7 @@ public class MemPointsRecordController extends BaseController {
      */
     @RequiresPermissions("member:pointsRecord:remove")
     @Log(title = "积分记录", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "member:pointsRecord:delete")
     @DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable Long[] ids) {
         return toAjax(memPointsRecordService.deleteMemPointsRecordByIds(ids));

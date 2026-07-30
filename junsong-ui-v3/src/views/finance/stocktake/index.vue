@@ -43,12 +43,10 @@
         />
       </el-form-item>
       <el-form-item label="盘点人" prop="counterUserId">
-        <el-input
+        <UserSelect
           v-model="counterUserIdInput"
-          placeholder="盘点人ID"
-          clearable
-          style="width: 140px"
-          @keyup.enter="handleQuery"
+          placeholder="盘点人"
+          style="width: 200px"
         />
       </el-form-item>
       <el-form-item>
@@ -123,15 +121,19 @@
     <el-dialog title="创建盘点任务" v-model="createOpen" width="560px" append-to-body>
       <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="100px">
         <el-form-item label="盘点单号" prop="takeNo">
-          <el-input v-model="createForm.takeNo" placeholder="请输入盘点单号" />
+          <el-input v-model="createForm.takeNo" readonly>
+            <template #suffix><span class="auto-field-tag">系统生成</span></template>
+          </el-input>
         </el-form-item>
         <el-form-item label="门店" prop="deptId">
-          <el-select v-model="createForm.deptId" placeholder="选择门店" filterable style="width: 100%">
+          <el-select v-model="createForm.deptId" placeholder="选择门店" filterable :disabled="deptOptions.length <= 1" style="width: 100%">
             <el-option v-for="dept in deptOptions" :key="dept.deptId" :label="dept.deptName" :value="dept.deptId" />
           </el-select>
         </el-form-item>
         <el-form-item label="盘点范围" prop="scopeType">
-          <el-input model-value="指定商品" disabled />
+          <el-select v-model="createForm.scopeType" disabled style="width: 100%">
+            <el-option label="指定商品" value="SELECTED_PRODUCTS" />
+          </el-select>
         </el-form-item>
         <el-form-item label="商品" prop="productIds">
           <el-select
@@ -139,6 +141,8 @@
             multiple
             filterable
             placeholder="选择商品"
+            :loading="productLoading"
+            no-data-text="暂无可选商品"
             style="width: 100%"
           >
             <el-option
@@ -149,11 +153,10 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="盘点人" prop="counterUserId">
-          <el-input v-model="counterUserInput" placeholder="盘点人用户ID" />
-        </el-form-item>
-        <el-form-item label="复盘人" prop="recountUserId">
-          <el-input v-model="recountUserInput" placeholder="复盘人用户ID（可选）" />
+        <el-form-item label="盘点人">
+          <el-input :model-value="counterUserLabel" readonly>
+            <template #suffix><span class="auto-field-tag">当前登录用户</span></template>
+          </el-input>
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="createForm.remark" type="textarea" :rows="2" maxlength="500" show-word-limit />
@@ -168,13 +171,14 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance } from 'element-plus'
 import { saveAs } from 'file-saver'
 import { parseTime } from '@/utils/junsong'
 import { useUserStore } from '@/stores/user'
 import Pagination from '@/components/Pagination/index.vue'
+import UserSelect from '@/components/UserSelect/index.vue'
 import {
   createStocktake,
   exportStocktakes,
@@ -194,10 +198,10 @@ const total = ref(0)
 const list = ref<any[]>([])
 const productOptions = ref<any[]>([])
 const deptOptions = ref<any[]>([])
+const productLoading = ref(false)
 const dateRange = ref<string[]>([])
 const counterUserIdInput = ref('')
-const counterUserInput = ref('')
-const recountUserInput = ref('')
+const counterUserLabel = computed(() => userStore.nickName || userStore.name || '当前登录用户')
 const statusCounts = reactive<Record<string, number>>({})
 
 const createFormRef = ref<FormInstance>()
@@ -317,7 +321,12 @@ function resetQuery() {
 }
 
 function handleDetail(row: any) {
-  router.push(`/finance/stocktake/detail/${row.stocktakeId}`)
+  const stocktakeId = row.stocktakeId ?? row.stocktake_id
+  if (!stocktakeId || Number.isNaN(Number(stocktakeId))) {
+    ElMessage.error('盘点任务缺少有效ID，无法打开详情，请刷新列表后重试')
+    return
+  }
+  router.push(`/finance/stocktake/detail/${Number(stocktakeId)}`)
 }
 
 function handleAdd() {
@@ -329,29 +338,40 @@ function handleAdd() {
 }
 
 function resetCreateForm() {
-  createForm.takeNo = ''
+  createForm.takeNo = generateTakeNo()
   createForm.deptId = userStore.currentDeptId || undefined
   createForm.scopeType = 'SELECTED_PRODUCTS'
   createForm.productIds = []
   createForm.remark = ''
-  counterUserInput.value = ''
-  recountUserInput.value = ''
+}
+
+function generateTakeNo() {
+  const now = new Date()
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `ST${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}${String(now.getMilliseconds()).padStart(3, '0')}${Math.floor(Math.random() * 90 + 10)}`
 }
 
 function loadProducts() {
+  productLoading.value = true
   listProductSelector()
     .then((res: any) => {
       productOptions.value = res.data || res.rows || []
     })
-    .catch(() => {})
+    .catch(() => {
+      productOptions.value = []
+      ElMessage.error('商品列表加载失败，请稍后重试')
+    })
+    .finally(() => {
+      productLoading.value = false
+    })
 }
 
 function submitCreate() {
   createFormRef.value?.validate((valid) => {
     if (!valid) return
-    const counterUserId = Number(counterUserInput.value)
+    const counterUserId = Number(userStore.id)
     if (!counterUserId || Number.isNaN(counterUserId)) {
-      ElMessage.warning('请输入有效的盘点人ID')
+      ElMessage.warning('当前登录用户信息未加载完成，请重新登录后再试')
       return
     }
     const payload = {
@@ -360,7 +380,6 @@ function submitCreate() {
       scopeType: 'SELECTED_PRODUCTS',
       productIds: createForm.productIds,
       counterUserId,
-      recountUserId: recountUserInput.value ? Number(recountUserInput.value) : undefined,
       remark: createForm.remark || undefined,
     }
     createLoading.value = true
@@ -370,6 +389,13 @@ function submitCreate() {
         createOpen.value = false
         getList()
         loadStats()
+      })
+      .catch((error: any) => {
+        const message = error?.response?.data?.msg || error?.message || '保存失败，请检查门店和商品后重试'
+        ElMessage.error(message)
+        // A failed request may have reached the server before the connection
+        // broke; regenerate the id so a retry cannot hit the tenant unique key.
+        createForm.takeNo = generateTakeNo()
       })
       .finally(() => {
         createLoading.value = false
@@ -444,5 +470,9 @@ onMounted(() => {
 }
 .mb8 {
   margin-bottom: 8px;
+}
+.auto-field-tag {
+  color: #94a3b8;
+  font-size: 12px;
 }
 </style>

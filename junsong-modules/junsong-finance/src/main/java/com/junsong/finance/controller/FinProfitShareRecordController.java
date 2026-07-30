@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -46,6 +47,7 @@ public class FinProfitShareRecordController extends BaseController
 
     @RequiresPermissions("finance:profitShare:add")
     @Log(title = "分润结转", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "profitShare:carryForward", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/carryForward/{periodId}")
     public AjaxResult carryForward(@PathVariable Long periodId)
     {
@@ -54,6 +56,7 @@ public class FinProfitShareRecordController extends BaseController
 
     @RequiresPermissions("finance:profitShare:add")
     @Log(title = "分润记录", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "profitShare:create")
     @PostMapping
     public AjaxResult add(@Validated @RequestBody FinProfitShareRecord finProfitShareRecord)
     {
@@ -64,6 +67,7 @@ public class FinProfitShareRecordController extends BaseController
 
     @RequiresPermissions("finance:profitShare:edit")
     @Log(title = "分润记录", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "profitShare:update")
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody FinProfitShareRecord finProfitShareRecord)
     {
@@ -73,6 +77,7 @@ public class FinProfitShareRecordController extends BaseController
 
     @RequiresPermissions("finance:profitShare:remove")
     @Log(title = "分润记录", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "profitShare:delete")
     @DeleteMapping("/{shareIds}")
     public AjaxResult remove(@PathVariable Long[] shareIds)
     {

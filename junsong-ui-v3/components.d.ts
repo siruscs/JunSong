@@ -95,6 +95,7 @@ declare module 'vue' {
     SizeSelect: typeof import('./src/components/SizeSelect/index.vue')['default']
     SvgIcon: typeof import('./src/components/SvgIcon/index.vue')['default']
     TreePanel: typeof import('./src/components/TreePanel/index.vue')['default']
+    UserSelect: typeof import('./src/components/UserSelect/index.vue')['default']
   }
   export interface GlobalDirectives {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
@@ -67,6 +68,7 @@ public class MemSeckillController extends BaseController {
      */
     @RequiresPermissions("member:seckill:add")
     @Log(title = "秒杀活动", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "member:seckill:create")
     @PostMapping
     public AjaxResult add(@RequestBody MemSeckill memSeckill) {
         // 自动生成秒杀编号
@@ -109,6 +111,7 @@ public class MemSeckillController extends BaseController {
      */
     @RequiresPermissions("member:seckill:edit")
     @Log(title = "秒杀活动", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "member:seckill:edit")
     @PutMapping
     public AjaxResult edit(@RequestBody MemSeckill memSeckill) {
         if (!memSeckillService.checkMemSeckillNoUnique(memSeckill)) {
@@ -130,6 +133,7 @@ public class MemSeckillController extends BaseController {
 
     @RequiresPermissions("member:seckill:edit")
     @Log(title = "秒杀活动", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "member:seckill:changeStatus")
     @PutMapping("/{id}/close")
     public AjaxResult close(@PathVariable Long id) {
         MemSeckill seckill = new MemSeckill();

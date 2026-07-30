@@ -18,6 +18,7 @@ import com.junsong.common.core.utils.file.FileTypeUtils;
 import com.junsong.common.core.utils.file.MimeTypeUtils;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.service.TokenService;
@@ -64,6 +65,7 @@ public class SysProfileController extends BaseController
      * 修改用户
      */
     @Log(title = "个人信息", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:profile:update")
     @PutMapping
     public AjaxResult updateProfile(@RequestBody SysUser user)
     {
@@ -94,6 +96,7 @@ public class SysProfileController extends BaseController
      * 重置密码
      */
     @Log(title = "个人信息", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:profile:update-pwd", highRisk = true)
     @PutMapping("/updatePwd")
     public AjaxResult updatePwd(@RequestBody Map<String, String> params)
     {
@@ -126,6 +129,7 @@ public class SysProfileController extends BaseController
      * 头像上传
      */
     @Log(title = "用户头像", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:profile:avatar")
     @PostMapping("/avatar")
     public AjaxResult avatar(@RequestParam("avatarfile") MultipartFile file)
     {

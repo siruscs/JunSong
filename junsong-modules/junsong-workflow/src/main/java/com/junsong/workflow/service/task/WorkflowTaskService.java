@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.alibaba.fastjson2.JSON;
 import com.junsong.common.core.domain.R;
 import com.junsong.workflow.controller.TaskController.ApproveReq;
 import com.junsong.workflow.controller.TaskController.RejectReq;
@@ -20,6 +21,8 @@ import com.junsong.workflow.domain.WfTaskAddSign;
 import com.junsong.workflow.domain.WfTaskAttachment;
 import com.junsong.workflow.lowcode.sync.ConfigurablePostActionHandler;
 import com.junsong.workflow.mapper.WfNotificationMapper;
+import com.junsong.workflow.lowcode.domain.LcBizInstance;
+import com.junsong.workflow.lowcode.mapper.LcBizInstanceMapper;
 import com.junsong.workflow.mapper.WfSysUserDelegateMapper;
 import com.junsong.workflow.mapper.WfSysUserMapper;
 import com.junsong.workflow.mapper.WfTaskAddSignMapper;
@@ -39,6 +42,7 @@ import org.flowable.task.api.Task;
 import org.flowable.task.api.history.HistoricTaskInstance;
 import org.flowable.task.service.impl.persistence.entity.TaskEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 任务业务服务：待办 / 已办 / 已申请 / 详情 / 签收 / 审批 / 驳回 / 转办
@@ -63,6 +67,7 @@ public class WorkflowTaskService
     private final WfSysUserDelegateMapper sysUserDelegateMapper;
     private final WfTaskAttachmentMapper taskAttachmentMapper;
     private final WfTaskAddSignMapper taskAddSignMapper;
+    private final LcBizInstanceMapper lcBizInstanceMapper;
 
     public WorkflowTaskService(
             TaskService taskService,
@@ -77,7 +82,8 @@ public class WorkflowTaskService
             WfSysUserMapper sysUserMapper,
             WfSysUserDelegateMapper sysUserDelegateMapper,
             WfTaskAttachmentMapper taskAttachmentMapper,
-            WfTaskAddSignMapper taskAddSignMapper)
+            WfTaskAddSignMapper taskAddSignMapper,
+            LcBizInstanceMapper lcBizInstanceMapper)
     {
         this.taskService = taskService;
         this.runtimeService = runtimeService;
@@ -92,6 +98,7 @@ public class WorkflowTaskService
         this.sysUserDelegateMapper = sysUserDelegateMapper;
         this.taskAttachmentMapper = taskAttachmentMapper;
         this.taskAddSignMapper = taskAddSignMapper;
+        this.lcBizInstanceMapper = lcBizInstanceMapper;
     }
 
     /**
@@ -239,7 +246,16 @@ public class WorkflowTaskService
                 : Set.of(task.getProcessInstanceId());
         Map<String, ProcessInstance> processMap = buildProcessInstanceMap(processInstanceIds);
         Map<String, Object> result = toRow(task, processMap);
-        result.put("variables", taskService.getVariables(taskId));
+        Map<String, Object> formVariables = taskService.getVariables(taskId);
+        Object rawBusinessForm = formVariables == null ? null
+                : formVariables.getOrDefault("formData", formVariables.getOrDefault("businessForm", Map.of()));
+        Map<String, Object> businessForm = normalizeBusinessForm(rawBusinessForm);
+        if (businessForm.isEmpty() && task.getProcessInstanceId() != null)
+        {
+            LcBizInstance business = lcBizInstanceMapper.selectByProcessInstanceId(task.getProcessInstanceId());
+            if (business != null) businessForm = business.getFormDataMap();
+        }
+        result.put("businessForm", businessForm);
         if (taskAttachmentMapper != null)
         {
             result.put("attachments", taskAttachmentMapper.selectByTaskId(taskId));
@@ -300,6 +316,28 @@ public class WorkflowTaskService
         return R.ok(result);
     }
 
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> normalizeBusinessForm(Object rawBusinessForm)
+    {
+        if (rawBusinessForm instanceof Map<?, ?> map)
+        {
+            return (Map<String, Object>) map;
+        }
+        if (rawBusinessForm instanceof String text && !text.isBlank())
+        {
+            try
+            {
+                Map<String, Object> parsed = JSON.parseObject(text, Map.class);
+                return parsed == null ? Map.of() : parsed;
+            }
+            catch (RuntimeException ignored)
+            {
+                return Map.of();
+            }
+        }
+        return Map.of();
+    }
+
     /**
      * 签收任务（校验权限）
      */
@@ -345,6 +383,7 @@ public class WorkflowTaskService
     /**
      * 审批通过
      */
+    @Transactional(rollbackFor = Exception.class)
     public R<Void> approve(String taskId, ApproveReq request)
     {
         ApproveReq req = request == null ? new ApproveReq() : request;
@@ -358,7 +397,19 @@ public class WorkflowTaskService
             taskService.addComment(taskId, processInstanceId, "approve", req.comment.trim());
         }
         Map<String, Object> currentVariables = taskService.getVariables(taskId);
-        taskService.complete(taskId, req.variables == null ? Map.of() : req.variables);
+        Map<String, Object> completeVariables = req.variables == null
+                ? new java.util.LinkedHashMap<>() : new java.util.LinkedHashMap<>(req.variables);
+        // 兼容已部署的旧盘点流程定义：完成任务前注入默认值，避免旧网关因变量缺失失败。
+        if (processDefinitionId != null && processDefinitionId.startsWith("stocktake_apply:"))
+        {
+            Object existingNeedRecount = currentVariables == null ? null : currentVariables.get("needRecount");
+            completeVariables.putIfAbsent("needRecount",
+                    existingNeedRecount == null ? Boolean.FALSE : existingNeedRecount);
+            Object existingApprover = currentVariables == null ? null : currentVariables.get("approverUsername");
+            completeVariables.putIfAbsent("approverUsername",
+                    existingApprover == null || existingApprover.toString().isBlank() ? "admin" : existingApprover);
+        }
+        taskService.complete(taskId, completeVariables);
         findSyncHandler(processDefinitionId)
                 .ifPresent(handler -> handler.afterApprove(
                         currentTaskName,
@@ -375,6 +426,8 @@ public class WorkflowTaskService
                 .list();
         if (nextTasks.isEmpty())
         {
+            findSyncHandler(processDefinitionId)
+                    .ifPresent(handler -> handler.afterComplete(processInstanceId, actor.username(), currentVariables == null ? Map.of() : currentVariables));
             // 流程已结束，通知发起人
             notifyInitiator(processInstanceId, "流程已办结",
                     "您的流程已通过所有审批节点，已办结。", "wf_finished", "/workflow/instance");
@@ -414,28 +467,101 @@ public class WorkflowTaskService
         String processInstanceId = task.getProcessInstanceId();
         String processDefinitionId = task.getProcessDefinitionId();
         String comment = req.comment == null ? "" : req.comment.trim();
-        if (!comment.isBlank())
+        if (comment.isBlank())
+        {
+            return R.fail("驳回原因不能为空");
+        }
+        if ("INITIATOR_MODIFY".equalsIgnoreCase(req.targetType))
         {
             taskService.addComment(taskId, processInstanceId, "reject", comment);
+            return rejectToInitiatorModify(processInstanceId, processDefinitionId, task, comment, actor, req);
         }
 
-        // 如果指定了目标节点，使用回退逻辑；否则终止流程（兼容旧行为）
-        if (req.targetActivityId != null && !req.targetActivityId.isBlank())
+        // 未指定目标时默认退回最近一个已完成节点；只有没有可回退节点时才终止流程。
+        String targetActivityId = req.targetActivityId;
+        if ("FULL_RESTART".equalsIgnoreCase(req.resubmitMode))
         {
-            return rejectTo(processInstanceId, processDefinitionId, task, req.targetActivityId, comment, actor, req);
+            List<HistoricTaskInstance> allFinished = historyService.createHistoricTaskInstanceQuery()
+                    .processInstanceId(processInstanceId).finished()
+                    .orderByHistoricTaskInstanceStartTime().asc().list();
+            for (HistoricTaskInstance item : allFinished)
+            {
+                if (!task.getTaskDefinitionKey().equals(item.getTaskDefinitionKey()))
+                {
+                    targetActivityId = item.getTaskDefinitionKey();
+                    break;
+                }
+            }
+        }
+        if (targetActivityId == null || targetActivityId.isBlank())
+        {
+            var previousQuery = historyService.createHistoricTaskInstanceQuery();
+            List<HistoricTaskInstance> previous = previousQuery == null ? List.of() : previousQuery
+                    .processInstanceId(processInstanceId).finished().orderByHistoricTaskInstanceEndTime().desc().list();
+            for (HistoricTaskInstance item : previous)
+            {
+                if (!task.getTaskDefinitionKey().equals(item.getTaskDefinitionKey()))
+                {
+                    targetActivityId = item.getTaskDefinitionKey();
+                    break;
+                }
+            }
+        }
+        if (targetActivityId != null && !targetActivityId.isBlank())
+        {
+            if (!isAllowedRejectTarget(processInstanceId, targetActivityId, task.getTaskDefinitionKey()))
+            {
+                return R.fail("驳回目标节点无效");
+            }
+            taskService.addComment(taskId, processInstanceId, "reject", comment);
+            persistRejectMetadata(processInstanceId, comment, req.resubmitMode, actor.username());
+            return rejectTo(processInstanceId, processDefinitionId, task, targetActivityId, comment, actor, req);
         }
 
-        // 保存附件
-        saveAttachments(taskId, processInstanceId, req.attachments, actor.username(), "reject");
+        return R.fail("当前节点没有可回退的历史节点，不能直接驳回结束；请驳回给发起人修改或选择合法目标节点");
+    }
 
-        runtimeService.deleteProcessInstance(processInstanceId, "驳回: " + comment);
+    private boolean isAllowedRejectTarget(String processInstanceId, String targetActivityId, String currentActivityId)
+    {
+        if (targetActivityId == null || targetActivityId.isBlank() || targetActivityId.equals(currentActivityId)) return false;
+        List<HistoricTaskInstance> history = historyService.createHistoricTaskInstanceQuery()
+                .processInstanceId(processInstanceId).finished().list();
+        return history.stream().anyMatch(item -> targetActivityId.equals(item.getTaskDefinitionKey()));
+    }
+
+    private void persistRejectMetadata(String processInstanceId, String reason, String mode, String operator)
+    {
+        LcBizInstance instance = lcBizInstanceMapper.selectByProcessInstanceId(processInstanceId);
+        if (instance == null) return;
+        instance.setLastRejectReason(reason);
+        instance.setLastRejectMode(mode == null || mode.isBlank() ? "RETURN_TO_NODE" : mode);
+        instance.setUpdateBy(operator);
+        lcBizInstanceMapper.updateLcBizInstance(instance);
+    }
+
+    private R<Void> rejectToInitiatorModify(String processInstanceId, String processDefinitionId, Task currentTask,
+                                            String comment, CurrentWorkflowUser actor, RejectReq req)
+    {
+        saveAttachments(currentTask.getId(), processInstanceId, req.attachments, actor.username(), "reject");
+
+        LcBizInstance instance = lcBizInstanceMapper.selectByProcessInstanceId(processInstanceId);
+        if (instance != null)
+        {
+            instance.setLastRejectReason(comment);
+            instance.setLastRejectMode(req.resubmitMode == null || req.resubmitMode.isBlank() ? "FULL_RESTART" : req.resubmitMode);
+            instance.setWorkflowStatus("REJECTED");
+            instance.setCurrentTaskName("发起人修改");
+            instance.setUpdateBy(actor.username());
+            lcBizInstanceMapper.updateLcBizInstance(instance);
+        }
+
+        runtimeService.deleteProcessInstance(processInstanceId, "驳回给发起人修改: " + comment);
         findSyncHandler(processDefinitionId)
                 .ifPresent(handler -> handler.afterReject(processInstanceId, actor.username()));
         postActionHandler.onAfterReject(processInstanceId, actor.username());
-
-        notifyInitiator(processInstanceId, "流程已驳回",
-                "您的流程已被驳回" + (comment.isBlank() ? "" : "，原因：" + comment) + "。", "wf_rejected", "/workflow/instance");
-
+        notifyInitiator(processInstanceId, "流程被驳回，请修改后重新提交",
+                "您的流程被驳回" + (comment.isBlank() ? "" : "，原因：" + comment) + "，请修改后重新提交。",
+                "wf_rejected", "/workflow/instance");
         return R.ok();
     }
 
@@ -457,9 +583,10 @@ public class WorkflowTaskService
                 .changeState();
 
         // 回退后设置任务 assignee（如果历史中有记录）
+        List<Task> newTasks = new ArrayList<>();
         if (targetAssignee != null && !targetAssignee.isBlank())
         {
-            List<Task> newTasks = taskService.createTaskQuery()
+            newTasks = taskService.createTaskQuery()
                     .processInstanceId(processInstanceId)
                     .taskDefinitionKey(targetActivityId)
                     .list();
@@ -484,7 +611,7 @@ public class WorkflowTaskService
                         "您的流程任务被驳回" + (comment.isBlank() ? "" : "，原因：" + comment) + "，请重新处理。",
                         "wf_todo",
                         "/workflow/task",
-                        currentTask.getId());
+                        newTasks.isEmpty() ? currentTask.getId() : newTasks.get(0).getId());
             }
         }
 
@@ -873,6 +1000,7 @@ public class WorkflowTaskService
         if (process != null)
         {
             row.put("processDefinitionKey", process.getProcessDefinitionKey());
+            row.put("processDefinitionName", process.getProcessDefinitionName());
             row.put("businessKey", process.getBusinessKey());
         }
         return row;
@@ -894,6 +1022,7 @@ public class WorkflowTaskService
         if (process != null)
         {
             row.put("processDefinitionKey", process.getProcessDefinitionKey());
+            row.put("processDefinitionName", process.getProcessDefinitionName());
             row.put("businessKey", process.getBusinessKey());
         }
         return row;
@@ -910,6 +1039,13 @@ public class WorkflowTaskService
         row.put("endTime", process.getEndTime());
         row.put("durationMs", process.getDurationInMillis());
         row.put("running", process.getEndTime() == null);
+        LcBizInstance business = lcBizInstanceMapper.selectByProcessInstanceId(process.getId());
+        if (business != null)
+        {
+            row.put("workflowStatus", business.getWorkflowStatus());
+            row.put("currentTaskName", business.getCurrentTaskName());
+            row.put("submitter", business.getSubmitter());
+        }
         return row;
     }
 
@@ -917,6 +1053,7 @@ public class WorkflowTaskService
     {
         return workflowBusinessSyncHandlers.stream()
                 .filter(handler -> handler.supports(processDefinitionId))
+                .sorted(java.util.Comparator.comparingInt(WorkflowBusinessSyncHandler::priority).reversed())
                 .findFirst();
     }
 }

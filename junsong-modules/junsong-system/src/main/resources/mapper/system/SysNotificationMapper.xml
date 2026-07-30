@@ -11,6 +11,7 @@
         <result property="content" column="content"/>
         <result property="type" column="type"/>
         <result property="linkUrl" column="link_url"/>
+        <result property="dedupKey" column="dedup_key"/>
         <result property="bizId" column="biz_id"/>
         <result property="isRead" column="is_read"/>
         <result property="createTime" column="create_time"/>

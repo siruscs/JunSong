@@ -51,6 +51,9 @@ public class FinInvestorPaymentServiceImpl implements IFinInvestorPaymentService
     public int insertFinInvestorPayment(FinInvestorPayment finInvestorPayment)
     {
         finInvestorPayment.setDeptId(SecurityUtils.getDeptId());
+        // DB 唯一键兜底：从 AOP ThreadLocal 读取幂等键填充到业务表
+        finInvestorPayment.setTenantId(com.junsong.common.core.context.TenantContext.getTenantId());
+        finInvestorPayment.setIdempotencyKey(com.junsong.common.core.idempotency.IdempotencyResultStore.currentKey());
         if (StringUtils.isEmpty(finInvestorPayment.getSourceType()))
         {
             finInvestorPayment.setSourceType("0");

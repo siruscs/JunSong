@@ -191,6 +191,28 @@
     <div class="el-login-footer">
       <span class="footer-text">{{ footerContent }}</span>
     </div>
+
+    <el-dialog v-model="deptDialogVisible" title="选择部门" width="460px" class="login-dept-dialog" append-to-body :close-on-click-modal="false" :close-on-press-escape="!deptConfirmLoading">
+      <p class="dept-dialog-tip">请选择要进入的部门，登录后可在顶部再次切换。</p>
+      <div class="dept-dialog-list">
+        <button
+          v-for="dept in userDepts"
+          :key="dept.deptId"
+          type="button"
+          class="dept-dialog-item"
+          :class="{ active: selectedDeptId === dept.deptId }"
+          @click="selectedDeptId = dept.deptId"
+        >
+          <span class="dept-dialog-mark">店</span>
+          <span class="dept-dialog-name">{{ dept.deptName }}</span>
+          <span v-if="selectedDeptId === dept.deptId" class="dept-dialog-check">✓</span>
+        </button>
+      </div>
+      <template #footer>
+        <el-button @click="deptDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="deptConfirmLoading" :disabled="!selectedDeptId" @click="confirmDeptLogin">确认进入工作台</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -218,6 +240,9 @@ const captchaEnabled = ref(true)
 const register = ref(true)
 const userDepts = ref<any[]>([])
 const showDeptSelect = ref(false)
+const deptDialogVisible = ref(false)
+const deptConfirmLoading = ref(false)
+const selectedDeptId = ref<number | null>(null)
 const preventSavePassword = ref(false)
 
 const loginForm = reactive({
@@ -278,30 +303,10 @@ function getCookie() {
 }
 
 function handleUsernameBlur() {
-  if (loginForm.username && loginForm.username.trim()) {
-    getUserDeptsApi(loginForm.username)
-      .then((res: any) => {
-        if (res.code === 200 && res.data && res.data.length > 0) {
-          userDepts.value = res.data
-          if (res.data.length > 1) {
-            showDeptSelect.value = true
-            loginForm.deptId = null
-          } else {
-            showDeptSelect.value = false
-            loginForm.deptId = res.data[0].deptId
-          }
-        } else {
-          showDeptSelect.value = false
-          userDepts.value = []
-          loginForm.deptId = null
-        }
-      })
-      .catch(() => {
-        showDeptSelect.value = false
-        userDepts.value = []
-        loginForm.deptId = null
-      })
-  }
+  // 部门属于登录后的授权上下文，用户名失焦不查询、不展示部门。
+  showDeptSelect.value = false
+  userDepts.value = []
+  loginForm.deptId = null
 }
 
 function handleLogin() {
@@ -332,6 +337,17 @@ function handleLogin() {
           deptId: loginForm.deptId,
         })
         .then(async () => {
+          // 先完成用户名密码认证，再查询部门；多部门用户停留在登录页选择部门。
+          if (!showDeptSelect.value) {
+            const deptRes: any = await getUserDeptsApi(loginForm.username)
+            if (deptRes.code === 200 && Array.isArray(deptRes.data) && deptRes.data.length > 1) {
+              userDepts.value = deptRes.data
+              selectedDeptId.value = null
+              deptDialogVisible.value = true
+              loading.value = false
+              return
+            }
+          }
           try {
             await router.push({ path: route.query.redirect ? route.query.redirect as string : '/' })
           } finally {
@@ -346,6 +362,24 @@ function handleLogin() {
         })
     }
   })
+}
+
+async function confirmDeptLogin() {
+  if (!selectedDeptId.value || deptConfirmLoading.value) return
+  deptConfirmLoading.value = true
+  try {
+    await userStore.login({
+      username: loginForm.username,
+      password: loginForm.password,
+      code: loginForm.code,
+      uuid: loginForm.uuid,
+      deptId: selectedDeptId.value,
+    })
+    deptDialogVisible.value = false
+    await router.push({ path: route.query.redirect ? route.query.redirect as string : '/' })
+  } finally {
+    deptConfirmLoading.value = false
+  }
 }
 
 onMounted(() => {
@@ -1387,4 +1421,24 @@ onMounted(() => {
     transition: none !important;
   }
 }
+
+.login-dept-dialog {
+  border: 1px solid rgba(var(--theme-primary-rgb, 44, 105, 117), .16);
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: 0 24px 70px #17203338;
+}
+
+.login-dept-dialog .el-dialog__header { margin-right: 0; padding: 24px 26px 8px; }
+.login-dept-dialog .el-dialog__title { color: var(--login-ink); font-size: 20px; font-weight: 760; }
+.login-dept-dialog .el-dialog__body { padding: 8px 26px 18px; }
+.login-dept-dialog .el-dialog__footer { padding: 12px 26px 22px; }
+.dept-dialog-tip { color: var(--login-muted); margin: 0 0 14px; font-size: 13px; }
+.dept-dialog-list { gap: 9px; max-height: 310px; padding: 2px; display: grid; overflow-y: auto; }
+.dept-dialog-item { border: 1px solid rgba(var(--theme-primary-rgb, 44, 105, 117), .12); width: 100%; color: var(--login-ink); cursor: pointer; font: inherit; text-align: left; background: #ffffffb8; border-radius: 14px; align-items: center; gap: 12px; padding: 13px 14px; transition: border-color .18s, background .18s, transform .18s; display: flex; }
+.dept-dialog-item:hover, .dept-dialog-item:focus-visible { border-color: rgba(var(--theme-primary-rgb, 44, 105, 117), .38); background: var(--theme-hover-bg, #2c697514); outline: none; transform: translateY(-1px); }
+.dept-dialog-item.active { border-color: var(--theme-primary, #2c6975); background: rgba(var(--theme-primary-rgb, 44, 105, 117), .1); }
+.dept-dialog-mark { color: #fff; background: linear-gradient(135deg, var(--theme-primary-light, #68b2a0), var(--theme-primary, #2c6975)); border-radius: 10px; flex: 0 0 32px; place-items: center; width: 32px; height: 32px; font-size: 13px; font-weight: 700; display: grid; }
+.dept-dialog-name { text-overflow: ellipsis; white-space: nowrap; flex: 1; font-size: 14px; font-weight: 650; overflow: hidden; }
+.dept-dialog-check { color: var(--theme-primary, #2c6975); font-size: 18px; font-weight: 800; }
 </style>

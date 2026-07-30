@@ -536,7 +536,7 @@ class AccountingPeriodLockGuardTest {
         setFieldInClass(saleService, FinSaleRecordServiceImpl.class, "finSalePaymentMapper", paymentMapper);
         setFieldInClass(saleService, FinSaleRecordServiceImpl.class, "finAccountingPeriodService", periodService);
 
-        int rows = saleService.addPayment(1L, new BigDecimal("600.00"), "现金", "跨周期补缴", new Date());
+        int rows = saleService.addPayment(1L, new BigDecimal("600.00"), "现金", "跨周期补缴", new Date(), null);
 
         assertEquals(1, rows);
         assertNotNull(paymentMapper.inserted, "Payment should have been inserted");
@@ -679,7 +679,13 @@ class AccountingPeriodLockGuardTest {
         @Override public FinAccountingPeriod selectPreviousPeriod(Long deptId, Date startTime, Long periodId) { return null; }
         @Override public FinAccountingPeriod selectNextPeriod(Long deptId, Date startTime, Long periodId) { return null; }
         @Override public int updateStartTimeOnly(Long periodId, Date startTime, Date endTime, String updateBy, String remark) { return 0; }
+
+    @Override
+    public com.junsong.finance.domain.FinAccountingPeriod selectCurrentPeriodByDeptIdForUpdate(Long tenantId, Long deptId) {
+        return selectCurrentPeriodByDeptId(deptId);
     }
+
+}
 
     static class FakeExpenseMapperForLock implements FinExpenseMapper {
         @Override public List<FinExpense> selectFinExpenseByExpenseIdsScoped(List<Long> ids, Long tenantId, Long deptId) { return Collections.emptyList(); }

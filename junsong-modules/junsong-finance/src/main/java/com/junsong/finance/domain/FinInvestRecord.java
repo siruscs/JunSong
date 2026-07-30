@@ -29,6 +29,8 @@ public class FinInvestRecord extends BaseEntity
     @Excel(name = "投资时间", width = 20, dateFormat = "yyyy-MM-dd")
     @NotNull(message = "投资时间不能为空")
     private Date investTime;
+    /** 幂等键（租户内唯一） */
+    private String idempotencyKey;
     private String delFlag;
 
     public Long getInvestId() { return investId; }
@@ -45,6 +47,8 @@ public class FinInvestRecord extends BaseEntity
     public void setInvestAmount(BigDecimal investAmount) { this.investAmount = investAmount; }
     public Date getInvestTime() { return investTime; }
     public void setInvestTime(Date investTime) { this.investTime = investTime; }
+    public String getIdempotencyKey() { return idempotencyKey; }
+    public void setIdempotencyKey(String idempotencyKey) { this.idempotencyKey = idempotencyKey; }
     public String getDelFlag() { return delFlag; }
     public void setDelFlag(String delFlag) { this.delFlag = delFlag; }
 
@@ -58,6 +62,7 @@ public class FinInvestRecord extends BaseEntity
             .append("investorName", getInvestorName())
             .append("investAmount", getInvestAmount())
             .append("investTime", getInvestTime())
+            .append("idempotencyKey", getIdempotencyKey())
             .append("remark", getRemark())
             .toString();
     }

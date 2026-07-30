@@ -4,6 +4,8 @@ import com.junsong.common.core.domain.R;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
+import com.junsong.common.core.idempotency.IdempotencyRetryPolicy;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.InnerAuth;
@@ -49,6 +51,7 @@ public class SysStoreOpeningController extends BaseController
 
     @RequiresPermissions("system:storeOpening:add")
     @Log(title = "门店开业申请", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "system:store-opening:add")
     @PostMapping
     public AjaxResult add(@Valid @RequestBody SysStoreOpening storeOpening)
     {
@@ -59,6 +62,7 @@ public class SysStoreOpeningController extends BaseController
 
     @RequiresPermissions("system:storeOpening:edit")
     @Log(title = "门店开业申请", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:store-opening:edit")
     @PutMapping
     public AjaxResult edit(@Valid @RequestBody SysStoreOpening storeOpening)
     {
@@ -77,6 +81,7 @@ public class SysStoreOpeningController extends BaseController
 
     @RequiresPermissions("system:storeOpening:submit")
     @Log(title = "门店开业申请", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:store-opening:submit")
     @PostMapping("/{id}/submit")
     public AjaxResult submit(@PathVariable("id") Long id, @RequestBody SubmitPayload payload)
     {
@@ -90,6 +95,7 @@ public class SysStoreOpeningController extends BaseController
 
     @RequiresPermissions("system:storeOpening:withdraw")
     @Log(title = "门店开业申请", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:store-opening:withdraw")
     @PostMapping("/{id}/withdraw")
     public AjaxResult withdraw(@PathVariable("id") Long id)
     {
@@ -97,6 +103,7 @@ public class SysStoreOpeningController extends BaseController
     }
 
     @InnerAuth
+    @Idempotent(scene = "system:store-opening:workflow-sync", retryPolicy = IdempotencyRetryPolicy.ALLOW_SAME_KEY)
     @PostMapping("/workflow/sync")
     public R<Boolean> syncWorkflowStatus(@RequestBody WorkflowSyncPayload payload)
     {

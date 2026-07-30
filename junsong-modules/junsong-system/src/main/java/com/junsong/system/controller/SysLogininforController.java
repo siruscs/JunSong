@@ -15,6 +15,7 @@ import com.junsong.common.core.utils.poi.ExcelUtil;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.redis.service.RedisService;
@@ -67,6 +68,7 @@ public class SysLogininforController extends BaseController
 
     @RequiresPermissions("system:logininfor:remove")
     @Log(title = "登录日志", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "system:logininfor:clean")
     @DeleteMapping("/clean")
     public AjaxResult clean()
     {
@@ -84,6 +86,7 @@ public class SysLogininforController extends BaseController
     }
 
     @InnerAuth
+    @Idempotent(scene = "system:logininfor:add")
     @PostMapping
     public AjaxResult add(@RequestBody SysLogininfor logininfor)
     {

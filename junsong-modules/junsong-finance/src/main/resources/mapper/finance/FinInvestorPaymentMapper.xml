@@ -19,6 +19,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="sourceType" column="source_type" />
         <result property="paymentStatus" column="payment_status" />
         <result property="investRatio" column="invest_ratio" />
+        <result property="tenantId" column="tenant_id" />
+        <result property="idempotencyKey" column="idempotency_key" />
         <result property="delFlag" column="del_flag" />
         <result property="createBy" column="create_by" />
         <result property="createTime" column="create_time" />
@@ -125,6 +127,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="sourceType != null">source_type,</if>
             <if test="paymentStatus != null">payment_status,</if>
             <if test="investRatio != null">invest_ratio,</if>
+            <if test="tenantId != null">tenant_id,</if>
+            <if test="idempotencyKey != null">idempotency_key,</if>
             <if test="delFlag != null">del_flag,</if>
             <if test="createBy != null">create_by,</if>
             create_time,
@@ -141,9 +145,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="paymentType != null and paymentType != ''">#{paymentType},</if>
             <if test="investorName != null and investorName != ''">#{investorName},</if>
             <if test="amount != null">#{amount},</if>
-            <if test="sourceType != null">#{sourceType},</if>
+            <if test="sourceType != null">source_type,</if>
             <if test="paymentStatus != null">#{paymentStatus},</if>
             <if test="investRatio != null">#{investRatio},</if>
+            <if test="tenantId != null">#{tenantId},</if>
+            <if test="idempotencyKey != null">#{idempotencyKey},</if>
             <if test="delFlag != null">#{delFlag},</if>
             <if test="createBy != null">#{createBy},</if>
             sysdate(),

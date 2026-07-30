@@ -3,6 +3,7 @@ package com.junsong.member.controller;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
@@ -49,6 +50,7 @@ public class MemLevelController extends BaseController
      */
     @RequiresPermissions("member:level:edit")
     @Log(title = "等级配置", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "member:level:edit")
     @PutMapping
     public AjaxResult edit(@RequestBody MemMemberCardType cardType)
     {
@@ -69,6 +71,7 @@ public class MemLevelController extends BaseController
      */
     @RequiresPermissions("member:level:add")
     @Log(title = "等级配置", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "member:level:create")
     @PostMapping
     public AjaxResult add(@RequestBody MemMemberCardType cardType)
     {

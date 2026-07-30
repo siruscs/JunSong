@@ -20,6 +20,7 @@ import com.junsong.workflow.lowcode.mapper.LcBizPageSchemaMapper;
 import com.junsong.workflow.lowcode.mapper.LcBizPostActionMapper;
 import com.junsong.workflow.lowcode.event.LcConfigPublishedEvent;
 import com.junsong.workflow.lowcode.service.LcMetadataService;
+import com.junsong.workflow.lowcode.metadata.LcMetadataSchemaValidator;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
@@ -58,6 +59,9 @@ public class LcMetadataServiceImpl implements LcMetadataService
     @Autowired
     private ApplicationEventPublisher eventPublisher;
 
+    @Autowired
+    private LcMetadataSchemaValidator metadataSchemaValidator;
+
     // ===== 聚合配置（可视化后台用）=====
     @Override
     public LcBizConfigDTO selectBizConfig(String bizCode)
@@ -84,6 +88,17 @@ public class LcMetadataServiceImpl implements LcMetadataService
         {
             throw new ServiceException("业务对象与 bizCode 不能为空");
         }
+        // 页面不要求用户填写内部存储字段；平台统一使用通用表约定。
+        // 必须在 Schema 校验和 INSERT 前补齐，避免新建配置因数据库 NOT NULL 失败。
+        if (obj.getPkField() == null || obj.getPkField().isBlank()) obj.setPkField("id");
+        if (obj.getOrderNoField() == null || obj.getOrderNoField().isBlank()) obj.setOrderNoField("order_no");
+        if (obj.getStatusField() == null || obj.getStatusField().isBlank()) obj.setStatusField("workflow_status");
+        if (obj.getStorageMode() == null || obj.getStorageMode().isBlank()) obj.setStorageMode("GENERIC");
+        if (obj.getWorkflowEnabled() == null || obj.getWorkflowEnabled().isBlank()) obj.setWorkflowEnabled("1");
+        if (obj.getFulfillmentEnabled() == null || obj.getFulfillmentEnabled().isBlank()) obj.setFulfillmentEnabled("0");
+        if (obj.getStatus() == null || obj.getStatus().isBlank()) obj.setStatus("0");
+        if (obj.getDelFlag() == null || obj.getDelFlag().isBlank()) obj.setDelFlag("0");
+        metadataSchemaValidator.validate(config);
         if (obj.getId() == null)
         {
             insertBizObject(obj);
@@ -118,9 +133,39 @@ public class LcMetadataServiceImpl implements LcMetadataService
             {
                 f.setId(null);
                 f.setBizCode(bizCode);
+                if (f.getComponentType() == null || f.getComponentType().isBlank())
+                {
+                    f.setComponentType(defaultComponentType(f.getFieldType()));
+                }
+                if (f.getRequired() == null || f.getRequired().isBlank()) f.setRequired("0");
+                if (f.getStage() == null || f.getStage().isBlank()) f.setStage("APPLY");
+                if (f.getIsQuery() == null || f.getIsQuery().isBlank()) f.setIsQuery("0");
+                if (f.getIsList() == null || f.getIsList().isBlank()) f.setIsList("0");
+                if (f.getIsDetail() == null || f.getIsDetail().isBlank()) f.setIsDetail("1");
+                if (f.getIsProcessVar() == null || f.getIsProcessVar().isBlank()) f.setIsProcessVar("0");
+                if (f.getOrderNum() == null) f.setOrderNum(0);
+                if (f.getDelFlag() == null || f.getDelFlag().isBlank()) f.setDelFlag("0");
                 insertField(f);
             }
         }
+    }
+
+    private String defaultComponentType(String fieldType)
+    {
+        if (fieldType == null) return "input";
+        return switch (fieldType.toLowerCase())
+        {
+            case "number", "decimal", "percent", "computed", "money" -> "number";
+            case "textarea", "richtext" -> "textarea";
+            case "boolean" -> "switch";
+            case "date", "datetime", "date-range", "time", "time-range" -> "date-picker";
+            case "dict", "select", "multi-select" -> "select";
+            case "sys-ref", "user", "dept" -> "reference";
+            case "file", "image" -> "upload";
+            case "subform" -> "subform";
+            case "divider", "title" -> "layout";
+            default -> "input";
+        };
     }
 
     private void replacePageSchemas(String bizCode, List<LcBizPageSchema> list)
@@ -146,6 +191,10 @@ public class LcMetadataServiceImpl implements LcMetadataService
             {
                 a.setId(null);
                 a.setBizCode(bizCode);
+                if (a.getTaskName() == null || a.getTaskName().isBlank()) a.setTaskName(a.getTaskKey());
+                if (a.getAssigneeSource() == null || a.getAssigneeSource().isBlank()) a.setAssigneeSource("INITIATOR");
+                if (a.getMultiInstanceType() == null || a.getMultiInstanceType().isBlank()) a.setMultiInstanceType("none");
+                if (a.getDelFlag() == null || a.getDelFlag().isBlank()) a.setDelFlag("0");
                 insertNodeAssignee(a);
             }
         }
@@ -231,7 +280,6 @@ public class LcMetadataServiceImpl implements LcMetadataService
     public List<LcBizObject> selectGenericWorkflowObjects()
     {
         LcBizObject query = new LcBizObject();
-        query.setStorageMode("GENERIC");
         query.setWorkflowEnabled("1");
         return lcBizObjectMapper.selectLcBizObjectList(query);
     }

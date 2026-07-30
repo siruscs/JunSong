@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -57,6 +58,7 @@ public class FinDeptProfitConfigController extends BaseController
 
     @RequiresPermissions("finance:deptProfitConfig:add")
     @Log(title = "店面分润配置", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "deptProfitConfig:create")
     @PostMapping
     public AjaxResult add(@Validated @RequestBody FinDeptProfitConfig finDeptProfitConfig)
     {
@@ -66,6 +68,7 @@ public class FinDeptProfitConfigController extends BaseController
 
     @RequiresPermissions("finance:deptProfitConfig:edit")
     @Log(title = "店面分润配置", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "deptProfitConfig:update")
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody FinDeptProfitConfig finDeptProfitConfig)
     {
@@ -75,6 +78,7 @@ public class FinDeptProfitConfigController extends BaseController
 
     @RequiresPermissions("finance:deptProfitConfig:remove")
     @Log(title = "店面分润配置", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "deptProfitConfig:delete")
     @DeleteMapping("/{configIds}")
     public AjaxResult remove(@PathVariable Long[] configIds)
     {

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             targetNamespace="http://www.junsong.com/workflow">
+  <process id="stocktake_apply" name="库存盘点申请" isExecutable="true">
+    <startEvent id="StartEvent_1" name="发起盘点申请"/>
+    <sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_Count"/>
+    <userTask id="Task_Count" name="盘点人录入" flowable:assignee="${counterUsername}"/>
+    <sequenceFlow id="Flow_2" sourceRef="Task_Count" targetRef="Gateway_NeedRecount"/>
+    <exclusiveGateway id="Gateway_NeedRecount" name="是否需要复盘"/>
+    <sequenceFlow id="Flow_3" sourceRef="Gateway_NeedRecount" targetRef="Task_Recount">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${execution.getVariable('needRecount') == true}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="Flow_4" sourceRef="Gateway_NeedRecount" targetRef="Task_Approve">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${execution.getVariable('needRecount') != true}]]></conditionExpression>
+    </sequenceFlow>
+    <userTask id="Task_Recount" name="复盘人复盘" flowable:assignee="${recountUsername}"/>
+    <sequenceFlow id="Flow_5" sourceRef="Task_Recount" targetRef="Task_Approve"/>
+    <!-- 固定审批人是直接处理人，不应生成候选任务后再要求认领。变量值统一为 username。 -->
+    <userTask id="Task_Approve" name="审批人审批" flowable:assignee="${approverUsername}"/>
+    <sequenceFlow id="Flow_6" sourceRef="Task_Approve" targetRef="EndEvent_Approved"/>
+    <endEvent id="EndEvent_Approved" name="审批完成"/>
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_stocktake_apply">
+    <bpmndi:BPMNPlane id="BPMNPlane_stocktake_apply" bpmnElement="stocktake_apply">
+      <bpmndi:BPMNShape id="BPMNShape_StartEvent_1" bpmnElement="StartEvent_1">
+        <dc:Bounds x="180" y="240" width="30" height="30"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_Task_Count" bpmnElement="Task_Count">
+        <dc:Bounds x="290" y="200" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_Gateway_NeedRecount" bpmnElement="Gateway_NeedRecount">
+        <dc:Bounds x="470" y="230" width="40" height="40"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_Task_Recount" bpmnElement="Task_Recount">
+        <dc:Bounds x="580" y="120" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_Task_Approve" bpmnElement="Task_Approve">
+        <dc:Bounds x="720" y="200" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="BPMNShape_EndEvent_Approved" bpmnElement="EndEvent_Approved">
+        <dc:Bounds x="900" y="240" width="30" height="30"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="BPMNEdge_Flow_1" bpmnElement="Flow_1">
+        <di:waypoint x="210" y="255"/>
+        <di:waypoint x="290" y="240"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_Flow_2" bpmnElement="Flow_2">
+        <di:waypoint x="390" y="240"/>
+        <di:waypoint x="470" y="250"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_Flow_3" bpmnElement="Flow_3">
+        <di:waypoint x="490" y="230"/>
+        <di:waypoint x="490" y="160"/>
+        <di:waypoint x="580" y="160"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_Flow_4" bpmnElement="Flow_4">
+        <di:waypoint x="510" y="250"/>
+        <di:waypoint x="720" y="240"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_Flow_5" bpmnElement="Flow_5">
+        <di:waypoint x="680" y="160"/>
+        <di:waypoint x="770" y="160"/>
+        <di:waypoint x="770" y="200"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="BPMNEdge_Flow_6" bpmnElement="Flow_6">
+        <di:waypoint x="820" y="240"/>
+        <di:waypoint x="900" y="255"/>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

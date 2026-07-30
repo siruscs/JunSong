@@ -17,6 +17,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="verifyBy" column="verify_by" />
         <result property="verifyTime" column="verify_time" />
         <result property="attachments" column="attachments" />
+        <result property="idempotencyKey" column="idempotency_key" />
         <result property="delFlag" column="del_flag" />
         <result property="createBy" column="create_by" />
         <result property="createTime" column="create_time" />
@@ -26,7 +27,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
     
     <sql id="selectFinAdvanceVo">
-        select a.advance_id, a.dept_id, a.period_id, a.advance_no, a.advance_date, a.advance_amount, a.borrower, a.purpose, a.status, a.verify_by, a.verify_time, a.attachments, a.del_flag, a.create_by, a.create_time, a.update_by, a.update_time, a.remark
+        select a.advance_id, a.dept_id, a.period_id, a.advance_no, a.advance_date, a.advance_amount, a.borrower, a.purpose, a.status, a.verify_by, a.verify_time, a.attachments, a.idempotency_key, a.del_flag, a.create_by, a.create_time, a.update_by, a.update_time, a.remark
         from fin_advance a
     </sql>
 
@@ -111,6 +112,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="borrower != null and borrower != ''">borrower,</if>
             <if test="purpose != null and purpose != ''">purpose,</if>
             <if test="attachments != null">attachments,</if>
+            <if test="idempotencyKey != null and idempotencyKey != ''">idempotency_key,</if>
             <if test="status != null">status,</if>
             verify_by,
             verify_time,
@@ -128,6 +130,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="borrower != null and borrower != ''">#{borrower},</if>
             <if test="purpose != null and purpose != ''">#{purpose},</if>
             <if test="attachments != null">#{attachments},</if>
+            <if test="idempotencyKey != null and idempotencyKey != ''">#{idempotencyKey},</if>
             <if test="status != null">#{status},</if>
             #{verifyBy},
             #{verifyTime},

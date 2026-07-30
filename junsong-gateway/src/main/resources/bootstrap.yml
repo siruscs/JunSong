@@ -184,3 +184,8 @@ springdoc:
         url: /job/v3/api-docs
       - name: 代码生成
         url: /gen/v3/api-docs
+
+# 网关无数据源，禁用幂等框架（避免 IdempotencyAspect 因缺少 IdempotencyRecordService 而启动失败）
+junsong:
+  idempotency:
+    enabled: false

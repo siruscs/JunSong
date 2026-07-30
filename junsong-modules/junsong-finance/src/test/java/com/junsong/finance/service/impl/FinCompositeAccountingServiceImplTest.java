@@ -751,5 +751,11 @@ class FinCompositeAccountingServiceImplTest
 
         @Override
         public int updateStartTimeOnly(Long periodId, Date startTime, Date endTime, String updateBy, String remark) { return 1; }
+
+    @Override
+    public com.junsong.finance.domain.FinAccountingPeriod selectCurrentPeriodByDeptIdForUpdate(Long tenantId, Long deptId) {
+        return selectCurrentPeriodByDeptId(deptId);
     }
+
+}
 }

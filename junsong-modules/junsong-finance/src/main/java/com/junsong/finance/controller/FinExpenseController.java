@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import com.junsong.common.core.utils.poi.ExcelUtil;
@@ -21,6 +22,7 @@ import com.junsong.common.core.exception.ServiceException;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -85,6 +87,7 @@ public class FinExpenseController extends BaseController
 
     @RequiresPermissions("finance:expense:verify")
     @Log(title = "批量核销费用", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "expense:batchVerify", highRisk = true, ttlSeconds = 2592000)
     @PutMapping("/batchVerify")
     public AjaxResult batchVerify(@Validated @RequestBody ExpenseVerifyVO verifyVO)
     {
@@ -93,6 +96,7 @@ public class FinExpenseController extends BaseController
 
     @RequiresPermissions("finance:expense:unverify")
     @Log(title = "反核销费用", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "expense:unverify", highRisk = true, ttlSeconds = 2592000)
     @PutMapping("/unverify/{batchId}")
     public AjaxResult unverify(@PathVariable Long batchId, @Validated @RequestBody ExpenseUnverifyVO request)
     {
@@ -136,10 +140,13 @@ public class FinExpenseController extends BaseController
 
     @RequiresPermissions("finance:expense:add")
     @Log(title = "费用记录", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "expense:create", highRisk = true, ttlSeconds = 2592000)
     @PostMapping
-    public AjaxResult add(@Validated @RequestBody FinExpense finExpense)
+    public AjaxResult add(@RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey,
+                          @Validated @RequestBody FinExpense finExpense)
     {
         finExpense.setDeptId(SecurityUtils.getDeptId());
+        finExpense.setIdempotencyKey(idempotencyKey);
         if (!finExpenseService.checkExpenseNoUnique(finExpense))
         {
             return error("新增费用记录'" + finExpense.getExpenseNo() + "'失败，费用单号已存在");
@@ -149,6 +156,7 @@ public class FinExpenseController extends BaseController
 
     @RequiresPermissions("finance:expense:edit")
     @Log(title = "费用记录", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "expense:update")
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody FinExpense finExpense)
     {
@@ -162,6 +170,7 @@ public class FinExpenseController extends BaseController
 
     @RequiresPermissions("finance:expense:remove")
     @Log(title = "费用记录", businessType = BusinessType.DELETE)
+    @Idempotent(scene = "expense:delete")
 	@DeleteMapping("/{expenseIds}")
     public AjaxResult remove(@PathVariable Long[] expenseIds)
     {
@@ -171,6 +180,7 @@ public class FinExpenseController extends BaseController
     @Deprecated
     @RequiresPermissions("finance:expense:verify")
     @Log(title = "核销费用", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "expense:verify", highRisk = true, ttlSeconds = 2592000)
     @PutMapping("/verify/{expenseId}")
     public AjaxResult verify(@PathVariable Long expenseId)
     {
@@ -186,6 +196,7 @@ public class FinExpenseController extends BaseController
      */
     @RequiresPermissions("finance:expense:import")
     @Log(title = "费用记录", businessType = BusinessType.IMPORT)
+    @Idempotent(scene = "expense:import", highRisk = true, ttlSeconds = 2592000)
     @PostMapping("/importData")
     public AjaxResult importData(MultipartFile file, boolean updateSupport) throws Exception
     {

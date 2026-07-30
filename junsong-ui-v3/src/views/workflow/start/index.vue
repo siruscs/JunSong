@@ -11,7 +11,37 @@
       />
     </div>
 
-    <div class="category-list" v-loading="loading">
+    <div v-if="activeProcess" class="start-form-page" v-loading="formLoading">
+      <div class="start-form-page__header">
+        <el-page-header @back="closeStartPage">
+          <template #content>{{ startForm.processName }}（{{ startForm.processKey }}）</template>
+        </el-page-header>
+      </div>
+      <el-card class="start-form-page__card" shadow="never">
+        <el-form :model="startForm" label-width="120px" class="start-business-form">
+          <el-form-item label="业务键">
+            <el-input v-model="startForm.businessKey" placeholder="系统可自动生成，也可填写业务单号" />
+          </el-form-item>
+          <el-divider content-position="left">业务表单</el-divider>
+          <template v-if="businessFields.length">
+            <el-row :gutter="20">
+              <el-col v-for="field in businessFields" :key="field.fieldKey" :span="fieldSpan(field)">
+                <el-form-item :label="field.fieldLabel" :required="field.required === '1'">
+                  <FieldRenderer v-model="startForm.variables[field.fieldKey]" :field="field" :form-values="startForm.variables" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </template>
+          <el-empty v-else description="该流程尚未绑定低代码业务表单" />
+        </el-form>
+        <div class="start-form-page__footer">
+          <el-button @click="closeStartPage">取消</el-button>
+          <el-button type="primary" :loading="submitting" @click="submitStart">确认发起</el-button>
+        </div>
+      </el-card>
+    </div>
+
+    <div v-else class="category-list" v-loading="loading">
       <template v-if="groupedProcesses.size > 0">
         <el-collapse v-model="activeCategories">
           <el-collapse-item
@@ -52,32 +82,6 @@
       <el-empty v-else-if="!loading" description="暂无可发起的流程" />
     </div>
 
-    <!-- 发起流程对话框 -->
-    <el-dialog v-model="startDialogVisible" title="发起流程" width="500px">
-      <el-form :model="startForm" label-width="100px">
-        <el-form-item label="流程名称">
-          <el-input :model-value="startForm.processName" disabled />
-        </el-form-item>
-        <el-form-item label="流程标识">
-          <el-input :model-value="startForm.processKey" disabled />
-        </el-form-item>
-        <el-form-item label="业务键">
-          <el-input v-model="startForm.businessKey" placeholder="可选，业务标识" />
-        </el-form-item>
-        <el-form-item label="流程变量">
-          <el-input
-            v-model="startForm.variablesJson"
-            type="textarea"
-            :rows="4"
-            placeholder='可选，JSON格式，如 {"reason":"请假事由"}'
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="startDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitting" @click="submitStart">确认发起</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -88,6 +92,10 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Document } from '@element-plus/icons-vue'
 import { listWorkflowDefinitions, type WorkflowDefinitionSummary } from '@/api/workflow/definition'
 import { startWorkflowInstance } from '@/api/workflow/instance'
+import { saveBizInstance, submitBizInstance } from '@/api/lowcode'
+import { getBizConfig, getRuntimePage, listBizObject } from '@/api/lowcode/admin'
+import FieldRenderer from '@/views/lowcode/fields/FieldRenderer.vue'
+import { parseFieldExt } from '@/views/lowcode/schema'
 import { useDict } from '@/composables/useDict'
 
 const router = useRouter()
@@ -99,13 +107,16 @@ const keyword = ref('')
 const allProcesses = ref<WorkflowDefinitionSummary[]>([])
 const activeCategories = ref<string[]>([])
 
-const startDialogVisible = ref(false)
+const activeProcess = ref<WorkflowDefinitionSummary | null>(null)
+const formLoading = ref(false)
 const startForm = ref({
   processKey: '',
+  bizCode: '',
   processName: '',
   businessKey: '',
-  variablesJson: '',
+  variables: {} as Record<string, any>,
 })
+const businessFields = ref<any[]>([])
 
 // 按分类分组
 const groupedProcesses = computed(() => {
@@ -154,6 +165,14 @@ function getCategoryTagType(catKey: string): any {
   return 'info'
 }
 
+// 发起页与任务/历史详情共用运行时页面的栅格规则；这里只是不传 readonly。
+function fieldSpan(field: any): number {
+  const ext = parseFieldExt(field)
+  if (ext.span) return Number(ext.span)
+  if (['richtext', 'address', 'file', 'image'].includes(field.fieldType) || ext.textarea) return 24
+  return 12
+}
+
 async function loadData() {
   loading.value = true
   try {
@@ -171,13 +190,48 @@ async function loadData() {
 }
 
 function openStartDialog(proc: WorkflowDefinitionSummary) {
+  activeProcess.value = proc
   startForm.value = {
     processKey: proc.processKey,
+    bizCode: '',
     processName: proc.processName || '',
     businessKey: '',
-    variablesJson: '',
+    variables: {},
   }
-  startDialogVisible.value = true
+  businessFields.value = []
+  formLoading.value = true
+  listBizObject({}).then((res: any) => {
+    const objects = (res?.data?.rows || res?.data || res?.rows || []).flat?.() || []
+    const object = objects.find((item: any) => item.processKey === proc.processKey && item.configStatus === 'PUBLISHED' && item.delFlag !== '1')
+    if (!object?.bizCode) throw new Error(`流程 ${proc.processKey} 未绑定已发布业务对象`)
+    startForm.value.bizCode = object.bizCode
+    return getBizConfig(object.bizCode)
+  }).then(async (res: any) => {
+    const config = res?.data || res
+    const metadataFields = (config?.fields || [])
+      .filter((field: any) => field.stage !== 'FULFILLMENT')
+    const fieldMap = new Map<string, any>(metadataFields.map((field: any) => [field.fieldKey, field] as [string, any]))
+    // 发起态与流程详情共用低代码 FORM 布局；详情侧仅切换为只读。
+    const runtime: any = await getRuntimePage(startForm.value.bizCode, 'FORM').catch(() => null)
+    const runtimeFields = runtime?.data?.fields || runtime?.fields
+    if (Array.isArray(runtimeFields) && runtimeFields.length) {
+      businessFields.value = runtimeFields
+        .filter((field: any) => field.visible !== false && field.stage !== 'FULFILLMENT')
+        .map((field: any) => ({ ...(fieldMap.get(field.fieldKey) || {}), ...field }))
+        .filter((field: any) => field.fieldKey)
+    } else {
+      businessFields.value = metadataFields.sort((a: any, b: any) => (a.orderNum || 0) - (b.orderNum || 0))
+    }
+  }).catch(() => {
+    businessFields.value = []
+  }).finally(() => {
+    formLoading.value = false
+  })
+}
+
+function closeStartPage() {
+  activeProcess.value = null
+  businessFields.value = []
 }
 
 const requiredStartFields = [
@@ -193,17 +247,10 @@ function precheckStart(): { passed: boolean; missingFields: string[] } {
       missing.push(f.label)
     }
   })
-  const rawJson = startForm.value.variablesJson.trim()
-  if (rawJson) {
-    try {
-      const parsed = JSON.parse(rawJson)
-      if (parsed === null || Array.isArray(parsed) || typeof parsed !== 'object') {
-        missing.push('流程变量（需为 JSON 对象）')
-      }
-    } catch {
-      missing.push('流程变量（JSON 格式错误）')
-    }
-  }
+  businessFields.value.filter((field: any) => field.required === '1').forEach((field: any) => {
+    const value = startForm.value.variables[field.fieldKey]
+    if (value === null || value === undefined || value === '') missing.push(field.fieldLabel || field.fieldKey)
+  })
   return { passed: missing.length === 0, missingFields: missing }
 }
 
@@ -219,20 +266,28 @@ async function submitStart() {
   }
   submitting.value = true
   try {
-    let variables: Record<string, any> | undefined
-    if (startForm.value.variablesJson.trim()) {
-      variables = JSON.parse(startForm.value.variablesJson)
-    }
+    const variables = startForm.value.variables
 
-    const res: any = await startWorkflowInstance({
-      processKey: startForm.value.processKey,
-      businessKey: startForm.value.businessKey || undefined,
-      variables,
-    })
+    let res: any
+    // 已登记的低代码流程必须先保存业务单据，再提交 Workflow，
+    // 这样驳回后才能回到原表单修改并重新提交。
+    if (businessFields.value.length > 0) {
+      const saved: any = await saveBizInstance(startForm.value.bizCode, variables, { idempotencyNewKey: true })
+      const recordId = Number(saved?.data ?? saved)
+      if (!Number.isInteger(recordId) || recordId <= 0) throw new Error('业务单据保存失败：未返回单据编号')
+      res = await submitBizInstance(startForm.value.bizCode, recordId, { idempotencyNewKey: true })
+    } else {
+      res = await startWorkflowInstance({
+        processKey: startForm.value.processKey,
+        businessKey: startForm.value.businessKey || undefined,
+        variables,
+        idempotencyNewKey: true,
+      })
+    }
 
     if (res.code === 200) {
       ElMessage.success('流程发起成功')
-      startDialogVisible.value = false
+      activeProcess.value = null
       router.push('/workflow/task')
     } else {
       ElMessage.error(res.msg || '发起失败')

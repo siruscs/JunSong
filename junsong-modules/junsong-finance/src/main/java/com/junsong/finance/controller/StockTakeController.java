@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -36,6 +37,7 @@ public class StockTakeController extends BaseController {
 
     @RequiresPermissions("finance:stock:take")
     @Log(title = "库存盘点-旧接口已收口", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "stockTake:record", highRisk = true, ttlSeconds = 2592000)
     @PostMapping
     public AjaxResult recordStockTake(@RequestBody StockTakeRequest request) {
         // Task 8: 旧接口收口。service 会抛出 ServiceException，永远不会返回 success。

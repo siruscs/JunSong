@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.junsong.common.core.domain.R;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.security.annotation.InnerAuth;
 import com.junsong.system.api.domain.SysUserMpBinding;
 import com.junsong.system.service.ISysUserMpBindingService;
@@ -69,6 +70,7 @@ public class SysUserMpBindingController
      * 并发竞态（REVOKED 记录已被其他请求激活）返回 0 行时视为已绑定。</p>
      */
     @InnerAuth
+    @Idempotent(scene = "system:user-mp-binding:insert")
     @PostMapping
     public R<Integer> insert(@RequestBody SysUserMpBinding binding)
     {

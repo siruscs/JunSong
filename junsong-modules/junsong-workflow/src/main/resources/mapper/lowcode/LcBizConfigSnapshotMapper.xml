@@ -45,6 +45,13 @@
         </where>
     </select>
 
+    <select id="selectMaxPublishedVersionByBizCode" resultType="java.lang.Integer">
+        SELECT COALESCE(MAX(version_no), 0) FROM lc_biz_config_snapshot
+        <where>
+            biz_code = #{bizCode} AND status = 'PUBLISHED' AND del_flag = '0'
+        </where>
+    </select>
+
     <insert id="insertSnapshot" parameterType="com.junsong.workflow.lowcode.domain.LcBizConfigSnapshot" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO lc_biz_config_snapshot
             (biz_code, version_no, config_json, status, publish_remark, del_flag,

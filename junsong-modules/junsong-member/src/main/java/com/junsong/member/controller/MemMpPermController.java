@@ -3,6 +3,7 @@ package com.junsong.member.controller;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -85,6 +86,7 @@ public class MemMpPermController extends BaseController {
     }
 
     @RequiresPermissions("member:mpPerm:add")
+    @Idempotent(scene = "member:mp-perm:save")
     @PostMapping
     public AjaxResult save(@RequestBody Map<String, Object> params) {
         Long roleId = Long.valueOf(params.get("roleId").toString());
@@ -107,6 +109,7 @@ public class MemMpPermController extends BaseController {
     }
 
     @RequiresPermissions("member:mpPerm:remove")
+    @Idempotent(scene = "member:mpPerm:delete")
     @DeleteMapping("/role/{roleId}/{deptId}")
     public AjaxResult removeByRole(@PathVariable Long roleId, @PathVariable Long deptId) {
         if (deptId == null || deptId == 0L) {

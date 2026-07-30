@@ -114,12 +114,24 @@ public class WebhookDeliveryServiceImpl implements IWebhookDeliveryService
 
     /**
      * 消费者调用的HTTP投递方法
+     *
+     * 幂等性保证：MQ 可能重复投递同一消息（at-least-once 语义）。
+     * 本方法在执行前检查 delivery 状态，若已处于终态（SUCCESS/FAILED）则直接跳过，
+     * 避免对订阅方造成重复通知。
      */
     public void executeDeliveryFromMQ(Long deliveryId, WebhookSubscription sub)
     {
         WebhookDelivery delivery = deliveryMapper.selectWebhookDeliveryById(deliveryId);
         if (delivery == null)
         {
+            return;
+        }
+        // 幂等检查：终态记录跳过（防止 MQ 重复消费导致重复投递）
+        String status = delivery.getStatus();
+        if ("SUCCESS".equals(status) || "FAILED".equals(status))
+        {
+            log.info("Webhook投递跳过（终态记录，MQ重复消费幂等保护）: deliveryId={}, status={}",
+                    deliveryId, status);
             return;
         }
         executeDelivery(delivery, sub);

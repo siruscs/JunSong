@@ -16,6 +16,7 @@ import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
+import com.junsong.workflow.mapper.WfSysUserMapper;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -32,6 +33,7 @@ public class GenericLowcodeWorkflowSyncHandler implements WorkflowBusinessSyncHa
     private final LcInstanceService instanceService;
     private final RuntimeService runtimeService;
     private final TaskService taskService;
+    private final WfSysUserMapper sysUserMapper;
 
     /** 缓存 GENERIC workflow processKey 集合（监听配置发布事件自动刷新） */
     private volatile Set<String> genericProcessKeys = null;
@@ -51,13 +53,15 @@ public class GenericLowcodeWorkflowSyncHandler implements WorkflowBusinessSyncHa
             LcBizService bizService,
             LcInstanceService instanceService,
             RuntimeService runtimeService,
-            TaskService taskService)
+            TaskService taskService,
+            WfSysUserMapper sysUserMapper)
     {
         this.metadataService = metadataService;
         this.bizService = bizService;
         this.instanceService = instanceService;
         this.runtimeService = runtimeService;
         this.taskService = taskService;
+        this.sysUserMapper = sysUserMapper;
     }
 
     @Override
@@ -69,6 +73,11 @@ public class GenericLowcodeWorkflowSyncHandler implements WorkflowBusinessSyncHa
         }
         // processDefinitionId 形如 "key:ver:id"，取冒号前的 key
         String key = extractKey(processDefinitionId);
+        // 盘点有专用处理器，必须进入原生状态机完成过账和库存流水，不能被通用状态回写吞掉。
+        if ("stocktake_apply".equals(key))
+        {
+            return false;
+        }
         return getGenericProcessKeys().contains(key);
     }
 
@@ -89,6 +98,7 @@ public class GenericLowcodeWorkflowSyncHandler implements WorkflowBusinessSyncHa
         if (!activeTasks.isEmpty())
         {
             Task nextTask = activeTasks.get(0);
+            bindConfiguredAssignee(processInstanceId, nextTask, variables);
             String nextTaskName = nextTask.getName();
             String nextTaskKey = nextTask.getTaskDefinitionKey();
 
@@ -111,9 +121,54 @@ public class GenericLowcodeWorkflowSyncHandler implements WorkflowBusinessSyncHa
         }
     }
 
+    /** 将低代码节点配置绑定到刚生成的运行时任务，避免 BPMN 未写 assignee 时形成孤儿待办。 */
+    private void bindConfiguredAssignee(String processInstanceId, Task task, Map<String, Object> variables)
+    {
+        LcBizInstance instance = instanceService.selectByProcessInstanceId(processInstanceId);
+        String bizCode = instance == null ? extractKey(task.getProcessDefinitionId()) : instance.getBizCode();
+        if (bizCode == null || bizCode.isBlank()) return;
+        List<LcBizNodeAssignee> configs = metadataService.selectNodeAssigneesByBizCode(bizCode);
+        if (configs == null) return;
+        for (LcBizNodeAssignee config : configs)
+        {
+            if (!task.getTaskDefinitionKey().equals(config.getTaskKey())) continue;
+            String source = config.getAssigneeSource();
+            String target = null;
+            if ("FIXED_USER".equals(source))
+            {
+                String raw = config.getAssigneeValue();
+                if (raw != null && raw.matches("\\d+"))
+                {
+                    target = sysUserMapper.selectUserNameByUserId(Long.valueOf(raw));
+                }
+                else target = raw;
+            }
+            else if ("INITIATOR".equals(source)) target = String.valueOf(variables.get("initiator"));
+            else
+            {
+                String varName = config.getProcessVarName() == null || config.getProcessVarName().isBlank()
+                        ? config.getTaskKey() : config.getProcessVarName();
+                Object value = variables.get(varName);
+                if (value instanceof String) target = (String) value;
+            }
+            if (target != null && !target.isBlank())
+            {
+                taskService.setAssignee(task.getId(), target.trim());
+            }
+            return;
+        }
+    }
+
     @Override
     public void afterReject(String processInstanceId, String operator)
     {
+        LcBizInstance instance = instanceService.selectByProcessInstanceId(processInstanceId);
+        if (instance != null
+                && "REJECTED".equals(instance.getWorkflowStatus())
+                && "发起人修改".equals(instance.getCurrentTaskName()))
+        {
+            return;
+        }
         bizService.syncStatus(processInstanceId, "REJECTED", "审批驳回", operator);
     }
 

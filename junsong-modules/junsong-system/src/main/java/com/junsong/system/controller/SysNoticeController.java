@@ -16,6 +16,7 @@ import com.junsong.common.core.text.Convert;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.security.annotation.RequiresPermissions;
@@ -65,6 +66,7 @@ public class SysNoticeController extends BaseController
      */
     @RequiresPermissions("system:notice:add")
     @Log(title = "通知公告", businessType = BusinessType.INSERT)
+    @Idempotent(scene = "system:notice:add")
     @PostMapping
     public AjaxResult add(@Validated @RequestBody SysNotice notice)
     {
@@ -77,6 +79,7 @@ public class SysNoticeController extends BaseController
      */
     @RequiresPermissions("system:notice:edit")
     @Log(title = "通知公告", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "system:notice:edit")
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody SysNotice notice)
     {

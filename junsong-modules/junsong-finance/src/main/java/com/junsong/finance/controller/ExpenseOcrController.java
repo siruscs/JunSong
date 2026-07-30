@@ -1,6 +1,7 @@
 package com.junsong.finance.controller;
 
 import com.junsong.common.core.domain.R;
+import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.security.annotation.RequiresPermissions;
 import com.junsong.finance.service.ExpenseOcrService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,7 @@ public class ExpenseOcrController
     private ExpenseOcrService ocrService;
 
     @RequiresPermissions("finance:expense:ocr")
+    @Idempotent(scene = "finance:expense:ocr")
     @PostMapping("/ocr")
     public R<ExpenseOcrService.OcrResult> recognizeExpense(@RequestParam("file") MultipartFile file)
     {

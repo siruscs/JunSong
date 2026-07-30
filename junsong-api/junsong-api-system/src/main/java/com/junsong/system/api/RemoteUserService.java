@@ -43,9 +43,7 @@ public interface RemoteUserService
      * @return 结果
      */
     @GetMapping("/user/info-by-id/{userId}")
-    default R<LoginUser> getUserInfoById(@PathVariable("userId") Long userId, @RequestHeader(SecurityConstants.FROM_SOURCE) String source) {
-        return R.fail("用户服务不可用");
-    }
+    public R<LoginUser> getUserInfoById(@PathVariable("userId") Long userId, @RequestHeader(SecurityConstants.FROM_SOURCE) String source);
 
     /**
      * 注册用户信息
@@ -97,7 +95,5 @@ public interface RemoteUserService
      * @return true=已启用 false=未启用或读取失败
      */
     @GetMapping("/user/isWechatLoginEnabled")
-    default R<Boolean> isWechatLoginEnabled(@RequestParam(value = "tenantId", required = false) Long tenantId, @RequestHeader(SecurityConstants.FROM_SOURCE) String source) {
-        return R.fail("微信登录配置服务不可用");
-    }
+    public R<Boolean> isWechatLoginEnabled(@RequestParam(value = "tenantId", required = false) Long tenantId, @RequestHeader(SecurityConstants.FROM_SOURCE) String source);
 }

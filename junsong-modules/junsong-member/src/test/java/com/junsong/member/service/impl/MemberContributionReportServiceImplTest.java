@@ -284,6 +284,7 @@ class MemberContributionReportServiceImplTest {
         private final List<Long> deptIds;
         FakeRemoteUserService(List<Long> deptIds) { this.deptIds = deptIds; }
         @Override public R<LoginUser> getUserInfo(String username, String source) { return null; }
+        @Override public R<LoginUser> getUserInfoById(Long userId, String source) { return null; }
         @Override public R<Boolean> registerUserInfo(com.junsong.system.api.domain.SysUser user, String source) { return null; }
         @Override public R<Boolean> recordUserLogin(com.junsong.system.api.domain.SysUser user, String source) { return null; }
         @Override public R<List<SysDept>> getUserDeptList(String username, String source) {
@@ -293,6 +294,7 @@ class MemberContributionReportServiceImplTest {
             return R.ok(list);
         }
         @Override public R<List<String>> listUsernamesByRoleKey(String roleKey, String source) { return null; }
+        @Override public R<Boolean> isWechatLoginEnabled(Long tenantId, String source) { return R.ok(false); }
     }
 
     static class FakeMemberReportMapper implements MemberReportMapper {

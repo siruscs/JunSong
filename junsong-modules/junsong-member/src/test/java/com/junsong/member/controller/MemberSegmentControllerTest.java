@@ -216,8 +216,18 @@ class MemberSegmentControllerTest {
         }
 
         @Override
+        public R<LoginUser> getUserInfoById(Long userId, String source) {
+            return R.ok(null);
+        }
+
+        @Override
         public R<Boolean> registerUserInfo(SysUser sysUser, String source) {
             return R.ok(true);
+        }
+
+        @Override
+        public R<Boolean> isWechatLoginEnabled(Long tenantId, String source) {
+            return R.ok(false);
         }
 
         @Override

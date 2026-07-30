@@ -380,9 +380,17 @@ class MemMpDashboardServiceImplTest
         { return R.ok(new LoginUser()); }
 
         @Override
+        public R<LoginUser> getUserInfoById(Long userId, String source)
+        { return R.ok(new LoginUser()); }
+
+        @Override
         public R<Boolean> registerUserInfo(
             com.junsong.system.api.domain.SysUser sysUser, String source)
         { return R.ok(true); }
+
+        @Override
+        public R<Boolean> isWechatLoginEnabled(Long tenantId, String source)
+        { return R.ok(false); }
 
         @Override
         public R<Boolean> recordUserLogin(

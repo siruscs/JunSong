@@ -390,6 +390,11 @@ class MemberReportServiceImplTest {
         }
 
         @Override
+        public R<LoginUser> getUserInfoById(Long userId, String source) {
+            return R.fail();
+        }
+
+        @Override
         public R<Boolean> registerUserInfo(SysUser sysUser, String source) {
             return R.fail();
         }
@@ -403,6 +408,11 @@ class MemberReportServiceImplTest {
         public R<List<SysDept>> getUserDeptList(String username, String source) {
             this.lastUsername = username;
             return deptListResponse;
+        }
+
+        @Override
+        public R<Boolean> isWechatLoginEnabled(Long tenantId, String source) {
+            return R.ok(false);
         }
 
         @Override

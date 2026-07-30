@@ -155,7 +155,7 @@
           </view>
           <view class="detail-row">
             <text class="detail-label">数量</text>
-            <input class="detail-input" type="number" v-model="detail.quantity" @input="calculateDetailAmount(index)" />
+            <input class="detail-input" type="text" v-model="detail.quantity" @input="calculateDetailAmount(index)" placeholder="可输负数" />
           </view>
           <view class="detail-row">
             <text class="detail-label">单价</text>

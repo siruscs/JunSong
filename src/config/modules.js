@@ -308,7 +308,7 @@ export const modules = {
       { key: 'saleNo', label: '销售单号', hidden: true },
       { key: 'productId', label: '商品', type: 'select', remoteUrl: '/finance/product/list', remoteLabel: 'productName', remoteValue: 'productId', remoteFilterDept: true, required: true, formatter: (record) => record.productName || record.productId || '-' },
       { key: 'productName', label: '商品名称', hidden: true },
-      { key: 'saleQuantity', label: '销售数量', type: 'number', required: true },
+      { key: 'saleQuantity', label: '销售数量', type: 'number', required: true, allowNegative: true },
       { key: 'giftQuantity', label: '赠品数量', type: 'number' },
       { key: 'totalQuantity', label: '总数量', type: 'number', hidden: true },
       { key: 'saleAmount', label: '销售金额', type: 'number', required: true, allowNegative: true },

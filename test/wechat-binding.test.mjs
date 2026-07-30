@@ -8,9 +8,9 @@ const read = (path) => fs.readFileSync(new URL(`../${path}`, import.meta.url), '
 // 登录页：微信快捷登录按钮与跳转
 // =========================================================================
 
-test('login page: 微信登录按钮使用 v-if="wechatLoginEnabled" 条件渲染', () => {
+test('login page: 微信登录按钮按 wechatLoginEnabled 条件渲染', () => {
   const login = read('src/pages/login/index.vue')
-  assert.match(login, /v-if="wechatLoginEnabled"/)
+  assert.match(login, /<view v-if="wechatLoginEnabled" class="wechat-login-section">/)
 })
 
 test('login page: wechatLoginEnabled 默认为 false（fail-closed）', () => {

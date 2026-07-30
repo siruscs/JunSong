@@ -166,22 +166,29 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 --    - 本迁移补齐 reverse_idempotency_key 列与唯一约束。
 -- ==========================================================================
 
+SET @finance_stocktake_table_exists := (SELECT COUNT(*) FROM information_schema.TABLES
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'finance_stocktake');
+
 -- 5.1 添加 reverse_idempotency_key 列（如果不存在）
 SET @col_exists := (SELECT COUNT(*) FROM information_schema.COLUMNS
     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'finance_stocktake'
     AND COLUMN_NAME = 'reverse_idempotency_key');
-SET @sql := IF(@col_exists = 0,
+SET @sql := IF(@finance_stocktake_table_exists = 0,
+    'SELECT ''finance_stocktake table missing, skip reverse_idempotency_key column'' AS info',
+    IF(@col_exists = 0,
     'ALTER TABLE finance_stocktake ADD COLUMN reverse_idempotency_key VARCHAR(96) DEFAULT NULL COMMENT ''冲销幂等键（租户内唯一）''',
-    'SELECT ''finance_stocktake.reverse_idempotency_key already exists'' AS info');
+    'SELECT ''finance_stocktake.reverse_idempotency_key already exists'' AS info'));
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- 5.2 添加唯一约束
 SET @idx_exists := (SELECT COUNT(*) FROM information_schema.STATISTICS
     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'finance_stocktake'
     AND INDEX_NAME = 'uk_reverse_idempotency_key');
-SET @sql := IF(@idx_exists = 0,
+SET @sql := IF(@finance_stocktake_table_exists = 0,
+    'SELECT ''finance_stocktake table missing, skip uk_reverse_idempotency_key'' AS info',
+    IF(@idx_exists = 0,
     'ALTER TABLE finance_stocktake ADD UNIQUE KEY uk_reverse_idempotency_key (tenant_id, reverse_idempotency_key)',
-    'SELECT ''uk_reverse_idempotency_key already exists'' AS info');
+    'SELECT ''uk_reverse_idempotency_key already exists'' AS info'));
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 
@@ -241,10 +248,13 @@ SELECT 'fin_investor_payment 幂等键重复检测' AS reconciliation_type, COUN
           WHERE idempotency_key IS NOT NULL
           GROUP BY tenant_id, idempotency_key HAVING COUNT(*) > 1) t;
 
-SELECT 'finance_stocktake 冲销幂等键重复检测' AS reconciliation_type, COUNT(*) AS duplicate_count
-    FROM (SELECT reverse_idempotency_key FROM finance_stocktake
-          WHERE reverse_idempotency_key IS NOT NULL
-          GROUP BY tenant_id, reverse_idempotency_key HAVING COUNT(*) > 1) t;
+SET @sql := IF(@finance_stocktake_table_exists = 0,
+    'SELECT ''finance_stocktake table missing, skip duplicate reverse idempotency check'' AS reconciliation_type, 0 AS duplicate_count',
+    'SELECT ''finance_stocktake 冲销幂等键重复检测'' AS reconciliation_type, COUNT(*) AS duplicate_count
+        FROM (SELECT reverse_idempotency_key FROM finance_stocktake
+              WHERE reverse_idempotency_key IS NOT NULL
+              GROUP BY tenant_id, reverse_idempotency_key HAVING COUNT(*) > 1) t');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 
 -- ==========================================================================

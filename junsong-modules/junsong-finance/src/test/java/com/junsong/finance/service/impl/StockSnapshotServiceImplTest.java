@@ -166,6 +166,7 @@ class StockSnapshotServiceImplTest {
         @Override public Integer sumRecordedNet(Long a,String b,Long c,Long d){return 0;}
         @Override public List<Long> selectRecordedProductIds(Long a,String b,Long c){return List.of();}
         @Override public int insertFinStockLedger(FinStockLedger l){return 0;}
+        @Override public FinStockLedger selectByIdempotencyKey(Long a, String b){return null;}
         @Override public List<com.junsong.finance.domain.vo.FinStockPositionView> selectAllTenantDeptScopesWithPosition(){return List.of();}
         @Override public java.math.BigDecimal selectSaleOutUnitCost(Long a, Long b, Long c){return null;}
         @Override public int updateLedgerUnitCost(Long a, java.math.BigDecimal b){return 0;}

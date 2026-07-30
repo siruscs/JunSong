@@ -609,6 +609,7 @@ class FinStockInitServiceImplTest {
             insertedLedgers.add(l);
             return 1;
         }
+        @Override public FinStockLedger selectByIdempotencyKey(Long tenantId, String idempotencyKey) { return null; }
         @Override public com.junsong.finance.domain.vo.DailyFlowView sumDailyFlow(Long t, java.time.LocalDate d, Long dept, Long p) { return null; }
         @Override public List<Long> selectSnapshotProductIds(Long t, java.time.LocalDate d, Long dept) { return new ArrayList<>(); }
         @Override public com.junsong.finance.domain.FinStockSnapshot selectPreviousSnapshot(Long t, java.time.LocalDate d, Long dept, Long p) { return null; }

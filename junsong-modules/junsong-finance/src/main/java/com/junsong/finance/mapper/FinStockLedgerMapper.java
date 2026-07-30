@@ -91,6 +91,16 @@ public interface FinStockLedgerMapper {
     int insertFinStockLedger(FinStockLedger ledger);
 
     /**
+     * 按库存流水业务幂等键查询已存在流水。
+     *
+     * @param tenantId 租户ID
+     * @param idempotencyKey 幂等键
+     * @return 已存在流水，无记录返回 null
+     */
+    FinStockLedger selectByIdempotencyKey(@Param("tenantId") Long tenantId,
+                                          @Param("idempotencyKey") String idempotencyKey);
+
+    /**
      * 查询某门店全部当前结存行（含商品名称，取自最近一笔流水）。
      * 用于每日快照生成的数据来源。
      *

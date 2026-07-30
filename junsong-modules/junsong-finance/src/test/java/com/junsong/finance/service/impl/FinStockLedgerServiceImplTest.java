@@ -176,6 +176,29 @@ class FinStockLedgerServiceImplTest {
     }
 
     @Test
+    void idempotencyKeyIncludesTargetNetSoReverseDoesNotCollideWithOriginalLedger() {
+        service.reconcilePurchaseStock(T1, 1L, 100L, "可乐", 9001L, "PO-1", 10, new BigDecimal("3.00"), "alice");
+        service.reconcilePurchaseStock(T1, 1L, 100L, "可乐", 9001L, "PO-1", 0, null, "alice");
+
+        assertEquals("PURCHASE:9001:100:10", mapper.inserted.get(0).getIdempotencyKey());
+        assertEquals("PURCHASE:9001:100:0", mapper.inserted.get(1).getIdempotencyKey());
+        assertNotEquals(mapper.inserted.get(0).getIdempotencyKey(), mapper.inserted.get(1).getIdempotencyKey(),
+                "删除/冲销必须使用不同目标净数量键，不能与原入库流水冲突");
+    }
+
+    @Test
+    void saleReverseIdempotencyKeyDoesNotCollideWithSaleOut() {
+        service.reconcilePurchaseStock(T1, 1L, 100L, "可乐", 9001L, "PO-1", 20, new BigDecimal("3.00"), "alice");
+        service.reconcileSaleStock(T1, 1L, 100L, "可乐", 8001L, "SO-1", 5, "bob");
+        service.reconcileSaleStock(T1, 1L, 100L, "可乐", 8001L, "SO-1", 0, "bob");
+
+        assertEquals("SALE:8001:100:-5", mapper.inserted.get(1).getIdempotencyKey());
+        assertEquals("SALE:8001:100:0", mapper.inserted.get(2).getIdempotencyKey());
+        assertNotEquals(mapper.inserted.get(1).getIdempotencyKey(), mapper.inserted.get(2).getIdempotencyKey(),
+                "销售删除/冲销必须使用不同目标净数量键，不能与原销售出库流水冲突");
+    }
+
+    @Test
     void saleOutCostBackfillAffectedZero_failsClosed() throws Exception {
         Field costField = FinStockLedgerServiceImpl.class.getDeclaredField("stockCostService");
         costField.setAccessible(true);
@@ -193,8 +216,18 @@ class FinStockLedgerServiceImplTest {
     void negativeTargetQuantity_throws() {
         assertThrows(ServiceException.class,
                 () -> service.reconcilePurchaseStock(T1, 1L, 100L, "可乐", 9001L, "PO-1", -1, BigDecimal.ONE, "a"));
-        assertThrows(ServiceException.class,
-                () -> service.reconcileSaleStock(T1, 1L, 100L, "可乐", 8001L, "SO-1", -1, "b"));
+    }
+
+    @Test
+    void negativeSaleQuantity_isTreatedAsReturnInbound() {
+        service.reconcilePurchaseStock(T1, 1L, 100L, "可乐", 9001L, "PO-1", 2, BigDecimal.ONE, "a");
+
+        service.reconcileSaleStock(T1, 1L, 100L, "可乐", 8001L, "SO-RETURN", -1, "b");
+
+        FinStockLedger led = mapper.inserted.get(1);
+        assertEquals("SALE_REVERSE", led.getChangeType());
+        assertEquals(1, led.getChangeQuantity());
+        assertEquals(3, mapper.position(T1, 1L, 100L));
     }
 
     @Test
@@ -230,6 +263,8 @@ class FinStockLedgerServiceImplTest {
         final List<FinStockLedger> inserted = new ArrayList<>();
         final Map<String, Integer> positions = new HashMap<>();
         boolean forceUnitCostUpdateZero;
+        boolean forceDuplicateIdempotencyKey;
+        int duplicateInsertAttempts;
 
         private String key(Long tenantId, Long deptId, Long productId) {
             return tenantId + ":" + deptId + ":" + productId;
@@ -291,9 +326,25 @@ class FinStockLedgerServiceImplTest {
 
         @Override
         public int insertFinStockLedger(FinStockLedger ledger) {
+            if (forceDuplicateIdempotencyKey && ledger.getIdempotencyKey() != null) {
+                duplicateInsertAttempts++;
+                return 0;
+            }
             ledger.setLedgerId((long) (inserted.size() + 1));
             inserted.add(ledger);
             return 1;
+        }
+
+        @Override
+        public FinStockLedger selectByIdempotencyKey(Long tenantId, String idempotencyKey) {
+            for (FinStockLedger l : inserted) {
+                if (tenantId.equals(l.getTenantId())
+                        && idempotencyKey.equals(l.getIdempotencyKey())
+                        && "0".equals(l.getDelFlag())) {
+                    return l;
+                }
+            }
+            return null;
         }
 
         // ---- R7-E 快照相关方法桩实现（本测试不涉及，仅为满足接口契约） ----

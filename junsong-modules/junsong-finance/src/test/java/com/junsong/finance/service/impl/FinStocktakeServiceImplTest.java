@@ -1984,6 +1984,13 @@ class FinStocktakeServiceImplTest {
         }
 
         @Override
+        public FinStocktake selectStocktakeByTakeNo(Long tenantId, String takeNo) {
+            return insertedHeaders.stream()
+                    .filter(h -> tenantId.equals(h.getTenantId()) && takeNo.equals(h.getTakeNo()))
+                    .findFirst().orElse(null);
+        }
+
+        @Override
         public FinStocktake selectByReverseIdempotencyKey(Long tenantId, String reverseIdempotencyKey) {
             return insertedHeaders.stream()
                     .filter(h -> tenantId.equals(h.getTenantId())
@@ -2212,6 +2219,7 @@ class FinStocktakeServiceImplTest {
             insertedLedgers.add(l);
             return 1;
         }
+        @Override public FinStockLedger selectByIdempotencyKey(Long tenantId, String idempotencyKey) { return null; }
         @Override public com.junsong.finance.domain.vo.DailyFlowView sumDailyFlow(Long t, java.time.LocalDate d, Long dept, Long p) { return null; }
         @Override public List<Long> selectSnapshotProductIds(Long t, java.time.LocalDate d, Long dept) { return new ArrayList<>(); }
         @Override public com.junsong.finance.domain.FinStockSnapshot selectPreviousSnapshot(Long t, java.time.LocalDate d, Long dept, Long p) { return null; }

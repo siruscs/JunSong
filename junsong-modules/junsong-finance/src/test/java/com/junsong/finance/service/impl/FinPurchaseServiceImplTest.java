@@ -335,6 +335,11 @@ class FinPurchaseServiceImplTest {
             return 1;
         }
 
+        @Override
+        public FinStockLedger selectByIdempotencyKey(Long tenantId, String idempotencyKey) {
+            return null;
+        }
+
         // ---- R7-E 快照相关方法桩实现（本测试不涉及，仅为满足接口契约） ----
         @Override public com.junsong.finance.domain.vo.DailyFlowView sumDailyFlow(Long tenantId, java.time.LocalDate date, Long deptId, Long productId) { return null; }
         @Override public java.util.List<Long> selectSnapshotProductIds(Long tenantId, java.time.LocalDate date, Long deptId) { return java.util.List.of(); }

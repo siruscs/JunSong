@@ -481,7 +481,7 @@ public class SysUserController extends BaseController
      * @param deptId 店面ID
      * @return 结果
      */
-    @Idempotent(scene = "system:user:switch-dept", highRisk = true)
+    @Idempotent(scene = "system:user:switch-dept", required = false)
     @PostMapping("switchDept/{deptId}")
     public AjaxResult switchDept(@PathVariable Long deptId)
     {

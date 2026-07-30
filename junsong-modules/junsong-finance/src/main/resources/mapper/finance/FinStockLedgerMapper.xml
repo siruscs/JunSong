@@ -68,7 +68,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </select>
 
     <insert id="insertFinStockLedger" parameterType="FinStockLedger" useGeneratedKeys="true" keyProperty="ledgerId">
-        insert into fin_stock_ledger
+        insert ignore into fin_stock_ledger
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="tenantId != null">tenant_id,</if>
             <if test="deptId != null">dept_id,</if>
@@ -108,6 +108,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="remark != null">#{remark},</if>
         </trim>
     </insert>
+
+    <select id="selectByIdempotencyKey" resultMap="FinStockLedgerResult">
+        select *
+        from fin_stock_ledger
+        where tenant_id = #{tenantId}
+          and idempotency_key = #{idempotencyKey}
+          and del_flag = '0'
+        limit 1
+    </select>
 
     <resultMap type="com.junsong.finance.domain.vo.FinStockPositionView" id="FinStockPositionViewResult">
         <result property="tenantId"    column="tenant_id"    />

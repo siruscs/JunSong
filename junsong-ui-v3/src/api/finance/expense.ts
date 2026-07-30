@@ -1,4 +1,5 @@
 import request from '../request'
+import { generateIdempotencyKey } from '@/utils/idempotency'
 
 export interface ExpenseVerifyRequest {
   expenseIds: number[]
@@ -33,6 +34,7 @@ export function addExpense(data: any) {
   return request({
     url: '/finance/expense',
     method: 'post',
+    idempotencyKey: generateIdempotencyKey('expense:create'),
     data: data
   })
 }

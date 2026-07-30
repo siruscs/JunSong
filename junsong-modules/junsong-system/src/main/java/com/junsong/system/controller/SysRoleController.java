@@ -156,7 +156,6 @@ public class SysRoleController extends BaseController
      */
     @RequiresPermissions("system:role:remove")
     @Log(title = "角色管理", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "system:role:delete")
     @DeleteMapping("/{roleIds}")
     public AjaxResult remove(@PathVariable Long[] roleIds)
     {

@@ -136,7 +136,6 @@ public class ProcessDefinitionController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:definition:remove')")
-    @Idempotent(scene = "workflow:definition:delete")
     @DeleteMapping("/{id}")
     public R<Void> deleteDefinition(
             @PathVariable("id") String id,
@@ -147,7 +146,6 @@ public class ProcessDefinitionController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:definition:remove')")
-    @Idempotent(scene = "workflow:definition:delete-deployment")
     @DeleteMapping("/deployment/{deploymentId}")
     public R<Void> deleteDeployment(
             @PathVariable("deploymentId") String deploymentId,

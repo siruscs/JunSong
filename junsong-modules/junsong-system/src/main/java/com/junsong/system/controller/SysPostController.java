@@ -115,7 +115,6 @@ public class SysPostController extends BaseController
      */
     @RequiresPermissions("system:post:remove")
     @Log(title = "岗位管理", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "system:post:delete")
     @DeleteMapping("/{postIds}")
     public AjaxResult remove(@PathVariable Long[] postIds)
     {

@@ -134,7 +134,6 @@ public class FinSupplierController extends BaseController
      */
     @RequiresPermissions("finance:supplier:remove")
     @Log(title = "供应商", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "supplier:delete")
     @DeleteMapping("/{supplierIds}")
     public AjaxResult remove(@PathVariable Long[] supplierIds)
     {

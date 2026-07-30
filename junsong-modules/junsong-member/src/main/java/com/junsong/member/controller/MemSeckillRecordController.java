@@ -109,7 +109,6 @@ public class MemSeckillRecordController extends BaseController {
      */
     @RequiresPermissions("member:seckillRecord:remove")
     @Log(title = "秒杀记录", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "member:seckillRecord:delete")
     @DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable Long[] ids) {
         return toAjax(memSeckillRecordService.deleteMemSeckillRecordByIds(ids));

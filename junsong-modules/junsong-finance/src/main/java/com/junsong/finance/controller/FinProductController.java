@@ -134,7 +134,6 @@ public class FinProductController extends BaseController
      */
     @RequiresPermissions("finance:product:remove")
     @Log(title = "商品", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "finProduct:delete")
     @DeleteMapping("/{productIds:\\d+(?:,\\d+)*}")
     public AjaxResult remove(@PathVariable Long[] productIds)
     {

@@ -71,7 +71,6 @@ public class FinInvestRecordController extends BaseController
 
     @RequiresPermissions("finance:investRecord:remove")
     @Log(title = "投资来源记录", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "investRecord:delete")
     @DeleteMapping("/{investIds}")
     public AjaxResult remove(@PathVariable Long[] investIds)
     {

@@ -72,7 +72,6 @@ public class SysJobLogController extends BaseController
      */
     @RequiresPermissions("monitor:job:remove")
     @Log(title = "定时任务调度日志", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "job:jobLog:delete")
     @DeleteMapping("/{jobLogIds}")
     public AjaxResult remove(@PathVariable Long[] jobLogIds)
     {

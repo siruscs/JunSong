@@ -128,10 +128,11 @@ public class FinPurchaseController extends BaseController
 
     /**
      * 删除进货单
+     * 注：DELETE 天然幂等，无需 @Idempotent 保护；
+     * 前端自动键管理会规范化 URL 导致不同记录复用同键，触发指纹冲突。
      */
     @RequiresPermissions("finance:purchase:remove")
     @Log(title = "进货单", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "purchase:delete")
     @DeleteMapping("/{purchaseIds}")
     public AjaxResult remove(@PathVariable Long[] purchaseIds)
     {

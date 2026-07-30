@@ -77,7 +77,6 @@ public class FinProfitShareRecordController extends BaseController
 
     @RequiresPermissions("finance:profitShare:remove")
     @Log(title = "分润记录", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "profitShare:delete")
     @DeleteMapping("/{shareIds}")
     public AjaxResult remove(@PathVariable Long[] shareIds)
     {

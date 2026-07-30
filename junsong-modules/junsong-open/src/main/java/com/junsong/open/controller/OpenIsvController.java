@@ -84,7 +84,6 @@ public class OpenIsvController extends BaseController
 
     @DeleteMapping("/{ids}")
     @RequiresPermissions("open:isv:remove")
-    @Idempotent(scene = "open:isv:delete")
     public AjaxResult remove(@PathVariable("ids") Long[] ids)
     {
         return toAjax(openIsvService.deleteOpenIsvByIds(ids));

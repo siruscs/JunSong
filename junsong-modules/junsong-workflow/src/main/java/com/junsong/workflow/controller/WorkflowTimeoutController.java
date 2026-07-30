@@ -52,7 +52,6 @@ public class WorkflowTimeoutController extends BaseController
     }
 
     @PreAuthorize("@ss.hasPermi('workflow:timeout:remove')")
-    @Idempotent(scene = "workflow:timeout:delete")
     @DeleteMapping("/{id}")
     public R<Void> delete(@PathVariable Long id)
     {

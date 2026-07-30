@@ -160,7 +160,6 @@ public class FinSaleRecordController extends BaseController
      */
     @RequiresPermissions("finance:sale:remove")
     @Log(title = "销售记录", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "sale:delete")
 	@DeleteMapping("/{saleIds}")
     public AjaxResult remove(@PathVariable Long[] saleIds)
     {
@@ -260,7 +259,6 @@ public class FinSaleRecordController extends BaseController
      */
     @RequiresPermissions("finance:sale:payment")
     @Log(title = "删除缴款", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "sale:payment:delete")
     @DeleteMapping("/payment/{paymentId}")
     public AjaxResult deletePayment(@PathVariable Long paymentId)
     {

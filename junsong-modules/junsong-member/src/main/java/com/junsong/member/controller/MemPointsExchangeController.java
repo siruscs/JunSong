@@ -85,7 +85,6 @@ public class MemPointsExchangeController extends BaseController {
 
     @RequiresPermissions("member:pointsExchange:remove")
     @Log(title = "积分兑换", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "member:pointsExchange:delete")
     @DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable Long[] ids) {
         for (Long exchangeId : ids) {

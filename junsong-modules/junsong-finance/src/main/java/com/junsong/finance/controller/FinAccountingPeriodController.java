@@ -282,7 +282,6 @@ public class FinAccountingPeriodController extends BaseController
 
     @RequiresPermissions("finance:accountingPeriod:remove")
     @Log(title = "财务核算周期", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "accountingPeriod:delete")
     @DeleteMapping("/{periodIds}")
     public AjaxResult remove(@PathVariable Long[] periodIds)
     {

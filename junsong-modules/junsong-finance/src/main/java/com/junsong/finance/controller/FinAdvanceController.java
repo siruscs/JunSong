@@ -90,7 +90,6 @@ public class FinAdvanceController extends BaseController
 
     @RequiresPermissions("finance:advance:remove")
     @Log(title = "借支记录", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "advance:delete")
 	@DeleteMapping("/{advanceIds}")
     public AjaxResult remove(@PathVariable Long[] advanceIds)
     {

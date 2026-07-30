@@ -73,7 +73,6 @@ public class OpenContractController extends BaseController
 
     @DeleteMapping("/{ids}")
     @RequiresPermissions("open:contract:remove")
-    @Idempotent(scene = "open:contract:delete")
     public AjaxResult remove(@PathVariable("ids") Long[] ids)
     {
         return toAjax(openContractService.deleteOpenContractByIds(ids));

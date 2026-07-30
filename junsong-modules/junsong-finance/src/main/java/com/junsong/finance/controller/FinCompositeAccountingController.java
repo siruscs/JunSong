@@ -131,7 +131,6 @@ public class FinCompositeAccountingController extends BaseController
      */
     @RequiresPermissions("finance:compositeAccounting:remove")
     @Log(title = "复合核算池", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "compositeAccounting:delete")
     @DeleteMapping("/{poolIds}")
     public AjaxResult remove(@PathVariable Long[] poolIds) {
         if (!SecurityUtils.isAdmin()) {

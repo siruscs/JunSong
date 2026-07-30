@@ -75,7 +75,6 @@ public class LcBizController extends BaseController
     }
 
     @PreAuthorize("@ss.hasPermi('lowcode:biz:remove')")
-    @Idempotent(scene = "lowcode:biz:delete")
     @DeleteMapping("/{bizCode}/{ids}")
     public R<Void> delete(@PathVariable("bizCode") @Pattern(regexp = "^[a-zA-Z0-9_-]+$", message = "业务编码格式非法") String bizCode, @PathVariable("ids") Long[] ids)
     {

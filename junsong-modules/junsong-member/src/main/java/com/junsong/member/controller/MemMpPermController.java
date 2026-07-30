@@ -109,7 +109,6 @@ public class MemMpPermController extends BaseController {
     }
 
     @RequiresPermissions("member:mpPerm:remove")
-    @Idempotent(scene = "member:mpPerm:delete")
     @DeleteMapping("/role/{roleId}/{deptId}")
     public AjaxResult removeByRole(@PathVariable Long roleId, @PathVariable Long deptId) {
         if (deptId == null || deptId == 0L) {

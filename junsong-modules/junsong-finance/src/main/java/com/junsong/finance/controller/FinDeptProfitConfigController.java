@@ -78,7 +78,6 @@ public class FinDeptProfitConfigController extends BaseController
 
     @RequiresPermissions("finance:deptProfitConfig:remove")
     @Log(title = "店面分润配置", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "deptProfitConfig:delete")
     @DeleteMapping("/{configIds}")
     public AjaxResult remove(@PathVariable Long[] configIds)
     {

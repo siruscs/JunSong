@@ -113,7 +113,6 @@ public class FinCostAccountingController extends BaseController
 
     @RequiresPermissions("finance:costAccounting:remove")
     @Log(title = "成本核算", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "costAccounting:delete")
     @DeleteMapping("/{accountingIds}")
     public AjaxResult remove(@PathVariable Long[] accountingIds)
     {

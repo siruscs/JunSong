@@ -182,7 +182,6 @@ public class SysJobController extends BaseController
      */
     @RequiresPermissions("monitor:job:remove")
     @Log(title = "定时任务", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "job:job:delete")
     @DeleteMapping("/{jobIds}")
     public AjaxResult remove(@PathVariable Long[] jobIds) throws SchedulerException
     {

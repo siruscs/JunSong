@@ -170,7 +170,6 @@ public class FinExpenseController extends BaseController
 
     @RequiresPermissions("finance:expense:remove")
     @Log(title = "费用记录", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "expense:delete")
 	@DeleteMapping("/{expenseIds}")
     public AjaxResult remove(@PathVariable Long[] expenseIds)
     {

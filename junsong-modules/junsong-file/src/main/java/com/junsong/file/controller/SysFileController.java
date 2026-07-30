@@ -55,7 +55,6 @@ public class SysFileController
      * 文件删除请求
      */
     @RequiresPermissions("system:file:remove")
-    @Idempotent(scene = "file:file:delete", highRisk = true, ttlSeconds = 2592000)
     @DeleteMapping("delete")
     public R<Boolean> delete(String fileUrl)
     {

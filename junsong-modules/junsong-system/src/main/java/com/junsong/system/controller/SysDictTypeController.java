@@ -104,7 +104,6 @@ public class SysDictTypeController extends BaseController
      */
     @RequiresPermissions("system:dict:remove")
     @Log(title = "字典类型", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "system:dictType:delete")
     @DeleteMapping("/{dictIds}")
     public AjaxResult remove(@PathVariable Long[] dictIds)
     {

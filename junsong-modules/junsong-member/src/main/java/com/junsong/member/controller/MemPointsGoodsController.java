@@ -119,7 +119,6 @@ public class MemPointsGoodsController extends BaseController {
      */
     @RequiresPermissions("member:pointsGoods:remove")
     @Log(title = "积分物品", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "member:pointsGoods:delete")
     @DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable Long[] ids) {
         return toAjax(memPointsGoodsService.deleteMemPointsGoodsByIds(ids));

@@ -96,7 +96,6 @@ public class MemPointsRecordController extends BaseController {
      */
     @RequiresPermissions("member:pointsRecord:remove")
     @Log(title = "积分记录", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "member:pointsRecord:delete")
     @DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable Long[] ids) {
         return toAjax(memPointsRecordService.deleteMemPointsRecordByIds(ids));

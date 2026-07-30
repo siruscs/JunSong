@@ -95,7 +95,6 @@ public class FinInvestorPaymentController extends BaseController
 
     @RequiresPermissions("finance:investorPayment:remove")
     @Log(title = "投资人返款", businessType = BusinessType.DELETE)
-    @Idempotent(scene = "investorPayment:delete")
 	@DeleteMapping("/{paymentIds}")
     public AjaxResult remove(@PathVariable Long[] paymentIds)
     {

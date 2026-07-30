@@ -80,7 +80,22 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             AND m.del_flag = '0'
             ${params.dataScope}
         </where>
-        order by m.member_no desc
+        <choose>
+            <when test="memberNo != null and memberNo != ''">
+                order by
+                    CASE
+                        WHEN m.member_no = #{memberNo} THEN 0
+                        WHEN CAST(m.member_no AS UNSIGNED) = CAST(#{memberNo} AS UNSIGNED) THEN 1
+                        WHEN m.member_no LIKE CONCAT('%', #{memberNo}) THEN 2
+                        WHEN m.member_no LIKE CONCAT(#{memberNo}, '%') THEN 3
+                        ELSE 4
+                    END,
+                    LENGTH(m.member_no), m.member_no
+            </when>
+            <otherwise>
+                order by m.member_no desc
+            </otherwise>
+        </choose>
     </select>
 
     <select id="selectMemMemberByMemberId" parameterType="Long" resultMap="MemMemberResult">

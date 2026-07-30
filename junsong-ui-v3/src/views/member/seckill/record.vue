@@ -250,7 +250,7 @@
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="秒杀单价">
+            <el-form-item label="秒杀价">
               <el-input v-model="form.seckillPrice" disabled>
                 <template #prepend>¥</template>
               </el-input>
@@ -285,7 +285,7 @@
         <el-descriptions-item label="秒杀份额">{{ viewForm.shares }}</el-descriptions-item>
         <el-descriptions-item label="已领取">{{ viewForm.claimedShares || 0 }}</el-descriptions-item>
         <el-descriptions-item label="待领取">{{ viewForm.remainingShares || 0 }}</el-descriptions-item>
-        <el-descriptions-item label="秒杀单价">
+        <el-descriptions-item label="秒杀价">
           <span style="color: #F56C6C;">¥{{ viewForm.seckillPrice }}</span>
         </el-descriptions-item>
         <el-descriptions-item label="付款方式">{{ getPaymentMethodName(viewForm.paymentMethod) }}</el-descriptions-item>

@@ -88,10 +88,6 @@ public class StockCostServiceImpl implements IStockCostService {
         }
 
         int newQty = layer.getStockQuantity() - reverseQuantity;
-        if (newQty < 0) {
-            throw new ServiceException("采购冲销量超过库存量，拒绝逆转成本层（当前 "
-                    + layer.getStockQuantity() + "，冲销 " + reverseQuantity + "）");
-        }
         BigDecimal reverseAmount = layer.getAvgUnitCost()
                 .multiply(BigDecimal.valueOf(reverseQuantity))
                 .setScale(AMOUNT_SCALE, ROUNDING);

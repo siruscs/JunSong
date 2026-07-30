@@ -105,12 +105,12 @@
         </template>
       </el-table-column>
       <el-table-column label="时间段" align="center" prop="timeSlot" width="120" />
-      <el-table-column label="秒杀金额" align="center" prop="seckillAmount" width="120">
+      <el-table-column label="原价" align="center" prop="seckillAmount" width="120">
         <template #default="scope">
           <span style="color: #F56C6C;">¥{{ scope.row.seckillAmount }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="秒杀单价" align="center" prop="seckillPrice" width="120">
+      <el-table-column label="秒杀价" align="center" prop="seckillPrice" width="120">
         <template #default="scope">
           <span style="color: #67C23A;">¥{{ scope.row.seckillPrice }}</span>
         </template>
@@ -229,14 +229,14 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="秒杀金额" prop="seckillAmount">
+            <el-form-item label="原价" prop="seckillAmount">
               <el-input-number v-model="form.seckillAmount" :precision="2" :step="0.01" :min="0" style="width: 100%;" />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="秒杀单价" prop="seckillPrice">
+            <el-form-item label="秒杀价" prop="seckillPrice">
               <el-input-number v-model="form.seckillPrice" :precision="2" :step="0.01" :min="0" style="width: 100%;" />
             </el-form-item>
           </el-col>
@@ -272,10 +272,10 @@
         </el-descriptions-item>
         <el-descriptions-item label="秒杀日期">{{ parseTime(viewForm.seckillDate, '{y}-{m}-{d}') }}</el-descriptions-item>
         <el-descriptions-item label="时间段">{{ viewForm.timeSlot }}</el-descriptions-item>
-        <el-descriptions-item label="秒杀金额">
+        <el-descriptions-item label="原价">
           <span style="color: #F56C6C;">¥{{ viewForm.seckillAmount }}</span>
         </el-descriptions-item>
-        <el-descriptions-item label="秒杀单价">
+        <el-descriptions-item label="秒杀价">
           <span style="color: #67C23A;">¥{{ viewForm.seckillPrice }}</span>
         </el-descriptions-item>
         <el-descriptions-item label="总份额">{{ viewForm.totalShares }}</el-descriptions-item>
@@ -350,10 +350,10 @@ export default {
             } }
         ],
         seckillAmount: [
-          { required: true, message: "秒杀金额不能为空", trigger: "blur" }
+          { required: true, message: "原价不能为空", trigger: "blur" }
         ],
         seckillPrice: [
-          { required: true, message: "秒杀单价不能为空", trigger: "blur" }
+          { required: true, message: "秒杀价不能为空", trigger: "blur" }
         ],
         totalShares: [
           { required: true, message: "总份额不能为空", trigger: "blur" }

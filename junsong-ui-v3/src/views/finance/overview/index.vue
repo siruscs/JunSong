@@ -35,28 +35,19 @@
       </el-form>
     </div>
 
-    <div class="dashboard-intro">
-      <div>
-        <span class="eyebrow">经营驾驶舱 / {{ queryParams.timeType === 'day' ? '今日' : queryParams.timeType === 'week' ? '本周' : '本月' }}</span>
-        <h3>经营结论</h3>
-        <p>先看结果，再处理影响经营的事项。</p>
-      </div>
-      <div class="data-stamp">数据随查询条件更新</div>
-    </div>
-
     <!-- Top Metric Cards -->
     <div class="report-metrics">
       <div class="metric-card primary metric-card-hero">
         <div class="metric-label">本期销售额</div>
-        <div class="metric-value">{{ money(dashboardData.monthSales || dashboardData.todaySales) }}</div>
+        <div class="metric-value">{{ money(dashboardData.currentPeriodSales) }}</div>
       </div>
       <div class="metric-card success metric-card-hero">
         <div class="metric-label">毛利润</div>
-        <div class="metric-value">{{ money(dashboardData.grossProfit) }}</div>
+        <div class="metric-value">{{ money(Number(dashboardData.currentPeriodSales || 0) - Number(dashboardData.currentPeriodExpense || 0)) }}</div>
       </div>
       <div class="metric-card success metric-card-hero">
         <div class="metric-label">毛利率</div>
-        <div class="metric-value">{{ dashboardData.profitRate || 0 }}%</div>
+        <div class="metric-value">{{ dashboardData.currentPeriodSales ? ((Number(dashboardData.currentPeriodSales - dashboardData.currentPeriodExpense) / Number(dashboardData.currentPeriodSales) * 100).toFixed(2)) : 0 }}%</div>
       </div>
       <div class="metric-card info metric-card-hero">
         <div class="metric-label">现金净流入</div>

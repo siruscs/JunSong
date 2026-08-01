@@ -95,6 +95,13 @@ function patchUniMpWeixinRuntime() {
     },
     writeBundle(options) {
       const outDir = options.dir || path.resolve(process.cwd(), 'dist/build/mp-weixin')
+      const tabSourceDir = path.join(process.cwd(), 'src/static/tab')
+      const tabTargetDir = path.join(process.cwd(), 'dist/static/tab')
+      fs.mkdirSync(tabTargetDir, { recursive: true })
+      for (const icon of ['home.png', 'home-active.png', 'grid.png', 'grid-active.png', 'user.png', 'user-active.png']) {
+        const source = path.join(tabSourceDir, icon)
+        if (fs.existsSync(source)) fs.copyFileSync(source, path.join(tabTargetDir, icon))
+      }
       for (const vendorPath of [
         path.join(outDir, 'common/vendor.js'),
         path.resolve(process.cwd(), 'dist/common/vendor.js')

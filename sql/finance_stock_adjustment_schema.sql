@@ -33,3 +33,17 @@ UPDATE sys_menu
 SET menu_name = '库存调整查询'
 WHERE parent_id = @stock_adjustment_menu_id
   AND perms = 'finance:stockInit:query' AND status = '0';
+
+INSERT INTO sys_menu (menu_name, parent_id, order_num, path, component, is_frame, is_cache,
+    menu_type, visible, status, perms, icon, create_by, create_time, remark)
+SELECT '库存调整删除', @stock_adjustment_menu_id, 6, '#', '', 1, 0, 'F', '0', '0',
+       'finance:stockInit:remove', '#', 'admin', NOW(), '仅未过账调整单可删除'
+FROM DUAL
+WHERE @stock_adjustment_menu_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM sys_menu WHERE perms = 'finance:stockInit:remove' AND parent_id = @stock_adjustment_menu_id);
+
+INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
+SELECT r.role_id, m.menu_id FROM sys_role r, sys_menu m
+WHERE r.role_key IN ('finance', 'finance_staff', 'finance_manager')
+  AND m.perms = 'finance:stockInit:remove'
+  AND m.parent_id = @stock_adjustment_menu_id;

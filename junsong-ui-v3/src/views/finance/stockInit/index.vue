@@ -85,7 +85,8 @@
       </el-table-column>
       <el-table-column label="操作" width="320" fixed="right" align="center">
         <template #default="scope">
-          <el-button link type="primary" size="small" @click="handleDetail(scope.row)" v-hasPermi="['finance:stockInit:query']">查看</el-button>
+            <el-button link type="primary" size="small" @click="handleDetail(scope.row)" v-hasPermi="['finance:stockInit:query']">查看</el-button>
+          <el-button v-if="scope.row.status !== 'POSTED' && scope.row.status !== 'DELETED'" link type="danger" size="small" @click="handleDelete(scope.row)" v-hasPermi="['finance:stockInit:remove']">删除调整单</el-button>
           <el-button
             v-if="scope.row.status === 'DRAFT'"
             link
@@ -329,6 +330,7 @@ import Pagination from '@/components/Pagination/index.vue'
 import {
   approveStockInit,
   createStockInit,
+  deleteStockInit,
   getStockInitDetail,
   exportStockInit,
   listStockInit,
@@ -514,6 +516,13 @@ function handleDetail(row: any) {
     .then((res: any) => { detailData.value = res.data || res })
     .catch(() => ElMessage.error('调整单明细加载失败，请稍后重试'))
     .finally(() => { detailLoading.value = false })
+}
+
+function handleDelete(row: any) {
+  ElMessageBox.confirm('未过账调整单可删除，删除后将不再出现在列表中，确认继续吗？', '删除库存调整单', { type: 'warning' })
+    .then(() => deleteStockInit(row.batchId, row.version))
+    .then(() => { ElMessage.success('库存调整单已删除'); getList(); loadStats() })
+    .catch(() => {})
 }
 
 function adjustmentTypeLabel(value: string) {

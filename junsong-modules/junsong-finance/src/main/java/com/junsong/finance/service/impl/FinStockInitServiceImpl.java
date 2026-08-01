@@ -220,6 +220,23 @@ public class FinStockInitServiceImpl implements IFinStockInitService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public int deleteStockInit(Long batchId, Integer version) {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null) throw new ServiceException("租户上下文缺失，禁止删除库存调整单");
+        if (version == null) throw new ServiceException("版本号不能为空");
+        FinStockInitBatch header = finStockInitBatchMapper.selectBatchForUpdate(tenantId, batchId);
+        if (header == null) throw new ServiceException("库存调整单不存在或无权访问");
+        assertDeptAuthorized(tenantId, header.getDeptId());
+        if (STATUS_POSTED.equals(header.getStatus()) || "DELETED".equals(header.getStatus())) {
+            throw new ServiceException("已过账或已删除的调整单不可删除");
+        }
+        int affected = finStockInitBatchMapper.markBatchDeleted(tenantId, batchId, version, SecurityUtils.getUsername());
+        if (affected != 1) throw new ServiceException("删除调整单失败，单据可能已被其他操作更新");
+        return affected;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public int submitStockInit(Long batchId, Integer version) {
         Long tenantId = TenantContext.getTenantId();
         if (tenantId == null) {

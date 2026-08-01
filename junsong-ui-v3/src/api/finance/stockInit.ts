@@ -97,6 +97,10 @@ export function getStockInitDetail(batchId: number) {
   return request({ url: `/finance/stockInit/${batchId}`, method: 'get' })
 }
 
+export function deleteStockInit(batchId: number, version: number) {
+  return request({ url: `/finance/stockInit/${batchId}`, method: 'delete', params: { version } })
+}
+
 // 创建期初库存批次
 export function createStockInit(data: StockInitCreateRequest) {
   return request({ url: '/finance/stockInit', method: 'post', data })

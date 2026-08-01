@@ -100,6 +100,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="listBatches" resultMap="FinStockInitBatchResult">
         select * from fin_stock_init_batch
         where tenant_id = #{tenantId}
+          and status &lt;&gt; 'DELETED'
         <if test="deptIds != null and deptIds.size() > 0">
             and dept_id in
             <foreach collection="deptIds" item="deptId" open="(" separator="," close=")">
@@ -140,6 +141,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where tenant_id = #{tenantId}
           and batch_id = #{batchId}
           and status = #{fromStatus}
+          and version = #{version}
+    </update>
+
+    <update id="markBatchDeleted">
+        update fin_stock_init_batch
+        set status = 'DELETED', update_by = #{updateBy}, update_time = sysdate(), version = version + 1
+        where tenant_id = #{tenantId} and batch_id = #{batchId}
+          and status in ('DRAFT', 'VALIDATED', 'SUBMITTED', 'APPROVED')
           and version = #{version}
     </update>
 

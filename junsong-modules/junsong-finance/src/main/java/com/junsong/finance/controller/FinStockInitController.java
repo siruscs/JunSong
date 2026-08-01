@@ -4,6 +4,7 @@ import java.util.List;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -77,6 +78,14 @@ public class FinStockInitController extends BaseController {
     @GetMapping("/{batchId}")
     public AjaxResult detail(@PathVariable Long batchId) {
         return AjaxResult.success(finStockInitService.getStockInitDetail(batchId));
+    }
+
+    @RequiresPermissions("finance:stockInit:remove")
+    @Log(title = "库存调整-删除", businessType = BusinessType.DELETE)
+    @DeleteMapping("/{batchId}")
+    public AjaxResult delete(@PathVariable Long batchId,
+                             @org.springframework.web.bind.annotation.RequestParam Integer version) {
+        return toAjax(finStockInitService.deleteStockInit(batchId, version));
     }
 
     @RequiresPermissions("finance:stockInit:add")

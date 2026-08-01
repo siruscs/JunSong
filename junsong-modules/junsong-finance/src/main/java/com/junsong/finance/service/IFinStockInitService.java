@@ -41,6 +41,8 @@ public interface IFinStockInitService {
      */
     int validateStockInit(Long batchId, Integer version);
 
+    int deleteStockInit(Long batchId, Integer version);
+
     /**
      * 提交期初库存批次（VALIDATED → SUBMITTED）。
      *

@@ -54,6 +54,9 @@ public interface FinStockInitBatchMapper {
                            @Param("postedBy") String postedBy,
                            @Param("postIdempotencyKey") String postIdempotencyKey);
 
+    int markBatchDeleted(@Param("tenantId") Long tenantId, @Param("batchId") Long batchId,
+                         @Param("version") Integer version, @Param("updateBy") String updateBy);
+
     // ===== 行表 =====
 
     int insertBatchItem(FinStockInitItem item);

@@ -108,6 +108,11 @@
             <text>{{ paymentMethodText(payment.paymentMethod) }}</text>
           </view>
           <view v-if="payment.remark" class="payment-history-remark">备注：{{ payment.remark }}</view>
+          <button
+            v-if="canEditPayment"
+            class="payment-edit-button"
+            @tap.stop="openPaymentEdit(payment)"
+          >修改</button>
         </view>
       </view>
 
@@ -162,7 +167,7 @@
 
     <view class="claim-mask" v-if="paymentPanelOpen" @tap="closePayment">
       <view class="payment-panel" @tap.stop>
-        <view class="claim-panel-title">缴款</view>
+        <view class="claim-panel-title">{{ editingPaymentId ? '修改缴款' : '缴款' }}</view>
         <view class="payment-summary">
           <view class="payment-summary-row"><text>销售单号</text><text>{{ record?.saleNo || '-' }}</text></view>
           <view class="payment-summary-row"><text>销售金额</text><text>¥{{ moneyText(record?.saleAmount) }}</text></view>
@@ -191,7 +196,7 @@
         </view>
         <view class="claim-panel-actions">
           <button class="claim-cancel" @tap="closePayment">取消</button>
-          <button class="claim-confirm" :disabled="paymentSubmitting" @tap="submitPayment">{{ paymentSubmitting ? '提交中' : '确认缴款' }}</button>
+          <button class="claim-confirm" :disabled="paymentSubmitting" @tap="submitPayment">{{ paymentSubmitting ? '提交中' : (editingPaymentId ? '保存修改' : '确认缴款') }}</button>
         </view>
       </view>
     </view>
@@ -290,6 +295,7 @@ export default {
       sensitiveVisible: {},
       paymentPanelOpen: false,
       paymentSubmitting: false,
+      editingPaymentId: '',
       paymentForm: {
         paymentDate: '',
         paymentAmount: '',
@@ -473,6 +479,11 @@ export default {
       return saleAbs > 0
         && remainingCents > 0
         && hasActionPermission(this.moduleKey, 'payment')
+    },
+    canEditPayment() {
+      return this.moduleKey === 'sale'
+        && Array.isArray(this.record?.payments)
+        && hasActionPermission('sale', 'paymentEdit')
     },
     // 投资人返款锁定判断
     isInvestorPaymentLocked() {
@@ -974,10 +985,24 @@ export default {
         paymentMethodIndex: -1,
         remark: ''
       }
+      this.editingPaymentId = ''
+      this.paymentPanelOpen = true
+    },
+    openPaymentEdit(payment) {
+      if (!this.canEditPayment || !payment?.paymentId) return
+      const methodIndex = this.dictPaymentMethods.findIndex((item) => String(item.dictValue) === String(payment.paymentMethod))
+      this.editingPaymentId = payment.paymentId
+      this.paymentForm = {
+        paymentDate: String(payment.paymentDate || payment.createTime || '').slice(0, 10),
+        paymentAmount: Number(payment.paymentAmount || 0).toFixed(2),
+        paymentMethodIndex: methodIndex,
+        remark: payment.remark || ''
+      }
       this.paymentPanelOpen = true
     },
     closePayment() {
       this.paymentPanelOpen = false
+      this.editingPaymentId = ''
       this.paymentForm = { paymentDate: '', paymentAmount: '', paymentMethodIndex: -1, remark: '' }
     },
     moneyText(value) {
@@ -998,11 +1023,13 @@ export default {
       if (!paymentAmount || paymentAmount === 0) {
         return uni.showToast({ title: '缴款金额不能为0', icon: 'none' })
       }
-      // 用绝对值校验：|缴款金额| 不能超过 |剩余额度|
-      const paymentAbs = Math.abs(Math.round(paymentAmount * 100))
-      const remainingCents = Math.abs(Math.round(this.remainingAmount * 100))
-      if (paymentAbs > remainingCents) {
-        return uni.showToast({ title: '缴款金额超过剩余额度', icon: 'none' })
+      if (!this.editingPaymentId) {
+        // 新增缴款用绝对值校验：不能超过剩余额度；修改由后端按销售单重新校验。
+        const paymentAbs = Math.abs(Math.round(paymentAmount * 100))
+        const remainingCents = Math.abs(Math.round(this.remainingAmount * 100))
+        if (paymentAbs > remainingCents) {
+          return uni.showToast({ title: '缴款金额超过剩余额度', icon: 'none' })
+        }
       }
       if (!this.paymentForm.paymentDate) {
         return uni.showToast({ title: '请选择缴款日期', icon: 'none' })
@@ -1015,8 +1042,8 @@ export default {
       try {
         uni.showLoading({ title: '提交中...' })
         await request({
-          url: '/finance/sale/payment/' + this.recordId,
-          method: 'POST',
+          url: '/finance/sale/payment/' + (this.editingPaymentId || this.recordId),
+          method: this.editingPaymentId ? 'PUT' : 'POST',
           data: {
             paymentAmount,
             paymentMethod: method,
@@ -1025,7 +1052,7 @@ export default {
           }
         })
         uni.hideLoading()
-        uni.showToast({ title: '缴款成功', icon: 'success' })
+        uni.showToast({ title: this.editingPaymentId ? '缴款修改成功' : '缴款成功', icon: 'success' })
         this.closePayment()
         await this.loadDetail()
       } catch (e) {

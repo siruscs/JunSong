@@ -300,7 +300,7 @@ export const modules = {
     group: '财务管理',
     title: '销售记录',
     path: '/finance/sale',
-    permissions: { ...crudPermissions('sale'), payment: 'finance:sale:edit' },
+    permissions: { ...crudPermissions('sale'), payment: 'finance:sale:edit', paymentEdit: 'finance:sale:payment' },
     idKey: 'saleId',
     searchKey: 'productName',
     summary: ['saleNo', 'saleQuantity', 'saleAmount', 'paidAmount', 'status'],

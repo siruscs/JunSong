@@ -32,6 +32,8 @@ public class FinStockInitBatch extends BaseEntity {
     @JsonFormat(pattern = "yyyy-MM-dd")
     @Excel(name = "期初日期", width = 20, dateFormat = "yyyy-MM-dd")
     private Date initDate;
+    private String adjustmentType;
+    private String adjustmentDirection;
     @Excel(name = "状态")
     private String status;
     @Excel(name = "提交人")
@@ -68,6 +70,12 @@ public class FinStockInitBatch extends BaseEntity {
 
     public Date getInitDate() { return initDate; }
     public void setInitDate(Date initDate) { this.initDate = initDate; }
+
+    public String getAdjustmentType() { return adjustmentType; }
+    public void setAdjustmentType(String adjustmentType) { this.adjustmentType = adjustmentType; }
+
+    public String getAdjustmentDirection() { return adjustmentDirection; }
+    public void setAdjustmentDirection(String adjustmentDirection) { this.adjustmentDirection = adjustmentDirection; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }

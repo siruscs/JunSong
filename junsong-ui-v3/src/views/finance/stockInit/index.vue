@@ -69,7 +69,7 @@
       <el-table-column label="门店" min-width="140">
         <template #default="scope">{{ getDeptName(scope.row.deptId) }}</template>
       </el-table-column>
-      <el-table-column label="期初日期" width="120" align="center">
+      <el-table-column label="调整日历" width="120" align="center">
         <template #default="scope">{{ formatDate(scope.row.initDate) }}</template>
       </el-table-column>
       <el-table-column label="状态" width="110" align="center">
@@ -134,7 +134,7 @@
     />
 
     <!-- 创建对话框 -->
-    <el-dialog title="创建期初库存批次" v-model="createOpen" width="860px" append-to-body>
+    <el-dialog title="创建库存调整" v-model="createOpen" width="920px" append-to-body>
       <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="100px">
         <el-row :gutter="16">
           <el-col :span="12">
@@ -154,14 +154,34 @@
         </el-row>
         <el-row :gutter="16">
           <el-col :span="12">
-            <el-form-item label="期初日期" prop="initDate">
+            <el-form-item label="调整日历" prop="initDate">
               <el-date-picker
                 v-model="createForm.initDate"
                 type="date"
-                placeholder="选择期初日期"
+                placeholder="选择调整日历"
                 value-format="YYYY-MM-DD"
                 style="width: 100%"
               />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="调整类型" prop="adjustmentType">
+              <el-select v-model="createForm.adjustmentType" style="width: 100%" @change="onAdjustmentTypeChange">
+                <el-option label="期初库存录入" value="OPENING_STOCK" />
+                <el-option label="历史数据补录" value="HISTORY_REPLENISH" />
+                <el-option label="试用消耗" value="TRIAL_CONSUMPTION" />
+                <el-option label="店面自用" value="STORE_USE" />
+                <el-option label="报损" value="DAMAGE_LOSS" />
+                <el-option label="其他" value="OTHER" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col v-if="createForm.adjustmentType === 'OTHER'" :span="12">
+            <el-form-item label="库存方向" prop="adjustmentDirection">
+              <el-radio-group v-model="createForm.adjustmentDirection">
+                <el-radio value="INCREASE">增加库存</el-radio>
+                <el-radio value="DECREASE">减少库存</el-radio>
+              </el-radio-group>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -178,7 +198,7 @@
         <el-form-item label="商品明细" required>
           <div class="items-toolbar">
             <el-button type="primary" plain size="small" @click="addItemRow">添加行</el-button>
-            <span class="items-hint">支持同一商品仅一行；金额 = 数量 × 单位成本（自动计算）</span>
+            <span class="items-hint">数量填写正数；{{ adjustmentHint }}；金额 = 数量 × 单位成本</span>
           </div>
           <el-table :data="createForm.items" border stripe size="small" style="width: 100%">
             <el-table-column label="商品" min-width="220">
@@ -206,7 +226,7 @@
                 <el-input-number
                   v-model="scope.row.quantity"
                   :min="0"
-                  :precision="2"
+                  :precision="3"
                   :step="1"
                   size="small"
                   controls-position="right"
@@ -219,7 +239,7 @@
                 <el-input-number
                   v-model="scope.row.unitCost"
                   :min="0"
-                  :precision="6"
+                  :precision="2"
                   :step="0.01"
                   size="small"
                   controls-position="right"
@@ -325,17 +345,22 @@ const approveTarget = ref<{ batchId: number; version: number } | null>(null)
 const createForm = reactive<{
   deptId: number | undefined
   initDate: string
+  adjustmentType: string
+  adjustmentDirection: 'INCREASE' | 'DECREASE' | undefined
   items: CreateItemRow[]
   remark: string
 }>({
   deptId: undefined,
   initDate: '',
+  adjustmentType: 'OPENING_STOCK',
+  adjustmentDirection: undefined,
   items: [],
   remark: '',
 })
 const createRules = {
   deptId: [{ required: true, message: '请选择门店', trigger: 'change' }],
   initDate: [{ required: true, message: '请选择期初日期', trigger: 'change' }],
+  adjustmentType: [{ required: true, message: '请选择调整类型', trigger: 'change' }],
 }
 
 const approveForm = reactive<{ decision: 'APPROVE' | 'REJECT'; comment: string }>({
@@ -366,6 +391,11 @@ const totalAmount = computed(() => {
   return createForm.items
     .reduce((sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.unitCost) || 0), 0)
     .toFixed(2)
+})
+
+const adjustmentHint = computed(() => {
+  if (createForm.adjustmentType === 'OTHER') return createForm.adjustmentDirection === 'DECREASE' ? '库存将减少' : '库存将增加'
+  return ['OPENING_STOCK', 'HISTORY_REPLENISH'].includes(createForm.adjustmentType) ? '库存将增加' : '库存将减少'
 })
 
 function statusLabel(value: string) {
@@ -462,6 +492,8 @@ function handleAdd() {
 function resetCreateForm() {
   createForm.deptId = userStore.currentDeptId || undefined
   createForm.initDate = ''
+  createForm.adjustmentType = 'OPENING_STOCK'
+  createForm.adjustmentDirection = undefined
   createForm.items = [{ productId: undefined, quantity: 0, unitCost: 0 }]
   createForm.remark = ''
 }
@@ -474,8 +506,15 @@ function removeItemRow(index: number) {
   createForm.items.splice(index, 1)
 }
 
-function onProductChange(_index: number) {
-  // 占位：可用于联动填充默认单位成本等
+function onAdjustmentTypeChange() {
+  if (createForm.adjustmentType !== 'OTHER') createForm.adjustmentDirection = undefined
+}
+
+function onProductChange(index: number) {
+  const product = productOptions.value.find((p: any) => p.productId === createForm.items[index].productId)
+  if (product && (createForm.items[index].unitCost === 0 || createForm.items[index].unitCost == null)) {
+    createForm.items[index].unitCost = Number(Number(product.purchasePrice || 0).toFixed(2))
+  }
 }
 
 function loadProducts() {
@@ -518,6 +557,8 @@ function validateCreateItems(): boolean {
       ElMessage.warning(`第 ${i + 1} 行单位成本不能为负`)
       return false
     }
+    if (Number(row.quantity).toFixed(3) !== String(Number(row.quantity))) { ElMessage.warning(`第 ${i + 1} 行数量最多三位小数`); return false }
+    if (Number(row.unitCost).toFixed(2) !== String(Number(row.unitCost))) { ElMessage.warning(`第 ${i + 1} 行单位成本最多两位小数`); return false }
   }
   return true
 }
@@ -529,6 +570,9 @@ function submitCreate() {
     const payload = {
       deptId: createForm.deptId as number,
       initDate: createForm.initDate,
+      adjustmentDate: createForm.initDate,
+      adjustmentType: createForm.adjustmentType,
+      adjustmentDirection: createForm.adjustmentDirection,
       items: createForm.items.map((row) => ({
         productId: row.productId as number,
         quantity: row.quantity,

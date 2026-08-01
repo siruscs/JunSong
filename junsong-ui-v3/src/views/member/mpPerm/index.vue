@@ -197,6 +197,7 @@ const DEFAULT_MODULES = [
   { key: "profitShare", name: "分润结转", group: "财务管理" },
   { key: "costAccounting", name: "成本核算", group: "财务管理" },
   { key: "stockCost", name: "库存与成本", group: "财务管理" },
+  { key: "stockAdjustment", name: "库存调整", group: "财务管理" },
   { key: "verificationRecord", name: "核销记录", group: "财务管理" },
   { key: "wfTodo", name: "待办任务", group: "移动办公" },
   { key: "wfDone", name: "已办任务", group: "移动办公" },

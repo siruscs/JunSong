@@ -19,6 +19,9 @@ export interface StockInitItemInput {
 export interface StockInitCreateRequest {
   deptId: number
   initDate: string
+  adjustmentDate?: string
+  adjustmentType: string
+  adjustmentDirection?: 'INCREASE' | 'DECREASE'
   items: StockInitItemInput[]
   remark?: string
 }

@@ -22,6 +22,9 @@ public class StockInitCreateRequest {
 
     private Long deptId;
     private Date initDate;
+    private Date adjustmentDate;
+    private String adjustmentType;
+    private String adjustmentDirection;
     private List<StockInitItemInput> items;
     private String remark;
 
@@ -30,6 +33,14 @@ public class StockInitCreateRequest {
 
     public Date getInitDate() { return initDate; }
     public void setInitDate(Date initDate) { this.initDate = initDate; }
+    public Date getAdjustmentDate() { return adjustmentDate; }
+    public void setAdjustmentDate(Date adjustmentDate) { this.adjustmentDate = adjustmentDate; }
+
+    public String getAdjustmentType() { return adjustmentType; }
+    public void setAdjustmentType(String adjustmentType) { this.adjustmentType = adjustmentType; }
+
+    public String getAdjustmentDirection() { return adjustmentDirection; }
+    public void setAdjustmentDirection(String adjustmentDirection) { this.adjustmentDirection = adjustmentDirection; }
 
     public List<StockInitItemInput> getItems() { return items; }
     public void setItems(List<StockInitItemInput> items) { this.items = items; }

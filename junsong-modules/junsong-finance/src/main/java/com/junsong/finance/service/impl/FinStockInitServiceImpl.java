@@ -95,6 +95,7 @@ public class FinStockInitServiceImpl implements IFinStockInitService {
             throw new ServiceException("租户上下文缺失，禁止创建期初库存批次");
         }
 
+        if (request.getAdjustmentDate() != null) request.setInitDate(request.getAdjustmentDate());
         // 参数校验
         assertCreateRequestValid(request);
 
@@ -144,6 +145,8 @@ public class FinStockInitServiceImpl implements IFinStockInitService {
         header.setBatchNo(batchNo);
         header.setDeptId(request.getDeptId());
         header.setInitDate(request.getInitDate());
+        header.setAdjustmentType(request.getAdjustmentType());
+        header.setAdjustmentDirection(request.getAdjustmentDirection());
         header.setStatus(STATUS_DRAFT);
         header.setVersion(0);
         header.setRemark(request.getRemark());
@@ -396,10 +399,12 @@ public class FinStockInitServiceImpl implements IFinStockInitService {
         // 第二步：逐行写库存流水 + 更新结存 + 成本入账
         for (FinStockInitItem item : sortedItems) {
             BigDecimal qty = item.getQuantity();
+            boolean increase = isIncrease(header.getAdjustmentType(), header.getAdjustmentDirection());
+            BigDecimal ledgerQty = increase ? qty : qty.negate();
 
             BigDecimal currentQty = nzDec(finStockLedgerMapper.selectPositionQuantityForUpdate(
                     tenantId, item.getDeptId(), item.getProductId()));
-            BigDecimal afterQty = currentQty.add(qty);
+            BigDecimal afterQty = currentQty.add(ledgerQty);
 
             // 写库存流水
             FinStockLedger ledger = new FinStockLedger();
@@ -407,8 +412,8 @@ public class FinStockInitServiceImpl implements IFinStockInitService {
             ledger.setDeptId(item.getDeptId());
             ledger.setProductId(item.getProductId());
             ledger.setProductName(item.getProductName());
-            ledger.setChangeType(STOCK_INIT);
-            ledger.setChangeQuantity(qty);
+            ledger.setChangeType(header.getAdjustmentType());
+            ledger.setChangeQuantity(ledgerQty);
             ledger.setBeforeQuantity(currentQty);
             ledger.setAfterQuantity(afterQty);
             ledger.setReferenceType(REF_STOCK_INIT);
@@ -418,7 +423,7 @@ public class FinStockInitServiceImpl implements IFinStockInitService {
             ledger.setIdempotencyKey(REF_STOCK_INIT + ":" + header.getBatchId() + ":" + item.getProductId());
             ledger.setDelFlag("0");
             ledger.setCreateBy(operator);
-            ledger.setRemark("期初库存入账");
+            ledger.setRemark("库存调整：" + header.getAdjustmentType());
             finStockLedgerMapper.insertFinStockLedger(ledger);
             Long stockLedgerId = ledger.getLedgerId();
             if (stockLedgerId == null) {
@@ -435,9 +440,13 @@ public class FinStockInitServiceImpl implements IFinStockInitService {
             // 成本入账：复用 applyStocktakeGain（期初入账视同盘盈入库）
             // amount = quantity * unitCost（已 scale 2 HALF_UP）
             BigDecimal amount = item.getAmount();
-            Long costLedgerId = stockCostService.applyStocktakeGain(
-                    tenantId, item.getDeptId(), item.getProductId(),
-                    qty, amount, stockLedgerId, operator);
+            Long costLedgerId = increase
+                    ? stockCostService.applyStocktakeGain(
+                        tenantId, item.getDeptId(), item.getProductId(),
+                        qty, amount, stockLedgerId, operator)
+                    : stockCostService.applyStocktakeLoss(
+                        tenantId, item.getDeptId(), item.getProductId(),
+                        qty, stockLedgerId, operator);
             if (costLedgerId == null) {
                 throw new ServiceException("成本流水ID未生成，过账失败");
             }
@@ -512,6 +521,14 @@ public class FinStockInitServiceImpl implements IFinStockInitService {
         if (request.getInitDate() == null) {
             throw new ServiceException("期初日期不能为空");
         }
+        if (!List.of("OPENING_STOCK", "HISTORY_REPLENISH", "TRIAL_CONSUMPTION", "STORE_USE", "DAMAGE_LOSS", "OTHER")
+                .contains(request.getAdjustmentType())) {
+            throw new ServiceException("调整类型无效");
+        }
+        if ("OTHER".equals(request.getAdjustmentType())
+                && !List.of("INCREASE", "DECREASE").contains(request.getAdjustmentDirection())) {
+            throw new ServiceException("其他类型必须选择库存方向");
+        }
         if (request.getItems() == null || request.getItems().isEmpty()) {
             throw new ServiceException("期初明细行不能为空");
         }
@@ -523,11 +540,18 @@ public class FinStockInitServiceImpl implements IFinStockInitService {
                     || input.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
                 throw new ServiceException("期初数量必须为正数: productId=" + input.getProductId());
             }
+            if (input.getQuantity().scale() > 3) throw new ServiceException("数量最多保留3位小数");
             if (input.getUnitCost() == null
                     || input.getUnitCost().compareTo(BigDecimal.ZERO) < 0) {
                 throw new ServiceException("单位成本不能为负数: productId=" + input.getProductId());
             }
+            if (input.getUnitCost().scale() > 2) throw new ServiceException("单位成本最多保留2位小数");
         }
+    }
+
+    private boolean isIncrease(String type, String direction) {
+        if ("OTHER".equals(type)) return "INCREASE".equals(direction);
+        return "OPENING_STOCK".equals(type) || "HISTORY_REPLENISH".equals(type);
     }
 
     private void assertDeptAuthorized(Long tenantId, Long deptId) {

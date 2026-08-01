@@ -26,7 +26,7 @@ public class MemMpController extends BaseController {
             "seckill", "seckillRecord",
             "expense", "advance", "product", "supplier", "purchase", "sale",
             "investorPayment", "investor", "investRecord", "deptProfitConfig",
-            "accountingPeriod", "profitShare", "costAccounting", "stockCost", "verificationRecord",
+            "accountingPeriod", "profitShare", "costAccounting", "stockCost", "stockAdjustment", "verificationRecord",
             "userManage", "deptManage"
     );
 

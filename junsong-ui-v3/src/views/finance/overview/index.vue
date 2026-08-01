@@ -1,9 +1,6 @@
 <template>
   <div class="app-container report-page">
     <div class="page-head">
-      <div>
-        <h2 class="page-title">财务管理概览</h2>
-      </div>
       <el-button type="primary" icon="Refresh" :loading="loading" @click="loadData">刷新</el-button>
     </div>
 

@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS fin_stock_init_item (
     dept_id         BIGINT       NOT NULL                COMMENT '门店ID',
     product_id      BIGINT       NOT NULL                COMMENT '商品ID',
     product_name    VARCHAR(200)          DEFAULT NULL   COMMENT '商品名称（快照）',
-    quantity        DECIMAL(18,2) NOT NULL DEFAULT 0     COMMENT '期初数量',
+    quantity        DECIMAL(18,3) NOT NULL DEFAULT 0     COMMENT '期初数量',
     unit_cost       DECIMAL(18,6) NOT NULL DEFAULT 0     COMMENT '单位成本（6位小数精度）',
     amount          DECIMAL(18,2) NOT NULL DEFAULT 0     COMMENT '金额 = quantity * unit_cost（2位 HALF_UP）',
     stock_ledger_id BIGINT                DEFAULT NULL   COMMENT '过账生成的库存流水ID',

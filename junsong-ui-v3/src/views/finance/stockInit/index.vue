@@ -86,6 +86,7 @@
       <el-table-column label="操作" width="320" fixed="right" align="center">
         <template #default="scope">
             <el-button link type="primary" size="small" @click="handleDetail(scope.row)" v-hasPermi="['finance:stockInit:query']">查看</el-button>
+          <el-button v-if="scope.row.status !== 'POSTED' && scope.row.status !== 'DELETED'" link type="primary" size="small" @click="handleEdit(scope.row)" v-hasPermi="['finance:stockInit:add']">修改</el-button>
           <el-button v-if="scope.row.status !== 'POSTED' && scope.row.status !== 'DELETED'" link type="danger" size="small" @click="handleDelete(scope.row)" v-hasPermi="['finance:stockInit:remove']">删除调整单</el-button>
           <el-button
             v-if="scope.row.status === 'DRAFT'"
@@ -135,7 +136,7 @@
     />
 
     <!-- 创建对话框 -->
-    <el-dialog title="创建库存调整" v-model="createOpen" width="920px" append-to-body>
+    <el-dialog :title="editingBatchId ? '修改库存调整' : '创建库存调整'" v-model="createOpen" width="920px" append-to-body>
       <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="100px">
         <el-row :gutter="16">
           <el-col :span="12">
@@ -168,12 +169,7 @@
           <el-col :span="12">
             <el-form-item label="调整类型" prop="adjustmentType">
               <el-select v-model="createForm.adjustmentType" style="width: 100%" @change="onAdjustmentTypeChange">
-                <el-option label="期初库存录入" value="OPENING_STOCK" />
-                <el-option label="历史数据补录" value="HISTORY_REPLENISH" />
-                <el-option label="试用消耗" value="TRIAL_CONSUMPTION" />
-                <el-option label="店面自用" value="STORE_USE" />
-                <el-option label="报损" value="DAMAGE_LOSS" />
-                <el-option label="其他" value="OTHER" />
+                <el-option v-for="item in adjustmentTypes" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -326,11 +322,13 @@ import { saveAs } from 'file-saver'
 import { parseTime } from '@/utils/junsong'
 import { useUserStore } from '@/stores/user'
 import { useSubmitLock } from '@/composables/useSubmitLock'
+import { useDict } from '@/composables/useDict'
 import Pagination from '@/components/Pagination/index.vue'
 import {
   approveStockInit,
   createStockInit,
   deleteStockInit,
+  updateStockInit,
   getStockInitDetail,
   exportStockInit,
   listStockInit,
@@ -350,6 +348,7 @@ interface CreateItemRow {
 
 const userStore = useUserStore()
 const { buildIdempotencyKey } = useSubmitLock()
+const dict = useDict('finance_stock_adjustment_type')
 
 const loading = ref(false)
 const exportLoading = ref(false)
@@ -359,6 +358,7 @@ const approveOpen = ref(false)
 const detailOpen = ref(false)
 const detailLoading = ref(false)
 const detailData = ref<any>(null)
+const editingBatchId = ref<number | null>(null)
 const total = ref(0)
 const list = ref<any[]>([])
 const productOptions = ref<any[]>([])
@@ -368,6 +368,7 @@ const dateRange = ref<string[]>([])
 const actionLoadingKey = ref('')
 const creatorLabel = computed(() => userStore.nickName || userStore.name || '当前登录用户')
 const statusCounts = reactive<Record<string, number>>({})
+const adjustmentTypes = computed(() => dict.type.finance_stock_adjustment_type || [])
 
 const createFormRef = ref<FormInstance>()
 const approveFormRef = ref<FormInstance>()
@@ -378,6 +379,7 @@ const createForm = reactive<{
   initDate: string
   adjustmentType: string
   adjustmentDirection: 'INCREASE' | 'DECREASE' | undefined
+  _version?: number
   items: CreateItemRow[]
   remark: string
 }>({
@@ -385,6 +387,7 @@ const createForm = reactive<{
   initDate: '',
   adjustmentType: 'OPENING_STOCK',
   adjustmentDirection: undefined,
+  _version: undefined,
   items: [],
   remark: '',
 })
@@ -426,7 +429,8 @@ const totalAmount = computed(() => {
 
 const adjustmentHint = computed(() => {
   if (createForm.adjustmentType === 'OTHER') return createForm.adjustmentDirection === 'DECREASE' ? '库存将减少' : '库存将增加'
-  return ['OPENING_STOCK', 'HISTORY_REPLENISH'].includes(createForm.adjustmentType) ? '库存将增加' : '库存将减少'
+  const selected = adjustmentTypes.value.find((item: any) => item.value === createForm.adjustmentType)
+  return selected?.raw?.remark?.includes('减少') ? '库存将减少' : '库存将增加'
 })
 
 function statusLabel(value: string) {
@@ -542,12 +546,30 @@ function handleAdd() {
 }
 
 function resetCreateForm() {
+  editingBatchId.value = null
   createForm.deptId = userStore.currentDeptId || undefined
   createForm.initDate = ''
   createForm.adjustmentType = 'OPENING_STOCK'
   createForm.adjustmentDirection = undefined
   createForm.items = [{ productId: undefined, quantity: 0, unitCost: 0 }]
   createForm.remark = ''
+}
+
+function handleEdit(row: any) {
+  detailLoading.value = true
+  getStockInitDetail(Number(row.batchId)).then((res: any) => {
+    const detail = res.data || res
+    editingBatchId.value = Number(row.batchId)
+    createForm.deptId = detail.batch.deptId
+    createForm.initDate = detail.batch.initDate?.slice(0, 10) || ''
+    createForm.adjustmentType = detail.batch.adjustmentType
+    createForm.adjustmentDirection = detail.batch.adjustmentDirection
+    createForm.remark = detail.batch.remark || ''
+    createForm.items = (detail.items || []).map((item: any) => ({ productId: item.productId, quantity: Number(item.quantity), unitCost: Number(item.unitCost) }))
+    createForm._version = detail.batch.version
+    createOpen.value = true
+    if (!productOptions.value.length) loadProducts()
+  }).catch(() => ElMessage.error('调整单加载失败，请稍后重试')).finally(() => { detailLoading.value = false })
 }
 
 function addItemRow() {
@@ -628,6 +650,8 @@ function submitCreate() {
       deptId: createForm.deptId as number,
       initDate: createForm.initDate,
       adjustmentDate: createForm.initDate,
+      batchId: editingBatchId.value || undefined,
+      version: createForm._version,
       adjustmentType: createForm.adjustmentType,
       adjustmentDirection: createForm.adjustmentDirection,
       items: createForm.items.map((row) => ({
@@ -638,7 +662,8 @@ function submitCreate() {
       remark: createForm.remark || undefined,
     }
     createLoading.value = true
-    createStockInit(payload)
+    const saveRequest = editingBatchId.value ? updateStockInit(editingBatchId.value, payload) : createStockInit(payload)
+    saveRequest
       .then(() => {
         ElMessage.success('期初库存批次已创建')
         createOpen.value = false

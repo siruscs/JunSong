@@ -77,6 +77,19 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </trim>
     </insert>
 
+    <update id="updateBatchDraft" parameterType="com.junsong.finance.domain.FinStockInitBatch">
+        update fin_stock_init_batch set dept_id=#{deptId}, init_date=#{initDate}, adjustment_type=#{adjustmentType},
+        adjustment_direction=#{adjustmentDirection}, remark=#{remark}, version=version+1,
+        status='DRAFT',
+        update_by=#{updateBy}, update_time=sysdate()
+        where tenant_id=#{tenantId} and batch_id=#{batchId}
+          and status in ('DRAFT','VALIDATED','SUBMITTED','APPROVED') and version=#{version}
+    </update>
+
+    <delete id="deleteBatchItems">
+        delete from fin_stock_init_item where tenant_id=#{tenantId} and batch_id=#{batchId}
+    </delete>
+
     <select id="selectBatchById" resultMap="FinStockInitBatchResult">
         select * from fin_stock_init_batch
         where tenant_id = #{tenantId}

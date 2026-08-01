@@ -31,6 +31,7 @@ public interface IFinStockInitService {
      * @return 批次ID
      */
     Long createStockInit(StockInitCreateRequest request);
+    int updateStockInit(Long batchId, StockInitCreateRequest request);
 
     /**
      * 校验期初库存批次（DRAFT → VALIDATED）。

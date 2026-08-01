@@ -57,6 +57,13 @@ public class FinStockInitController extends BaseController {
         return AjaxResult.success(batchId);
     }
 
+    @RequiresPermissions("finance:stockInit:add")
+    @Log(title = "库存调整-修改", businessType = BusinessType.UPDATE)
+    @PutMapping("/{batchId}")
+    public AjaxResult update(@PathVariable Long batchId, @RequestBody StockInitCreateRequest request) {
+        return toAjax(finStockInitService.updateStockInit(batchId, request));
+    }
+
     @RequiresPermissions("finance:stockInit:list")
     @GetMapping
     public TableDataInfo list(StockInitQuery query) {

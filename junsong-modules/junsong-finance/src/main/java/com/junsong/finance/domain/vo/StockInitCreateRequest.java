@@ -21,6 +21,8 @@ import java.util.List;
 public class StockInitCreateRequest {
 
     private Long deptId;
+    private Long batchId;
+    private Integer version;
     private Date initDate;
     private Date adjustmentDate;
     private String adjustmentType;
@@ -30,6 +32,10 @@ public class StockInitCreateRequest {
 
     public Long getDeptId() { return deptId; }
     public void setDeptId(Long deptId) { this.deptId = deptId; }
+    public Long getBatchId() { return batchId; }
+    public void setBatchId(Long batchId) { this.batchId = batchId; }
+    public Integer getVersion() { return version; }
+    public void setVersion(Integer version) { this.version = version; }
 
     public Date getInitDate() { return initDate; }
     public void setInitDate(Date initDate) { this.initDate = initDate; }

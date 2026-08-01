@@ -170,6 +170,40 @@ public class FinStockInitServiceImpl implements IFinStockInitService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public int updateStockInit(Long batchId, StockInitCreateRequest request) {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId == null) throw new ServiceException("租户上下文缺失，禁止修改库存调整单");
+        if (request.getAdjustmentDate() != null) request.setInitDate(request.getAdjustmentDate());
+        assertCreateRequestValid(request);
+        if (request.getVersion() == null) throw new ServiceException("版本号不能为空");
+        FinStockInitBatch header = finStockInitBatchMapper.selectBatchForUpdate(tenantId, batchId);
+        if (header == null) throw new ServiceException("库存调整单不存在或无权访问");
+        assertDeptAuthorized(tenantId, header.getDeptId());
+        if (STATUS_POSTED.equals(header.getStatus()) || "DELETED".equals(header.getStatus())) throw new ServiceException("已过账或已删除的调整单不可修改");
+        if (!header.getDeptId().equals(request.getDeptId())) throw new ServiceException("修改时不允许更换门店");
+        List<FinStockInitItem> items = new ArrayList<>();
+        for (StockInitItemInput input : request.getItems()) {
+            FinProduct product = finProductMapper.selectFinProductByProductIdAndDeptId(input.getProductId(), request.getDeptId());
+            if (product == null) throw new ServiceException("商品不属于当前门店");
+            FinStockInitItem item = new FinStockInitItem();
+            item.setTenantId(tenantId); item.setBatchId(batchId); item.setDeptId(request.getDeptId());
+            item.setProductId(input.getProductId()); item.setProductName(product.getProductName());
+            item.setQuantity(input.getQuantity()); item.setUnitCost(input.getUnitCost());
+            item.setAmount(input.getQuantity().multiply(input.getUnitCost()).setScale(2, RoundingMode.HALF_UP));
+            item.setVersion(0); item.setCreateBy(SecurityUtils.getUsername()); items.add(item);
+        }
+        header.setBatchId(batchId); header.setTenantId(tenantId); header.setDeptId(request.getDeptId());
+        header.setInitDate(request.getInitDate()); header.setAdjustmentType(request.getAdjustmentType());
+        header.setAdjustmentDirection(request.getAdjustmentDirection()); header.setRemark(request.getRemark());
+        header.setVersion(request.getVersion()); header.setUpdateBy(SecurityUtils.getUsername());
+        if (finStockInitBatchMapper.updateBatchDraft(header) != 1) throw new ServiceException("修改库存调整单失败，版本已变化");
+        finStockInitBatchMapper.deleteBatchItems(tenantId, batchId);
+        for (FinStockInitItem item : items) finStockInitBatchMapper.insertBatchItem(item);
+        return 1;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public int validateStockInit(Long batchId, Integer version) {
         Long tenantId = TenantContext.getTenantId();
         if (tenantId == null) {

@@ -23,6 +23,8 @@ public interface FinStockInitBatchMapper {
     // ===== 头表 =====
 
     int insertBatch(FinStockInitBatch batch);
+    int updateBatchDraft(FinStockInitBatch batch);
+    int deleteBatchItems(@Param("tenantId") Long tenantId, @Param("batchId") Long batchId);
 
     FinStockInitBatch selectBatchById(@Param("tenantId") Long tenantId,
                                        @Param("batchId") Long batchId);

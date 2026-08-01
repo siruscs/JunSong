@@ -106,6 +106,10 @@ export function createStockInit(data: StockInitCreateRequest) {
   return request({ url: '/finance/stockInit', method: 'post', data })
 }
 
+export function updateStockInit(batchId: number, data: StockInitCreateRequest) {
+  return request({ url: `/finance/stockInit/${batchId}`, method: 'put', data })
+}
+
 // 校验期初库存批次（DRAFT -> VALIDATED）
 export function validateStockInit(batchId: number, version: number) {
   return request({ url: `/finance/stockInit/${batchId}/validate`, method: 'put', params: { version } })

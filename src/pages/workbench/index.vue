@@ -131,6 +131,7 @@
 
 <script>
 import miniProgramShare from '@/mixins/miniProgramShare.js'
+import { request } from '@/api/index.js'
 import { groups, modules } from '@/config/modules.js'
 import { filterAuthorizedGroups, hasModulePermission, hasExactPermission } from '@/utils/permission.js'
 import {
@@ -274,7 +275,14 @@ export default {
       return this.filteredGroups.length > 0 || this.filteredMemberGrowthEntries.length > 0
     }
   },
-  onShow() {
+  async onShow() {
+    try {
+      const res = await request({ url: '/member/mp/modules', method: 'GET', silent: true, timeout: 12000 })
+      const latestModules = Array.isArray(res.data || res) ? (res.data || res) : []
+      if (latestModules.length) uni.setStorageSync('modules', latestModules)
+    } catch (e) {
+      // 保留本地缓存，避免模块接口短暂不可用时工作台空白
+    }
     this.modules = uni.getStorageSync('modules') || []
     this.recent = sanitizeModuleKeys(uni.getStorageSync('miniProgramRecent') || [], this.authorizedKeys)
     uni.setStorageSync('miniProgramRecent', this.recent)

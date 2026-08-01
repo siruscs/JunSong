@@ -286,6 +286,18 @@
             <el-table-column prop="saleCost" label="销售成本" width="120" align="right" :formatter="formatAmountCell" />
             <el-table-column prop="saleRevenue" label="销售收入" width="120" align="right" :formatter="formatAmountCell" />
             <el-table-column prop="grossProfit" label="毛利" width="120" align="right" :formatter="formatAmountCell" />
+            <el-table-column label="操作" width="100" fixed="right">
+              <template #default="scope">
+                <el-button
+                  link
+                  type="primary"
+                  size="small"
+                  :disabled="valueReport?.periodStatus !== 'ACTIVE'"
+                  @click="openCostAdjust(scope.row)"
+                  v-hasPermi="['finance:stock:costAdjust']"
+                >成本调整</el-button>
+              </template>
+            </el-table-column>
           </el-table>
         </el-card>
       </el-tab-pane>
@@ -309,6 +321,41 @@
       </p>
     </el-card>
 
+    <!-- 成本调整对话框 -->
+    <el-dialog v-model="costAdjustVisible" title="库存成本调整" width="480px" :close-on-click-modal="false">
+      <el-form :model="costAdjustForm" label-width="90px">
+        <el-form-item label="商品">
+          <span>{{ costAdjustForm.productName }}</span>
+        </el-form-item>
+        <el-form-item label="门店">
+          <span>{{ costAdjustForm.deptName }}</span>
+        </el-form-item>
+        <el-form-item label="调整金额">
+          <el-input-number
+            v-model="costAdjustForm.amount"
+            :precision="2"
+            :step="0.01"
+            placeholder="正数调增，负数调减"
+            style="width: 220px"
+          />
+        </el-form-item>
+        <el-form-item label="调整原因">
+          <el-input
+            v-model="costAdjustForm.reason"
+            type="textarea"
+            :rows="3"
+            maxlength="200"
+            show-word-limit
+            placeholder="请输入调整原因"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="costAdjustVisible = false">取消</el-button>
+        <el-button type="primary" :loading="costAdjustLoading" @click="submitCostAdjust">确认调整</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 流水下钻抽屉 -->
     <StockLedgerDrawer
       v-model:visible="ledgerVisible"
@@ -331,9 +378,11 @@ import {
   getStockReport,
   exportStockReport,
   getStockValueReport,
+  createCostAdjustment,
   type StockReportSummary,
   type StockReportItem,
   type StockValueReportVO,
+  type StockValueReportItemVO,
 } from '@/api/finance/stockreport'
 import { useUserStore } from '@/stores/user'
 import StockLedgerDrawer from './components/StockLedgerDrawer.vue'
@@ -578,6 +627,59 @@ function openLedger(row: StockReportItem) {
   ledgerProductId.value = row.productId
   ledgerProductName.value = row.productName
   ledgerVisible.value = true
+}
+
+// 成本调整
+const costAdjustVisible = ref(false)
+const costAdjustLoading = ref(false)
+const costAdjustForm = reactive({
+  deptId: 0,
+  deptName: '',
+  productId: 0,
+  productName: '',
+  amount: 0,
+  reason: '',
+})
+
+function openCostAdjust(row: StockValueReportItemVO) {
+  costAdjustForm.deptId = row.deptId
+  costAdjustForm.deptName = row.deptName
+  costAdjustForm.productId = row.productId
+  costAdjustForm.productName = row.productName
+  costAdjustForm.amount = 0
+  costAdjustForm.reason = ''
+  costAdjustVisible.value = true
+}
+
+function submitCostAdjust() {
+  if (!costAdjustForm.amount) {
+    ElMessage.warning('请输入调整金额')
+    return
+  }
+  if (!costAdjustForm.reason.trim()) {
+    ElMessage.warning('请输入调整原因')
+    return
+  }
+  costAdjustLoading.value = true
+  createCostAdjustment({
+    deptIds: [costAdjustForm.deptId],
+    startDate: queryParams.startDate,
+    endDate: queryParams.endDate,
+    productId: costAdjustForm.productId,
+    amount: costAdjustForm.amount,
+    reason: costAdjustForm.reason,
+  })
+    .then(() => {
+      ElMessage.success('成本调整成功')
+      costAdjustVisible.value = false
+      handleQuery()
+    })
+    .catch(() => {
+      ElMessage.error('成本调整失败，请稍后重试')
+    })
+    .finally(() => {
+      costAdjustLoading.value = false
+    })
 }
 
 onMounted(() => {

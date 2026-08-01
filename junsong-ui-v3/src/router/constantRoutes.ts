@@ -110,16 +110,16 @@ export const constantRoutes: any[] = [
     ],
   },
   {
-    // 期初库存工作台固定挂载，接口与按钮权限仍由后端严格控制。
+    // 期初库存工作台固定挂载，菜单显示由 sys_menu (menu_id=3240, parent_id=108) 驱动。
     path: '/finance/stockInit/index',
     component: Layout,
-    hidden: false,
+    hidden: true,
     children: [
       {
         path: '',
         component: () => import('@/views/finance/stockInit/index.vue'),
         name: 'FinanceStockInit',
-        meta: { title: '期初库存', activeMenu: '/finance/stockInit/index' },
+        meta: { title: '期初库存', activeMenu: '/finance/stockInit' },
       },
     ],
   },

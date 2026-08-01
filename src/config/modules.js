@@ -601,7 +601,7 @@ function isNumericLike(value) {
 
 function trimNumber(value) {
   const num = Number(value)
-  return Number.isInteger(num) ? String(num) : num.toFixed(2).replace(/\.?0+$/, '')
+  return Number.isInteger(num) ? String(num) : num.toFixed(3).replace(/\.?0+$/, '')
 }
 
 export function formatDisplayValue(field, value, item) {

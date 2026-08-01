@@ -155,7 +155,7 @@
           </view>
           <view class="detail-row">
             <text class="detail-label">数量</text>
-            <input class="detail-input" type="text" v-model="detail.quantity" @input="calculateDetailAmount(index)" placeholder="可输负数" />
+            <input class="detail-input" type="digit" v-model="detail.quantity" @input="onDetailQuantityInput(index)" @blur="onDetailQuantityBlur(index)" placeholder="可输负数" />
           </view>
           <view class="detail-row">
             <text class="detail-label">单价</text>
@@ -471,9 +471,51 @@ export default {
       return '请输入' + field.label
     },
     onFieldInput(key, value) {
-      this.form[key] = value
+      // 数量类字段：输入过程只做字符过滤（允许数字、单个小数点、开头负号），字符过滤后立刻触发总量重算
+      if (['saleQuantity', 'giftQuantity', 'totalQuantity'].includes(key)) {
+        this.form[key] = this.sanitizeDecimal(value, true)
+        if (this.moduleKey === 'sale' && (key === 'saleQuantity' || key === 'giftQuantity')) {
+          // 销售单：销售/赠品数量变化时，立即安全重算 totalQuantity = saleQuantity + giftQuantity，默认 3 位小数
+          const s = this.toNum3(this.form.saleQuantity)
+          const g = this.toNum3(this.form.giftQuantity)
+          this.form.totalQuantity = Number((s + g).toFixed(3))
+        }
+      } else {
+        this.form[key] = value
+      }
       if (this.isSeckillRecordCreate && key === 'shares') this.calculateSeckillTotal()
       if (this.moduleKey === 'pointsExchange' && key === 'quantity') this.syncPointsDeducted()
+    },
+    // 小数字符过滤：允许数字、单个小数点、可选首位负号；只保留3位小数位以内。空、'-'、'0.'、'.'都视为合法过程态。
+    sanitizeDecimal(raw, allowNegative = false) {
+      if (raw === null || raw === undefined) return ''
+      let s = String(raw)
+      // 1) 只保留数字、小数点、首位负号
+      let sign = ''
+      if (allowNegative && s.startsWith('-')) { sign = '-'; s = s.slice(1) }
+      let dotIdx = s.indexOf('.')
+      if (dotIdx >= 0) {
+        s = s.slice(0, dotIdx).replace(/[^\d]/g, '') + '.' + s.slice(dotIdx + 1).replace(/[^\d]/g, '')
+        // 只保留一个小数点
+        const parts = s.split('.')
+        s = parts[0] + (parts.length > 1 ? '.' + parts.slice(1).join('').slice(0, 3) : '')
+      } else {
+        s = s.replace(/[^\d]/g, '')
+      }
+      return sign + s
+    },
+    // 安全解析合法数值：过程态（''、'-'、'.'、'0.') → 0；返回 Number，支持 3 位小数。改用 Number.toFixed(3) 消除 IEEE 754 舍入误差
+    finalizeDecimal(raw) {
+      let s = String(raw == null ? '' : raw).trim()
+      if (s === '' || s === '-' || s === '.') return 0
+      if (s.startsWith('-.')) s = '-0.' + s.slice(2)
+      if (s.startsWith('.')) s = '0' + s
+      if (s.endsWith('.')) s = s.slice(0, -1)
+      // 兜底：任何非数字/./- 的字符全部移除
+      s = s.replace(/[^0-9.\-]/g, '')
+      const n = Number(s)
+      if (!Number.isFinite(n)) return 0
+      return Number(n.toFixed(3))
     },
     calculateSeckillTotal() {
       const price = Number(this.form.seckillPrice || 0)
@@ -824,6 +866,18 @@ export default {
         data.deptId = this.getCurrentDeptId()
       }
       if (this.moduleKey === 'member' && !this.id) delete data.memberNo
+      // 所有数量类字段统一收敛成合法小数值（3位小数内）—— 发送给后端前最后一层兜底
+      if (typeof data.saleQuantity !== 'undefined') data.saleQuantity = this.toNum3(data.saleQuantity)
+      if (typeof data.giftQuantity !== 'undefined') data.giftQuantity = this.toNum3(data.giftQuantity)
+      if (typeof data.totalQuantity !== 'undefined') data.totalQuantity = this.toNum3(data.totalQuantity, true)
+      if (Array.isArray(data.details)) {
+        data.details = data.details.map((d) => ({
+          ...d,
+          quantity: this.toNum3(d.quantity, true),
+          price: d.price === '' || d.price === null || d.price === undefined ? 0 : Number(Number(d.price).toFixed(2)),
+          amount: d.amount === '' || d.amount === null || d.amount === undefined ? 0 : Number(Number(d.amount).toFixed(2))
+        }))
+      }
       return data
     },
     async submit() {
@@ -893,8 +947,8 @@ export default {
         productId: undefined,
         productName: undefined,
         unit: undefined,
-        quantity: 1,
-        price: 0,
+        quantity: '',
+        price: '',
         amount: 0,
         isGift: '0'
       })
@@ -913,16 +967,57 @@ export default {
       detail.price = Number(product.purchasePrice || 0)
       this.calculateDetailAmount(index)
     },
+    onDetailQuantityInput(index) {
+      const detail = this.form.details[index]
+      if (!detail) return
+      // 注意：不在 input 过程中直接覆盖 detail.quantity（避免 v-model 双向绑定竞争，真机上会造成小数点被吞）。
+      // 过程态显示由 input 自身维护；失焦时通过 finalizeDecimal 收敛为合法 Number。
+      // 这里只触发重新计算（计算函数内部会通过 toNum3 做安全解析）
+      this.calculateDetailAmount(index)
+    },
+    onDetailQuantityBlur(index) {
+      const detail = this.form.details[index]
+      if (!detail) return
+      // 失焦：统一收敛为合法小数值 Number
+      detail.quantity = this.finalizeDecimal(detail.quantity)
+      // 同时把 price 也转为 Number，避免之后 calculate 因字符串歧义算错
+      if (detail.price !== '' && detail.price !== null && detail.price !== undefined) {
+        detail.price = Number(Number(detail.price).toFixed(2))
+      }
+      this.calculateDetailAmount(index)
+    },
+    // 内部：安全的 3 位小数解析。支持字符串过程态（"1."、".55"、"-."）、Number、null/空串，统一返回合法 Number（默认 0）
+    toNum3(raw, allowNegative = false) {
+      if (raw === null || raw === undefined) return 0
+      let s = String(raw).trim()
+      if (s === '' || s === '-' || s === '.') return 0
+      let sign = 1
+      if (s.startsWith('-')) { if (allowNegative) sign = -1; s = s.slice(1) }
+      if (s.startsWith('.')) s = '0' + s
+      if (s.endsWith('.')) s = s.slice(0, -1)
+      s = s.replace(/[^0-9.]/g, '')
+      // 只保留一个小数点：取第一个 "." 为界
+      const firstDot = s.indexOf('.')
+      if (firstDot >= 0) {
+        const intPart = s.slice(0, firstDot)
+        const fracPart = s.slice(firstDot + 1).replace(/\./g, '').slice(0, 3)
+        s = intPart + '.' + fracPart
+      }
+      const n = Number(s)
+      if (!Number.isFinite(n) || n < 0) return allowNegative ? sign * 0 : 0
+      return Number((sign * n).toFixed(3))
+    },
     calculateDetailAmount(index) {
       const detail = this.form.details[index]
       if (!detail) return
+      // 全部安全解析：允许负数数量（红冲/返库场景）
+      const qty = this.toNum3(detail.quantity, true)
       if (detail.isGift === '1') {
         detail.price = 0
         detail.amount = 0
       } else {
-        const qty = Number(detail.quantity || 0)
-        const price = Number(detail.price || 0)
-        detail.amount = parseFloat((price * qty).toFixed(2))
+        const price = Number(Number(detail.price || 0).toFixed(2)) || 0
+        detail.amount = Number((price * qty).toFixed(2))
       }
       this.calculatePurchaseTotal()
     },
@@ -942,12 +1037,12 @@ export default {
       let totalQuantity = 0
       for (const d of this.form.details) {
         if (d.isGift !== '1') {
-          totalAmount += Number(d.amount || 0)
+          totalAmount += Number(Number(d.amount || 0).toFixed(2)) || 0
         }
-        totalQuantity += Number(d.quantity || 0)
+        totalQuantity += this.toNum3(d.quantity, true)
       }
-      this.form.totalAmount = parseFloat(totalAmount.toFixed(2))
-      this.form.totalQuantity = totalQuantity
+      this.form.totalAmount = Number(totalAmount.toFixed(2))
+      this.form.totalQuantity = Number(totalQuantity.toFixed(3))
     },
     chooseImage(key) {
       uni.showActionSheet({

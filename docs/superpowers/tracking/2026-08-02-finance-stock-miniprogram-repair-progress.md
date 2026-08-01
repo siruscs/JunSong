@@ -13,7 +13,7 @@
 | 阶段 2：期初库存与成本调整 | 已完成 | 期初库存入口统一为 `/finance/stockInit`；成本调整入口、接口调用和成功后刷新链路已纳入回归检查 |
 | 阶段 3：小程序库存与成本只读 | 已完成 | 新增 `stockCost` 模块、授权入口和只读库存价值页面；小程序独立仓库已提交 |
 | 阶段 4：小程序缴款编辑 | 已完成 | 销售详情缴款记录新增按权限显示的修改入口，复用后端 PUT 更新接口 |
-| 阶段 5：验收与部署 | 进行中 | 开始执行 DEV/PROD 部署与部署后验证 |
+| 阶段 5：验收与部署 | 已完成 | DEV/PROD 前端部署完成；PROD 页面与容器健康检查通过 |
 
 ## 阶段 2 验收
 
@@ -34,6 +34,14 @@
 - 专项检查：`node scripts/finance-stock-miniprogram-repair.test.mjs` 通过。
 - 小程序构建：`npm run build:mp-weixin` 完成。
 - 权限边界：修改入口要求 `finance:sale:payment`；新增缴款仍要求原有销售编辑权限。
+
+## 阶段 5 验收与部署
+
+- DEV：`bin/deploy-ui.sh dev` 完成；部署后本机 80 端口未监听，无法完成本机 HTTP 验证，需后续启动本机 nginx/Compose 后复核。
+- PROD：`bin/deploy-ui.sh prod` 完成，远端 nginx 配置检查通过并成功重建 nginx 容器。
+- PROD 验证：`https://120.55.243.17/` 返回 HTTP 200；nginx、gateway、finance 容器均为 Up。
+- PROD API 未登录访问返回 HTTP 403，符合接口鉴权预期。
+- 本次无 SQL/Nacos 配置变更。
 
 ## 约束
 

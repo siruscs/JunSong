@@ -88,6 +88,9 @@
 - 小程序工作台此前只读本地模块缓存，已在工作台显示时重新请求 `/member/mp/modules`；小程序提交 `816f973`，构建通过。
 - PC 修复已重新构建，待再次部署 PROD；WJS 仍必须使用新小程序构建包，并为角色配置 `stockAdjustment` 模块。
 - 调整单查看已改为列表页右侧抽屉，直接加载详情接口，不再跳转错误的新页面；专项检查和 PC 构建通过，待部署 PROD。
+- 未过账调整单删除能力已补齐：`DRAFT / VALIDATED / SUBMITTED / APPROVED` 可删除，`POSTED` 禁止删除；后端采用状态标记并保留日志字段，删除权限为 `finance:stockInit:remove`。
+- PROD 已部署删除接口、删除权限 SQL 和最新 PC 前端；财务服务 SHA-256 `022f90d42132760d9ae59e4a8909e822a913e0a2417c7e14e1bb71aba2f5e513`。
+- 小程序强制清理旧 dist 后全量编译，已核验生成包包含 `stockCost`、`stockAdjustment` 及对应页面；微信开发者工具需重新导入 `/Users/sirius/Documents/TRAE/JunSong-Cloud/junsong-miniprogram/dist`，并重新编译/预览。
 
 ## 约束
 

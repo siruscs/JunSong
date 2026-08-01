@@ -250,7 +250,7 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
         {
             for (FinPurchaseDetail detail : finPurchase.getDetails())
             {
-                if (detail.getProductId() == null || detail.getQuantity() == null || detail.getQuantity() <= 0)
+                if (detail.getProductId() == null || detail.getQuantity() == null || detail.getQuantity() == 0)
                 {
                     continue;
                 }

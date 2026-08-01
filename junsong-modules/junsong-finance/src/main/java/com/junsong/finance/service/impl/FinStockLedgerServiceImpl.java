@@ -63,7 +63,7 @@ public class FinStockLedgerServiceImpl implements IFinStockLedgerService {
                                        String referenceNo, Integer targetQuantity, BigDecimal unitCost,
         BigDecimal inboundAmount, String operator) {
         assertTenantScope(tenantId, deptId, productId);
-        assertNonNegative(targetQuantity);
+        assertQuantityNotNull(targetQuantity);
         finStockLedgerMapper.insertPositionIfAbsent(tenantId, deptId, productId);
         int current = nz(finStockLedgerMapper.selectPositionQuantityForUpdate(tenantId, deptId, productId));
         int recorded = nz(finStockLedgerMapper.sumRecordedNet(tenantId, REF_PURCHASE, referenceId, productId));
@@ -211,9 +211,9 @@ public class FinStockLedgerServiceImpl implements IFinStockLedgerService {
         return SecurityUtils.getUsername();
     }
 
-    private void assertNonNegative(Integer quantity) {
-        if (quantity == null || quantity < 0) {
-            throw new ServiceException("目标数量不能为负数");
+    private void assertQuantityNotNull(Integer quantity) {
+        if (quantity == null) {
+            throw new ServiceException("对账目标数量不能为空");
         }
     }
 

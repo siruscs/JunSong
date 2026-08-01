@@ -37,37 +37,50 @@
       </el-form>
     </div>
 
+    <div class="dashboard-intro">
+      <div>
+        <span class="eyebrow">经营驾驶舱 / {{ queryParams.timeType === 'day' ? '今日' : queryParams.timeType === 'week' ? '本周' : '本月' }}</span>
+        <h3>经营结论</h3>
+        <p>先看结果，再处理影响经营的事项。</p>
+      </div>
+      <div class="data-stamp">数据随查询条件更新</div>
+    </div>
+
     <!-- Top Metric Cards -->
     <div class="report-metrics">
-      <div class="metric-card primary">
-        <div class="metric-label">今日销售</div>
-        <div class="metric-value">{{ money(dashboardData.todaySales) }}</div>
+      <div class="metric-card primary metric-card-hero">
+        <div class="metric-label">本期销售额</div>
+        <div class="metric-value">{{ money(dashboardData.monthSales || dashboardData.todaySales) }}</div>
       </div>
-      <div class="metric-card primary">
-        <div class="metric-label">本月销售</div>
-        <div class="metric-value">{{ money(dashboardData.monthSales) }}</div>
-      </div>
-      <div class="metric-card warning">
-        <div class="metric-label">今日费用</div>
-        <div class="metric-value">{{ money(dashboardData.todayExpense) }}</div>
-      </div>
-      <div class="metric-card warning">
-        <div class="metric-label">本月费用</div>
-        <div class="metric-value">{{ money(dashboardData.monthExpense) }}</div>
-      </div>
-      <div class="metric-card success">
+      <div class="metric-card success metric-card-hero">
         <div class="metric-label">毛利润</div>
         <div class="metric-value">{{ money(dashboardData.grossProfit) }}</div>
       </div>
-      <div class="metric-card success">
-        <div class="metric-label">净利润</div>
-        <div class="metric-value">{{ money(dashboardData.netProfit) }}</div>
-      </div>
-      <div class="metric-card info">
-        <div class="metric-label">利润率</div>
+      <div class="metric-card success metric-card-hero">
+        <div class="metric-label">毛利率</div>
         <div class="metric-value">{{ dashboardData.profitRate || 0 }}%</div>
       </div>
+      <div class="metric-card info metric-card-hero">
+        <div class="metric-label">现金净流入</div>
+        <div class="metric-value">{{ money(cashflowData.netCashflowAmount) }}</div>
+      </div>
+      <div class="metric-card warning metric-card-hero">
+        <div class="metric-label">期末应收余额</div>
+        <div class="metric-value">{{ money(dashboardData.endingReceivableAmount) }}</div>
+      </div>
     </div>
+
+    <el-card class="section-card action-board">
+      <template #header><span>风险待办</span><el-tag size="small" :type="pendingCount > 0 ? 'warning' : 'success'">{{ pendingCount > 0 ? `${pendingCount} 项待处理` : '当前健康' }}</el-tag></template>
+      <div class="action-grid">
+        <button class="action-item" type="button" @click="$router.push('/finance/expense')"><span class="action-icon warning">费</span><span><strong>{{ dashboardData.unverifiedExpenseCount || 0 }}</strong><small>费用待核销</small></span><span class="action-arrow">→</span></button>
+        <button class="action-item" type="button" @click="$router.push('/finance/advance')"><span class="action-icon info">借</span><span><strong>{{ dashboardData.unverifiedAdvanceCount || 0 }}</strong><small>借支待核销</small></span><span class="action-arrow">→</span></button>
+        <button class="action-item" type="button" @click="$router.push('/finance/report/sale')"><span class="action-icon danger">收</span><span><strong>{{ dashboardData.overdueReceivableCount || 0 }}</strong><small>逾期应收</small></span><span class="action-arrow">→</span></button>
+        <button class="action-item" type="button" @click="$router.push('/finance/report/stock')"><span class="action-icon danger">库</span><span><strong>{{ dashboardData.stockAnomalyCount || 0 }}</strong><small>库存异常</small></span><span class="action-arrow">→</span></button>
+        <button class="action-item" type="button" @click="$router.push('/finance/profitShare')"><span class="action-icon primary">润</span><span><strong>{{ dashboardData.unsettledProfitShareCount || 0 }}</strong><small>待结转分润</small></span><span class="action-arrow">→</span></button>
+        <button class="action-item" type="button" @click="$router.push('/finance/accountingPeriod')"><span class="action-icon info">期</span><span><strong>{{ dashboardData.currentPeriodStatus || '正常' }}</strong><small>核算周期状态</small></span><span class="action-arrow">→</span></button>
+      </div>
+    </el-card>
 
     <!-- 现金流速览 Section (R7-D) -->
     <el-card class="section-card">
@@ -351,6 +364,7 @@
       </div>
     </el-card>
 
+    <div class="section-kicker">趋势与排行</div>
     <!-- Store Rankings -->
     <div class="chart-grid">
       <el-card class="chart-card">
@@ -379,14 +393,16 @@
       </el-card>
     </div>
 
-    <!-- Quick Links (R8-G: 常用入口区置于最后) -->
-    <el-card class="section-card">
-      <template #header><span>快捷入口</span></template>
-      <div class="quick-links">
-        <router-link to="/system/operatingTask" class="quick-link">经营任务中心</router-link>
-        <router-link to="/finance/expense" class="quick-link">费用管理</router-link>
-        <router-link to="/finance/accountingPeriod" class="quick-link">核算周期</router-link>
-        <router-link to="/finance/profitShare" class="quick-link">分润结算</router-link>
+    <!-- Report Workbench -->
+    <el-card class="section-card report-workbench">
+      <template #header><div class="section-heading"><span>报表工作台</span><small>从经营结论进入专题分析</small></div></template>
+      <div class="report-links">
+        <router-link to="/finance/report/sale" class="report-link"><strong>销售经营分析</strong><span>销售额、订单、会员与门店排行</span><em>→</em></router-link>
+        <router-link to="/finance/report/profit" class="report-link"><strong>利润分析</strong><span>毛利、净利与利润钻取</span><em>→</em></router-link>
+        <router-link to="/finance/report/expense" class="report-link"><strong>费用异常</strong><span>费用趋势与异常明细</span><em>→</em></router-link>
+        <router-link to="/finance/report/profitShare" class="report-link"><strong>分润结算</strong><span>分润结转与结算看板</span><em>→</em></router-link>
+        <router-link to="/finance/report/stock" class="report-link"><strong>库存价值与对账</strong><span>库存金额、流水与异常对账</span><em>→</em></router-link>
+        <router-link to="/finance/report/store" class="report-link"><strong>门店经营分析</strong><span>授权门店健康与趋势</span><em>→</em></router-link>
       </div>
     </el-card>
     </template>
@@ -466,6 +482,15 @@ export default {
   },
   mounted() {
     this.loadData();
+  },
+  computed: {
+    pendingCount() {
+      return Number(this.dashboardData.unverifiedExpenseCount || 0)
+        + Number(this.dashboardData.unverifiedAdvanceCount || 0)
+        + Number(this.dashboardData.overdueReceivableCount || 0)
+        + Number(this.dashboardData.stockAnomalyCount || 0)
+        + Number(this.dashboardData.unsettledProfitShareCount || 0);
+    }
   },
   methods: {
     getDepts() {
@@ -576,6 +601,126 @@ export default {
   font-size: 22px;
   font-weight: 700;
 }
+
+.dashboard-intro {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 20px 14px;
+}
+
+.eyebrow, .section-kicker {
+  color: #7a8497;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.dashboard-intro h3 {
+  margin: 5px 0 2px;
+  color: #18202f;
+  font-size: 20px;
+}
+
+.dashboard-intro p, .data-stamp {
+  margin: 0;
+  color: #8a94a6;
+  font-size: 12px;
+}
+
+.data-stamp { padding-bottom: 3px; }
+
+.metric-card-hero { min-height: 104px; }
+.metric-card-hero .metric-value { font-variant-numeric: tabular-nums; }
+
+.action-board :deep(.el-card__header), .section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.action-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 11px 12px;
+  text-align: left;
+  cursor: pointer;
+  background: #fbfcfe;
+  border: 1px solid #e8edf4;
+  border-radius: 7px;
+  transition: border-color .2s, transform .2s, box-shadow .2s;
+}
+
+.action-item:hover, .action-item:focus-visible {
+  border-color: #9eb9da;
+  box-shadow: 0 4px 12px rgba(31, 78, 121, .08);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.action-icon {
+  display: grid;
+  flex: 0 0 28px;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 6px;
+}
+.action-icon.primary { background: #3b74b9; }
+.action-icon.warning { background: #c9923e; }
+.action-icon.danger { background: #c75a5a; }
+.action-icon.info { background: #718198; }
+.action-item strong, .action-item small { display: block; }
+.action-item strong { color: #202a3a; font-size: 15px; font-variant-numeric: tabular-nums; }
+.action-item small { margin-top: 2px; color: #7d8798; font-size: 12px; }
+.action-arrow { margin-left: auto; color: #9aa6b7; }
+.section-kicker { margin: 24px 0 10px; }
+.section-heading small { color: #8a94a6; font-size: 12px; font-weight: 400; }
+
+.report-links {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.report-link {
+  position: relative;
+  display: flex;
+  min-height: 82px;
+  flex-direction: column;
+  justify-content: center;
+  padding: 14px 38px 14px 15px;
+  color: inherit;
+  text-decoration: none;
+  background: #f8fafc;
+  border: 1px solid #e6ebf2;
+  border-radius: 7px;
+  transition: border-color .2s, background .2s, transform .2s;
+}
+
+.report-link:hover, .report-link:focus-visible {
+  background: #f2f7fd;
+  border-color: #9eb9da;
+  outline: none;
+  transform: translateY(-1px);
+}
+.report-link strong { color: #263449; font-size: 14px; }
+.report-link span { margin-top: 5px; color: #8590a1; font-size: 12px; line-height: 1.4; }
+.report-link em { position: absolute; right: 15px; top: 50%; color: #7090b5; font-size: 18px; font-style: normal; transform: translateY(-50%); }
 
 .quick-links {
   display: flex;
@@ -767,6 +912,8 @@ export default {
 }
 
 @media (max-width: 768px) {
+  .dashboard-intro { align-items: flex-start; flex-direction: column; }
+  .action-grid, .report-links { grid-template-columns: 1fr; }
   .chart-grid {
     grid-template-columns: 1fr;
   }

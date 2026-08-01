@@ -59,7 +59,14 @@
 - 小程序模块清单与权限定义均补充 `stockCost`，解决仅修改 PC 默认清单但服务端模块列表未下发的问题；WJS 需退出小程序后重新登录或刷新授权缓存。
 - 财务主服务无测试编译参数构建通过：`mvn -pl junsong-modules/junsong-finance -am -Dmaven.test.skip=true package`。
 - 全量财务测试仍被既有测试桩与接口签名不一致阻断，未纳入本轮修复范围；专项检查与 PC 构建通过。
-- PROD 期初库存菜单 SQL：执行前保留数据库备份和回滚记录，完成后补充执行结果、备份路径与校验信息。
+- PROD 期初库存菜单 SQL：已由 `bin/deploy-sql.sh sql/finance_stock_init.sql prod` 执行；脚本先完成 `/root/deploy/backup/YYYYMMDD/mysql/junsong-cloud-before-*.sql.gz` 数据库备份，再完成菜单、权限、索引及字符集核验。
+
+## 本轮部署结果
+
+- DEV：财务服务、会员服务、PC 前端部署完成；因后端部署脚本并发构建会共享清理依赖，财务服务改为使用单独验证后的构建产物串行部署。
+- PROD：财务服务 SHA-256 `99b4d777b20f61336eb7f55dbf922a0e8574fb4b3af0bdfb79c989a31f202364`；会员服务 SHA-256 `58f74a588fa77a0bf74c238f70bb77a17e06bcf5b45c8a4b54667c8fc65b1151`。
+- PROD：nginx、finance、member 容器均为运行状态；首页返回 HTTP 200，nginx 配置检查通过。
+- PROD SQL：期初库存菜单及 6 条关联菜单核验通过，`fin_stock_init_batch`、`fin_stock_init_item` 表和唯一索引核验通过。
 
 ## 约束
 

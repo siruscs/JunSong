@@ -8,6 +8,7 @@ const stockInitApi = fs.readFileSync('junsong-ui-v3/src/api/finance/stockInit.ts
 const miniModules = fs.readFileSync('junsong-miniprogram/src/config/modules.js', 'utf8')
 const miniStockPage = fs.readFileSync('junsong-miniprogram/src/pages/stock/index.vue', 'utf8')
 const miniPages = fs.readFileSync('junsong-miniprogram/src/pages.json', 'utf8')
+const miniDetail = fs.readFileSync('junsong-miniprogram/src/pages/detail/index.vue', 'utf8')
 
 for (const route of [
   '/finance/report/sale',
@@ -34,5 +35,8 @@ assert.match(miniStockPage, /requireModulePermission\('stockCost'\)/)
 assert.match(miniStockPage, /getStockValueReport/)
 assert.match(miniPages, /"path": "pages\/stock\/index"/)
 assert.doesNotMatch(miniStockPage, /成本调整|盘点过账|过账/)
+assert.match(miniModules, /paymentEdit: 'finance:sale:payment'/)
+assert.match(miniDetail, /openPaymentEdit\(payment\)/)
+assert.match(miniDetail, /method: this\.editingPaymentId \? 'PUT' : 'POST'/)
 
 console.log('finance stock/miniprogram repair baseline checks passed')

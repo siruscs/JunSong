@@ -523,7 +523,8 @@ export default {
     giftUnitPriceText() {
       if (!this.record) return '-'
       const totalQuantity = Number(this.record.saleQuantity || 0) + Number(this.record.giftQuantity || 0)
-      return totalQuantity > 0
+      // 退货单 saleQuantity 为负，totalQuantity 可能为负；只要非零就应计算单价
+      return totalQuantity !== 0
         ? `¥${(Number(this.record.saleAmount || 0) / totalQuantity).toFixed(2)}`
         : '-'
     },

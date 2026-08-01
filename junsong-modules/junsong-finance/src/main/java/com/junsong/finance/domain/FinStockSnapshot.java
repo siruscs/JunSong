@@ -30,10 +30,10 @@ public class FinStockSnapshot extends BaseEntity {
     private String deptName;
     private Long productId;
     private String productName;
-    private Integer quantity;
-    private Integer openingQuantity;
-    private Integer inQuantity;
-    private Integer outQuantity;
+    private BigDecimal quantity;
+    private BigDecimal openingQuantity;
+    private BigDecimal inQuantity;
+    private BigDecimal outQuantity;
     private BigDecimal unitCost;
     private BigDecimal totalValue;
 
@@ -58,17 +58,17 @@ public class FinStockSnapshot extends BaseEntity {
     public String getProductName() { return productName; }
     public void setProductName(String productName) { this.productName = productName; }
 
-    public Integer getQuantity() { return quantity; }
-    public void setQuantity(Integer quantity) { this.quantity = quantity; }
+    public BigDecimal getQuantity() { return quantity; }
+    public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
 
-    public Integer getOpeningQuantity() { return openingQuantity; }
-    public void setOpeningQuantity(Integer openingQuantity) { this.openingQuantity = openingQuantity; }
+    public BigDecimal getOpeningQuantity() { return openingQuantity; }
+    public void setOpeningQuantity(BigDecimal openingQuantity) { this.openingQuantity = openingQuantity; }
 
-    public Integer getInQuantity() { return inQuantity; }
-    public void setInQuantity(Integer inQuantity) { this.inQuantity = inQuantity; }
+    public BigDecimal getInQuantity() { return inQuantity; }
+    public void setInQuantity(BigDecimal inQuantity) { this.inQuantity = inQuantity; }
 
-    public Integer getOutQuantity() { return outQuantity; }
-    public void setOutQuantity(Integer outQuantity) { this.outQuantity = outQuantity; }
+    public BigDecimal getOutQuantity() { return outQuantity; }
+    public void setOutQuantity(BigDecimal outQuantity) { this.outQuantity = outQuantity; }
 
     public BigDecimal getUnitCost() { return unitCost; }
     public void setUnitCost(BigDecimal unitCost) { this.unitCost = unitCost; }

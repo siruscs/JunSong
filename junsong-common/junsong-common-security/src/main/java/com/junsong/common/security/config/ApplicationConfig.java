@@ -1,8 +1,7 @@
 package com.junsong.common.security.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.TimeZone;
+import jakarta.annotation.PostConstruct;
 import org.springframework.context.annotation.Bean;
 import com.junsong.common.security.auth.AuthLogic;
 
@@ -14,17 +13,21 @@ import com.junsong.common.security.auth.AuthLogic;
 public class ApplicationConfig
 {
     /**
-     * 时区配置
+     * 全局时区设置
      * 统一使用 GMT+8（北京时间），避免容器 JVM 默认时区为 UTC 时
-     * 导致时间序列化偏移 8 小时
+     * 导致时间序列化/解析偏移 8 小时。
+     *
+     * 设置 JVM 默认时区后，以下全部自动生效：
+     * - Jackson @JsonFormat 不指定 timezone 时使用 JVM 默认时区
+     * - SimpleDateFormat 解析/格式化使用 JVM 默认时区
+     * - new Date() 使用 JVM 默认时区
+     *
+     * 这是全局方案，无需逐个修改各实体的 @JsonFormat 注解。
      */
-    @Bean
-    public ObjectMapper objectMapper()
+    @PostConstruct
+    public void setDefaultTimeZone()
     {
-        ObjectMapper objectMapper = JsonMapper.builder().build();
-        objectMapper.findAndRegisterModules();
-        objectMapper.setTimeZone(TimeZone.getTimeZone("GMT+8"));
-        return objectMapper;
+        TimeZone.setDefault(TimeZone.getTimeZone("GMT+8"));
     }
 
     /**

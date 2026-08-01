@@ -25,7 +25,7 @@ public class FinStockCostLedger extends BaseEntity {
     /** 成本变动类型: COST_IN / COST_OUT / COST_REVERSE_IN / COST_REVERSE_OUT / COST_ADJUST */
     private String costChangeType;
     /** 变动数量（正增负减） */
-    private Integer quantity;
+    private BigDecimal quantity;
     /** 单位成本（6位小数） */
     private BigDecimal unitCost;
     /** 金额（2位小数） */
@@ -59,8 +59,8 @@ public class FinStockCostLedger extends BaseEntity {
     public String getCostChangeType() { return costChangeType; }
     public void setCostChangeType(String costChangeType) { this.costChangeType = costChangeType; }
 
-    public Integer getQuantity() { return quantity; }
-    public void setQuantity(Integer quantity) { this.quantity = quantity; }
+    public BigDecimal getQuantity() { return quantity; }
+    public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
 
     public BigDecimal getUnitCost() { return unitCost; }
     public void setUnitCost(BigDecimal unitCost) { this.unitCost = unitCost; }

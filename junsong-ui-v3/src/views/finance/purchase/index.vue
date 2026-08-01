@@ -258,7 +258,7 @@
               </el-table-column>
               <el-table-column label="数量" width="150" align="center">
                 <template #default="scope">
-                  <el-input-number v-model="scope.row.quantity" :min="-99999" :step="1" size="medium" style="width: 100%;" @change="calculateAmount(scope.$index)" />
+                  <el-input-number v-model="scope.row.quantity" :min="-99999" :step="0.1" :precision="3" size="medium" style="width: 100%;" @change="calculateAmount(scope.$index)" />
                 </template>
               </el-table-column>
               <el-table-column label="单价" width="160" align="center">

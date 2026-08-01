@@ -26,7 +26,7 @@ public interface IFinStockLedgerService {
      * @param operator 操作人
      */
     void reconcilePurchaseStock(Long tenantId, Long deptId, Long productId, String productName, Long referenceId,
-                                String referenceNo, Integer targetQuantity, BigDecimal unitCost, String operator);
+                                String referenceNo, BigDecimal targetQuantity, BigDecimal unitCost, String operator);
 
     /**
      * 采购入库对账（含显式入库金额）：与上方法相同，但显式传入入库总金额。
@@ -36,7 +36,7 @@ public interface IFinStockLedgerService {
      * @param inboundAmount 入库总金额（2位小数，赠品金额为0），null 时回退为 unitCost * targetQuantity
      */
     void reconcilePurchaseStock(Long tenantId, Long deptId, Long productId, String productName, Long referenceId,
-                                String referenceNo, Integer targetQuantity, BigDecimal unitCost,
+                                String referenceNo, BigDecimal targetQuantity, BigDecimal unitCost,
                                 BigDecimal inboundAmount, String operator);
 
     /**
@@ -53,5 +53,5 @@ public interface IFinStockLedgerService {
      * @param operator 操作人
      */
     void reconcileSaleStock(Long tenantId, Long deptId, Long productId, String productName, Long referenceId,
-                            String referenceNo, Integer targetQuantity, String operator);
+                            String referenceNo, BigDecimal targetQuantity, String operator);
 }

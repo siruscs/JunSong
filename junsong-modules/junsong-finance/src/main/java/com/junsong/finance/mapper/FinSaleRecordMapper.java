@@ -101,7 +101,7 @@ public interface FinSaleRecordMapper
     /**
      * 统计销售总数量（件数）
      */
-    public int sumSaleQuantity(@Param("deptIds") List<Long> deptIds, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
+    public BigDecimal sumSaleQuantity(@Param("deptIds") List<Long> deptIds, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
 
     /**
      * 校验销售单号是否唯一

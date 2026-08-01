@@ -30,14 +30,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         values (#{tenantId}, #{deptId}, #{productId}, 0)
     </insert>
 
-    <select id="selectPositionQuantityForUpdate" resultType="java.lang.Integer">
+    <select id="selectPositionQuantityForUpdate" resultType="java.math.BigDecimal">
         select quantity from fin_stock_position
         where tenant_id = #{tenantId} and dept_id = #{deptId} and product_id = #{productId}
         for update
     </select>
 
     <!-- 无锁查询当前库存（盘点冻结期望数量用，不持锁；过账阶段才用 selectPositionQuantityForUpdate） -->
-    <select id="selectPositionQuantity" resultType="java.lang.Integer">
+    <select id="selectPositionQuantity" resultType="java.math.BigDecimal">
         select quantity from fin_stock_position
         where tenant_id = #{tenantId} and dept_id = #{deptId} and product_id = #{productId}
     </select>
@@ -48,7 +48,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where tenant_id = #{tenantId} and dept_id = #{deptId} and product_id = #{productId}
     </update>
 
-    <select id="sumRecordedNet" resultType="java.lang.Integer">
+    <select id="sumRecordedNet" resultType="java.math.BigDecimal">
         select coalesce(sum(change_quantity), 0)
         from fin_stock_ledger
         where tenant_id = #{tenantId}
@@ -232,7 +232,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </select>
 
     <!-- 汇总盘点冻结时间之后的库存净变动（过账时重算 adjustedExpected） -->
-    <select id="sumMovementAfterFreeze" resultType="java.lang.Integer">
+    <select id="sumMovementAfterFreeze" resultType="java.math.BigDecimal">
         select coalesce(sum(change_quantity), 0)
         from fin_stock_ledger
         where tenant_id = #{tenantId}

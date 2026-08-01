@@ -18,7 +18,7 @@ package com.junsong.finance.domain.vo;
  */
 public class StocktakeRecountRequest {
     /** 复盘数量（非负） */
-    private Integer recountQuantity;
+    private java.math.BigDecimal recountQuantity;
     /** 损耗原因代码（方差非零时必填） */
     private String reasonCode;
     /** 损耗原因文字说明（方差非零时必填） */
@@ -28,8 +28,8 @@ public class StocktakeRecountRequest {
     /** 行表版本号（乐观锁） */
     private Integer version;
 
-    public Integer getRecountQuantity() { return recountQuantity; }
-    public void setRecountQuantity(Integer recountQuantity) { this.recountQuantity = recountQuantity; }
+    public java.math.BigDecimal getRecountQuantity() { return recountQuantity; }
+    public void setRecountQuantity(java.math.BigDecimal recountQuantity) { this.recountQuantity = recountQuantity; }
 
     public String getReasonCode() { return reasonCode; }
     public void setReasonCode(String reasonCode) { this.reasonCode = reasonCode; }

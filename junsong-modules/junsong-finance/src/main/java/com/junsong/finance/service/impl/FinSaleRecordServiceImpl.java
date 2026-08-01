@@ -204,24 +204,18 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
         {
             throw new ServiceException("销售出库失败：销售记录缺少商品，无法扣减库存");
         }
-        if (finSaleRecord.getSaleQuantity() == null || finSaleRecord.getSaleQuantity() == 0)
+        BigDecimal saleQuantity = finSaleRecord.getSaleQuantity();
+        if (saleQuantity == null || saleQuantity.signum() == 0)
         {
             throw new ServiceException("销售出库失败：销售数量不能为0");
         }
-        int giftQuantity = finSaleRecord.getGiftQuantity() != null ? finSaleRecord.getGiftQuantity() : 0;
-        if (giftQuantity < 0)
+        BigDecimal gift = finSaleRecord.getGiftQuantity();
+        BigDecimal giftQuantity = gift != null ? gift : BigDecimal.ZERO;
+        if (giftQuantity.signum() < 0)
         {
             throw new ServiceException("销售出库失败：赠品数量不能为负数");
         }
-        int outQuantity;
-        try
-        {
-            outQuantity = Math.addExact(finSaleRecord.getSaleQuantity(), giftQuantity);
-        }
-        catch (ArithmeticException ex)
-        {
-            throw new ServiceException("销售出库失败：销售数量与赠品数量合计超出允许范围");
-        }
+        BigDecimal outQuantity = saleQuantity.add(giftQuantity);
 
         // 并集：本次目标商品 + 该单历史已记录商品（换商品时旧商品历史 SALE_OUT 需目标 0 反向回补）
         Long currentProductId = finSaleRecord.getProductId();
@@ -236,7 +230,7 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
         for (Long productId : productIds)
         {
             boolean isCurrent = productId.equals(currentProductId);
-            int target = isCurrent ? outQuantity : 0;
+            BigDecimal target = isCurrent ? outQuantity : BigDecimal.ZERO;
             String productName = isCurrent ? finSaleRecord.getProductName() : null;
             finStockLedgerService.reconcileSaleStock(
                     TenantContext.getTenantId(),
@@ -268,7 +262,7 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
                 old.getProductName(),
                 old.getSaleId(),
                 old.getSaleNo(),
-                0,
+                BigDecimal.ZERO,
                 old.getUpdateBy()
         );
     }
@@ -324,18 +318,21 @@ public class FinSaleRecordServiceImpl implements IFinSaleRecordService
      */
     private void calculateSaleQuantityAndUnitPrice(FinSaleRecord finSaleRecord)
     {
-        Integer saleQuantity = finSaleRecord.getSaleQuantity();
-        Integer giftQuantity = finSaleRecord.getGiftQuantity();
-        
+        BigDecimal saleQuantity = finSaleRecord.getSaleQuantity();
+        BigDecimal giftQuantity = finSaleRecord.getGiftQuantity();
+
+        BigDecimal sale = saleQuantity != null ? saleQuantity : BigDecimal.ZERO;
+        BigDecimal gift = giftQuantity != null ? giftQuantity : BigDecimal.ZERO;
+
         // 计算总数量
-        int totalQuantity = (saleQuantity != null ? saleQuantity : 0) + (giftQuantity != null ? giftQuantity : 0);
+        BigDecimal totalQuantity = sale.add(gift);
         finSaleRecord.setTotalQuantity(totalQuantity);
         
         // 计算单价：单价 = 销售金额 / 销售数量
         BigDecimal saleAmount = finSaleRecord.getSaleAmount();
-        if (saleAmount != null && saleQuantity != null && saleQuantity != 0)
+        if (saleAmount != null && saleQuantity != null && saleQuantity.signum() != 0)
         {
-            BigDecimal unitPrice = saleAmount.divide(new BigDecimal(saleQuantity), 2, BigDecimal.ROUND_HALF_UP);
+            BigDecimal unitPrice = saleAmount.divide(saleQuantity, 2, BigDecimal.ROUND_HALF_UP);
             finSaleRecord.setUnitPrice(unitPrice);
         }
         else

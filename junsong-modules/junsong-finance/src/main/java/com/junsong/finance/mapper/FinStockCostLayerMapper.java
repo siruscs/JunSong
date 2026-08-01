@@ -35,7 +35,7 @@ public interface FinStockCostLayerMapper {
                         @Param("deptId") Long deptId,
                         @Param("productId") Long productId,
                         @Param("avgUnitCost") java.math.BigDecimal avgUnitCost,
-                        @Param("stockQuantity") Integer stockQuantity,
+                        @Param("stockQuantity") java.math.BigDecimal stockQuantity,
                         @Param("stockAmount") java.math.BigDecimal stockAmount,
                         @Param("version") Integer version,
                         @Param("updateBy") String updateBy);

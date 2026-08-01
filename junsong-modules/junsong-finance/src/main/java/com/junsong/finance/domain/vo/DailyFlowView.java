@@ -1,5 +1,7 @@
 package com.junsong.finance.domain.vo;
 
+import java.math.BigDecimal;
+
 /**
  * 当日库存流水量视图：聚合某门店某商品某日的入库/出库数量。
  *
@@ -10,12 +12,12 @@ package com.junsong.finance.domain.vo;
  */
 public class DailyFlowView {
 
-    private Integer inQuantity;
-    private Integer outQuantity;
+    private BigDecimal inQuantity;
+    private BigDecimal outQuantity;
 
-    public Integer getInQuantity() { return inQuantity; }
-    public void setInQuantity(Integer inQuantity) { this.inQuantity = inQuantity; }
+    public BigDecimal getInQuantity() { return inQuantity; }
+    public void setInQuantity(BigDecimal inQuantity) { this.inQuantity = inQuantity; }
 
-    public Integer getOutQuantity() { return outQuantity; }
-    public void setOutQuantity(Integer outQuantity) { this.outQuantity = outQuantity; }
+    public BigDecimal getOutQuantity() { return outQuantity; }
+    public void setOutQuantity(BigDecimal outQuantity) { this.outQuantity = outQuantity; }
 }

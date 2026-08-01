@@ -32,7 +32,7 @@ public interface FinStockLedgerMapper {
      * @param productId 商品ID
      * @return 当前库存，行不存在时返回 null
      */
-    Integer selectPositionQuantityForUpdate(@Param("tenantId") Long tenantId, @Param("deptId") Long deptId, @Param("productId") Long productId);
+    java.math.BigDecimal selectPositionQuantityForUpdate(@Param("tenantId") Long tenantId, @Param("deptId") Long deptId, @Param("productId") Long productId);
 
     /**
      * 无锁查询当前库存数量（盘点冻结期望数量时使用，不持有行锁）。
@@ -45,7 +45,7 @@ public interface FinStockLedgerMapper {
      * @param productId 商品ID
      * @return 当前库存，行不存在时返回 null（视为 0）
      */
-    Integer selectPositionQuantity(@Param("tenantId") Long tenantId, @Param("deptId") Long deptId, @Param("productId") Long productId);
+    java.math.BigDecimal selectPositionQuantity(@Param("tenantId") Long tenantId, @Param("deptId") Long deptId, @Param("productId") Long productId);
 
     /**
      * 更新当前库存数量。
@@ -56,7 +56,7 @@ public interface FinStockLedgerMapper {
      * @return 影响行数
      */
     int updatePositionQuantity(@Param("tenantId") Long tenantId, @Param("deptId") Long deptId, @Param("productId") Long productId,
-                               @Param("quantity") Integer quantity);
+                               @Param("quantity") java.math.BigDecimal quantity);
 
     /**
      * 汇总某业务单据对某商品已记录的净流水（含正向与反向），用于差额对账。
@@ -66,7 +66,7 @@ public interface FinStockLedgerMapper {
      * @param productId 商品ID
      * @return 已记录净额，无记录返回 0 或 null
      */
-    Integer sumRecordedNet(@Param("tenantId") Long tenantId,
+    java.math.BigDecimal sumRecordedNet(@Param("tenantId") Long tenantId,
                            @Param("referenceType") String referenceType,
                            @Param("referenceId") Long referenceId,
                            @Param("productId") Long productId);
@@ -200,7 +200,7 @@ public interface FinStockLedgerMapper {
      * @param freezeTime 盘点冻结时间
      * @return 净变动数量（无记录返回 0）
      */
-    Integer sumMovementAfterFreeze(@Param("tenantId") Long tenantId,
+    java.math.BigDecimal sumMovementAfterFreeze(@Param("tenantId") Long tenantId,
                                     @Param("deptId") Long deptId,
                                     @Param("productId") Long productId,
                                     @Param("freezeTime") java.util.Date freezeTime);

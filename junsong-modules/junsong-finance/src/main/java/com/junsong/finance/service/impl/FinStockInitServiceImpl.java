@@ -65,6 +65,10 @@ public class FinStockInitServiceImpl implements IFinStockInitService {
     private static final String REF_STOCK_INIT = "STOCK_INIT";
     private static final String PERIOD_ACTIVE = "0";
 
+    private static BigDecimal nzDec(BigDecimal v) {
+        return v == null ? BigDecimal.ZERO : v;
+    }
+
     @Autowired
     private FinStockInitBatchMapper finStockInitBatchMapper;
 
@@ -391,14 +395,11 @@ public class FinStockInitServiceImpl implements IFinStockInitService {
 
         // 第二步：逐行写库存流水 + 更新结存 + 成本入账
         for (FinStockInitItem item : sortedItems) {
-            BigDecimal quantity = item.getQuantity();
-            // 现有库存结存系统使用整数数量，将 BigDecimal 转为 int（HALF_UP）
-            int qty = quantity.setScale(0, RoundingMode.HALF_UP).intValue();
+            BigDecimal qty = item.getQuantity();
 
-            Integer currentQtyBox = finStockLedgerMapper.selectPositionQuantityForUpdate(
-                    tenantId, item.getDeptId(), item.getProductId());
-            int currentQty = currentQtyBox == null ? 0 : currentQtyBox;
-            int afterQty = currentQty + qty;
+            BigDecimal currentQty = nzDec(finStockLedgerMapper.selectPositionQuantityForUpdate(
+                    tenantId, item.getDeptId(), item.getProductId()));
+            BigDecimal afterQty = currentQty.add(qty);
 
             // 写库存流水
             FinStockLedger ledger = new FinStockLedger();

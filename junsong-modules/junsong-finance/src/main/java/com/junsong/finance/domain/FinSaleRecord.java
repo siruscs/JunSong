@@ -58,15 +58,15 @@ public class FinSaleRecord extends BaseEntity
     /** 销售数量 */
     @Excel(name = "销售数量", cellType = ColumnType.NUMERIC)
     @NotNull(message = "销售数量不能为空")
-    private Integer saleQuantity;
+    private BigDecimal saleQuantity;
 
     /** 赠品数量 */
     @Excel(name = "赠品数量", cellType = ColumnType.NUMERIC)
-    private Integer giftQuantity;
+    private BigDecimal giftQuantity;
 
     /** 总数量(销售+赠品) */
     @Excel(name = "总数量", cellType = ColumnType.NUMERIC)
-    private Integer totalQuantity;
+    private BigDecimal totalQuantity;
 
     /** 销售金额 */
     @Excel(name = "销售金额", cellType = ColumnType.NUMERIC)
@@ -82,7 +82,7 @@ public class FinSaleRecord extends BaseEntity
     private BigDecimal paidAmount;
 
     /** 销售日期 */
-    @JsonFormat(pattern = "yyyy-MM-dd")
+    @JsonFormat(pattern = "yyyy-MM-dd", timezone = "GMT+8")
     @Excel(name = "销售日期", width = 30, dateFormat = "yyyy-MM-dd")
     @NotNull(message = "销售日期不能为空")
     private Date saleDate;
@@ -107,7 +107,7 @@ public class FinSaleRecord extends BaseEntity
     private String periodStatus;
 
     /** 最近缴款时间（历史欠款查询用，来自缴款子查询） */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private Date latestPaymentDate;
 
     /** 剩余应收金额（销售金额-已缴金额，前端展示用） */
@@ -243,32 +243,32 @@ public class FinSaleRecord extends BaseEntity
         this.productName = productName;
     }
 
-    public Integer getSaleQuantity()
+    public BigDecimal getSaleQuantity()
     {
         return saleQuantity;
     }
 
-    public void setSaleQuantity(Integer saleQuantity)
+    public void setSaleQuantity(BigDecimal saleQuantity)
     {
         this.saleQuantity = saleQuantity;
     }
 
-    public Integer getGiftQuantity()
+    public BigDecimal getGiftQuantity()
     {
         return giftQuantity;
     }
 
-    public void setGiftQuantity(Integer giftQuantity)
+    public void setGiftQuantity(BigDecimal giftQuantity)
     {
         this.giftQuantity = giftQuantity;
     }
 
-    public Integer getTotalQuantity()
+    public BigDecimal getTotalQuantity()
     {
         return totalQuantity;
     }
 
-    public void setTotalQuantity(Integer totalQuantity)
+    public void setTotalQuantity(BigDecimal totalQuantity)
     {
         this.totalQuantity = totalQuantity;
     }

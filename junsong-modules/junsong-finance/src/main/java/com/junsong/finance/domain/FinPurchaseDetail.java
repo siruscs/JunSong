@@ -41,7 +41,7 @@ public class FinPurchaseDetail extends BaseEntity
 
     /** 数量 */
     @Excel(name = "数量", cellType = ColumnType.NUMERIC)
-    private Integer quantity;
+    private BigDecimal quantity;
 
     /** 单价 */
     @Excel(name = "单价", cellType = ColumnType.NUMERIC)
@@ -114,12 +114,12 @@ public class FinPurchaseDetail extends BaseEntity
     }
 
     @NotNull(message = "数量不能为空")
-    public Integer getQuantity()
+    public BigDecimal getQuantity()
     {
         return quantity;
     }
 
-    public void setQuantity(Integer quantity)
+    public void setQuantity(BigDecimal quantity)
     {
         this.quantity = quantity;
     }

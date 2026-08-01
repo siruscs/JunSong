@@ -58,7 +58,7 @@ public class FinPurchase extends BaseEntity
 
     /** 总数量（含赠品） */
     @Excel(name = "总数量", cellType = ColumnType.NUMERIC)
-    private Integer totalQuantity;
+    private BigDecimal totalQuantity;
 
     /** 状态（0草稿 1已确认 2已完成） */
     @Excel(name = "状态", readConverterExp = "0=草稿,1=已确认,2=已完成")
@@ -179,12 +179,12 @@ public class FinPurchase extends BaseEntity
         this.paymentMethod = paymentMethod;
     }
 
-    public Integer getTotalQuantity()
+    public BigDecimal getTotalQuantity()
     {
         return totalQuantity;
     }
 
-    public void setTotalQuantity(Integer totalQuantity)
+    public void setTotalQuantity(BigDecimal totalQuantity)
     {
         this.totalQuantity = totalQuantity;
     }

@@ -99,7 +99,7 @@ deploy_backend_service() {
 
     if [ "${DEPLOY_SKIP_BUILD}" != "1" ]; then
         log "[1/4] 编译 ${service_name}"
-        run_cmd mvn clean package -pl "${maven_module}" -am -DskipTests -q
+        run_cmd mvn clean package -pl "${maven_module}" -am -Dmaven.test.skip=true -q
     else
         log "[1/4] 跳过编译（DEPLOY_SKIP_BUILD=1）"
     fi

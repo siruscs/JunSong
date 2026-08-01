@@ -145,10 +145,10 @@
           <el-input-number v-model="form.saleAmount" :precision="2" :step="0.1" style="width: 100%;" @change="calculateUnitPrice" />
         </el-form-item>
         <el-form-item label="销售数量" prop="saleQuantity">
-          <el-input-number v-model="form.saleQuantity" :min="1" :step="1" style="width: 100%;" @change="calculateUnitPrice" />
+          <el-input-number v-model="form.saleQuantity" :min="0.001" :step="0.1" :precision="3" style="width: 100%;" @change="calculateUnitPrice" />
         </el-form-item>
         <el-form-item label="赠品数量" prop="giftQuantity">
-          <el-input-number v-model="form.giftQuantity" :min="0" :step="1" style="width: 100%;" />
+          <el-input-number v-model="form.giftQuantity" :min="0" :step="0.1" :precision="3" style="width: 100%;" />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" type="textarea" placeholder="请输入备注" :rows="3" />
@@ -412,9 +412,9 @@ export default {
         productName: undefined,
         saleDate: new Date().toISOString().split('T')[0],
         saleAmount: 0,
-        saleQuantity: 1,
+        saleQuantity: 0,
         giftQuantity: 0,
-        totalQuantity: 1,
+        totalQuantity: 0,
         unitPrice: 0,
         paidAmount: 0,
         status: "0",

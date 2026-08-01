@@ -272,7 +272,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </select>
 
     <!-- 统计销售总数量（件数） -->
-    <select id="sumSaleQuantity" resultType="int">
+    <select id="sumSaleQuantity" resultType="java.math.BigDecimal">
         select ifnull(sum(r.total_quantity), 0) from fin_sale_record r
         <where> r.del_flag = '0'
         <if test="deptIds != null and deptIds.size() > 0">

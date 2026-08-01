@@ -7,7 +7,7 @@ import java.util.Map;
 public class SalesOperationReportVO {
     private BigDecimal totalSales = BigDecimal.ZERO;
     private int orderCount;
-    private int totalQuantity;
+    private BigDecimal totalQuantity = BigDecimal.ZERO;
     private BigDecimal avgOrderAmount = BigDecimal.ZERO;
     private BigDecimal avgItemAmount = BigDecimal.ZERO;
     private BigDecimal memberSales = BigDecimal.ZERO;
@@ -23,8 +23,8 @@ public class SalesOperationReportVO {
     public void setTotalSales(BigDecimal totalSales) { this.totalSales = totalSales; }
     public int getOrderCount() { return orderCount; }
     public void setOrderCount(int orderCount) { this.orderCount = orderCount; }
-    public int getTotalQuantity() { return totalQuantity; }
-    public void setTotalQuantity(int totalQuantity) { this.totalQuantity = totalQuantity; }
+    public BigDecimal getTotalQuantity() { return totalQuantity; }
+    public void setTotalQuantity(BigDecimal totalQuantity) { this.totalQuantity = totalQuantity; }
     public BigDecimal getAvgOrderAmount() { return avgOrderAmount; }
     public void setAvgOrderAmount(BigDecimal avgOrderAmount) { this.avgOrderAmount = avgOrderAmount; }
     public BigDecimal getAvgItemAmount() { return avgItemAmount; }

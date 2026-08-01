@@ -14,19 +14,6 @@ import com.junsong.finance.mapper.FinStockLedgerMapper;
 import com.junsong.finance.service.IFinStockLedgerService;
 import com.junsong.finance.service.IStockCostService;
 
-/**
- * 库存流水写入服务实现。
- *
- * 采用"当前库存表 fin_stock_position 行锁 + 差额对账"模型：
- * 1. INSERT IGNORE 保证 position 行存在（首笔并发安全）
- * 2. SELECT ... FOR UPDATE 长事务锁行（并发序列化）
- * 3. 计算 delta = target - 已记录净额
- * 4. delta != 0 才写流水，天然幂等
- * 5. 更新 position 到新结存
- * 6. 联动 IStockCostService（如果注入）更新移动加权平均成本
- *
- * @author junsong
- */
 @Service
 public class FinStockLedgerServiceImpl implements IFinStockLedgerService {
 
@@ -52,7 +39,7 @@ public class FinStockLedgerServiceImpl implements IFinStockLedgerService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void reconcilePurchaseStock(Long tenantId, Long deptId, Long productId, String productName, Long referenceId,
-                                       String referenceNo, Integer targetQuantity, BigDecimal unitCost, String operator) {
+                                       String referenceNo, BigDecimal targetQuantity, BigDecimal unitCost, String operator) {
         reconcilePurchaseStock(tenantId, deptId, productId, productName, referenceId, referenceNo,
                                targetQuantity, unitCost, null, operator);
     }
@@ -60,35 +47,33 @@ public class FinStockLedgerServiceImpl implements IFinStockLedgerService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void reconcilePurchaseStock(Long tenantId, Long deptId, Long productId, String productName, Long referenceId,
-                                       String referenceNo, Integer targetQuantity, BigDecimal unitCost,
+                                       String referenceNo, BigDecimal targetQuantity, BigDecimal unitCost,
         BigDecimal inboundAmount, String operator) {
         assertTenantScope(tenantId, deptId, productId);
         assertQuantityNotNull(targetQuantity);
         finStockLedgerMapper.insertPositionIfAbsent(tenantId, deptId, productId);
-        int current = nz(finStockLedgerMapper.selectPositionQuantityForUpdate(tenantId, deptId, productId));
-        int recorded = nz(finStockLedgerMapper.sumRecordedNet(tenantId, REF_PURCHASE, referenceId, productId));
-        int delta = targetQuantity - recorded;
-        if (delta == 0) {
+        BigDecimal current = nz(finStockLedgerMapper.selectPositionQuantityForUpdate(tenantId, deptId, productId));
+        BigDecimal recorded = nz(finStockLedgerMapper.sumRecordedNet(tenantId, REF_PURCHASE, referenceId, productId));
+        BigDecimal delta = targetQuantity.subtract(recorded);
+        if (delta.compareTo(BigDecimal.ZERO) == 0) {
             return;
         }
 
-        String changeType = delta > 0 ? PURCHASE_IN : PURCHASE_REVERSE;
-        int after = current + delta;
-        // 先写库存流水，获取流水主键 ledgerId 作为成本流水的 source_ledger_id
+        String changeType = delta.compareTo(BigDecimal.ZERO) > 0 ? PURCHASE_IN : PURCHASE_REVERSE;
+        BigDecimal after = current.add(delta);
         Long ledgerId = writeLedger(tenantId, deptId, productId, productName, changeType, delta, current, after,
                     unitCost, REF_PURCHASE, referenceId, referenceNo, String.valueOf(targetQuantity), operator);
         int affected = finStockLedgerMapper.updatePositionQuantity(tenantId, deptId, productId, after);
         assertPositionUpdated(affected);
 
-        // 联动成本层：source_ledger_id 关联 fin_stock_ledger.ledger_id 保证可追溯
         if (stockCostService != null) {
-            if (delta > 0) {
+            if (delta.compareTo(BigDecimal.ZERO) > 0) {
                 BigDecimal amount = inboundAmount != null
                         ? inboundAmount
-                        : (unitCost != null ? unitCost.multiply(BigDecimal.valueOf(delta)) : BigDecimal.ZERO);
+                        : (unitCost != null ? unitCost.multiply(delta) : BigDecimal.ZERO);
                 stockCostService.applyPurchaseInbound(tenantId, deptId, productId, delta, amount, ledgerId, operator);
             } else {
-                stockCostService.reversePurchaseInbound(tenantId, deptId, productId, -delta, ledgerId, operator);
+                stockCostService.reversePurchaseInbound(tenantId, deptId, productId, delta.negate(), ledgerId, operator);
             }
         }
     }
@@ -96,37 +81,35 @@ public class FinStockLedgerServiceImpl implements IFinStockLedgerService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void reconcileSaleStock(Long tenantId, Long deptId, Long productId, String productName, Long referenceId,
-                                   String referenceNo, Integer targetQuantity, String operator) {
+                                   String referenceNo, BigDecimal targetQuantity, String operator) {
         assertTenantScope(tenantId, deptId, productId);
         assertQuantityPresent(targetQuantity);
         finStockLedgerMapper.insertPositionIfAbsent(tenantId, deptId, productId);
-        int current = nz(finStockLedgerMapper.selectPositionQuantityForUpdate(tenantId, deptId, productId));
-        int recorded = nz(finStockLedgerMapper.sumRecordedNet(tenantId, REF_SALE, referenceId, productId));
-        int targetNet = -targetQuantity;
-        int delta = targetNet - recorded;
-        if (delta == 0) {
+        BigDecimal current = nz(finStockLedgerMapper.selectPositionQuantityForUpdate(tenantId, deptId, productId));
+        BigDecimal recorded = nz(finStockLedgerMapper.sumRecordedNet(tenantId, REF_SALE, referenceId, productId));
+        BigDecimal targetNet = targetQuantity.negate();
+        BigDecimal delta = targetNet.subtract(recorded);
+        if (delta.compareTo(BigDecimal.ZERO) == 0) {
             return;
         }
 
-        int after = current + delta;
-        if (after < 0 && !isAllowNegativeSaleOut()) {
+        BigDecimal after = current.add(delta);
+        if (after.compareTo(BigDecimal.ZERO) < 0 && !isAllowNegativeSaleOut()) {
             throw new ServiceException("库存不足，无法出库：当前库存 " + current
-                    + "，需出库 " + (targetQuantity > 0 ? targetQuantity : Math.abs(delta)));
+                    + "，需出库 " + (targetQuantity.compareTo(BigDecimal.ZERO) > 0 ? targetQuantity : delta.abs()));
         }
 
         String changeType;
         BigDecimal solidifiedCost = null;
-        if (delta < 0) {
+        if (delta.compareTo(BigDecimal.ZERO) < 0) {
             changeType = SALE_OUT;
-            // 销售出库：先写流水（unit_cost 暂空），获取 ledgerId 后固化成本并回填 unit_cost
             Long ledgerId = writeLedger(tenantId, deptId, productId, productName, changeType, delta, current, after,
                     null, REF_SALE, referenceId, referenceNo, String.valueOf(targetNet), operator);
             int affected = finStockLedgerMapper.updatePositionQuantity(tenantId, deptId, productId, after);
             assertPositionUpdated(affected);
             if (stockCostService != null) {
                 solidifiedCost = stockCostService.applySaleOutbound(tenantId, deptId, productId,
-                        -delta, isAllowNegativeSaleOut(), ledgerId, operator);
-                // 回填固化成本到流水 unit_cost 字段，供后续冲销追溯
+                        delta.negate(), isAllowNegativeSaleOut(), ledgerId, operator);
                 int costAffected = finStockLedgerMapper.updateLedgerUnitCost(ledgerId, solidifiedCost);
                 if (costAffected != 1) {
                     throw new ServiceException("销售出库固化成本回填失败，拒绝回写库存流水");
@@ -135,22 +118,17 @@ public class FinStockLedgerServiceImpl implements IFinStockLedgerService {
             return;
         } else {
             changeType = SALE_REVERSE;
-            // 销售冲销：查询原 SALE_OUT 固化成本，按原成本回补成本层
             if (stockCostService != null) {
                 BigDecimal originalCost = finStockLedgerMapper.selectSaleOutUnitCost(tenantId, referenceId, productId);
                 if (originalCost == null) {
-                    if (targetQuantity != null && targetQuantity < 0) {
-                        // 负数销售表示退货录入，并不一定存在同单据原 SALE_OUT。
-                        // 为避免业务保存被成本层阻断，按 0 成本入库；后续如需精确估值可通过成本调整补正。
+                    if (targetQuantity != null && targetQuantity.compareTo(BigDecimal.ZERO) < 0) {
                         originalCost = BigDecimal.ZERO;
                     } else {
-                        // 非退货冲销仍 fail-closed：找不到原固化成本则拒绝，防止销售删除成本金额未回补。
                         throw new ServiceException("销售冲销找不到原 SALE_OUT 固化成本，拒绝回写（referenceId="
                                 + referenceId + ", productId=" + productId + "）");
                     }
                 }
                 solidifiedCost = originalCost;
-                // 先写流水获取 ledgerId，再以 ledgerId 作为 source_ledger_id 调用成本冲销
                 Long ledgerId = writeLedger(tenantId, deptId, productId, productName, changeType, delta, current, after,
                         solidifiedCost, REF_SALE, referenceId, referenceNo, String.valueOf(targetNet), operator);
                 int affected = finStockLedgerMapper.updatePositionQuantity(tenantId, deptId, productId, after);
@@ -160,7 +138,6 @@ public class FinStockLedgerServiceImpl implements IFinStockLedgerService {
                 return;
             }
         }
-        // stockCostService 未注入时走原有路径（Phase 1 兼容）
         writeLedger(tenantId, deptId, productId, productName, changeType, delta, current, after,
                     solidifiedCost, REF_SALE, referenceId, referenceNo, String.valueOf(targetNet), operator);
         int affected = finStockLedgerMapper.updatePositionQuantity(tenantId, deptId, productId, after);
@@ -168,7 +145,7 @@ public class FinStockLedgerServiceImpl implements IFinStockLedgerService {
     }
 
     private Long writeLedger(Long tenantId, Long deptId, Long productId, String productName, String changeType,
-                             int delta, int before, int after, BigDecimal unitCost,
+                             BigDecimal delta, BigDecimal before, BigDecimal after, BigDecimal unitCost,
                              String refType, Long refId, String refNo, String targetNetKey, String operator) {
         FinStockLedger ledger = new FinStockLedger();
         ledger.setTenantId(tenantId);
@@ -183,9 +160,6 @@ public class FinStockLedgerServiceImpl implements IFinStockLedgerService {
         ledger.setReferenceType(refType);
         ledger.setReferenceId(refId);
         ledger.setReferenceNo(refNo);
-        // DB 唯一键兜底：同一单据、同一商品、同一目标净数量只能生成一条流水。
-        // 目标净数量不同代表业务单据发生了修改/冲销，应允许生成新的差额流水。
-        // 格式：refType:refId:productId:targetNet
         if (refType != null && refId != null && productId != null) {
             ledger.setIdempotencyKey(refType + ":" + refId + ":" + productId + ":" + targetNetKey);
         }
@@ -211,13 +185,13 @@ public class FinStockLedgerServiceImpl implements IFinStockLedgerService {
         return SecurityUtils.getUsername();
     }
 
-    private void assertQuantityNotNull(Integer quantity) {
+    private void assertQuantityNotNull(BigDecimal quantity) {
         if (quantity == null) {
             throw new ServiceException("对账目标数量不能为空");
         }
     }
 
-    private void assertQuantityPresent(Integer quantity) {
+    private void assertQuantityPresent(BigDecimal quantity) {
         if (quantity == null) {
             throw new ServiceException("目标数量不能为空");
         }
@@ -235,8 +209,8 @@ public class FinStockLedgerServiceImpl implements IFinStockLedgerService {
         }
     }
 
-    private int nz(Integer value) {
-        return value != null ? value : 0;
+    private BigDecimal nz(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
     }
 
     private boolean isAllowNegativeSaleOut() {

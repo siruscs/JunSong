@@ -21,7 +21,7 @@ public interface StoreFinanceReportMapper {
 
     Integer countStoreSaleRecords(StoreReportQueryParams params);
 
-    Integer sumStoreSaleQuantity(StoreReportQueryParams params);
+    BigDecimal sumStoreSaleQuantity(StoreReportQueryParams params);
 
     BigDecimal selectStoreTotalExpense(StoreReportQueryParams params);
 

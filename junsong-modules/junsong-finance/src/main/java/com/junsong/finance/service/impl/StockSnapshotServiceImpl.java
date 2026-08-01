@@ -1,5 +1,6 @@
 package com.junsong.finance.service.impl;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,13 +42,13 @@ public class StockSnapshotServiceImpl implements IStockSnapshotService {
             FinStockLedger first = finStockLedgerMapper.selectFirstDailyLedger(tenantId, snapshotDate, deptId, productId);
             FinStockLedger lastBefore = previous == null && first == null
                     ? finStockLedgerMapper.selectLastLedgerBeforeDate(tenantId, snapshotDate, deptId, productId) : null;
-            int opening = previous != null ? nz(previous.getQuantity())
+            BigDecimal opening = previous != null ? nz(previous.getQuantity())
                     : first != null ? nz(first.getBeforeQuantity())
-                    : lastBefore != null ? nz(lastBefore.getAfterQuantity()) : 0;
+                    : lastBefore != null ? nz(lastBefore.getAfterQuantity()) : BigDecimal.ZERO;
             DailyFlowView flow = finStockLedgerMapper.sumDailyFlow(tenantId, snapshotDate, deptId, productId);
-            int inQuantity = flow != null ? nz(flow.getInQuantity()) : 0;
-            int outQuantity = flow != null ? nz(flow.getOutQuantity()) : 0;
-            int closing = Math.subtractExact(Math.addExact(opening, inQuantity), outQuantity);
+            BigDecimal inQuantity = flow != null ? nz(flow.getInQuantity()) : BigDecimal.ZERO;
+            BigDecimal outQuantity = flow != null ? nz(flow.getOutQuantity()) : BigDecimal.ZERO;
+            BigDecimal closing = opening.add(inQuantity).subtract(outQuantity);
 
             FinStockSnapshot snapshot = new FinStockSnapshot();
             snapshot.setTenantId(tenantId);
@@ -67,7 +68,7 @@ public class StockSnapshotServiceImpl implements IStockSnapshotService {
         return count;
     }
 
-    private int nz(Integer value) {
-        return value != null ? value : 0;
+    private BigDecimal nz(BigDecimal value) {
+        return value != null ? value : BigDecimal.ZERO;
     }
 }

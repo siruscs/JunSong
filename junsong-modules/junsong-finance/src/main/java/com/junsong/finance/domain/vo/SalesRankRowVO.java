@@ -6,7 +6,7 @@ public class SalesRankRowVO {
     private Long id;
     private String name;
     private BigDecimal amount = BigDecimal.ZERO;
-    private int quantity;
+    private BigDecimal quantity = BigDecimal.ZERO;
     private Long deptId;
     private String deptName;
 
@@ -16,8 +16,8 @@ public class SalesRankRowVO {
     public void setName(String name) { this.name = name; }
     public BigDecimal getAmount() { return amount; }
     public void setAmount(BigDecimal amount) { this.amount = amount; }
-    public int getQuantity() { return quantity; }
-    public void setQuantity(int quantity) { this.quantity = quantity; }
+    public BigDecimal getQuantity() { return quantity; }
+    public void setQuantity(BigDecimal quantity) { this.quantity = quantity; }
     public Long getDeptId() { return deptId; }
     public void setDeptId(Long deptId) { this.deptId = deptId; }
     public String getDeptName() { return deptName; }

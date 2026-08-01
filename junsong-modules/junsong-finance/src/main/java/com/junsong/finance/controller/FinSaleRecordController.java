@@ -203,7 +203,15 @@ public class FinSaleRecordController extends BaseController
             try
             {
                 java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd");
-                paymentDate = sdf.parse(paymentDateStr);
+                sdf.setTimeZone(java.util.TimeZone.getTimeZone("GMT+8"));
+                java.util.Date dateOnly = sdf.parse(paymentDateStr);
+                java.util.Calendar cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("GMT+8"));
+                cal.setTime(dateOnly);
+                java.util.Calendar now = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("GMT+8"));
+                cal.set(java.util.Calendar.HOUR_OF_DAY, now.get(java.util.Calendar.HOUR_OF_DAY));
+                cal.set(java.util.Calendar.MINUTE, now.get(java.util.Calendar.MINUTE));
+                cal.set(java.util.Calendar.SECOND, now.get(java.util.Calendar.SECOND));
+                paymentDate = cal.getTime();
             }
             catch (Exception e)
             {
@@ -240,7 +248,15 @@ public class FinSaleRecordController extends BaseController
             try
             {
                 java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd");
-                paymentDate = sdf.parse(paymentDateStr);
+                sdf.setTimeZone(java.util.TimeZone.getTimeZone("GMT+8"));
+                java.util.Date dateOnly = sdf.parse(paymentDateStr);
+                java.util.Calendar cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("GMT+8"));
+                cal.setTime(dateOnly);
+                java.util.Calendar now = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("GMT+8"));
+                cal.set(java.util.Calendar.HOUR_OF_DAY, now.get(java.util.Calendar.HOUR_OF_DAY));
+                cal.set(java.util.Calendar.MINUTE, now.get(java.util.Calendar.MINUTE));
+                cal.set(java.util.Calendar.SECOND, now.get(java.util.Calendar.SECOND));
+                paymentDate = cal.getTime();
             }
             catch (Exception e)
             {

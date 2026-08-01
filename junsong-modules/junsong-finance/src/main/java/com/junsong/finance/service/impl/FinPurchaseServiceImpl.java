@@ -149,6 +149,10 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
         }
     }
     
+    private BigDecimal nzQty(BigDecimal v) {
+        return v == null ? BigDecimal.ZERO : v;
+    }
+
     /**
      * 计算进货单总金额和总数量（赠品不计入金额但计入数量）
      */
@@ -158,12 +162,11 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
         if (StringUtils.isNotNull(details))
         {
             BigDecimal totalAmount = BigDecimal.ZERO;
-            int totalQuantity = 0;
+            BigDecimal totalQuantity = BigDecimal.ZERO;
             
             for (FinPurchaseDetail detail : details)
             {
                 normalizeIsGift(detail);
-                // 如果是赠品，金额设为0
                 if ("1".equals(detail.getIsGift()))
                 {
                     detail.setPrice(BigDecimal.ZERO);
@@ -171,22 +174,13 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
                 }
                 else if (detail.getQuantity() != null && detail.getPrice() != null)
                 {
-                    // 正常商品计算金额
-                    detail.setAmount(detail.getPrice().multiply(new BigDecimal(detail.getQuantity())));
+                    detail.setAmount(detail.getPrice().multiply(detail.getQuantity()));
                     totalAmount = totalAmount.add(detail.getAmount());
                 }
                 
-                // 不管是不是赠品，都计入总数量
                 if (detail.getQuantity() != null)
                 {
-                    try
-                    {
-                        totalQuantity = Math.addExact(totalQuantity, detail.getQuantity());
-                    }
-                    catch (ArithmeticException ex)
-                    {
-                        throw new ServiceException("进货单总数量超出允许范围");
-                    }
+                    totalQuantity = totalQuantity.add(nzQty(detail.getQuantity()));
                 }
             }
             
@@ -241,8 +235,7 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
 
         boolean active = "1".equals(finPurchase.getStatus()) || "2".equals(finPurchase.getStatus());
 
-        // 汇总本次明细中每个商品的目标入库量（同一商品多明细合并）
-        java.util.Map<Long, Integer> targetByProduct = new java.util.HashMap<>();
+        java.util.Map<Long, BigDecimal> targetByProduct = new java.util.HashMap<>();
         java.util.Map<Long, String> nameByProduct = new java.util.HashMap<>();
         java.util.Map<Long, BigDecimal> costByProduct = new java.util.HashMap<>();
         java.util.Map<Long, BigDecimal> amountByProduct = new java.util.HashMap<>();
@@ -250,32 +243,23 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
         {
             for (FinPurchaseDetail detail : finPurchase.getDetails())
             {
-                if (detail.getProductId() == null || detail.getQuantity() == null || detail.getQuantity() == 0)
+                if (detail.getProductId() == null || detail.getQuantity() == null || nzQty(detail.getQuantity()).signum() == 0)
                 {
                     continue;
                 }
                 Long pid = detail.getProductId();
-                try
-                {
-                    targetByProduct.merge(pid, detail.getQuantity(), Math::addExact);
-                }
-                catch (ArithmeticException ex)
-                {
-                    throw new ServiceException("采购入库失败：同商品普通数量与赠品数量合计超出允许范围");
-                }
+                targetByProduct.merge(pid, nzQty(detail.getQuantity()), BigDecimal::add);
                 nameByProduct.put(pid, detail.getProductName());
                 if (!"1".equals(detail.getIsGift()))
                 {
                     BigDecimal price = detail.getPrice() != null ? detail.getPrice() : BigDecimal.ZERO;
                     costByProduct.put(pid, price);
-                    // 累加非赠品明细的采购金额（单价 * 数量），赠品金额为 0 不计入成本池
-                    BigDecimal detailAmount = price.multiply(BigDecimal.valueOf(detail.getQuantity()));
+                    BigDecimal detailAmount = price.multiply(nzQty(detail.getQuantity()));
                     amountByProduct.merge(pid, detailAmount, BigDecimal::add);
                 }
             }
         }
 
-        // 并集：本次目标商品 + 该单历史已记录商品（历史有但本次没有 => 目标 0 反向冲销）
         java.util.Set<Long> productIds = new java.util.HashSet<>(targetByProduct.keySet());
         List<Long> recordedProductIds = finStockLedgerMapper.selectRecordedProductIds(TenantContext.getTenantId(), "PURCHASE", finPurchase.getPurchaseId());
         if (recordedProductIds != null)
@@ -285,7 +269,7 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
 
         for (Long productId : productIds)
         {
-            int target = targetByProduct.getOrDefault(productId, 0);
+            BigDecimal target = targetByProduct.getOrDefault(productId, BigDecimal.ZERO);
             String productName = nameByProduct.get(productId);
             BigDecimal cost = costByProduct.getOrDefault(productId, BigDecimal.ZERO);
             BigDecimal amount = amountByProduct.getOrDefault(productId, BigDecimal.ZERO);
@@ -322,7 +306,7 @@ public class FinPurchaseServiceImpl implements IFinPurchaseService
         for (Long productId : recordedProductIds)
         {
             finStockLedgerService.reconcilePurchaseStock(TenantContext.getTenantId(), deptId, productId, null, purchaseId, purchaseNo,
-                    0, BigDecimal.ZERO, BigDecimal.ZERO, operator);
+                    BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, operator);
         }
     }
 

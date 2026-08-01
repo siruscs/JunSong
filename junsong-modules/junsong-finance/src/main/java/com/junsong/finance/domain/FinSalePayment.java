@@ -48,7 +48,7 @@ public class FinSalePayment extends BaseEntity
     private String paymentMethod;
 
     /** 缴款日期 */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     @Excel(name = "缴款日期", width = 30, dateFormat = "yyyy-MM-dd HH:mm:ss")
     @NotNull(message = "缴款日期不能为空")
     private Date paymentDate;

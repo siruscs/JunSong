@@ -14,9 +14,9 @@ public class FinStockLedger extends BaseEntity {
     private Long productId;
     private String productName;
     private String changeType;
-    private Integer changeQuantity;
-    private Integer beforeQuantity;
-    private Integer afterQuantity;
+    private BigDecimal changeQuantity;
+    private BigDecimal beforeQuantity;
+    private BigDecimal afterQuantity;
     private BigDecimal unitCost;
     private String referenceType;
     private Long referenceId;
@@ -45,14 +45,14 @@ public class FinStockLedger extends BaseEntity {
     public String getChangeType() { return changeType; }
     public void setChangeType(String changeType) { this.changeType = changeType; }
 
-    public Integer getChangeQuantity() { return changeQuantity; }
-    public void setChangeQuantity(Integer changeQuantity) { this.changeQuantity = changeQuantity; }
+    public BigDecimal getChangeQuantity() { return changeQuantity; }
+    public void setChangeQuantity(BigDecimal changeQuantity) { this.changeQuantity = changeQuantity; }
 
-    public Integer getBeforeQuantity() { return beforeQuantity; }
-    public void setBeforeQuantity(Integer beforeQuantity) { this.beforeQuantity = beforeQuantity; }
+    public BigDecimal getBeforeQuantity() { return beforeQuantity; }
+    public void setBeforeQuantity(BigDecimal beforeQuantity) { this.beforeQuantity = beforeQuantity; }
 
-    public Integer getAfterQuantity() { return afterQuantity; }
-    public void setAfterQuantity(Integer afterQuantity) { this.afterQuantity = afterQuantity; }
+    public BigDecimal getAfterQuantity() { return afterQuantity; }
+    public void setAfterQuantity(BigDecimal afterQuantity) { this.afterQuantity = afterQuantity; }
 
     public BigDecimal getUnitCost() { return unitCost; }
     public void setUnitCost(BigDecimal unitCost) { this.unitCost = unitCost; }

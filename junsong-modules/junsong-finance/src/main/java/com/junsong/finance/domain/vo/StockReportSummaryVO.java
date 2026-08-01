@@ -1,5 +1,7 @@
 package com.junsong.finance.domain.vo;
 
+import java.math.BigDecimal;
+
 /**
  * 经营库存报表汇总指标。
  *
@@ -8,19 +10,19 @@ package com.junsong.finance.domain.vo;
 public class StockReportSummaryVO {
 
     /** 期初库存数量 */
-    private int openingQuantity;
+    private BigDecimal openingQuantity;
 
     /** 区间采购净入库数量 */
-    private int purchaseNetInQuantity;
+    private BigDecimal purchaseNetInQuantity;
 
     /** 区间销售净出库数量 */
-    private int saleNetOutQuantity;
+    private BigDecimal saleNetOutQuantity;
 
     /** 其他调整净数量（第一期恒为0） */
-    private int otherAdjustmentNetQuantity;
+    private BigDecimal otherAdjustmentNetQuantity;
 
     /** 期末库存数量 */
-    private int closingQuantity;
+    private BigDecimal closingQuantity;
 
     /** 负库存商品数 */
     private int negativeStockCount;
@@ -37,43 +39,43 @@ public class StockReportSummaryVO {
     /** 快照或流水对账异常商品数 */
     private int anomalyCount;
 
-    public int getOpeningQuantity() {
+    public BigDecimal getOpeningQuantity() {
         return openingQuantity;
     }
 
-    public void setOpeningQuantity(int openingQuantity) {
+    public void setOpeningQuantity(BigDecimal openingQuantity) {
         this.openingQuantity = openingQuantity;
     }
 
-    public int getPurchaseNetInQuantity() {
+    public BigDecimal getPurchaseNetInQuantity() {
         return purchaseNetInQuantity;
     }
 
-    public void setPurchaseNetInQuantity(int purchaseNetInQuantity) {
+    public void setPurchaseNetInQuantity(BigDecimal purchaseNetInQuantity) {
         this.purchaseNetInQuantity = purchaseNetInQuantity;
     }
 
-    public int getSaleNetOutQuantity() {
+    public BigDecimal getSaleNetOutQuantity() {
         return saleNetOutQuantity;
     }
 
-    public void setSaleNetOutQuantity(int saleNetOutQuantity) {
+    public void setSaleNetOutQuantity(BigDecimal saleNetOutQuantity) {
         this.saleNetOutQuantity = saleNetOutQuantity;
     }
 
-    public int getOtherAdjustmentNetQuantity() {
+    public BigDecimal getOtherAdjustmentNetQuantity() {
         return otherAdjustmentNetQuantity;
     }
 
-    public void setOtherAdjustmentNetQuantity(int otherAdjustmentNetQuantity) {
+    public void setOtherAdjustmentNetQuantity(BigDecimal otherAdjustmentNetQuantity) {
         this.otherAdjustmentNetQuantity = otherAdjustmentNetQuantity;
     }
 
-    public int getClosingQuantity() {
+    public BigDecimal getClosingQuantity() {
         return closingQuantity;
     }
 
-    public void setClosingQuantity(int closingQuantity) {
+    public void setClosingQuantity(BigDecimal closingQuantity) {
         this.closingQuantity = closingQuantity;
     }
 

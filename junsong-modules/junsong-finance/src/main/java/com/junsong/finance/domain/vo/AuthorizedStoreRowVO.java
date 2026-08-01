@@ -15,7 +15,7 @@ public class AuthorizedStoreRowVO {
     private BigDecimal memberSalesAmount;
     private BigDecimal memberSalesRatio;
     private Integer saleCount;
-    private Integer saleQuantity;
+    private BigDecimal saleQuantity;
     private BigDecimal avgOrderAmount;
     private BigDecimal salesChangeRate;
     private BigDecimal expenseChangeRate;
@@ -67,8 +67,8 @@ public class AuthorizedStoreRowVO {
     public Integer getSaleCount() { return saleCount; }
     public void setSaleCount(Integer saleCount) { this.saleCount = saleCount; }
 
-    public Integer getSaleQuantity() { return saleQuantity; }
-    public void setSaleQuantity(Integer saleQuantity) { this.saleQuantity = saleQuantity; }
+    public java.math.BigDecimal getSaleQuantity() { return saleQuantity; }
+    public void setSaleQuantity(java.math.BigDecimal saleQuantity) { this.saleQuantity = saleQuantity; }
 
     public BigDecimal getAvgOrderAmount() { return avgOrderAmount; }
     public void setAvgOrderAmount(BigDecimal avgOrderAmount) { this.avgOrderAmount = avgOrderAmount; }

@@ -16,7 +16,7 @@ package com.junsong.finance.domain.vo;
  */
 public class StocktakeCountRequest {
     /** 实际盘点数量（非负） */
-    private Integer actualQuantity;
+    private java.math.BigDecimal actualQuantity;
     /** 损耗原因代码（方差非零时必填）：EXPIRED/DAMAGED/THEFT/WEIGHING/OPERATION/MISSING_TRANSACTION/OTHER */
     private String reasonCode;
     /** 损耗原因文字说明（方差非零时必填） */
@@ -28,8 +28,8 @@ public class StocktakeCountRequest {
     /** 行表版本号（乐观锁） */
     private Integer version;
 
-    public Integer getActualQuantity() { return actualQuantity; }
-    public void setActualQuantity(Integer actualQuantity) { this.actualQuantity = actualQuantity; }
+    public java.math.BigDecimal getActualQuantity() { return actualQuantity; }
+    public void setActualQuantity(java.math.BigDecimal actualQuantity) { this.actualQuantity = actualQuantity; }
 
     public String getReasonCode() { return reasonCode; }
     public void setReasonCode(String reasonCode) { this.reasonCode = reasonCode; }

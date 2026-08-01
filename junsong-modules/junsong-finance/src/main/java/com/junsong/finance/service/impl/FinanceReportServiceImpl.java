@@ -143,7 +143,7 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
         List<Map<String, Object>> trendStats = finSaleRecordMapper.selectSaleTrendStats(params.getDeptIds(), params.getStartTime(), params.getEndTime());
         BigDecimal totalSales = sumField(trendStats, "totalSales");
         int totalCount = finSaleRecordMapper.countSaleRecords(params.getDeptIds(), params.getStartTime(), params.getEndTime());
-        int totalQuantity = finSaleRecordMapper.sumSaleQuantity(params.getDeptIds(), params.getStartTime(), params.getEndTime());
+        BigDecimal totalQuantity = nzBig(finSaleRecordMapper.sumSaleQuantity(params.getDeptIds(), params.getStartTime(), params.getEndTime()));
         vo.setTotalSales(totalSales);
         vo.setTotalCount(totalCount);
         vo.setAvgPrice(totalCount > 0
@@ -613,15 +613,15 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
         List<Map<String, Object>> trendStats = finSaleRecordMapper.selectSaleTrendStats(deptIds, params.getStartTime(), params.getEndTime());
         BigDecimal totalSales = sumField(trendStats, "totalSales");
         int orderCount = finSaleRecordMapper.countSaleRecords(deptIds, params.getStartTime(), params.getEndTime());
-        int totalQuantity = finSaleRecordMapper.sumSaleQuantity(deptIds, params.getStartTime(), params.getEndTime());
+        BigDecimal totalQuantity = nzBig(finSaleRecordMapper.sumSaleQuantity(deptIds, params.getStartTime(), params.getEndTime()));
 
         vo.setTotalSales(totalSales);
         vo.setOrderCount(orderCount);
         vo.setTotalQuantity(totalQuantity);
         vo.setAvgOrderAmount(orderCount > 0
                 ? totalSales.divide(new BigDecimal(orderCount), 2, java.math.RoundingMode.HALF_UP) : BigDecimal.ZERO);
-        vo.setAvgItemAmount(totalQuantity > 0
-                ? totalSales.divide(new BigDecimal(totalQuantity), 2, java.math.RoundingMode.HALF_UP) : BigDecimal.ZERO);
+        vo.setAvgItemAmount(nzBig(totalQuantity).signum() > 0
+                ? totalSales.divide(nzBig(totalQuantity), 2, java.math.RoundingMode.HALF_UP) : BigDecimal.ZERO);
 
         BigDecimal memberSales = nullSafe(finSaleRecordMapper.selectMemberSales(deptIds, params.getStartTime(), params.getEndTime()));
         vo.setMemberSales(memberSales);
@@ -639,7 +639,7 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
                 sr.setDeptId(toLong(row.get("deptId")));
                 sr.setDeptName(String.valueOf(row.getOrDefault("deptName", "")));
                 sr.setAmount(toBigDecimal(row.get("totalSales")));
-                sr.setQuantity(toInt(row.get("orderCount")));
+                sr.setQuantity(toBigDecimal(row.get("orderCount")));
                 storeRank.add(sr);
             }
         }
@@ -653,7 +653,7 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
                 sr.setId(toLong(row.get("productId")));
                 sr.setName(String.valueOf(row.getOrDefault("productName", "")));
                 sr.setAmount(toBigDecimal(row.get("totalSales")));
-                sr.setQuantity(toInt(row.get("totalQuantity")));
+                sr.setQuantity(toBigDecimal(row.get("totalQuantity")));
                 sr.setDeptId(toLong(row.get("deptId")));
                 sr.setDeptName(String.valueOf(row.getOrDefault("deptName", "")));
                 productRank.add(sr);
@@ -851,6 +851,10 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
 
     private BigDecimal nullSafe(BigDecimal value) {
         return value != null ? value : BigDecimal.ZERO;
+    }
+
+    private BigDecimal nzBig(BigDecimal v) {
+        return v == null ? BigDecimal.ZERO : v;
     }
 
     private Long toLong(Object value) {

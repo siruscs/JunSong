@@ -27,10 +27,10 @@ public class StockTakeRequest {
     private Long productId;
 
     /** 盘点后实际数量（必须 >= 0） */
-    private Integer actualQuantity;
+    private java.math.BigDecimal actualQuantity;
 
     /** 盘点前系统库存（客户端展示用，后端以加锁查询为准） */
-    private Integer expectedQuantity;
+    private java.math.BigDecimal expectedQuantity;
 
     /** 单位成本（盘盈时按此成本入账；盘亏时按移动加权平均成本出账，客户端传入仅作参考） */
     private BigDecimal unitCost;
@@ -47,11 +47,11 @@ public class StockTakeRequest {
     public Long getProductId() { return productId; }
     public void setProductId(Long productId) { this.productId = productId; }
 
-    public Integer getActualQuantity() { return actualQuantity; }
-    public void setActualQuantity(Integer actualQuantity) { this.actualQuantity = actualQuantity; }
+    public java.math.BigDecimal getActualQuantity() { return actualQuantity; }
+    public void setActualQuantity(java.math.BigDecimal actualQuantity) { this.actualQuantity = actualQuantity; }
 
-    public Integer getExpectedQuantity() { return expectedQuantity; }
-    public void setExpectedQuantity(Integer expectedQuantity) { this.expectedQuantity = expectedQuantity; }
+    public java.math.BigDecimal getExpectedQuantity() { return expectedQuantity; }
+    public void setExpectedQuantity(java.math.BigDecimal expectedQuantity) { this.expectedQuantity = expectedQuantity; }
 
     public BigDecimal getUnitCost() { return unitCost; }
     public void setUnitCost(BigDecimal unitCost) { this.unitCost = unitCost; }

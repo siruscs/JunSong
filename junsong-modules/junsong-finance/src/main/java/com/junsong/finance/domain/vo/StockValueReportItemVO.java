@@ -20,7 +20,7 @@ public class StockValueReportItemVO {
     private String productName;
 
     /** 期末库存数量 */
-    private Integer closingQuantity;
+    private BigDecimal closingQuantity;
 
     /** 移动加权平均单位成本（6位小数） */
     private BigDecimal avgUnitCost;
@@ -88,11 +88,11 @@ public class StockValueReportItemVO {
         this.productName = productName;
     }
 
-    public Integer getClosingQuantity() {
+    public BigDecimal getClosingQuantity() {
         return closingQuantity;
     }
 
-    public void setClosingQuantity(Integer closingQuantity) {
+    public void setClosingQuantity(BigDecimal closingQuantity) {
         this.closingQuantity = closingQuantity;
     }
 

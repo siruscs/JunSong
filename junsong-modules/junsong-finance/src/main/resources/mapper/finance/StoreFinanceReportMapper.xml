@@ -32,7 +32,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </where>
     </select>
 
-    <select id="sumStoreSaleQuantity" resultType="java.lang.Integer">
+    <select id="sumStoreSaleQuantity" resultType="java.math.BigDecimal">
         select ifnull(sum(r.total_quantity), 0)
         from fin_sale_record r
         <where> r.del_flag = '0'

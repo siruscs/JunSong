@@ -113,7 +113,7 @@ export const constantRoutes: any[] = [
     // 期初库存工作台固定挂载，接口与按钮权限仍由后端严格控制。
     path: '/finance/stockInit/index',
     component: Layout,
-    hidden: true,
+    hidden: false,
     children: [
       {
         path: '',

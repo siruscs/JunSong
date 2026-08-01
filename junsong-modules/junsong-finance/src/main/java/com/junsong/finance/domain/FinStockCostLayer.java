@@ -22,7 +22,7 @@ public class FinStockCostLayer extends BaseEntity {
     /** 移动加权平均单位成本（6位小数） */
     private BigDecimal avgUnitCost;
     /** 成本层记录的库存数量（与 position 对账） */
-    private Integer stockQuantity;
+    private BigDecimal stockQuantity;
     /** 库存金额（2位小数） */
     private BigDecimal stockAmount;
     /** 乐观锁版本号 */
@@ -43,8 +43,8 @@ public class FinStockCostLayer extends BaseEntity {
     public BigDecimal getAvgUnitCost() { return avgUnitCost; }
     public void setAvgUnitCost(BigDecimal avgUnitCost) { this.avgUnitCost = avgUnitCost; }
 
-    public Integer getStockQuantity() { return stockQuantity; }
-    public void setStockQuantity(Integer stockQuantity) { this.stockQuantity = stockQuantity; }
+    public BigDecimal getStockQuantity() { return stockQuantity; }
+    public void setStockQuantity(BigDecimal stockQuantity) { this.stockQuantity = stockQuantity; }
 
     public BigDecimal getStockAmount() { return stockAmount; }
     public void setStockAmount(BigDecimal stockAmount) { this.stockAmount = stockAmount; }

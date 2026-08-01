@@ -8,7 +8,7 @@ public class StoreOperationSummaryVO {
     private String deptName;
     private BigDecimal totalSales;
     private Integer saleCount;
-    private Integer saleQuantity;
+    private BigDecimal saleQuantity;
     private BigDecimal avgOrderAmount;
     private BigDecimal totalExpense;
     private BigDecimal unverifiedExpense;
@@ -60,11 +60,11 @@ public class StoreOperationSummaryVO {
         this.saleCount = saleCount;
     }
 
-    public Integer getSaleQuantity() {
+    public java.math.BigDecimal getSaleQuantity() {
         return saleQuantity;
     }
 
-    public void setSaleQuantity(Integer saleQuantity) {
+    public void setSaleQuantity(java.math.BigDecimal saleQuantity) {
         this.saleQuantity = saleQuantity;
     }
 

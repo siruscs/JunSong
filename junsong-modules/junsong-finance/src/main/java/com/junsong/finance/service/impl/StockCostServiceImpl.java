@@ -49,10 +49,10 @@ public class StockCostServiceImpl implements IStockCostService {
 
     @Override
     public void applyPurchaseInbound(Long tenantId, Long deptId, Long productId,
-                                     int quantity, BigDecimal amount,
+                                     BigDecimal quantity, BigDecimal amount,
                                      Long sourceLedgerId, String operator) {
         assertTenantScope(tenantId, deptId, productId);
-        if (quantity <= 0) {
+        if (nz(quantity).signum() <= 0) {
             throw new ServiceException("采购入库数量必须为正数");
         }
         BigDecimal inboundAmount = nz(amount).setScale(AMOUNT_SCALE, ROUNDING);
@@ -63,8 +63,8 @@ public class StockCostServiceImpl implements IStockCostService {
             throw new ServiceException("成本层行创建失败，拒绝处理");
         }
 
-        int newQty = layer.getStockQuantity() + quantity;
-        BigDecimal newAmount = layer.getStockAmount().add(inboundAmount).setScale(AMOUNT_SCALE, ROUNDING);
+        BigDecimal newQty = nz(layer.getStockQuantity()).add(nz(quantity));
+        BigDecimal newAmount = nz(layer.getStockAmount()).add(inboundAmount).setScale(AMOUNT_SCALE, ROUNDING);
         BigDecimal newAvg = computeAvg(newAmount, newQty);
 
         updateLayerWithVersion(layer, newAvg, newQty, newAmount, operator);
@@ -74,10 +74,10 @@ public class StockCostServiceImpl implements IStockCostService {
 
     @Override
     public void reversePurchaseInbound(Long tenantId, Long deptId, Long productId,
-                                       int reverseQuantity,
+                                       BigDecimal reverseQuantity,
                                        Long sourceLedgerId, String operator) {
         assertTenantScope(tenantId, deptId, productId);
-        if (reverseQuantity <= 0) {
+        if (nz(reverseQuantity).signum() <= 0) {
             throw new ServiceException("采购冲销数量必须为正数");
         }
 
@@ -87,11 +87,11 @@ public class StockCostServiceImpl implements IStockCostService {
             throw new ServiceException("成本层行创建失败，拒绝处理");
         }
 
-        int newQty = layer.getStockQuantity() - reverseQuantity;
-        BigDecimal reverseAmount = layer.getAvgUnitCost()
-                .multiply(BigDecimal.valueOf(reverseQuantity))
+        BigDecimal newQty = nz(layer.getStockQuantity()).subtract(nz(reverseQuantity));
+        BigDecimal reverseAmount = nz(layer.getAvgUnitCost())
+                .multiply(nz(reverseQuantity))
                 .setScale(AMOUNT_SCALE, ROUNDING);
-        BigDecimal newAmount = layer.getStockAmount().subtract(reverseAmount).setScale(AMOUNT_SCALE, ROUNDING);
+        BigDecimal newAmount = nz(layer.getStockAmount()).subtract(reverseAmount).setScale(AMOUNT_SCALE, ROUNDING);
         if (newAmount.signum() < 0) {
             newAmount = BigDecimal.ZERO.setScale(AMOUNT_SCALE, ROUNDING);
         }
@@ -99,15 +99,15 @@ public class StockCostServiceImpl implements IStockCostService {
 
         updateLayerWithVersion(layer, newAvg, newQty, newAmount, operator);
         writeCostLedger(tenantId, deptId, productId, SOURCE_PURCHASE, sourceLedgerId, COST_REVERSE_OUT,
-                        -reverseQuantity, layer.getAvgUnitCost(), reverseAmount, operator);
+                        nz(reverseQuantity).negate(), layer.getAvgUnitCost(), reverseAmount, operator);
     }
 
     @Override
     public BigDecimal applySaleOutbound(Long tenantId, Long deptId, Long productId,
-                                        int quantity, boolean allowNegative,
+                                        BigDecimal quantity, boolean allowNegative,
                                         Long sourceLedgerId, String operator) {
         assertTenantScope(tenantId, deptId, productId);
-        if (quantity <= 0) {
+        if (nz(quantity).signum() <= 0) {
             throw new ServiceException("销售出库数量必须为正数");
         }
 
@@ -117,31 +117,31 @@ public class StockCostServiceImpl implements IStockCostService {
             throw new ServiceException("成本层行创建失败，拒绝处理");
         }
 
-        int newQty = layer.getStockQuantity() - quantity;
-        if (newQty < 0 && !allowNegative) {
+        BigDecimal newQty = nz(layer.getStockQuantity()).subtract(nz(quantity));
+        if (newQty.signum() < 0 && !allowNegative) {
             throw new ServiceException("库存不足，无法出库：当前库存 " + layer.getStockQuantity()
                     + "，需出库 " + quantity);
         }
 
         BigDecimal solidifiedCost = layer.getAvgUnitCost();
-        BigDecimal saleCost = solidifiedCost.multiply(BigDecimal.valueOf(quantity))
+        BigDecimal saleCost = nz(solidifiedCost).multiply(nz(quantity))
                 .setScale(AMOUNT_SCALE, ROUNDING);
-        BigDecimal newAmount = layer.getStockAmount().subtract(saleCost).setScale(AMOUNT_SCALE, ROUNDING);
+        BigDecimal newAmount = nz(layer.getStockAmount()).subtract(saleCost).setScale(AMOUNT_SCALE, ROUNDING);
         // 销售出库不改变平均成本（移动加权平均法）
         BigDecimal newAvg = solidifiedCost;
 
         updateLayerWithVersion(layer, newAvg, newQty, newAmount, operator);
         writeCostLedger(tenantId, deptId, productId, SOURCE_SALE, sourceLedgerId, COST_OUT,
-                        -quantity, solidifiedCost, saleCost, operator);
+                        nz(quantity).negate(), solidifiedCost, saleCost, operator);
         return solidifiedCost;
     }
 
     @Override
     public void reverseSaleOutbound(Long tenantId, Long deptId, Long productId,
-                                    int quantity, BigDecimal originalUnitCost,
+                                    BigDecimal quantity, BigDecimal originalUnitCost,
                                     Long sourceLedgerId, String operator) {
         assertTenantScope(tenantId, deptId, productId);
-        if (quantity <= 0) {
+        if (nz(quantity).signum() <= 0) {
             throw new ServiceException("销售冲销数量必须为正数");
         }
         if (originalUnitCost == null || originalUnitCost.signum() < 0) {
@@ -155,10 +155,10 @@ public class StockCostServiceImpl implements IStockCostService {
             throw new ServiceException("成本层行创建失败，拒绝处理");
         }
 
-        int newQty = layer.getStockQuantity() + quantity;
-        BigDecimal restoreAmount = originalCost.multiply(BigDecimal.valueOf(quantity))
+        BigDecimal newQty = nz(layer.getStockQuantity()).add(nz(quantity));
+        BigDecimal restoreAmount = originalCost.multiply(nz(quantity))
                 .setScale(AMOUNT_SCALE, ROUNDING);
-        BigDecimal newAmount = layer.getStockAmount().add(restoreAmount).setScale(AMOUNT_SCALE, ROUNDING);
+        BigDecimal newAmount = nz(layer.getStockAmount()).add(restoreAmount).setScale(AMOUNT_SCALE, ROUNDING);
         // 销售冲销视同入库，重新计算平均成本
         BigDecimal newAvg = computeAvg(newAmount, newQty);
 
@@ -185,8 +185,8 @@ public class StockCostServiceImpl implements IStockCostService {
             throw new ServiceException("成本层行创建失败，拒绝处理");
         }
 
-        int newQty = layer.getStockQuantity(); // 调整不改变数量
-        BigDecimal newAmount = layer.getStockAmount().add(adjustAmount).setScale(AMOUNT_SCALE, ROUNDING);
+        BigDecimal newQty = nz(layer.getStockQuantity()); // 调整不改变数量
+        BigDecimal newAmount = nz(layer.getStockAmount()).add(adjustAmount).setScale(AMOUNT_SCALE, ROUNDING);
         if (newAmount.signum() < 0) {
             newAmount = BigDecimal.ZERO.setScale(AMOUNT_SCALE, ROUNDING);
         }
@@ -198,9 +198,9 @@ public class StockCostServiceImpl implements IStockCostService {
 
     @Override
     public Long applyStocktakeLoss(Long tenantId, Long deptId, Long productId,
-                                   int quantity, Long sourceLedgerId, String operator) {
+                                   BigDecimal quantity, Long sourceLedgerId, String operator) {
         assertTenantScope(tenantId, deptId, productId);
-        if (quantity <= 0) {
+        if (nz(quantity).signum() <= 0) {
             throw new ServiceException("盘亏数量必须为正数");
         }
 
@@ -210,17 +210,17 @@ public class StockCostServiceImpl implements IStockCostService {
             throw new ServiceException("成本层行创建失败，拒绝处理");
         }
 
-        int newQty = layer.getStockQuantity() - quantity;
-        if (newQty < 0) {
+        BigDecimal newQty = nz(layer.getStockQuantity()).subtract(nz(quantity));
+        if (newQty.signum() < 0) {
             // 盘亏超过库存：说明盘点数据或库存数据异常，拒绝过账
             throw new ServiceException("盘亏数量超过库存（当前 " + layer.getStockQuantity()
                     + "，盘亏 " + quantity + "），拒绝过账");
         }
 
         BigDecimal solidifiedCost = layer.getAvgUnitCost();
-        BigDecimal lossAmount = solidifiedCost.multiply(BigDecimal.valueOf(quantity))
+        BigDecimal lossAmount = nz(solidifiedCost).multiply(nz(quantity))
                 .setScale(AMOUNT_SCALE, ROUNDING);
-        BigDecimal newAmount = layer.getStockAmount().subtract(lossAmount).setScale(AMOUNT_SCALE, ROUNDING);
+        BigDecimal newAmount = nz(layer.getStockAmount()).subtract(lossAmount).setScale(AMOUNT_SCALE, ROUNDING);
         if (newAmount.signum() < 0) {
             newAmount = BigDecimal.ZERO.setScale(AMOUNT_SCALE, ROUNDING);
         }
@@ -229,15 +229,15 @@ public class StockCostServiceImpl implements IStockCostService {
 
         updateLayerWithVersion(layer, newAvg, newQty, newAmount, operator);
         return writeCostLedger(tenantId, deptId, productId, SOURCE_STOCKTAKE, sourceLedgerId,
-                               STOCKTAKE_LOSS_OUT, -quantity, solidifiedCost, lossAmount, operator);
+                               STOCKTAKE_LOSS_OUT, nz(quantity).negate(), solidifiedCost, lossAmount, operator);
     }
 
     @Override
     public Long applyStocktakeGain(Long tenantId, Long deptId, Long productId,
-                                   int quantity, BigDecimal amount,
+                                   BigDecimal quantity, BigDecimal amount,
                                    Long sourceLedgerId, String operator) {
         assertTenantScope(tenantId, deptId, productId);
-        if (quantity <= 0) {
+        if (nz(quantity).signum() <= 0) {
             throw new ServiceException("盘盈数量必须为正数");
         }
 
@@ -250,7 +250,7 @@ public class StockCostServiceImpl implements IStockCostService {
         // amount=null 时按当前平均成本 × 数量计算入账金额（默认估值）
         BigDecimal gainAmount;
         if (amount == null) {
-            gainAmount = layer.getAvgUnitCost().multiply(BigDecimal.valueOf(quantity))
+            gainAmount = nz(layer.getAvgUnitCost()).multiply(nz(quantity))
                     .setScale(AMOUNT_SCALE, ROUNDING);
         } else {
             gainAmount = amount.setScale(AMOUNT_SCALE, ROUNDING);
@@ -259,8 +259,8 @@ public class StockCostServiceImpl implements IStockCostService {
             throw new ServiceException("盘盈金额不能为负数");
         }
 
-        int newQty = layer.getStockQuantity() + quantity;
-        BigDecimal newAmount = layer.getStockAmount().add(gainAmount).setScale(AMOUNT_SCALE, ROUNDING);
+        BigDecimal newQty = nz(layer.getStockQuantity()).add(nz(quantity));
+        BigDecimal newAmount = nz(layer.getStockAmount()).add(gainAmount).setScale(AMOUNT_SCALE, ROUNDING);
         // 盘盈视同入库，重新计算平均成本
         BigDecimal newAvg = computeAvg(newAmount, newQty);
 
@@ -271,11 +271,11 @@ public class StockCostServiceImpl implements IStockCostService {
 
     @Override
     public Long reverseStocktakeAdjustment(Long tenantId, Long deptId, Long productId,
-                                           int quantity, BigDecimal unitCost,
+                                           BigDecimal quantity, BigDecimal unitCost,
                                            Long sourceLedgerId, Long originalCostLedgerId,
                                            String operator) {
         assertTenantScope(tenantId, deptId, productId);
-        if (quantity <= 0) {
+        if (nz(quantity).signum() <= 0) {
             throw new ServiceException("冲销数量必须为正数");
         }
         if (unitCost == null || unitCost.signum() < 0) {
@@ -303,7 +303,7 @@ public class StockCostServiceImpl implements IStockCostService {
         }
 
         BigDecimal originalCost = unitCost.setScale(UNIT_COST_SCALE, ROUNDING);
-        BigDecimal reverseAmount = originalCost.multiply(BigDecimal.valueOf(quantity))
+        BigDecimal reverseAmount = originalCost.multiply(nz(quantity))
                 .setScale(AMOUNT_SCALE, ROUNDING);
 
         costLayerMapper.insertCostLayerIfAbsent(tenantId, deptId, productId);
@@ -312,23 +312,23 @@ public class StockCostServiceImpl implements IStockCostService {
             throw new ServiceException("成本层行创建失败，拒绝处理");
         }
 
-        int newQty;
+        BigDecimal newQty;
         BigDecimal newAmount;
         String changeType;
 
         if (reverseLoss) {
             // 原盘亏 → 冲销恢复库存与金额
-            newQty = layer.getStockQuantity() + quantity;
-            newAmount = layer.getStockAmount().add(reverseAmount).setScale(AMOUNT_SCALE, ROUNDING);
+            newQty = nz(layer.getStockQuantity()).add(nz(quantity));
+            newAmount = nz(layer.getStockAmount()).add(reverseAmount).setScale(AMOUNT_SCALE, ROUNDING);
             changeType = COST_REVERSE_IN;
         } else {
             // 原盘盈 → 冲销扣减库存与金额
-            newQty = layer.getStockQuantity() - quantity;
-            if (newQty < 0) {
+            newQty = nz(layer.getStockQuantity()).subtract(nz(quantity));
+            if (newQty.signum() < 0) {
                 throw new ServiceException("冲销盘盈后库存为负（当前 " + layer.getStockQuantity()
                         + "，冲销 " + quantity + "），拒绝冲销");
             }
-            newAmount = layer.getStockAmount().subtract(reverseAmount).setScale(AMOUNT_SCALE, ROUNDING);
+            newAmount = nz(layer.getStockAmount()).subtract(reverseAmount).setScale(AMOUNT_SCALE, ROUNDING);
             if (newAmount.signum() < 0) {
                 newAmount = BigDecimal.ZERO.setScale(AMOUNT_SCALE, ROUNDING);
             }
@@ -338,7 +338,7 @@ public class StockCostServiceImpl implements IStockCostService {
         BigDecimal newAvg = computeAvg(newAmount, newQty);
         updateLayerWithVersion(layer, newAvg, newQty, newAmount, operator);
 
-        int signedQty = reverseLoss ? quantity : -quantity;
+        BigDecimal signedQty = reverseLoss ? quantity : nz(quantity).negate();
         return writeCostLedger(tenantId, deptId, productId, SOURCE_STOCKTAKE, sourceLedgerId,
                                changeType, signedQty, originalCost, reverseAmount, operator);
     }
@@ -364,14 +364,14 @@ public class StockCostServiceImpl implements IStockCostService {
         return ledger.getUnitCost();
     }
 
-    private BigDecimal computeAvg(BigDecimal amount, int qty) {
-        if (qty == 0) {
+    private BigDecimal computeAvg(BigDecimal amount, BigDecimal qty) {
+        if (nz(qty).signum() == 0) {
             return BigDecimal.ZERO.setScale(UNIT_COST_SCALE, ROUNDING);
         }
-        return amount.divide(BigDecimal.valueOf(qty), UNIT_COST_SCALE, ROUNDING);
+        return amount.divide(nz(qty), UNIT_COST_SCALE, ROUNDING);
     }
 
-    private void updateLayerWithVersion(FinStockCostLayer layer, BigDecimal avg, int qty,
+    private void updateLayerWithVersion(FinStockCostLayer layer, BigDecimal avg, BigDecimal qty,
                                         BigDecimal amount, String operator) {
         int affected = costLayerMapper.updateCostLayer(
                 layer.getTenantId(), layer.getDeptId(), layer.getProductId(),
@@ -383,7 +383,7 @@ public class StockCostServiceImpl implements IStockCostService {
 
     private Long writeCostLedger(Long tenantId, Long deptId, Long productId,
                                  String sourceType, Long sourceLedgerId, String costChangeType,
-                                 int quantity, BigDecimal unitCost, BigDecimal amount,
+                                 BigDecimal quantity, BigDecimal unitCost, BigDecimal amount,
                                  String operator) {
         FinStockCostLedger cl = new FinStockCostLedger();
         cl.setTenantId(tenantId);
@@ -412,7 +412,7 @@ public class StockCostServiceImpl implements IStockCostService {
         cl.setSourceType(SOURCE_ADJUST);
         cl.setSourceLedgerId(null);
         cl.setCostChangeType(COST_ADJUST);
-        cl.setQuantity(0); // 调整不改变数量
+        cl.setQuantity(BigDecimal.ZERO); // 调整不改变数量
         cl.setUnitCost(avgUnitCost.setScale(UNIT_COST_SCALE, ROUNDING));
         cl.setAmount(amount.setScale(AMOUNT_SCALE, ROUNDING));
         cl.setAdjustReason(reason);

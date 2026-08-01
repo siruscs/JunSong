@@ -1,5 +1,6 @@
 package com.junsong.finance.domain.vo;
 
+import java.math.BigDecimal;
 import java.util.Date;
 
 /**
@@ -18,22 +19,22 @@ public class StockReportItemVO {
     private String unit;
 
     /** 最低库存 */
-    private Integer minStock;
+    private BigDecimal minStock;
 
     /** 期初数量 */
-    private Integer openingQuantity;
+    private BigDecimal openingQuantity;
 
     /** 采购净入库 */
-    private Integer purchaseNetInQuantity;
+    private BigDecimal purchaseNetInQuantity;
 
     /** 销售净出库 */
-    private Integer saleNetOutQuantity;
+    private BigDecimal saleNetOutQuantity;
 
     /** 区间盘点等非采购销售调整净数量 */
-    private Integer otherAdjustmentNetQuantity;
+    private BigDecimal otherAdjustmentNetQuantity;
 
     /** 期末数量 */
-    private Integer closingQuantity;
+    private BigDecimal closingQuantity;
 
     /** 最近入库时间 */
     private Date lastInboundTime;
@@ -106,51 +107,51 @@ public class StockReportItemVO {
         this.unit = unit;
     }
 
-    public Integer getMinStock() {
+    public BigDecimal getMinStock() {
         return minStock;
     }
 
-    public void setMinStock(Integer minStock) {
+    public void setMinStock(BigDecimal minStock) {
         this.minStock = minStock;
     }
 
-    public Integer getOpeningQuantity() {
+    public BigDecimal getOpeningQuantity() {
         return openingQuantity;
     }
 
-    public void setOpeningQuantity(Integer openingQuantity) {
+    public void setOpeningQuantity(BigDecimal openingQuantity) {
         this.openingQuantity = openingQuantity;
     }
 
-    public Integer getPurchaseNetInQuantity() {
+    public BigDecimal getPurchaseNetInQuantity() {
         return purchaseNetInQuantity;
     }
 
-    public void setPurchaseNetInQuantity(Integer purchaseNetInQuantity) {
+    public void setPurchaseNetInQuantity(BigDecimal purchaseNetInQuantity) {
         this.purchaseNetInQuantity = purchaseNetInQuantity;
     }
 
-    public Integer getSaleNetOutQuantity() {
+    public BigDecimal getSaleNetOutQuantity() {
         return saleNetOutQuantity;
     }
 
-    public void setSaleNetOutQuantity(Integer saleNetOutQuantity) {
+    public void setSaleNetOutQuantity(BigDecimal saleNetOutQuantity) {
         this.saleNetOutQuantity = saleNetOutQuantity;
     }
 
-    public Integer getOtherAdjustmentNetQuantity() {
+    public BigDecimal getOtherAdjustmentNetQuantity() {
         return otherAdjustmentNetQuantity;
     }
 
-    public void setOtherAdjustmentNetQuantity(Integer otherAdjustmentNetQuantity) {
+    public void setOtherAdjustmentNetQuantity(BigDecimal otherAdjustmentNetQuantity) {
         this.otherAdjustmentNetQuantity = otherAdjustmentNetQuantity;
     }
 
-    public Integer getClosingQuantity() {
+    public BigDecimal getClosingQuantity() {
         return closingQuantity;
     }
 
-    public void setClosingQuantity(Integer closingQuantity) {
+    public void setClosingQuantity(BigDecimal closingQuantity) {
         this.closingQuantity = closingQuantity;
     }
 

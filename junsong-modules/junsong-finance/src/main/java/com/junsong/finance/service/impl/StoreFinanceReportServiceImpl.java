@@ -653,7 +653,7 @@ public class StoreFinanceReportServiceImpl implements IStoreFinanceReportService
             if (row.getTotalSales() == null) row.setTotalSales(BigDecimal.ZERO);
             if (row.getTotalExpense() == null) row.setTotalExpense(BigDecimal.ZERO);
             if (row.getSaleCount() == null) row.setSaleCount(0);
-            if (row.getSaleQuantity() == null) row.setSaleQuantity(0);
+            if (row.getSaleQuantity() == null) row.setSaleQuantity(BigDecimal.ZERO);
             if (row.getUnverifiedAmount() == null) row.setUnverifiedAmount(BigDecimal.ZERO);
             if (row.getMemberSalesAmount() == null) row.setMemberSalesAmount(BigDecimal.ZERO);
             if (row.getCashInAmount() == null) row.setCashInAmount(BigDecimal.ZERO);
@@ -1051,10 +1051,7 @@ public class StoreFinanceReportServiceImpl implements IStoreFinanceReportService
         if (saleCount == null) {
             saleCount = 0;
         }
-        Integer saleQuantity = storeFinanceReportMapper.sumStoreSaleQuantity(params);
-        if (saleQuantity == null) {
-            saleQuantity = 0;
-        }
+        BigDecimal saleQuantity = nzBig(storeFinanceReportMapper.sumStoreSaleQuantity(params));
         BigDecimal totalExpense = nullSafe(storeFinanceReportMapper.selectStoreTotalExpense(params));
         BigDecimal unverifiedExpense = nullSafe(storeFinanceReportMapper.selectStoreUnverifiedExpense(params));
         BigDecimal unverifiedAdvance = nullSafe(storeFinanceReportMapper.selectStoreUnverifiedAdvance(params));
@@ -1223,6 +1220,10 @@ public class StoreFinanceReportServiceImpl implements IStoreFinanceReportService
 
     private BigDecimal nullSafe(BigDecimal value) {
         return value != null ? value : BigDecimal.ZERO;
+    }
+
+    private BigDecimal nzBig(BigDecimal v) {
+        return v == null ? BigDecimal.ZERO : v;
     }
 
     private List<StoreTrendRowVO> mergeTrends(List<StoreTrendRowVO> salesTrend, List<StoreTrendRowVO> expenseTrend) {

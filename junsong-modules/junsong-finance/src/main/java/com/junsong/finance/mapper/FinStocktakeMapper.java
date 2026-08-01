@@ -121,7 +121,7 @@ public interface FinStocktakeMapper {
 
     int updateStocktakeItemCount(@Param("tenantId") Long tenantId,
                                   @Param("itemId") Long itemId,
-                                  @Param("actualQuantity") Integer actualQuantity,
+                                  @Param("actualQuantity") java.math.BigDecimal actualQuantity,
                                   @Param("reasonCode") String reasonCode,
                                   @Param("reason") String reason,
                                   @Param("attachments") String attachments,
@@ -131,7 +131,7 @@ public interface FinStocktakeMapper {
 
     int updateStocktakeItemRecount(@Param("tenantId") Long tenantId,
                                     @Param("itemId") Long itemId,
-                                    @Param("recountQuantity") Integer recountQuantity,
+                                    @Param("recountQuantity") java.math.BigDecimal recountQuantity,
                                     @Param("reasonCode") String reasonCode,
                                     @Param("reason") String reason,
                                     @Param("recountIdempotencyKey") String recountIdempotencyKey,
@@ -140,14 +140,14 @@ public interface FinStocktakeMapper {
 
     int updateStocktakeItemFinal(@Param("tenantId") Long tenantId,
                                   @Param("itemId") Long itemId,
-                                  @Param("finalQuantity") Integer finalQuantity,
-                                  @Param("varianceQuantity") Integer varianceQuantity,
+                                  @Param("finalQuantity") java.math.BigDecimal finalQuantity,
+                                  @Param("varianceQuantity") java.math.BigDecimal varianceQuantity,
                                   @Param("unitCost") java.math.BigDecimal unitCost,
                                   @Param("varianceAmount") java.math.BigDecimal varianceAmount,
                                   @Param("reasonCode") String reasonCode,
                                   @Param("reason") String reason,
-                                  @Param("movementQuantityAfterFreeze") Integer movementQuantityAfterFreeze,
-                                  @Param("adjustedExpectedQuantity") Integer adjustedExpectedQuantity,
+                                  @Param("movementQuantityAfterFreeze") java.math.BigDecimal movementQuantityAfterFreeze,
+                                  @Param("adjustedExpectedQuantity") java.math.BigDecimal adjustedExpectedQuantity,
                                   @Param("version") Integer version);
 
     int updateStocktakeItemPostingRefs(@Param("tenantId") Long tenantId,

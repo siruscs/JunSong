@@ -23,9 +23,9 @@ public class StockReconciliationRowVO {
     private String deptName;
     private Long productId;
     private String productName;
-    private Integer expectedQuantity;
-    private Integer actualQuantity;
-    private Integer diffQuantity;
+    private java.math.BigDecimal expectedQuantity;
+    private java.math.BigDecimal actualQuantity;
+    private java.math.BigDecimal diffQuantity;
     private String anomalyCode;
     private String safetyNote;
 
@@ -44,14 +44,14 @@ public class StockReconciliationRowVO {
     public String getProductName() { return productName; }
     public void setProductName(String productName) { this.productName = productName; }
 
-    public Integer getExpectedQuantity() { return expectedQuantity; }
-    public void setExpectedQuantity(Integer expectedQuantity) { this.expectedQuantity = expectedQuantity; }
+    public java.math.BigDecimal getExpectedQuantity() { return expectedQuantity; }
+    public void setExpectedQuantity(java.math.BigDecimal expectedQuantity) { this.expectedQuantity = expectedQuantity; }
 
-    public Integer getActualQuantity() { return actualQuantity; }
-    public void setActualQuantity(Integer actualQuantity) { this.actualQuantity = actualQuantity; }
+    public java.math.BigDecimal getActualQuantity() { return actualQuantity; }
+    public void setActualQuantity(java.math.BigDecimal actualQuantity) { this.actualQuantity = actualQuantity; }
 
-    public Integer getDiffQuantity() { return diffQuantity; }
-    public void setDiffQuantity(Integer diffQuantity) { this.diffQuantity = diffQuantity; }
+    public java.math.BigDecimal getDiffQuantity() { return diffQuantity; }
+    public void setDiffQuantity(java.math.BigDecimal diffQuantity) { this.diffQuantity = diffQuantity; }
 
     public String getAnomalyCode() { return anomalyCode; }
     public void setAnomalyCode(String anomalyCode) { this.anomalyCode = anomalyCode; }

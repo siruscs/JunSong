@@ -38,19 +38,19 @@ public class FinStocktakeItem extends BaseEntity {
     @Excel(name = "商品名称")
     private String productName;
     @Excel(name = "账面数量", cellType = ColumnType.NUMERIC)
-    private Integer expectedQuantity;
+    private BigDecimal expectedQuantity;
     @Excel(name = "冻结后变动", cellType = ColumnType.NUMERIC)
-    private Integer movementQuantityAfterFreeze;
+    private BigDecimal movementQuantityAfterFreeze;
     @Excel(name = "调整后期望", cellType = ColumnType.NUMERIC)
-    private Integer adjustedExpectedQuantity;
+    private BigDecimal adjustedExpectedQuantity;
     @Excel(name = "实盘数量", cellType = ColumnType.NUMERIC)
-    private Integer actualQuantity;
+    private BigDecimal actualQuantity;
     @Excel(name = "复盘数量", cellType = ColumnType.NUMERIC)
-    private Integer recountQuantity;
+    private BigDecimal recountQuantity;
     @Excel(name = "最终数量", cellType = ColumnType.NUMERIC)
-    private Integer finalQuantity;
+    private BigDecimal finalQuantity;
     @Excel(name = "差异数量", cellType = ColumnType.NUMERIC)
-    private Integer varianceQuantity;
+    private BigDecimal varianceQuantity;
     @Excel(name = "单位成本")
     private BigDecimal unitCost;
     @Excel(name = "差异金额")
@@ -95,26 +95,26 @@ public class FinStocktakeItem extends BaseEntity {
     public String getProductName() { return productName; }
     public void setProductName(String productName) { this.productName = productName; }
 
-    public Integer getExpectedQuantity() { return expectedQuantity; }
-    public void setExpectedQuantity(Integer expectedQuantity) { this.expectedQuantity = expectedQuantity; }
+    public BigDecimal getExpectedQuantity() { return expectedQuantity; }
+    public void setExpectedQuantity(BigDecimal expectedQuantity) { this.expectedQuantity = expectedQuantity; }
 
-    public Integer getMovementQuantityAfterFreeze() { return movementQuantityAfterFreeze; }
-    public void setMovementQuantityAfterFreeze(Integer movementQuantityAfterFreeze) { this.movementQuantityAfterFreeze = movementQuantityAfterFreeze; }
+    public BigDecimal getMovementQuantityAfterFreeze() { return movementQuantityAfterFreeze; }
+    public void setMovementQuantityAfterFreeze(BigDecimal movementQuantityAfterFreeze) { this.movementQuantityAfterFreeze = movementQuantityAfterFreeze; }
 
-    public Integer getAdjustedExpectedQuantity() { return adjustedExpectedQuantity; }
-    public void setAdjustedExpectedQuantity(Integer adjustedExpectedQuantity) { this.adjustedExpectedQuantity = adjustedExpectedQuantity; }
+    public BigDecimal getAdjustedExpectedQuantity() { return adjustedExpectedQuantity; }
+    public void setAdjustedExpectedQuantity(BigDecimal adjustedExpectedQuantity) { this.adjustedExpectedQuantity = adjustedExpectedQuantity; }
 
-    public Integer getActualQuantity() { return actualQuantity; }
-    public void setActualQuantity(Integer actualQuantity) { this.actualQuantity = actualQuantity; }
+    public BigDecimal getActualQuantity() { return actualQuantity; }
+    public void setActualQuantity(BigDecimal actualQuantity) { this.actualQuantity = actualQuantity; }
 
-    public Integer getRecountQuantity() { return recountQuantity; }
-    public void setRecountQuantity(Integer recountQuantity) { this.recountQuantity = recountQuantity; }
+    public BigDecimal getRecountQuantity() { return recountQuantity; }
+    public void setRecountQuantity(BigDecimal recountQuantity) { this.recountQuantity = recountQuantity; }
 
-    public Integer getFinalQuantity() { return finalQuantity; }
-    public void setFinalQuantity(Integer finalQuantity) { this.finalQuantity = finalQuantity; }
+    public BigDecimal getFinalQuantity() { return finalQuantity; }
+    public void setFinalQuantity(BigDecimal finalQuantity) { this.finalQuantity = finalQuantity; }
 
-    public Integer getVarianceQuantity() { return varianceQuantity; }
-    public void setVarianceQuantity(Integer varianceQuantity) { this.varianceQuantity = varianceQuantity; }
+    public BigDecimal getVarianceQuantity() { return varianceQuantity; }
+    public void setVarianceQuantity(BigDecimal varianceQuantity) { this.varianceQuantity = varianceQuantity; }
 
     public BigDecimal getUnitCost() { return unitCost; }
     public void setUnitCost(BigDecimal unitCost) { this.unitCost = unitCost; }

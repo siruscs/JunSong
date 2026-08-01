@@ -22,7 +22,7 @@ public interface IStockCostService {
      * @param sourceLedgerId 来源单据ID（采购单ID），用于成本流水追溯
      */
     void applyPurchaseInbound(Long tenantId, Long deptId, Long productId,
-                              int quantity, BigDecimal amount,
+                              BigDecimal quantity, BigDecimal amount,
                               Long sourceLedgerId, String operator);
 
     /**
@@ -32,7 +32,7 @@ public interface IStockCostService {
      * @param reverseQuantity 冲销数量（正数）
      */
     void reversePurchaseInbound(Long tenantId, Long deptId, Long productId,
-                                int reverseQuantity,
+                                BigDecimal reverseQuantity,
                                 Long sourceLedgerId, String operator);
 
     /**
@@ -44,7 +44,7 @@ public interface IStockCostService {
      * @return 固化的单位成本（6位小数），调用方应存入库存流水的 unit_cost 字段供后续冲销
      */
     BigDecimal applySaleOutbound(Long tenantId, Long deptId, Long productId,
-                                 int quantity, boolean allowNegative,
+                                 BigDecimal quantity, boolean allowNegative,
                                  Long sourceLedgerId, String operator);
 
     /**
@@ -55,7 +55,7 @@ public interface IStockCostService {
      * @param originalUnitCost 原销售出库时固化的单位成本（6位小数）
      */
     void reverseSaleOutbound(Long tenantId, Long deptId, Long productId,
-                             int quantity, BigDecimal originalUnitCost,
+                             BigDecimal quantity, BigDecimal originalUnitCost,
                              Long sourceLedgerId, String operator);
 
     /**
@@ -86,7 +86,7 @@ public interface IStockCostService {
      * @return 成本流水ID（FinStockCostLedger.costLedgerId）
      */
     Long applyStocktakeLoss(Long tenantId, Long deptId, Long productId,
-                            int quantity, Long sourceLedgerId, String operator);
+                            BigDecimal quantity, Long sourceLedgerId, String operator);
 
     /**
      * 盘点盘盈：按指定金额增加库存金额，库存数量同步增加。
@@ -105,7 +105,7 @@ public interface IStockCostService {
      * @return 成本流水ID（FinStockCostLedger.costLedgerId）
      */
     Long applyStocktakeGain(Long tenantId, Long deptId, Long productId,
-                            int quantity, BigDecimal amount,
+                            BigDecimal quantity, BigDecimal amount,
                             Long sourceLedgerId, String operator);
 
     /**
@@ -127,7 +127,7 @@ public interface IStockCostService {
      * @return 冲销成本流水ID
      */
     Long reverseStocktakeAdjustment(Long tenantId, Long deptId, Long productId,
-                                    int quantity, BigDecimal unitCost,
+                                    BigDecimal quantity, BigDecimal unitCost,
                                     Long sourceLedgerId, Long originalCostLedgerId,
                                     String operator);
 

@@ -1,5 +1,6 @@
 package com.junsong.finance.service.impl;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -60,6 +61,10 @@ import com.junsong.common.core.domain.R;
  */
 @Service
 public class FinStocktakeServiceImpl implements IFinStocktakeService {
+
+    private static BigDecimal nzBox(BigDecimal v) {
+        return v == null ? BigDecimal.ZERO : v;
+    }
 
     private static final Logger log = LoggerFactory.getLogger(FinStocktakeServiceImpl.class);
     private static final List<Long> SENTINEL_DEPT_IDS = Collections.singletonList(-1L);
@@ -153,8 +158,8 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
                 throw new ServiceException("商品 " + productId + " 不属于门店 " + request.getDeptId());
             }
 
-            Integer position = finStockLedgerMapper.selectPositionQuantity(tenantId, request.getDeptId(), productId);
-            int expectedQty = position == null ? 0 : position;
+            BigDecimal position = finStockLedgerMapper.selectPositionQuantity(tenantId, request.getDeptId(), productId);
+            BigDecimal expectedQty = position == null ? BigDecimal.ZERO : position;
 
             FinStocktakeItem item = new FinStocktakeItem();
             item.setTenantId(tenantId);
@@ -162,7 +167,7 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
             item.setProductId(productId);
             item.setProductName(product.getProductName());
             item.setExpectedQuantity(expectedQty);
-            item.setMovementQuantityAfterFreeze(0);
+            item.setMovementQuantityAfterFreeze(BigDecimal.ZERO);
             item.setVersion(0);
             item.setCreateBy(SecurityUtils.getUsername());
             items.add(item);
@@ -404,9 +409,9 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
         }
 
         // 方差校验：非零方差需要 reasonCode 和 reason
-        int expected = item.getExpectedQuantity() == null ? 0 : item.getExpectedQuantity();
-        int variance = request.getActualQuantity() - expected;
-        if (variance != 0) {
+        BigDecimal expected = item.getExpectedQuantity() == null ? BigDecimal.ZERO : item.getExpectedQuantity();
+        BigDecimal variance = request.getActualQuantity().subtract(expected);
+        if (variance.signum() != 0) {
             if (request.getReasonCode() == null || request.getReasonCode().isEmpty()) {
                 throw new ServiceException("盘亏或盘盈时原因代码必填");
             }
@@ -470,12 +475,13 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
                 : recountAmountThreshold;
 
         for (FinStocktakeItem item : items) {
-            int expected = item.getExpectedQuantity() == null ? 0 : item.getExpectedQuantity();
-            Integer movement = finStockLedgerMapper.sumMovementAfterFreeze(
+            BigDecimal expected = item.getExpectedQuantity() == null ? BigDecimal.ZERO : item.getExpectedQuantity();
+            BigDecimal movement = finStockLedgerMapper.sumMovementAfterFreeze(
                     tenantId, header.getDeptId(), item.getProductId(), header.getFreezeTime());
-            int movementAfterFreeze = movement == null ? 0 : movement;
-            int adjustedExpected = expected + movementAfterFreeze;
-            int variance = item.getActualQuantity() - adjustedExpected;
+            BigDecimal movementAfterFreeze = movement == null ? BigDecimal.ZERO : movement;
+            BigDecimal adjustedExpected = expected.add(movementAfterFreeze);
+            BigDecimal actual = item.getActualQuantity() == null ? BigDecimal.ZERO : item.getActualQuantity();
+            BigDecimal variance = actual.subtract(adjustedExpected);
 
             int itemAffected = finStocktakeMapper.updateStocktakeItemFinal(
                     tenantId, item.getItemId(),
@@ -493,11 +499,11 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
             }
 
             // 阈值检查：数量阈值或金额阈值任一超限即触发强制复盘
-            boolean qtyOver = Math.abs(variance) > recountQuantityThreshold;
+            boolean qtyOver = variance.abs().compareTo(BigDecimal.valueOf(recountQuantityThreshold)) > 0;
             boolean amountOver = false;
             if (item.getUnitCost() != null && item.getUnitCost().signum() > 0) {
                 java.math.BigDecimal varianceAmt = item.getUnitCost()
-                        .multiply(java.math.BigDecimal.valueOf(Math.abs(variance)))
+                        .multiply(variance.abs())
                         .setScale(2, java.math.RoundingMode.HALF_UP);
                 amountOver = varianceAmt.compareTo(amountThreshold) > 0;
             }
@@ -593,11 +599,11 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
         }
 
         // 复盘方差校验：与 adjustedExpected 不等时需 reasonCode/reason
-        int adjustedExpected = item.getAdjustedExpectedQuantity() == null
-                ? (item.getExpectedQuantity() == null ? 0 : item.getExpectedQuantity())
+        BigDecimal adjustedExpected = item.getAdjustedExpectedQuantity() == null
+                ? (item.getExpectedQuantity() == null ? BigDecimal.ZERO : item.getExpectedQuantity())
                 : item.getAdjustedExpectedQuantity();
-        int recountVariance = request.getRecountQuantity() - adjustedExpected;
-        if (recountVariance != 0) {
+        BigDecimal recountVariance = request.getRecountQuantity().subtract(adjustedExpected);
+        if (recountVariance.signum() != 0) {
             if (request.getReasonCode() == null || request.getReasonCode().isEmpty()) {
                 throw new ServiceException("复盘方差非零时原因代码必填");
             }
@@ -702,17 +708,17 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
 
         for (FinStocktakeItem item : items) {
             // finalQuantity 优先使用 recountQuantity（如有），否则 actualQuantity
-            Integer finalQty = item.getRecountQuantity() != null
+            BigDecimal finalQty = item.getRecountQuantity() != null
                     ? item.getRecountQuantity()
                     : item.getActualQuantity();
             if (finalQty == null) {
                 throw new ServiceException("盘点行缺少实际或复盘数量: productId=" + item.getProductId());
             }
 
-            int adjustedExpected = item.getAdjustedExpectedQuantity() == null
-                    ? (item.getExpectedQuantity() == null ? 0 : item.getExpectedQuantity())
+            BigDecimal adjustedExpected = item.getAdjustedExpectedQuantity() == null
+                    ? (item.getExpectedQuantity() == null ? BigDecimal.ZERO : item.getExpectedQuantity())
                     : item.getAdjustedExpectedQuantity();
-            int finalVariance = finalQty - adjustedExpected;
+            BigDecimal finalVariance = finalQty.subtract(adjustedExpected);
 
             int itemAffected = finStocktakeMapper.updateStocktakeItemFinal(
                     tenantId, item.getItemId(),
@@ -815,28 +821,27 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
 
         // 第二步：持锁状态下重新汇总冻结后流水，计算最终方差
         for (FinStocktakeItem item : sortedItems) {
-            Integer movement = finStockLedgerMapper.sumMovementAfterFreeze(
+            BigDecimal movement = finStockLedgerMapper.sumMovementAfterFreeze(
                     tenantId, item.getDeptId(), item.getProductId(), header.getFreezeTime());
-            int movementAfterFreeze = movement == null ? 0 : movement;
-            int adjustedExpected = (item.getExpectedQuantity() == null ? 0 : item.getExpectedQuantity())
-                    + movementAfterFreeze;
+            BigDecimal movementAfterFreeze = movement == null ? BigDecimal.ZERO : movement;
+            BigDecimal expected = item.getExpectedQuantity() == null ? BigDecimal.ZERO : item.getExpectedQuantity();
+            BigDecimal adjustedExpected = expected.add(movementAfterFreeze);
 
-            Integer finalQty = item.getFinalQuantity();
+            BigDecimal finalQty = item.getFinalQuantity();
             if (finalQty == null) {
                 throw new ServiceException("盘点行缺少最终数量: productId=" + item.getProductId());
             }
-            int finalVariance = finalQty - adjustedExpected;
+            BigDecimal finalVariance = finalQty.subtract(adjustedExpected);
 
             // 重新读取当前库存数量（已持锁）
-            Integer currentQtyBox = finStockLedgerMapper.selectPositionQuantityForUpdate(
-                    tenantId, item.getDeptId(), item.getProductId());
-            int currentQty = currentQtyBox == null ? 0 : currentQtyBox;
+            BigDecimal currentQty = nzBox(finStockLedgerMapper.selectPositionQuantityForUpdate(
+                    tenantId, item.getDeptId(), item.getProductId()));
 
-            if (finalVariance == 0) {
+            if (finalVariance.signum() == 0) {
                 // 无差异：仅更新行表的 movement/adjusted 字段，不写流水
                 int itemAffected = finStocktakeMapper.updateStocktakeItemFinal(
                         tenantId, item.getItemId(),
-                        finalQty, 0,
+                        finalQty, BigDecimal.ZERO,
                         null, null,
                         item.getReasonCode(), item.getReason(),
                         movementAfterFreeze, adjustedExpected,
@@ -847,14 +852,14 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
                 continue;
             }
 
-            int absVariance = Math.abs(finalVariance);
-            int afterQty = currentQty + finalVariance;
-            if (afterQty < 0) {
+            BigDecimal absVariance = finalVariance.abs();
+            BigDecimal afterQty = currentQty.add(finalVariance);
+            if (afterQty.compareTo(BigDecimal.ZERO) < 0) {
                 throw new ServiceException("盘亏后库存为负（商品 " + item.getProductId()
                         + " 当前 " + currentQty + "，盘亏 " + absVariance + "），拒绝过账");
             }
 
-            String changeType = finalVariance > 0 ? STOCK_TAKE_GAIN : STOCK_TAKE_LOSS;
+            String changeType = finalVariance.signum() > 0 ? STOCK_TAKE_GAIN : STOCK_TAKE_LOSS;
 
             // 写库存流水
             FinStockLedger ledger = new FinStockLedger();
@@ -889,7 +894,7 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
 
             // 成本联动：盘亏按当前平均成本，盘盈金额默认按当前平均成本 * 数量
             Long costLedgerId;
-            if (finalVariance < 0) {
+            if (finalVariance.signum() < 0) {
                 costLedgerId = stockCostService.applyStocktakeLoss(
                         tenantId, item.getDeptId(), item.getProductId(),
                         absVariance, stockLedgerId, operator);
@@ -914,7 +919,7 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
             // 更新行表过账字段（含固化单位成本和差异金额）
             java.math.BigDecimal unitCostForItem = solidifiedUnitCost;
             java.math.BigDecimal varianceAmount = unitCostForItem
-                    .multiply(java.math.BigDecimal.valueOf(absVariance))
+                    .multiply(absVariance)
                     .setScale(2, java.math.RoundingMode.HALF_UP);
 
             int originalItemVersion = item.getVersion();
@@ -1074,7 +1079,7 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
         if (postedTime != null) {
             for (FinStocktakeItem item : sortedItems) {
                 if (item.getStockLedgerId() == null || item.getVarianceQuantity() == null
-                        || item.getVarianceQuantity() == 0) {
+                        || item.getVarianceQuantity().signum() == 0) {
                     continue;
                 }
                 int downstreamCount = finStockLedgerMapper.countDownstreamLedgersAfterTime(
@@ -1096,13 +1101,13 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
                 continue;
             }
 
-            Integer varianceBox = item.getVarianceQuantity();
-            int originalVariance = varianceBox == null ? 0 : varianceBox;
-            if (originalVariance == 0) {
+            BigDecimal varianceBox = item.getVarianceQuantity();
+            BigDecimal originalVariance = varianceBox == null ? BigDecimal.ZERO : varianceBox;
+            if (originalVariance.signum() == 0) {
                 continue;
             }
 
-            int absVariance = Math.abs(originalVariance);
+            BigDecimal absVariance = originalVariance.abs();
 
             // 获取原固化单位成本：优先行表，为 null 时通过成本服务查询
             java.math.BigDecimal unitCost = item.getUnitCost();
@@ -1116,16 +1121,15 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
 
             // 锁定 position 行
             finStockLedgerMapper.insertPositionIfAbsent(tenantId, item.getDeptId(), item.getProductId());
-            Integer currentQtyBox = finStockLedgerMapper.selectPositionQuantityForUpdate(
-                    tenantId, item.getDeptId(), item.getProductId());
-            int currentQty = currentQtyBox == null ? 0 : currentQtyBox;
+            BigDecimal currentQty = nzBox(finStockLedgerMapper.selectPositionQuantityForUpdate(
+                    tenantId, item.getDeptId(), item.getProductId()));
 
             // 反向变动：原盘亏(负) → 冲销为正；原盘盈(正) → 冲销为负
-            int reverseChange = -originalVariance;
-            int afterQty = currentQty + reverseChange;
-            if (afterQty < 0) {
+            BigDecimal reverseChange = originalVariance.negate();
+            BigDecimal afterQty = currentQty.add(reverseChange);
+            if (afterQty.compareTo(BigDecimal.ZERO) < 0) {
                 throw new ServiceException("冲销后库存为负（商品 " + item.getProductId()
-                        + " 当前 " + currentQty + "，冲销 " + Math.abs(reverseChange) + "），拒绝冲销");
+                        + " 当前 " + currentQty + "，冲销 " + reverseChange.abs() + "），拒绝冲销");
             }
 
             // 写反向库存流水
@@ -1305,8 +1309,9 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
             FinStocktakeItem target = detail.getItems().get(i);
             Map<?, ?> source = i < items.size() && items.get(i) instanceof Map<?, ?> m ? m : Map.of();
             StocktakeCountRequest count = new StocktakeCountRequest();
-            count.setActualQuantity(asInt(source.get("actual_quantity")));
-            if (count.getActualQuantity() == null || count.getActualQuantity() < 0) {
+            Integer rawQty = asInt(source.get("actual_quantity"));
+            count.setActualQuantity(rawQty == null ? null : BigDecimal.valueOf(rawQty));
+            if (count.getActualQuantity() == null || count.getActualQuantity().signum() < 0) {
                 throw new ServiceException("低代码盘点明细缺少有效盘点数量，无法自动过账");
             }
             count.setVersion(target.getVersion());
@@ -1548,7 +1553,7 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
         if (request.getActualQuantity() == null) {
             throw new ServiceException("实际盘点数量不能为空");
         }
-        if (request.getActualQuantity() < 0) {
+        if (request.getActualQuantity().signum() < 0) {
             throw new ServiceException("实际盘点数量不能为负数");
         }
         if (request.getIdempotencyKey() == null || request.getIdempotencyKey().isEmpty()) {
@@ -1575,7 +1580,7 @@ public class FinStocktakeServiceImpl implements IFinStocktakeService {
         if (request.getRecountQuantity() == null) {
             throw new ServiceException("复盘数量不能为空");
         }
-        if (request.getRecountQuantity() < 0) {
+        if (request.getRecountQuantity().signum() < 0) {
             throw new ServiceException("复盘数量不能为负数");
         }
         if (request.getIdempotencyKey() == null || request.getIdempotencyKey().isEmpty()) {

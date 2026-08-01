@@ -89,7 +89,7 @@
       </el-table-column>
       <el-table-column label="补差价金额" align="center" prop="extraAmount" width="120">
         <template #default="scope">
-          <span v-if="scope.row.extraAmount > 0" style="color: #E6A23C;">¥{{ scope.row.extraAmount }}</span>
+          <span v-if="scope.row.extraAmount > 0" style="color: #E6A23C;">{{ money(scope.row.extraAmount) }}</span>
           <span v-else>-</span>
         </template>
       </el-table-column>
@@ -260,7 +260,7 @@
         <el-descriptions-item label="兑换日期">{{ parseTime(viewForm.exchangeDate, '{y}-{m}-{d}') }}</el-descriptions-item>
         <el-descriptions-item label="付款方式">{{ getPaymentMethodName(viewForm.paymentMethod) }}</el-descriptions-item>
         <el-descriptions-item label="补差价金额">
-          <span v-if="viewForm.extraAmount > 0" style="color: #E6A23C;">¥{{ viewForm.extraAmount }}</span>
+          <span v-if="viewForm.extraAmount > 0" style="color: #E6A23C;">{{ money(viewForm.extraAmount) }}</span>
           <span v-else>-</span>
         </el-descriptions-item>
       </el-descriptions>

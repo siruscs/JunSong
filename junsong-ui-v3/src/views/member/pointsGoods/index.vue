@@ -87,7 +87,7 @@
       </el-table-column>
       <el-table-column label="物品价值" align="center" prop="goodsValue" width="120">
         <template #default="scope">
-          <span style="color: #409EFF;">¥{{ scope.row.goodsValue }}</span>
+          <span style="color: #409EFF;">{{ money(scope.row.goodsValue) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="积分价格" align="center" prop="pointsPrice" width="120">
@@ -234,7 +234,7 @@
           <span v-else>-</span>
         </el-descriptions-item>
         <el-descriptions-item label="物品价值">
-          <span style="color: #409EFF;">¥{{ viewForm.goodsValue }}</span>
+          <span style="color: #409EFF;">{{ money(viewForm.goodsValue) }}</span>
         </el-descriptions-item>
         <el-descriptions-item label="积分价格">
           <span style="color: #E6A23C;">{{ viewForm.pointsPrice }}积分</span>

@@ -23,7 +23,7 @@
     <div class="report-metrics">
       <div class="metric-card primary">
         <div class="metric-label">费用总额</div>
-        <div class="metric-value">&yen;{{ reportData.totalExpense || 0 }}</div>
+        <div class="metric-value">{{ money(reportData.totalExpense) }}</div>
       </div>
     </div>
 
@@ -51,8 +51,12 @@
         <div style="font-weight: 600; color: #303133; margin-bottom: 10px;">分类异常波动</div>
         <el-table :data="anomalyData.categorySpikes || []" stripe border style="width: 100%" empty-text="暂无异常数据">
           <el-table-column prop="category" label="费用分类" min-width="120" />
-          <el-table-column prop="currentAmount" label="本期金额" min-width="120" />
-          <el-table-column prop="previousAmount" label="上期金额" min-width="120" />
+          <el-table-column label="本期金额" min-width="120">
+            <template #default="scope">{{ money(scope.row.currentAmount) }}</template>
+          </el-table-column>
+          <el-table-column label="上期金额" min-width="120">
+            <template #default="scope">{{ money(scope.row.previousAmount) }}</template>
+          </el-table-column>
           <el-table-column prop="changeRate" label="变动率" width="120">
             <template #default="scope">
               <span :style="{ color: Number(scope.row.changeRate) > 0 ? '#F56C6C' : '#67C23A' }">
@@ -68,8 +72,12 @@
         <div style="font-weight: 600; color: #303133; margin-bottom: 10px;">门店异常波动</div>
         <el-table :data="anomalyData.storeSpikes || []" stripe border style="width: 100%" empty-text="暂无异常数据">
           <el-table-column prop="deptName" label="门店" min-width="120" />
-          <el-table-column prop="currentAmount" label="本期金额" min-width="120" />
-          <el-table-column prop="previousAmount" label="上期金额" min-width="120" />
+          <el-table-column label="本期金额" min-width="120">
+            <template #default="scope">{{ money(scope.row.currentAmount) }}</template>
+          </el-table-column>
+          <el-table-column label="上期金额" min-width="120">
+            <template #default="scope">{{ money(scope.row.previousAmount) }}</template>
+          </el-table-column>
           <el-table-column prop="changeRate" label="变动率" width="120">
             <template #default="scope">
               <span :style="{ color: Number(scope.row.changeRate) > 0 ? '#F56C6C' : '#67C23A' }">
@@ -85,7 +93,9 @@
         <div style="font-weight: 600; color: #303133; margin-bottom: 10px;">未核销费用清单</div>
         <el-table :data="anomalyData.unverifiedList || []" stripe border style="width: 100%" empty-text="暂无未核销费用">
           <el-table-column prop="expenseNo" label="费用单号" min-width="140" />
-          <el-table-column prop="amount" label="金额" min-width="100" />
+          <el-table-column label="金额" min-width="100">
+            <template #default="scope">{{ money(scope.row.amount) }}</template>
+          </el-table-column>
           <el-table-column prop="deptName" label="门店" min-width="120" />
           <el-table-column prop="status" label="状态" width="100">
             <template #default="scope">

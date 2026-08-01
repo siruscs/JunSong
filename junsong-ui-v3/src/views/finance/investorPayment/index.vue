@@ -5,25 +5,25 @@
       <el-col :xs="24" :sm="12" :lg="6">
         <div class="stat-card primary">
           <div class="stat-label">投资来源金额</div>
-          <div class="stat-value">¥{{ summary.totalInvestAmount || 0 }}</div>
+          <div class="stat-value">{{ money(summary.totalInvestAmount) }}</div>
         </div>
       </el-col>
       <el-col :xs="24" :sm="12" :lg="6">
         <div class="stat-card warning">
           <div class="stat-label">总返款金额</div>
-          <div class="stat-value">¥{{ summary.totalReturnAmount || 0 }}</div>
+          <div class="stat-value">{{ money(summary.totalReturnAmount) }}</div>
         </div>
       </el-col>
       <el-col :xs="24" :sm="12" :lg="6">
         <div class="stat-card info">
           <div class="stat-label">备用金</div>
-          <div class="stat-value">¥{{ summary.reserveFund || 0 }}</div>
+          <div class="stat-value">{{ money(summary.reserveFund) }}</div>
         </div>
       </el-col>
       <el-col :xs="24" :sm="12" :lg="6">
         <div class="stat-card success">
           <div class="stat-label">费用余额</div>
-          <div class="stat-value">¥{{ summary.expenseBalance || 0 }}</div>
+          <div class="stat-value">{{ money(summary.expenseBalance) }}</div>
         </div>
       </el-col>
     </el-row>
@@ -89,7 +89,7 @@
       <el-table-column label="金额" align="center" prop="amount">
         <template #default="scope">
           <span style="color: #F56C6C; font-weight: bold;">
-            ¥{{ scope.row.amount }}
+            {{ money(scope.row.amount) }}
           </span>
         </template>
       </el-table-column>
@@ -183,7 +183,7 @@
         </el-descriptions-item>
         <el-descriptions-item label="金额">
           <span style="color: #F56C6C; font-weight: bold;">
-            ¥{{ viewForm.amount }}
+            {{ money(viewForm.amount) }}
           </span>
         </el-descriptions-item>
         <el-descriptions-item label="投资占比">{{ formatRate(viewForm.investRatio) }}</el-descriptions-item>

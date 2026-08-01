@@ -34,7 +34,7 @@
       <el-col :span="6">
         <el-card>
           <template #header><span>总收入</span></template>
-          <div class="stat-value" style="color: #409EFF;">¥{{ reportData.totalRevenue || 0 }}</div>
+          <div class="stat-value" style="color: #409EFF;">{{ money(reportData.totalRevenue) }}</div>
         </el-card>
       </el-col>
     </el-row>

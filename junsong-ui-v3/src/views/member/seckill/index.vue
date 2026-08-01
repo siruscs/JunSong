@@ -107,12 +107,12 @@
       <el-table-column label="时间段" align="center" prop="timeSlot" width="120" />
       <el-table-column label="原价" align="center" prop="seckillAmount" width="120">
         <template #default="scope">
-          <span style="color: #F56C6C;">¥{{ scope.row.seckillAmount }}</span>
+          <span style="color: #F56C6C;">{{ money(scope.row.seckillAmount) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="秒杀价" align="center" prop="seckillPrice" width="120">
         <template #default="scope">
-          <span style="color: #67C23A;">¥{{ scope.row.seckillPrice }}</span>
+          <span style="color: #67C23A;">{{ money(scope.row.seckillPrice) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="总份额" align="center" prop="totalShares" width="100" />
@@ -273,10 +273,10 @@
         <el-descriptions-item label="秒杀日期">{{ parseTime(viewForm.seckillDate, '{y}-{m}-{d}') }}</el-descriptions-item>
         <el-descriptions-item label="时间段">{{ viewForm.timeSlot }}</el-descriptions-item>
         <el-descriptions-item label="原价">
-          <span style="color: #F56C6C;">¥{{ viewForm.seckillAmount }}</span>
+          <span style="color: #F56C6C;">{{ money(viewForm.seckillAmount) }}</span>
         </el-descriptions-item>
         <el-descriptions-item label="秒杀价">
-          <span style="color: #67C23A;">¥{{ viewForm.seckillPrice }}</span>
+          <span style="color: #67C23A;">{{ money(viewForm.seckillPrice) }}</span>
         </el-descriptions-item>
         <el-descriptions-item label="总份额">{{ viewForm.totalShares }}</el-descriptions-item>
         <el-descriptions-item label="剩余份额">

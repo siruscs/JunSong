@@ -66,11 +66,11 @@
       <div class="report-metrics">
         <div class="metric-card primary">
           <div class="metric-label">会员销售额</div>
-          <div class="metric-value">&yen;{{ contributionData.memberSales || 0 }}</div>
+          <div class="metric-value">{{ money(contributionData.memberSales) }}</div>
         </div>
         <div class="metric-card">
           <div class="metric-label">非会员销售额</div>
-          <div class="metric-value">&yen;{{ contributionData.nonMemberSales || 0 }}</div>
+          <div class="metric-value">{{ money(contributionData.nonMemberSales) }}</div>
         </div>
         <div class="metric-card warning">
           <div class="metric-label">会员销售占比</div>
@@ -82,7 +82,7 @@
         </div>
         <div class="metric-card success">
           <div class="metric-label">会员平均客单价</div>
-          <div class="metric-value">&yen;{{ contributionData.avgMemberSaleAmount || 0 }}</div>
+          <div class="metric-value">{{ money(contributionData.avgMemberSaleAmount) }}</div>
         </div>
       </div>
 
@@ -102,11 +102,11 @@
         </div>
         <div class="metric-card">
           <div class="metric-label">秒杀销售额</div>
-          <div class="metric-value">&yen;{{ contributionData.seckillSales || 0 }}</div>
+          <div class="metric-value">{{ money(contributionData.seckillSales) }}</div>
         </div>
         <div class="metric-card warning">
           <div class="metric-label">积分兑换成本</div>
-          <div class="metric-value">&yen;{{ contributionData.pointsRedemptionCost || 0 }}</div>
+          <div class="metric-value">{{ money(contributionData.pointsRedemptionCost) }}</div>
         </div>
       </div>
 
@@ -133,7 +133,7 @@
           </div>
           <div class="points-row">
             <span class="points-label">兑换成本</span>
-            <span class="points-value">&yen;{{ contributionData.pointsRedeemCost || 0 }}</span>
+            <span class="points-value">{{ money(contributionData.pointsRedeemCost) }}</span>
           </div>
           <div class="points-row">
             <span class="points-label">兑换笔数</span>
@@ -145,9 +145,15 @@
         <template #header><span>秒杀活动贡献</span></template>
         <el-table :data="contributionData.seckillActivities || []" stripe border style="width: 100%" empty-text="暂无数据" max-height="320">
           <el-table-column prop="activityName" label="活动名称" min-width="140" />
-          <el-table-column prop="sales" label="销售额" min-width="100" />
-          <el-table-column prop="cost" label="成本" min-width="100" />
-          <el-table-column prop="profit" label="利润" min-width="100" />
+          <el-table-column label="销售额" min-width="100">
+            <template #default="scope">{{ money(scope.row.sales) }}</template>
+          </el-table-column>
+          <el-table-column label="成本" min-width="100">
+            <template #default="scope">{{ money(scope.row.cost) }}</template>
+          </el-table-column>
+          <el-table-column label="利润" min-width="100">
+            <template #default="scope">{{ money(scope.row.profit) }}</template>
+          </el-table-column>
           <el-table-column prop="participantCount" label="参与人数" width="100" />
         </el-table>
       </el-card>
@@ -198,7 +204,7 @@
         </el-table-column>
         <el-table-column label="销售额" width="120" align="right">
           <template #default="{ row }">
-            <span class="roi-metric">&yen;{{ row.totalSalesAmount || 0 }}</span>
+            <span class="roi-metric">{{ money(row.totalSalesAmount) }}</span>
           </template>
         </el-table-column>
         <el-table-column label="订单数" width="90" align="center">
@@ -219,7 +225,7 @@
         <el-table-column label="折扣成本" width="120" align="right">
           <template #default="{ row }">
             <span v-if="row.discountCostStatus === 'AVAILABLE'" class="roi-metric">
-              &yen;{{ row.discountCost || 0 }}
+              {{ money(row.discountCost) }}
             </span>
             <el-tag v-else type="warning" size="small" effect="plain">不可用</el-tag>
           </template>

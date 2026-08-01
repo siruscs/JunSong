@@ -119,7 +119,7 @@
       </el-table-column>
       <el-table-column label="实付金额" align="center" prop="totalAmount" width="120">
         <template #default="scope">
-          <span style="color: #67C23A;">¥{{ scope.row.totalAmount }}</span>
+          <span style="color: #67C23A;">{{ money(scope.row.totalAmount) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="领取状态" align="center" prop="status" width="100">
@@ -286,11 +286,11 @@
         <el-descriptions-item label="已领取">{{ viewForm.claimedShares || 0 }}</el-descriptions-item>
         <el-descriptions-item label="待领取">{{ viewForm.remainingShares || 0 }}</el-descriptions-item>
         <el-descriptions-item label="秒杀价">
-          <span style="color: #F56C6C;">¥{{ viewForm.seckillPrice }}</span>
+          <span style="color: #F56C6C;">{{ money(viewForm.seckillPrice) }}</span>
         </el-descriptions-item>
         <el-descriptions-item label="付款方式">{{ getPaymentMethodName(viewForm.paymentMethod) }}</el-descriptions-item>
         <el-descriptions-item label="实付金额">
-          <span style="color: #67C23A;">¥{{ viewForm.totalAmount }}</span>
+          <span style="color: #67C23A;">{{ money(viewForm.totalAmount) }}</span>
         </el-descriptions-item>
         <el-descriptions-item label="领取状态">
           <el-tag :type="getStatusTagType(viewForm.status)">

@@ -4,25 +4,25 @@
       <el-col :span="6">
         <div class="stat-card stat-card-1">
           <div class="stat-label">未核销借支金额</div>
-          <div class="stat-value">¥{{ summary.unverifiedAdvanceAmount || 0 }}</div>
+          <div class="stat-value">{{ money(summary.unverifiedAdvanceAmount) }}</div>
         </div>
       </el-col>
       <el-col :span="6">
         <div class="stat-card stat-card-2">
           <div class="stat-label">未核销费用总金额</div>
-          <div class="stat-value">¥{{ summary.unverifiedExpenseAmount || 0 }}</div>
+          <div class="stat-value">{{ money(summary.unverifiedExpenseAmount) }}</div>
         </div>
       </el-col>
       <el-col :span="6">
         <div class="stat-card stat-card-3">
           <div class="stat-label">借支余额</div>
-          <div class="stat-value" :class="(summary.advanceBalance || 0) >= 0 ? 'positive' : 'negative'">¥{{ summary.advanceBalance || 0 }}</div>
+          <div class="stat-value" :class="(summary.advanceBalance || 0) >= 0 ? 'positive' : 'negative'">{{ money(summary.advanceBalance) }}</div>
         </div>
       </el-col>
       <el-col :span="6">
         <div class="stat-card stat-card-4">
           <div class="stat-label">当前核销周期总费用</div>
-          <div class="stat-value">¥{{ summary.totalExpenseAmount || 0 }}</div>
+          <div class="stat-value">{{ money(summary.totalExpenseAmount) }}</div>
         </div>
       </el-col>
     </el-row>
@@ -89,7 +89,7 @@
       <el-table-column label="费用金额" align="center" prop="expenseAmount">
         <template #default="scope">
           <span :style="scope.row.expenseType === '收入' ? 'color: #67C23A;' : 'color: #F56C6C;'">
-            ¥{{ scope.row.expenseAmount }}
+            {{ money(scope.row.expenseAmount) }}
           </span>
         </template>
       </el-table-column>
@@ -179,7 +179,7 @@
         </el-descriptions-item>
         <el-descriptions-item label="费用金额">
           <span :style="viewForm.expenseType === '收入' ? 'color: #67C23A; font-weight: bold;' : 'color: #F56C6C; font-weight: bold;'">
-            ¥{{ viewForm.expenseAmount }}
+            {{ money(viewForm.expenseAmount) }}
           </span>
         </el-descriptions-item>
         <el-descriptions-item label="付款方式">{{ viewForm.paymentMethod }}</el-descriptions-item>
@@ -213,7 +213,7 @@
       <el-form ref="batchVerifyForm" :model="batchVerifyForm" :rules="batchVerifyRules" label-width="100px">
         <el-form-item label="选择借支" prop="advanceIds">
           <el-select v-model="batchVerifyForm.advanceIds" multiple placeholder="请选择借支记录" style="width: 100%;" @change="handleAdvanceChange">
-            <el-option v-for="item in unverifiedAdvances" :key="item.advanceId" :label="item.advanceNo + ' (¥' + item.advanceAmount + ', 借款人: ' + item.borrower + ')'" :value="item.advanceId" />
+            <el-option v-for="item in unverifiedAdvances" :key="item.advanceId" :label="item.advanceNo + ' (' + money(item.advanceAmount) + ', 借款人: ' + item.borrower + ')'" :value="item.advanceId" />
           </el-select>
         </el-form-item>
         <el-descriptions v-if="selectedAdvances.length > 0" :column="1" border class="mb20">

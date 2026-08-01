@@ -88,7 +88,7 @@
       <el-table-column label="进货商品" align="center" prop="productNames" min-width="160" show-overflow-tooltip />
       <el-table-column label="总金额" align="center" prop="totalAmount">
         <template #default="scope">
-          <span style="color: #409EFF; font-weight: bold;">¥{{ scope.row.totalAmount }}</span>
+          <span style="color: #409EFF; font-weight: bold;">{{ money(scope.row.totalAmount) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="总数量" align="center" prop="totalQuantity" />
@@ -268,7 +268,7 @@
               </el-table-column>
               <el-table-column label="金额" width="120" align="center">
                 <template #default="scope">
-                  <span :style="{ color: scope.row.isGift === '1' ? '#909399' : '#409EFF' }">{{ scope.row.isGift === '1' ? '赠品' : '¥' + scope.row.amount }}</span>
+                  <span :style="{ color: scope.row.isGift === '1' ? '#909399' : '#409EFF' }">{{ scope.row.isGift === '1' ? '赠品' : money(scope.row.amount) }}</span>
                 </template>
               </el-table-column>
               <el-table-column label="赠品" width="80" align="center">
@@ -307,9 +307,9 @@
           <dict-tag :options="dict.type.finance_payment_method" :value="viewForm.paymentMethod" />
         </el-descriptions-item>
         <el-descriptions-item label="总金额">
-          <span style="color: #409EFF; font-weight: bold;">¥{{ viewForm.totalAmount }}</span>
+          <span style="color: #409EFF; font-weight: bold;">{{ money(viewForm.totalAmount) }}</span>
         </el-descriptions-item>
-        <el-descriptions-item label="已付金额">¥{{ viewForm.paidAmount }}</el-descriptions-item>
+        <el-descriptions-item label="已付金额">{{ money(viewForm.paidAmount) }}</el-descriptions-item>
         <el-descriptions-item label="总数量">{{ viewForm.totalQuantity }}</el-descriptions-item>
         <el-descriptions-item label="状态">
           <dict-tag :options="statusOptions" :value="viewForm.status"/>
@@ -327,12 +327,12 @@
           <el-table-column label="数量" prop="quantity" width="80" align="center" />
           <el-table-column label="单价" width="100" align="center">
             <template #default="scope">
-              <span>{{ scope.row.isGift === '1' ? '-' : '¥' + scope.row.price }}</span>
+              <span>{{ scope.row.isGift === '1' ? '-' : money(scope.row.price) }}</span>
             </template>
           </el-table-column>
           <el-table-column label="金额" width="100" align="center">
             <template #default="scope">
-              <span :style="{ color: scope.row.isGift === '1' ? '#909399' : '#409EFF' }">{{ scope.row.isGift === '1' ? '赠品' : '¥' + scope.row.amount }}</span>
+              <span :style="{ color: scope.row.isGift === '1' ? '#909399' : '#409EFF' }">{{ scope.row.isGift === '1' ? '赠品' : money(scope.row.amount) }}</span>
             </template>
           </el-table-column>
           <el-table-column label="是否赠品" width="100" align="center">

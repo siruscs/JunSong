@@ -86,12 +86,12 @@
       <el-table-column label="计量单位" align="center" prop="unit" width="100" />
       <el-table-column label="进货价格" align="center" prop="purchasePrice" width="120">
         <template #default="scope">
-          <span style="color: #409EFF;">¥{{ scope.row.purchasePrice }}</span>
+          <span style="color: #409EFF;">{{ money(scope.row.purchasePrice) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="销售价格" align="center" prop="salePrice" width="120">
         <template #default="scope">
-          <span style="color: #67C23A;">¥{{ scope.row.salePrice }}</span>
+          <span style="color: #67C23A;">{{ money(scope.row.salePrice) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="库存数量" align="center" prop="stockNum" width="100" />
@@ -220,10 +220,10 @@
         <el-descriptions-item label="商品名称">{{ viewForm.productName }}</el-descriptions-item>
         <el-descriptions-item label="计量单位">{{ viewForm.unit }}</el-descriptions-item>
         <el-descriptions-item label="进货价格">
-          <span style="color: #409EFF;">¥{{ viewForm.purchasePrice }}</span>
+          <span style="color: #409EFF;">{{ money(viewForm.purchasePrice) }}</span>
         </el-descriptions-item>
         <el-descriptions-item label="销售价格">
-          <span style="color: #67C23A;">¥{{ viewForm.salePrice }}</span>
+          <span style="color: #67C23A;">{{ money(viewForm.salePrice) }}</span>
         </el-descriptions-item>
         <el-descriptions-item label="库存数量">{{ viewForm.stockNum }}</el-descriptions-item>
         <el-descriptions-item label="最低库存预警">{{ viewForm.minStock }}</el-descriptions-item>

@@ -16,6 +16,7 @@ import { setupDirectives } from './directives'
 import { parseTime } from '@/utils/junsong'
 import { download } from '@/api/request'
 import { initTheme } from '@/utils/theme'
+import { money } from '@/utils/money'
 
 const app = createApp(App)
 
@@ -37,6 +38,7 @@ setupDirectives(app)
 
 app.config.globalProperties.parseTime = parseTime
 app.config.globalProperties.download = download
+app.config.globalProperties.money = money
 app.config.globalProperties.resetForm = function (refName: string) {
   const refs = (this as any).$refs || {}
   const formRef = refs[refName]

@@ -24,15 +24,15 @@
     <div class="report-metrics">
       <div class="metric-card primary">
         <div class="metric-label">总分润</div>
-        <div class="metric-value">&yen;{{ reportData.totalProfitShare || 0 }}</div>
+        <div class="metric-value">{{ money(reportData.totalProfitShare) }}</div>
       </div>
       <div class="metric-card success">
         <div class="metric-label">店长分润</div>
-        <div class="metric-value">&yen;{{ reportData.totalManagerProfit || 0 }}</div>
+        <div class="metric-value">{{ money(reportData.totalManagerProfit) }}</div>
       </div>
       <div class="metric-card info">
         <div class="metric-label">投资人分润</div>
-        <div class="metric-value">&yen;{{ reportData.totalInvestorProfit || 0 }}</div>
+        <div class="metric-value">{{ money(reportData.totalInvestorProfit) }}</div>
       </div>
     </div>
 
@@ -60,15 +60,15 @@
       <div class="report-metrics">
         <div class="metric-card primary">
           <div class="metric-label">应付金额</div>
-          <div class="metric-value">&yen;{{ settlementData.payableAmount || 0 }}</div>
+          <div class="metric-value">{{ money(settlementData.payableAmount) }}</div>
         </div>
         <div class="metric-card success">
           <div class="metric-label">已付金额</div>
-          <div class="metric-value">&yen;{{ settlementData.paidAmount || 0 }}</div>
+          <div class="metric-value">{{ money(settlementData.paidAmount) }}</div>
         </div>
         <div class="metric-card warning">
           <div class="metric-label">待付金额</div>
-          <div class="metric-value">&yen;{{ settlementData.pendingAmount || 0 }}</div>
+          <div class="metric-value">{{ money(settlementData.pendingAmount) }}</div>
         </div>
       </div>
     </el-card>
@@ -83,9 +83,15 @@
         <template #header><span>门店结转明细</span></template>
         <el-table :data="settlementData.deptSettlements || []" stripe border style="width: 100%" empty-text="暂无数据" max-height="360">
           <el-table-column prop="deptName" label="门店" min-width="120" />
-          <el-table-column prop="netProfit" label="净利润" min-width="110" />
-          <el-table-column prop="managerShare" label="店长分润" min-width="110" />
-          <el-table-column prop="investorShare" label="投资人分润" min-width="110" />
+          <el-table-column label="净利润" min-width="110">
+            <template #default="scope">{{ money(scope.row.netProfit) }}</template>
+          </el-table-column>
+          <el-table-column label="店长分润" min-width="110">
+            <template #default="scope">{{ money(scope.row.managerShare) }}</template>
+          </el-table-column>
+          <el-table-column label="投资人分润" min-width="110">
+            <template #default="scope">{{ money(scope.row.investorShare) }}</template>
+          </el-table-column>
           <el-table-column prop="status" label="状态" width="100">
             <template #default="scope">
               <el-tag :type="scope.row.status === 'settled' ? 'success' : scope.row.status === 'pending' ? 'warning' : 'info'" size="small">
@@ -104,7 +110,9 @@
         <el-table-column prop="deptName" label="门店" min-width="120" />
         <el-table-column prop="type" label="类型" width="120" />
         <el-table-column prop="message" label="说明" min-width="200" />
-        <el-table-column prop="amount" label="涉及金额" width="120" />
+        <el-table-column label="涉及金额" width="120">
+          <template #default="scope">{{ money(scope.row.amount) }}</template>
+        </el-table-column>
       </el-table>
     </el-card>
   </div>

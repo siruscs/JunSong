@@ -140,7 +140,7 @@
             <p class="workbench-reason">{{ task.reason }}</p>
             <div class="workbench-foot">
               <span>{{ task.suggestion }}</span>
-              <span v-if="task.impactAmount" class="impact-amount">影响金额: ¥{{ task.impactAmount }}</span>
+              <span v-if="task.impactAmount" class="impact-amount">影响金额: {{ money(task.impactAmount) }}</span>
               <router-link
                 v-if="task.targetRoute"
                 :to="resolveTaskRoute(task)"

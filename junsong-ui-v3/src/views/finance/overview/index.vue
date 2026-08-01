@@ -41,27 +41,27 @@
     <div class="report-metrics">
       <div class="metric-card primary">
         <div class="metric-label">今日销售</div>
-        <div class="metric-value">&yen;{{ dashboardData.todaySales || 0 }}</div>
+        <div class="metric-value">{{ money(dashboardData.todaySales) }}</div>
       </div>
       <div class="metric-card primary">
         <div class="metric-label">本月销售</div>
-        <div class="metric-value">&yen;{{ dashboardData.monthSales || 0 }}</div>
+        <div class="metric-value">{{ money(dashboardData.monthSales) }}</div>
       </div>
       <div class="metric-card warning">
         <div class="metric-label">今日费用</div>
-        <div class="metric-value">&yen;{{ dashboardData.todayExpense || 0 }}</div>
+        <div class="metric-value">{{ money(dashboardData.todayExpense) }}</div>
       </div>
       <div class="metric-card warning">
         <div class="metric-label">本月费用</div>
-        <div class="metric-value">&yen;{{ dashboardData.monthExpense || 0 }}</div>
+        <div class="metric-value">{{ money(dashboardData.monthExpense) }}</div>
       </div>
       <div class="metric-card success">
         <div class="metric-label">毛利润</div>
-        <div class="metric-value">&yen;{{ dashboardData.grossProfit || 0 }}</div>
+        <div class="metric-value">{{ money(dashboardData.grossProfit) }}</div>
       </div>
       <div class="metric-card success">
         <div class="metric-label">净利润</div>
-        <div class="metric-value">&yen;{{ dashboardData.netProfit || 0 }}</div>
+        <div class="metric-value">{{ money(dashboardData.netProfit) }}</div>
       </div>
       <div class="metric-card info">
         <div class="metric-label">利润率</div>
@@ -82,29 +82,29 @@
       <div class="report-metrics">
         <div class="metric-card success">
           <div class="metric-label">现金流入</div>
-          <div class="metric-value" style="color:#67C23A">&yen;{{ cashflowData.cashInAmount || 0 }}</div>
+          <div class="metric-value" style="color:#67C23A">{{ money(cashflowData.cashInAmount) }}</div>
         </div>
         <div class="metric-card warning">
           <div class="metric-label">现金流出</div>
-          <div class="metric-value" style="color:#E6A23C">&yen;{{ cashflowData.cashOutAmount || 0 }}</div>
+          <div class="metric-value" style="color:#E6A23C">{{ money(cashflowData.cashOutAmount) }}</div>
         </div>
         <div class="metric-card" :class="cashflowData.netCashflowAmount >= 0 ? 'success' : 'danger'">
           <div class="metric-label">净现金流</div>
-          <div class="metric-value" :style="{ color: cashflowData.netCashflowAmount >= 0 ? '#67C23A' : '#F56C6C' }">&yen;{{ cashflowData.netCashflowAmount || 0 }}</div>
+          <div class="metric-value" :style="{ color: cashflowData.netCashflowAmount >= 0 ? '#67C23A' : '#F56C6C' }">{{ money(cashflowData.netCashflowAmount) }}</div>
         </div>
         <div class="metric-card info">
           <div class="metric-label">未核销费用</div>
-          <div class="metric-value">&yen;{{ cashflowData.pendingExpenseAmount || 0 }}</div>
+          <div class="metric-value">{{ money(cashflowData.pendingExpenseAmount) }}</div>
           <div class="metric-hint" style="color:#909399;font-size:12px;margin-top:4px;">{{ cashflowData.pendingExpenseCount || 0 }} 笔待核销</div>
         </div>
         <div class="metric-card info">
           <div class="metric-label">未核销借支</div>
-          <div class="metric-value">&yen;{{ cashflowData.pendingAdvanceAmount || 0 }}</div>
+          <div class="metric-value">{{ money(cashflowData.pendingAdvanceAmount) }}</div>
           <div class="metric-hint" style="color:#909399;font-size:12px;margin-top:4px;">{{ cashflowData.pendingAdvanceCount || 0 }} 笔待核销</div>
         </div>
         <div class="metric-card info">
           <div class="metric-label">待分润</div>
-          <div class="metric-value">&yen;{{ cashflowData.pendingProfitShareAmount || 0 }}</div>
+          <div class="metric-value">{{ money(cashflowData.pendingProfitShareAmount) }}</div>
           <div class="metric-hint" style="color:#909399;font-size:12px;margin-top:4px;">{{ cashflowData.pendingProfitShareCount || 0 }} 笔待分润</div>
         </div>
       </div>
@@ -121,7 +121,7 @@
           </el-table-column>
           <el-table-column prop="deptName" label="门店" min-width="120" />
           <el-table-column prop="amount" label="金额" min-width="100">
-            <template #default="scope">&yen;{{ scope.row.amount || 0 }}</template>
+            <template #default="scope">{{ money(scope.row.amount) }}</template>
           </el-table-column>
           <el-table-column prop="createDate" label="创建时间" min-width="160" />
           <el-table-column label="操作" width="90" fixed="right">
@@ -146,19 +146,19 @@
       <div class="report-metrics">
         <div class="metric-card success">
           <div class="metric-label">本期实收</div>
-          <div class="metric-value">&yen;{{ dashboardData.currentPeriodPaymentAmount || 0 }}</div>
+          <div class="metric-value">{{ money(dashboardData.currentPeriodPaymentAmount) }}</div>
         </div>
         <div class="metric-card success">
           <div class="metric-label">历史欠款回收</div>
-          <div class="metric-value">&yen;{{ dashboardData.historicalReceivableCollectedAmount || 0 }}</div>
+          <div class="metric-value">{{ money(dashboardData.historicalReceivableCollectedAmount) }}</div>
         </div>
         <div class="metric-card warning">
           <div class="metric-label">本期新增应收</div>
-          <div class="metric-value">&yen;{{ dashboardData.currentPeriodNewReceivableAmount || 0 }}</div>
+          <div class="metric-value">{{ money(dashboardData.currentPeriodNewReceivableAmount) }}</div>
         </div>
         <div class="metric-card danger">
           <div class="metric-label">期末应收余额</div>
-          <div class="metric-value">&yen;{{ dashboardData.endingReceivableAmount || 0 }}</div>
+          <div class="metric-value">{{ money(dashboardData.endingReceivableAmount) }}</div>
         </div>
         <div class="metric-card info">
           <div class="metric-label">逾期应收</div>
@@ -178,7 +178,7 @@
       <div class="report-metrics">
         <div class="metric-card primary">
           <div class="metric-label">未来7天预计回款</div>
-          <div class="metric-value">&yen;{{ cashflowForecastData.forecast7dAmount || 0 }}</div>
+          <div class="metric-value">{{ money(cashflowForecastData.forecast7dAmount) }}</div>
         </div>
         <div class="metric-card" :class="pressureMetricClass(cashflowForecastData.pressureLevel)">
           <div class="metric-label">现金压力指数</div>
@@ -186,7 +186,7 @@
         </div>
         <div class="metric-card info">
           <div class="metric-label">本周逾期承诺</div>
-          <div class="metric-value">&yen;{{ cashflowForecastData.weeklyOverduePromiseAmount || 0 }}</div>
+          <div class="metric-value">{{ money(cashflowForecastData.weeklyOverduePromiseAmount) }}</div>
         </div>
       </div>
     </el-card>
@@ -215,7 +215,7 @@
         <el-table-column prop="title" label="预警" min-width="140" />
         <el-table-column prop="reason" label="原因" min-width="240" />
         <el-table-column prop="impactAmount" label="影响金额" width="120">
-          <template #default="scope">&yen;{{ scope.row.impactAmount || 0 }}</template>
+          <template #default="scope">{{ money(scope.row.impactAmount) }}</template>
         </el-table-column>
         <el-table-column prop="suggestedAction" label="建议操作" min-width="180" />
         <el-table-column label="操作" width="90" fixed="right">
@@ -253,7 +253,7 @@
           </div>
           <div class="task-body">
             <span class="task-reason">{{ task.reason }}</span>
-            <span v-if="task.impactAmount" class="task-impact">影响: &yen;{{ task.impactAmount }}</span>
+            <span v-if="task.impactAmount" class="task-impact">影响: {{ money(task.impactAmount) }}</span>
           </div>
           <div class="task-footer">
             <span class="task-action">{{ task.suggestedAction }}</span>
@@ -358,7 +358,9 @@
         <el-table :data="dashboardData.salesTopStores || []" stripe border style="width: 100%" empty-text="暂无数据" max-height="320">
           <el-table-column type="index" label="排名" width="60" />
           <el-table-column prop="deptName" label="门店" min-width="140" />
-          <el-table-column prop="totalSales" label="销售额" min-width="120" />
+          <el-table-column label="销售额" min-width="120">
+            <template #default="scope">{{ money(scope.row.totalSales) }}</template>
+          </el-table-column>
           <el-table-column prop="orderCount" label="订单数" width="100" />
         </el-table>
       </el-card>
@@ -367,7 +369,9 @@
         <el-table :data="dashboardData.profitTopStores || []" stripe border style="width: 100%" empty-text="暂无数据" max-height="320">
           <el-table-column type="index" label="排名" width="60" />
           <el-table-column prop="deptName" label="门店" min-width="140" />
-          <el-table-column prop="netProfit" label="净利润" min-width="120" />
+          <el-table-column label="净利润" min-width="120">
+            <template #default="scope">{{ money(scope.row.netProfit) }}</template>
+          </el-table-column>
           <el-table-column prop="profitRate" label="利润率" width="100">
             <template #default="scope">{{ scope.row.profitRate || 0 }}%</template>
           </el-table-column>

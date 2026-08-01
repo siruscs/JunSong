@@ -53,18 +53,18 @@
       <el-table-column label="核销人" prop="verifyBy" width="100" />
       <el-table-column label="费用合计" prop="totalExpenseAmount" width="120" align="right">
         <template #default="scope">
-          <span class="amount expense-amount">¥{{ scope.row.totalExpenseAmount }}</span>
+          <span class="amount expense-amount">{{ money(scope.row.totalExpenseAmount) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="借支合计" prop="totalAdvanceAmount" width="120" align="right">
         <template #default="scope">
-          <span class="amount">¥{{ scope.row.totalAdvanceAmount }}</span>
+          <span class="amount">{{ money(scope.row.totalAdvanceAmount) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="差额" prop="differenceAmount" width="100" align="right">
         <template #default="scope">
           <span :class="['amount', scope.row.differenceAmount > 0 ? 'positive' : scope.row.differenceAmount < 0 ? 'negative' : '']">
-            ¥{{ scope.row.differenceAmount }}
+            {{ money(scope.row.differenceAmount) }}
           </span>
         </template>
       </el-table-column>
@@ -116,11 +116,11 @@
             </el-descriptions-item>
             <el-descriptions-item label="核销人">{{ detail.batch.verifyBy }}</el-descriptions-item>
             <el-descriptions-item label="核销时间">{{ parseTime(detail.batch.verifyTime) }}</el-descriptions-item>
-            <el-descriptions-item label="差额">¥{{ detail.batch.differenceAmount }}</el-descriptions-item>
+            <el-descriptions-item label="差额">{{ money(detail.batch.differenceAmount) }}</el-descriptions-item>
             <el-descriptions-item label="费用合计">
-              <span class="amount expense-amount">¥{{ detail.batch.totalExpenseAmount }}</span>
+              <span class="amount expense-amount">{{ money(detail.batch.totalExpenseAmount) }}</span>
             </el-descriptions-item>
-            <el-descriptions-item label="借支合计">¥{{ detail.batch.totalAdvanceAmount }}</el-descriptions-item>
+            <el-descriptions-item label="借支合计">{{ money(detail.batch.totalAdvanceAmount) }}</el-descriptions-item>
             <el-descriptions-item label="批次ID">{{ detail.batch.batchId }}</el-descriptions-item>
           </el-descriptions>
           <el-descriptions :column="1" border v-if="detail.batch.status === 'REVERSED'" style="margin-top: 12px;">
@@ -144,7 +144,7 @@
             <el-table-column label="费用内容" prop="expenseContent" min-width="120" show-overflow-tooltip />
             <el-table-column label="金额" prop="expenseAmount" width="120" align="right">
               <template #default="scope">
-                <span class="amount expense-amount">¥{{ scope.row.expenseAmount }}</span>
+                <span class="amount expense-amount">{{ money(scope.row.expenseAmount) }}</span>
               </template>
             </el-table-column>
             <el-table-column label="费用ID" prop="expenseId" width="80" />
@@ -173,7 +173,7 @@
             <el-table-column label="用途" prop="purpose" min-width="120" show-overflow-tooltip />
             <el-table-column label="金额" prop="advanceAmount" width="120" align="right">
               <template #default="scope">
-                <span class="amount">¥{{ scope.row.advanceAmount }}</span>
+                <span class="amount">{{ money(scope.row.advanceAmount) }}</span>
               </template>
             </el-table-column>
             <el-table-column label="借支ID" prop="advanceId" width="80" />

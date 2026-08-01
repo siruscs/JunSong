@@ -39,7 +39,7 @@
       </el-table-column>
       <el-table-column label="借支金额" align="center" prop="advanceAmount">
         <template #default="scope">
-          <span style="color: #F56C6C; font-weight: bold;">¥{{ scope.row.advanceAmount }}</span>
+          <span style="color: #F56C6C; font-weight: bold;">{{ money(scope.row.advanceAmount) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="借款人" align="center" prop="borrower" width="120" />
@@ -93,7 +93,7 @@
         <el-descriptions-item label="借支单号">{{ viewForm.advanceNo }}</el-descriptions-item>
         <el-descriptions-item label="借支日期">{{ parseTime(viewForm.advanceDate, '{y}-{m}-{d}') }}</el-descriptions-item>
         <el-descriptions-item label="借支金额">
-          <span style="color: #F56C6C; font-weight: bold;">¥{{ viewForm.advanceAmount }}</span>
+          <span style="color: #F56C6C; font-weight: bold;">{{ money(viewForm.advanceAmount) }}</span>
         </el-descriptions-item>
         <el-descriptions-item label="借款人">{{ viewForm.borrower }}</el-descriptions-item>
         <el-descriptions-item label="状态">

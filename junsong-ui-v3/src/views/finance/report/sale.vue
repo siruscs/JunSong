@@ -24,7 +24,7 @@
     <div class="report-metrics">
       <div class="metric-card primary">
         <div class="metric-label">总销售额</div>
-        <div class="metric-value">&yen;{{ reportData.totalSales || 0 }}</div>
+        <div class="metric-value">{{ money(reportData.totalSales) }}</div>
       </div>
       <div class="metric-card success">
         <div class="metric-label">销售笔数</div>
@@ -32,7 +32,7 @@
       </div>
       <div class="metric-card info">
         <div class="metric-label">客单价</div>
-        <div class="metric-value">&yen;{{ reportData.avgPrice || 0 }}</div>
+        <div class="metric-value">{{ money(reportData.avgPrice) }}</div>
       </div>
     </div>
 
@@ -64,11 +64,11 @@
         </div>
         <div class="metric-card info">
           <div class="metric-label">单均金额</div>
-          <div class="metric-value">&yen;{{ opData.avgOrderAmount || 0 }}</div>
+          <div class="metric-value">{{ money(opData.avgOrderAmount) }}</div>
         </div>
         <div class="metric-card info">
           <div class="metric-label">件均金额</div>
-          <div class="metric-value">&yen;{{ opData.avgItemAmount || 0 }}</div>
+          <div class="metric-value">{{ money(opData.avgItemAmount) }}</div>
         </div>
       </div>
     </el-card>
@@ -96,19 +96,19 @@
       <div class="member-summary-row">
         <div class="member-summary-item">
           <span class="member-summary-label">会员销售</span>
-          <span class="member-summary-value">&yen;{{ opData.memberSales || 0 }}</span>
+          <span class="member-summary-value">{{ money(opData.memberSales) }}</span>
         </div>
         <div class="member-summary-item">
           <span class="member-summary-label">非会员销售</span>
-          <span class="member-summary-value">&yen;{{ opData.nonMemberSales || 0 }}</span>
+          <span class="member-summary-value">{{ money(opData.nonMemberSales) }}</span>
         </div>
         <div class="member-summary-item">
           <span class="member-summary-label">秒杀销售</span>
-          <span class="member-summary-value">&yen;{{ opData.seckillSales || 0 }}</span>
+          <span class="member-summary-value">{{ money(opData.seckillSales) }}</span>
         </div>
         <div class="member-summary-item">
           <span class="member-summary-label">常规销售</span>
-          <span class="member-summary-value">&yen;{{ opData.normalSales || 0 }}</span>
+          <span class="member-summary-value">{{ money(opData.normalSales) }}</span>
         </div>
       </div>
     </el-card>
@@ -120,9 +120,13 @@
         <el-table :data="opData.storeRank || []" stripe border style="width: 100%" empty-text="暂无数据" max-height="360">
           <el-table-column type="index" label="排名" width="60" />
           <el-table-column prop="deptName" label="门店" min-width="140" />
-          <el-table-column prop="totalSales" label="销售额" min-width="120" />
+          <el-table-column label="销售额" min-width="120">
+            <template #default="scope">{{ money(scope.row.totalSales) }}</template>
+          </el-table-column>
           <el-table-column prop="orderCount" label="订单数" width="100" />
-          <el-table-column prop="avgOrderAmount" label="客单价" width="100" />
+          <el-table-column label="客单价" width="100">
+            <template #default="scope">{{ money(scope.row.avgOrderAmount) }}</template>
+          </el-table-column>
           <el-table-column prop="memberSalesRatio" label="会员占比" width="100">
             <template #default="scope">{{ scope.row.memberSalesRatio || 0 }}%</template>
           </el-table-column>
@@ -133,9 +137,13 @@
         <el-table :data="opData.productRank || []" stripe border style="width: 100%" empty-text="暂无数据" max-height="360">
           <el-table-column type="index" label="排名" width="60" />
           <el-table-column prop="productName" label="商品" min-width="140" />
-          <el-table-column prop="totalSales" label="销售额" min-width="120" />
+          <el-table-column label="销售额" min-width="120">
+            <template #default="scope">{{ money(scope.row.totalSales) }}</template>
+          </el-table-column>
           <el-table-column prop="quantity" label="销量" width="100" />
-          <el-table-column prop="avgPrice" label="均价" width="100" />
+          <el-table-column label="均价" width="100">
+            <template #default="scope">{{ money(scope.row.avgPrice) }}</template>
+          </el-table-column>
         </el-table>
       </el-card>
     </div>

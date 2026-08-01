@@ -32,12 +32,12 @@
       <el-table-column label="销售日期" align="center" prop="saleDate" width="120" />
       <el-table-column label="销售金额" align="center" prop="saleAmount">
         <template #default="scope">
-          <span style="color: #F56C6C; font-weight: bold;">¥{{ scope.row.saleAmount }}</span>
+          <span style="color: #F56C6C; font-weight: bold;">{{ money(scope.row.saleAmount) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="已缴金额" align="center" prop="paidAmount">
         <template #default="scope">
-          <span style="color: #67C23A; font-weight: bold;">¥{{ scope.row.paidAmount }}</span>
+          <span style="color: #67C23A; font-weight: bold;">{{ money(scope.row.paidAmount) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="欠缴金额" align="center">
@@ -105,10 +105,10 @@
             </template>
           </el-table-column>
           <el-table-column label="销售金额" align="right" width="110">
-            <template #default="scope"><span style="color: #F56C6C; font-weight: bold;">¥{{ scope.row.saleAmount }}</span></template>
+            <template #default="scope"><span style="color: #F56C6C; font-weight: bold;">{{ money(scope.row.saleAmount) }}</span></template>
           </el-table-column>
           <el-table-column label="已缴金额" align="right" width="110">
-            <template #default="scope"><span style="color: #67C23A; font-weight: bold;">¥{{ scope.row.paidAmount }}</span></template>
+            <template #default="scope"><span style="color: #67C23A; font-weight: bold;">{{ money(scope.row.paidAmount) }}</span></template>
           </el-table-column>
           <el-table-column label="剩余应收" align="right" width="110">
             <template #default="scope"><span style="color: #E6A23C; font-weight: bold;">¥{{ ((scope.row.saleAmount || 0) - (scope.row.paidAmount || 0)).toFixed(2) }}</span></template>
@@ -171,10 +171,10 @@
           <el-input v-model="paymentForm.periodNo" disabled />
         </el-form-item>
         <el-form-item label="销售金额">
-          <el-input :model-value="'¥' + paymentForm.saleAmount" disabled />
+          <el-input :model-value="money(paymentForm.saleAmount)" disabled />
         </el-form-item>
         <el-form-item label="累计已缴">
-          <el-input :model-value="'¥' + paymentForm.paidAmount" disabled />
+          <el-input :model-value="money(paymentForm.paidAmount)" disabled />
         </el-form-item>
         <el-form-item label="剩余应收">
           <el-input :model-value="'¥' + ((paymentForm.saleAmount || 0) - (paymentForm.paidAmount || 0)).toFixed(2)" disabled />
@@ -210,19 +210,19 @@
         <el-descriptions-item label="商品名称">{{ viewForm.productName }}</el-descriptions-item>
         <el-descriptions-item label="销售日期">{{ parseTime(viewForm.saleDate, '{y}-{m}-{d}') }}</el-descriptions-item>
         <el-descriptions-item label="销售金额">
-          <span style="color: #F56C6C; font-weight: bold;">¥{{ viewForm.saleAmount }}</span>
+          <span style="color: #F56C6C; font-weight: bold;">{{ money(viewForm.saleAmount) }}</span>
         </el-descriptions-item>
         <el-descriptions-item label="已缴金额">
-          <span style="color: #67C23A; font-weight: bold;">¥{{ viewForm.paidAmount }}</span>
+          <span style="color: #67C23A; font-weight: bold;">{{ money(viewForm.paidAmount) }}</span>
         </el-descriptions-item>
         <el-descriptions-item label="待缴金额">
-          <span style="color: #E6A23C; font-weight: bold;">¥{{ viewForm.saleAmount - viewForm.paidAmount }}</span>
+          <span style="color: #E6A23C; font-weight: bold;">{{ money(viewForm.saleAmount - viewForm.paidAmount) }}</span>
         </el-descriptions-item>
         <el-descriptions-item label="销售数量">{{ viewForm.saleQuantity }}</el-descriptions-item>
         <el-descriptions-item label="赠品数量">{{ viewForm.giftQuantity }}</el-descriptions-item>
         <el-descriptions-item label="加赠单价">{{ giftUnitPrice(viewForm) }}</el-descriptions-item>
         <el-descriptions-item label="总数量">{{ viewForm.totalQuantity }}</el-descriptions-item>
-        <el-descriptions-item label="单价">¥{{ viewForm.unitPrice }}</el-descriptions-item>
+        <el-descriptions-item label="单价">{{ money(viewForm.unitPrice) }}</el-descriptions-item>
         <el-descriptions-item label="状态">
           <el-tag :type="getStatusType(viewForm.status)">{{ getStatusText(viewForm.status) }}</el-tag>
         </el-descriptions-item>
@@ -242,7 +242,7 @@
           </el-table-column>
           <el-table-column label="缴款金额" width="120" align="center">
             <template #default="scope">
-              <span style="color: #67C23A; font-weight: bold;">¥{{ scope.row.paymentAmount }}</span>
+              <span style="color: #67C23A; font-weight: bold;">{{ money(scope.row.paymentAmount) }}</span>
             </template>
           </el-table-column>
           <el-table-column label="付款方式" prop="paymentMethod" align="center">

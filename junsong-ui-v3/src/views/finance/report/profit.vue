@@ -24,7 +24,7 @@
     <div class="report-metrics">
       <div class="metric-card primary">
         <div class="metric-label">总利润</div>
-        <div class="metric-value">&yen;{{ reportData.totalProfit || 0 }}</div>
+        <div class="metric-value">{{ money(reportData.totalProfit) }}</div>
       </div>
       <div class="metric-card success">
         <div class="metric-label">利润率</div>
@@ -58,23 +58,23 @@
       <div class="report-metrics">
         <div class="metric-card primary">
           <div class="metric-label">总收入</div>
-          <div class="metric-value">&yen;{{ opData.totalIncome || 0 }}</div>
+          <div class="metric-value">{{ money(opData.totalIncome) }}</div>
         </div>
         <div class="metric-card warning">
           <div class="metric-label">商品成本</div>
-          <div class="metric-value">&yen;{{ opData.productCost || 0 }}</div>
+          <div class="metric-value">{{ money(opData.productCost) }}</div>
         </div>
         <div class="metric-card warning">
           <div class="metric-label">经营费用</div>
-          <div class="metric-value">&yen;{{ opData.operatingExpense || 0 }}</div>
+          <div class="metric-value">{{ money(opData.operatingExpense) }}</div>
         </div>
         <div class="metric-card success">
           <div class="metric-label">毛利润</div>
-          <div class="metric-value">&yen;{{ opData.grossProfit || 0 }}</div>
+          <div class="metric-value">{{ money(opData.grossProfit) }}</div>
         </div>
         <div class="metric-card success">
           <div class="metric-label">净利润</div>
-          <div class="metric-value">&yen;{{ opData.netProfit || 0 }}</div>
+          <div class="metric-value">{{ money(opData.netProfit) }}</div>
         </div>
         <div class="metric-card info">
           <div class="metric-label">利润率</div>
@@ -95,10 +95,18 @@
                   @row-click="handleStoreDrilldown" highlight-current-row>
           <el-table-column type="index" label="排名" width="60" />
           <el-table-column prop="deptName" label="门店" min-width="140" />
-          <el-table-column prop="totalIncome" label="总收入" min-width="120" />
-          <el-table-column prop="productCost" label="商品成本" min-width="120" />
-          <el-table-column prop="operatingExpense" label="经营费用" min-width="120" />
-          <el-table-column prop="netProfit" label="净利润" min-width="120" />
+          <el-table-column label="总收入" min-width="120">
+            <template #default="scope">{{ money(scope.row.totalIncome) }}</template>
+          </el-table-column>
+          <el-table-column label="商品成本" min-width="120">
+            <template #default="scope">{{ money(scope.row.productCost) }}</template>
+          </el-table-column>
+          <el-table-column label="经营费用" min-width="120">
+            <template #default="scope">{{ money(scope.row.operatingExpense) }}</template>
+          </el-table-column>
+          <el-table-column label="净利润" min-width="120">
+            <template #default="scope">{{ money(scope.row.netProfit) }}</template>
+          </el-table-column>
           <el-table-column prop="profitRate" label="利润率" width="100">
             <template #default="scope">{{ scope.row.profitRate || 0 }}%</template>
           </el-table-column>
@@ -112,7 +120,9 @@
           <el-table-column prop="profitRate" label="利润率" width="120">
             <template #default="scope">{{ scope.row.profitRate || 0 }}%</template>
           </el-table-column>
-          <el-table-column prop="netProfit" label="净利润" min-width="120" />
+          <el-table-column label="净利润" min-width="120">
+            <template #default="scope">{{ money(scope.row.netProfit) }}</template>
+          </el-table-column>
           <el-table-column prop="recoveryRate" label="回本率" width="120">
             <template #default="scope">{{ scope.row.recoveryRate || 0 }}%</template>
           </el-table-column>
@@ -136,11 +146,21 @@
       </template>
       <el-table :data="drilldownData" stripe border style="width: 100%" empty-text="暂无数据" v-loading="drilldownLoading">
         <el-table-column prop="dateStr" label="日期" width="120" />
-        <el-table-column prop="totalIncome" label="总收入" min-width="120" />
-        <el-table-column prop="productCost" label="商品成本" min-width="120" />
-        <el-table-column prop="operatingExpense" label="经营费用" min-width="120" />
-        <el-table-column prop="grossProfit" label="毛利润" min-width="120" />
-        <el-table-column prop="netProfit" label="净利润" min-width="120" />
+        <el-table-column label="总收入" min-width="120">
+          <template #default="scope">{{ money(scope.row.totalIncome) }}</template>
+        </el-table-column>
+        <el-table-column label="商品成本" min-width="120">
+          <template #default="scope">{{ money(scope.row.productCost) }}</template>
+        </el-table-column>
+        <el-table-column label="经营费用" min-width="120">
+          <template #default="scope">{{ money(scope.row.operatingExpense) }}</template>
+        </el-table-column>
+        <el-table-column label="毛利润" min-width="120">
+          <template #default="scope">{{ money(scope.row.grossProfit) }}</template>
+        </el-table-column>
+        <el-table-column label="净利润" min-width="120">
+          <template #default="scope">{{ money(scope.row.netProfit) }}</template>
+        </el-table-column>
         <el-table-column prop="profitRate" label="利润率" width="100">
           <template #default="scope">{{ scope.row.profitRate || 0 }}%</template>
         </el-table-column>

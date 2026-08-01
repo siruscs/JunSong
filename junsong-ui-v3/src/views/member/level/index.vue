@@ -20,7 +20,7 @@
         <el-table-column label="等级编码" align="center" prop="typeCode" width="140" />
         <el-table-column label="办卡费用" align="center" prop="cardFee" width="120">
           <template #default="scope">
-            <span style="color: #409EFF;">¥{{ scope.row.cardFee || 0 }}</span>
+            <span style="color: #409EFF;">{{ money(scope.row.cardFee) }}</span>
           </template>
         </el-table-column>
         <el-table-column label="折扣率" align="center" prop="discountRate" width="120">

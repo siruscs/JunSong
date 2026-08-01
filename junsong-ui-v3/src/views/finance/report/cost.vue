@@ -23,7 +23,7 @@
     <div class="report-metrics">
       <div class="metric-card primary">
         <div class="metric-label">总成本</div>
-        <div class="metric-value">¥{{ reportData.totalCost || 0 }}</div>
+        <div class="metric-value">{{ money(reportData.totalCost) }}</div>
       </div>
     </div>
 

@@ -71,7 +71,7 @@
       </el-table-column>
       <el-table-column label="消费金额" align="center" prop="consumeAmount" width="120">
         <template #default="scope">
-          <span style="color: #409EFF;">¥{{ scope.row.consumeAmount || 0 }}</span>
+          <span style="color: #409EFF;">{{ money(scope.row.consumeAmount) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="积分变动" align="center" prop="points" width="120">
@@ -211,7 +211,7 @@
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="消费金额">
-          <span style="color: #409EFF;">¥{{ viewForm.consumeAmount || 0 }}</span>
+          <span style="color: #409EFF;">{{ money(viewForm.consumeAmount) }}</span>
         </el-descriptions-item>
         <el-descriptions-item label="积分变动">
           <span :style="{ color: viewForm.points > 0 ? '#67C23A' : '#F56C6C', fontWeight: 'bold' }">

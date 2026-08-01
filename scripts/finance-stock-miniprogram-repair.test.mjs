@@ -13,6 +13,8 @@ const mpPerm = fs.readFileSync('junsong-ui-v3/src/views/member/mpPerm/index.vue'
 const stockSql = fs.readFileSync('sql/finance_stock_init.sql', 'utf8')
 const stockInitService = fs.readFileSync('junsong-modules/junsong-finance/src/main/java/com/junsong/finance/service/impl/FinStockInitServiceImpl.java', 'utf8')
 const stockInitPage = fs.readFileSync('junsong-ui-v3/src/views/finance/stockInit/index.vue', 'utf8')
+const stockInitDetail = fs.readFileSync('junsong-ui-v3/src/views/finance/stockInit/detail.vue', 'utf8')
+const workbench = fs.readFileSync('junsong-miniprogram/src/pages/workbench/index.vue', 'utf8')
 
 for (const route of [
   '/finance/report/sale',
@@ -52,6 +54,8 @@ assert.match(stockInitApi, /adjustmentDate/)
 assert.match(stockInitPage, /库存调整/)
 assert.match(stockInitPage, /调整类型/)
 assert.match(stockInitPage, /调整日历/)
+assert.match(stockInitDetail, /label="调整数量"/)
+assert.match(workbench, /\/member\/mp\/modules/)
 assert.match(stockInitService, /setChangeType\([^)]*getAdjustmentType/)
 assert.doesNotMatch(stockInitService, /ledger\.setChangeType\(STOCK_INIT\)/)
 

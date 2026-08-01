@@ -82,7 +82,7 @@
         </template>
         <el-table :data="detail.items" border stripe>
           <el-table-column label="商品名称" prop="productName" min-width="160" show-overflow-tooltip fixed="left" />
-          <el-table-column label="期初数量" width="130" align="right">
+          <el-table-column label="调整数量" width="130" align="right">
             <template #default="scope">{{ formatNum(scope.row.quantity) }}</template>
           </el-table-column>
           <el-table-column label="单位成本" width="130" align="right">

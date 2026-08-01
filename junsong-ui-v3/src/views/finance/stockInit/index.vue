@@ -557,10 +557,15 @@ function validateCreateItems(): boolean {
       ElMessage.warning(`第 ${i + 1} 行单位成本不能为负`)
       return false
     }
-    if (Number(row.quantity).toFixed(3) !== String(Number(row.quantity))) { ElMessage.warning(`第 ${i + 1} 行数量最多三位小数`); return false }
-    if (Number(row.unitCost).toFixed(2) !== String(Number(row.unitCost))) { ElMessage.warning(`第 ${i + 1} 行单位成本最多两位小数`); return false }
+    if (!hasAtMostDecimals(row.quantity, 3)) { ElMessage.warning(`第 ${i + 1} 行数量最多三位小数`); return false }
+    if (!hasAtMostDecimals(row.unitCost, 2)) { ElMessage.warning(`第 ${i + 1} 行单位成本最多两位小数`); return false }
   }
   return true
+}
+
+function hasAtMostDecimals(value: number, digits: number) {
+  const factor = 10 ** digits
+  return Math.abs(Number(value) * factor - Math.round(Number(value) * factor)) < 1e-8
 }
 
 function submitCreate() {

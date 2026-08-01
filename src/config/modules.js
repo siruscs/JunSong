@@ -469,6 +469,12 @@ export const modules = {
     customPage: '/pages/stock/index',
     permissions: { view: ['finance:report:stock', 'finance:stock:list'] }
   },
+  stockAdjustment: {
+    group: '财务管理',
+    title: '库存调整',
+    customPage: '/pages/stock-adjustment/index',
+    permissions: { view: ['finance:stockInit:list'] }
+  },
   verificationRecord: {
     group: '财务管理',
     title: '核销记录',

@@ -68,6 +68,17 @@
 - PROD：nginx、finance、member 容器均为运行状态；首页返回 HTTP 200，nginx 配置检查通过。
 - PROD SQL：期初库存菜单及 6 条关联菜单核验通过，`fin_stock_init_batch`、`fin_stock_init_item` 表和唯一索引核验通过。
 
+## 2026-08-02 库存调整重构进度
+
+- 设计文档：`docs/superpowers/specs/2026-08-02-inventory-adjustment-redesign-design.md`。
+- 实施计划：`docs/superpowers/plans/2026-08-02-inventory-adjustment-redesign.md`。
+- 后端已支持六种调整类型、`OTHER` 增减方向、数量三位小数、单位成本两位小数，并按方向调用入库/盘亏成本流水。
+- PC 表单已改为“库存调整”，增加调整类型、调整日历和库存方向提示；选商品时自动带入商品进价。
+- PC 小程序权限已新增“库存调整”；会员服务已新增 `stockAdjustment` 模块；小程序已增加只读库存调整页面。
+- 专项检查、PC 构建、财务/会员主程序构建和小程序构建通过。
+- DEV 字典、字段和菜单脚本已部署；DEV 财务服务、会员服务和 PC 前端已部署。
+- 待办：PROD 执行字段/字典 SQL、部署 finance/member/PC；小程序构建包需通过微信开发者工具上传发布后，WJS 才能看到新入口。
+
 ## 约束
 
 - 小程序库存与成本只读，不开放盘点、成本调整、过账。

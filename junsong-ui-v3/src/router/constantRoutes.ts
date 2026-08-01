@@ -82,6 +82,73 @@ export const constantRoutes: any[] = [
     meta: { title: '锁定屏幕' },
   },
   {
+    // 财务经营报表固定挂载，菜单权限仍由后端动态菜单控制。
+    path: '/finance/report/sale',
+    component: Layout,
+    hidden: true,
+    children: [{
+      path: '',
+      component: () => import('@/views/finance/report/sale.vue'),
+      name: 'FinanceSaleReport',
+      meta: { title: '销售经营分析', activeMenu: '/finance/report/sale' },
+    }],
+  },
+  {
+    path: '/finance/report/profit',
+    component: Layout,
+    hidden: true,
+    children: [{
+      path: '',
+      component: () => import('@/views/finance/report/profit.vue'),
+      name: 'FinanceProfitReport',
+      meta: { title: '利润分析', activeMenu: '/finance/report/profit' },
+    }],
+  },
+  {
+    path: '/finance/report/expense',
+    component: Layout,
+    hidden: true,
+    children: [{
+      path: '',
+      component: () => import('@/views/finance/report/expense.vue'),
+      name: 'FinanceExpenseReport',
+      meta: { title: '费用异常', activeMenu: '/finance/report/expense' },
+    }],
+  },
+  {
+    path: '/finance/report/profitShare',
+    component: Layout,
+    hidden: true,
+    children: [{
+      path: '',
+      component: () => import('@/views/finance/report/profitShare.vue'),
+      name: 'FinanceProfitShareReport',
+      meta: { title: '分润结算', activeMenu: '/finance/report/profitShare' },
+    }],
+  },
+  {
+    path: '/finance/report/stock',
+    component: Layout,
+    hidden: true,
+    children: [{
+      path: '',
+      component: () => import('@/views/finance/report/stock.vue'),
+      name: 'FinanceStockReport',
+      meta: { title: '库存价值与对账', activeMenu: '/finance/report/stock' },
+    }],
+  },
+  {
+    path: '/finance/report/store',
+    component: Layout,
+    hidden: true,
+    children: [{
+      path: '',
+      component: () => import('@/views/finance/report/store.vue'),
+      name: 'FinanceStoreReport',
+      meta: { title: '门店经营分析', activeMenu: '/finance/report/store' },
+    }],
+  },
+  {
     // 工作台页面固定挂载，接口与按钮权限仍由后端严格控制。
     path: '/finance/report/stock/stocktake',
     component: Layout,

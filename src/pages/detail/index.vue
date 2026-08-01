@@ -104,7 +104,7 @@
             <text class="payment-history-amount">¥{{ moneyText(payment.paymentAmount) }}</text>
           </view>
           <view class="payment-history-meta">
-            <text>{{ paymentDateText(payment.paymentDate) }}</text>
+            <text>{{ paymentDateText(payment.createTime) }}</text>
             <text>{{ paymentMethodText(payment.paymentMethod) }}</text>
           </view>
           <view v-if="payment.remark" class="payment-history-remark">备注：{{ payment.remark }}</view>

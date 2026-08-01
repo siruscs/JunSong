@@ -44,6 +44,7 @@ public class MemMpPermController extends BaseController {
                 {"accountingPeriod", "核算周期", "财务管理"},
                 {"profitShare", "分润结转", "财务管理"},
                 {"costAccounting", "成本核算", "财务管理"},
+                {"stockCost", "库存与成本", "财务管理"},
                 {"verificationRecord", "核销记录", "财务管理"},
                 {"wfTodo", "待办任务", "移动办公"},
                 {"wfDone", "已办任务", "移动办公"},

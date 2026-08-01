@@ -127,6 +127,7 @@ public interface FinSaleRecordMapper
 
     BigDecimal selectTodayTotalSales(@Param("deptIds") List<Long> deptIds);
     BigDecimal selectMonthTotalSales(@Param("deptIds") List<Long> deptIds);
+    BigDecimal selectPeriodTotalSales(@Param("deptIds") List<Long> deptIds, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
     BigDecimal selectTodayTotalSalesForPrev(@Param("deptIds") List<Long> deptIds);
     BigDecimal selectMonthTotalSalesForPrev(@Param("deptIds") List<Long> deptIds);
     List<Map<String, Object>> selectSalesByDept(@Param("deptIds") List<Long> deptIds, @Param("startTime") Date startTime, @Param("endTime") Date endTime);

@@ -7,7 +7,7 @@ import java.util.List;
  * 库存价值报表（第二期财务计价）。
  *
  * <p>恒等式：{@code openingAmount + inboundAmount - saleCost + adjustmentAmount = closingAmount}；
- * 毛利：{@code saleRevenue - saleCost = grossProfit}。</p>
+ * 毛利：{@code saleRevenue - saleCost - adjustmentAmount = grossProfit}。</p>
  *
  * <p>{@code costReady} 为 true 时表示租户已初始化成本层，前端方可展示金额和毛利；
  * 为 false 时金额字段全部为零且 items 为空，禁止用零值伪装未完成成本。</p>

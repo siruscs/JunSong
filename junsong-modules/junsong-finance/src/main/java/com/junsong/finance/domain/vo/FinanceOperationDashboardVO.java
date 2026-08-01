@@ -8,6 +8,8 @@ public class FinanceOperationDashboardVO {
     private BigDecimal monthSales = BigDecimal.ZERO;
     private BigDecimal todayExpense = BigDecimal.ZERO;
     private BigDecimal monthExpense = BigDecimal.ZERO;
+    private BigDecimal currentPeriodSales = BigDecimal.ZERO;
+    private BigDecimal currentPeriodExpense = BigDecimal.ZERO;
     private BigDecimal grossProfit = BigDecimal.ZERO;
     private BigDecimal netProfit = BigDecimal.ZERO;
     private BigDecimal profitRate = BigDecimal.ZERO;
@@ -42,6 +44,10 @@ public class FinanceOperationDashboardVO {
     public void setTodayExpense(BigDecimal todayExpense) { this.todayExpense = todayExpense; }
     public BigDecimal getMonthExpense() { return monthExpense; }
     public void setMonthExpense(BigDecimal monthExpense) { this.monthExpense = monthExpense; }
+    public BigDecimal getCurrentPeriodSales() { return currentPeriodSales; }
+    public void setCurrentPeriodSales(BigDecimal currentPeriodSales) { this.currentPeriodSales = currentPeriodSales; }
+    public BigDecimal getCurrentPeriodExpense() { return currentPeriodExpense; }
+    public void setCurrentPeriodExpense(BigDecimal currentPeriodExpense) { this.currentPeriodExpense = currentPeriodExpense; }
     public BigDecimal getGrossProfit() { return grossProfit; }
     public void setGrossProfit(BigDecimal grossProfit) { this.grossProfit = grossProfit; }
     public BigDecimal getNetProfit() { return netProfit; }

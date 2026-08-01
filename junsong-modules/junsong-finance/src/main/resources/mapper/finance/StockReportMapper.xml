@@ -378,7 +378,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             COALESCE(rng.sale_cost, 0) AS saleCost,
             COALESCE(rng.adjustment_amount, 0) AS adjustmentAmount,
             COALESCE(rev.sale_revenue, 0) AS saleRevenue,
-            (COALESCE(rev.sale_revenue, 0) - COALESCE(rng.sale_cost, 0)) AS grossProfit
+            (COALESCE(rev.sale_revenue, 0) - COALESCE(rng.sale_cost, 0)
+                - COALESCE(rng.adjustment_amount, 0)) AS grossProfit
         FROM fin_stock_cost_layer layer
         LEFT JOIN fin_product prod ON prod.product_id = layer.product_id AND prod.del_flag = '0'
         LEFT JOIN sys_dept dept ON dept.dept_id = layer.dept_id

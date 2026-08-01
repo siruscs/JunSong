@@ -322,6 +322,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </if>
     </select>
 
+    <select id="selectPeriodTotalSales" resultType="java.math.BigDecimal">
+        select ifnull(sum(sale_amount), 0) from fin_sale_record
+        where del_flag = '0' and sale_date &gt;= #{startTime} and sale_date &lt; #{endTime}
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+    </select>
+
     <select id="selectSalesByDept" resultType="java.util.HashMap">
         select r.dept_id as deptId, d.dept_name as deptName,
                ifnull(sum(r.sale_amount), 0) as totalSales,

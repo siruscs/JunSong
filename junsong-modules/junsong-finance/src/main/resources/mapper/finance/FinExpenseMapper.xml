@@ -326,6 +326,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </if>
     </select>
 
+    <select id="selectPeriodTotalExpense" resultType="java.math.BigDecimal">
+        select ifnull(sum(abs(expense_amount)), 0) from fin_expense
+        where del_flag = '0' and expense_type = '开支' and expense_date &gt;= #{startTime} and expense_date &lt; #{endTime}
+        <if test="deptIds != null and deptIds.size() > 0">
+            and dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach>
+        </if>
+    </select>
+
     <select id="countUnverifiedExpenses" resultType="int">
         select count(1) from fin_expense where del_flag = '0' and status = '0'
         <if test="deptIds != null and deptIds.size() > 0">

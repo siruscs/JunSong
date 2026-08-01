@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -314,7 +315,9 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
             vo.setAdjustmentAmount(nullSafe(summary.getAdjustmentAmount()));
             vo.setClosingAmount(nullSafe(summary.getClosingAmount()));
             vo.setSaleRevenue(nullSafe(summary.getSaleRevenue()));
-            BigDecimal grossProfit = nullSafe(summary.getSaleRevenue()).subtract(nullSafe(summary.getSaleCost()));
+            BigDecimal grossProfit = nullSafe(summary.getSaleRevenue())
+                    .subtract(nullSafe(summary.getSaleCost()))
+                    .subtract(nullSafe(summary.getAdjustmentAmount()));
             vo.setGrossProfit(grossProfit);
             if (nullSafe(summary.getSaleRevenue()).compareTo(BigDecimal.ZERO) > 0) {
                 vo.setGrossProfitRate(grossProfit.multiply(new BigDecimal("100"))
@@ -468,6 +471,14 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
         vo.setMonthSales(nullSafe(finSaleRecordMapper.selectMonthTotalSales(deptIds)));
         vo.setTodayExpense(nullSafe(finExpenseMapper.selectTodayTotalExpense(deptIds)));
         vo.setMonthExpense(nullSafe(finExpenseMapper.selectMonthTotalExpense(deptIds)));
+        if (deptIds != null && !deptIds.isEmpty()) {
+            FinAccountingPeriod period = finAccountingPeriodMapper.selectCurrentPeriodByDeptId(deptIds.get(0));
+            if (period != null && period.getStartTime() != null) {
+                Date periodEnd = period.getEndTime() != null ? period.getEndTime() : new Date();
+                vo.setCurrentPeriodSales(nullSafe(finSaleRecordMapper.selectPeriodTotalSales(deptIds, period.getStartTime(), periodEnd)));
+                vo.setCurrentPeriodExpense(nullSafe(finExpenseMapper.selectPeriodTotalExpense(deptIds, period.getStartTime(), periodEnd)));
+            }
+        }
 
         BigDecimal monthSales = vo.getMonthSales();
         BigDecimal monthExpense = vo.getMonthExpense();

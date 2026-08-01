@@ -139,6 +139,7 @@ public interface FinExpenseMapper
 
     BigDecimal selectTodayTotalExpense(@Param("deptIds") List<Long> deptIds);
     BigDecimal selectMonthTotalExpense(@Param("deptIds") List<Long> deptIds);
+    BigDecimal selectPeriodTotalExpense(@Param("deptIds") List<Long> deptIds, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
     BigDecimal selectMonthTotalExpenseForPrev(@Param("deptIds") List<Long> deptIds);
     int countUnverifiedExpenses(@Param("deptIds") List<Long> deptIds);
     BigDecimal sumUnverifiedExpenseAmount(@Param("deptIds") List<Long> deptIds);

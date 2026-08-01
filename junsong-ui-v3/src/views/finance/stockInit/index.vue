@@ -270,6 +270,33 @@
       </template>
     </el-dialog>
 
+    <el-drawer v-model="detailOpen" title="库存调整明细" size="720px" destroy-on-close>
+      <el-skeleton v-if="detailLoading" :rows="6" animated />
+      <template v-else-if="detailData">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="批次号">{{ detailData.batch.batchNo || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="门店">{{ getDeptName(detailData.batch.deptId) }}</el-descriptions-item>
+          <el-descriptions-item label="调整类型">{{ adjustmentTypeLabel(detailData.batch.adjustmentType) }}</el-descriptions-item>
+          <el-descriptions-item label="调整日历">{{ formatDate(detailData.batch.initDate) }}</el-descriptions-item>
+          <el-descriptions-item label="状态">{{ statusLabel(detailData.batch.status) }}</el-descriptions-item>
+          <el-descriptions-item label="备注">{{ detailData.batch.remark || '-' }}</el-descriptions-item>
+        </el-descriptions>
+        <el-table :data="detailData.items" border stripe style="margin-top: 16px">
+          <el-table-column label="商品名称" prop="productName" min-width="180" />
+          <el-table-column label="调整数量" prop="quantity" width="120" align="right">
+            <template #default="scope">{{ formatQuantity(scope.row.quantity) }}</template>
+          </el-table-column>
+          <el-table-column label="单位成本" prop="unitCost" width="120" align="right">
+            <template #default="scope">¥{{ Number(scope.row.unitCost || 0).toFixed(2) }}</template>
+          </el-table-column>
+          <el-table-column label="金额" prop="amount" width="120" align="right">
+            <template #default="scope">¥{{ Number(scope.row.amount || 0).toFixed(2) }}</template>
+          </el-table-column>
+        </el-table>
+      </template>
+      <el-empty v-else description="暂无明细" />
+    </el-drawer>
+
     <!-- 列表页内联审批对话框 -->
     <el-dialog title="审批期初库存" v-model="approveOpen" width="480px" append-to-body>
       <el-form ref="approveFormRef" :model="approveForm" :rules="approveRules" label-width="100px">
@@ -293,7 +320,6 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
 import { saveAs } from 'file-saver'
 import { parseTime } from '@/utils/junsong'
@@ -303,6 +329,7 @@ import Pagination from '@/components/Pagination/index.vue'
 import {
   approveStockInit,
   createStockInit,
+  getStockInitDetail,
   exportStockInit,
   listStockInit,
   postStockInit,
@@ -319,7 +346,6 @@ interface CreateItemRow {
   unitCost: number
 }
 
-const router = useRouter()
 const userStore = useUserStore()
 const { buildIdempotencyKey } = useSubmitLock()
 
@@ -328,6 +354,9 @@ const exportLoading = ref(false)
 const createLoading = ref(false)
 const createOpen = ref(false)
 const approveOpen = ref(false)
+const detailOpen = ref(false)
+const detailLoading = ref(false)
+const detailData = ref<any>(null)
 const total = ref(0)
 const list = ref<any[]>([])
 const productOptions = ref<any[]>([])
@@ -478,7 +507,21 @@ function handleDetail(row: any) {
     ElMessage.error('期初库存批次缺少有效ID，无法打开详情，请刷新列表后重试')
     return
   }
-  router.push(`/finance/stockInit/detail/${Number(batchId)}`)
+  detailOpen.value = true
+  detailLoading.value = true
+  detailData.value = null
+  getStockInitDetail(Number(batchId))
+    .then((res: any) => { detailData.value = res.data || res })
+    .catch(() => ElMessage.error('调整单明细加载失败，请稍后重试'))
+    .finally(() => { detailLoading.value = false })
+}
+
+function adjustmentTypeLabel(value: string) {
+  return ({ OPENING_STOCK: '期初库存录入', HISTORY_REPLENISH: '历史数据补录', TRIAL_CONSUMPTION: '试用消耗', STORE_USE: '店面自用', DAMAGE_LOSS: '报损', OTHER: '其他' } as Record<string, string>)[value] || value || '-'
+}
+
+function formatQuantity(value: number) {
+  return Number(value || 0).toFixed(3).replace(/\.?0+$/, '')
 }
 
 function handleAdd() {

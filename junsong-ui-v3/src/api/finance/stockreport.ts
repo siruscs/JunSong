@@ -139,6 +139,7 @@ export interface StockValueReportItemVO {
   closingAmount: number
   inboundAmount: number
   saleCost: number
+  adjustmentAmount: number
   saleRevenue: number
   grossProfit: number
 }

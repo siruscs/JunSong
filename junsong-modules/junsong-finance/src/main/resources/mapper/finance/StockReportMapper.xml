@@ -376,6 +376,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             layer.stock_amount AS closingAmount,
             COALESCE(rng.inbound_amount, 0) AS inboundAmount,
             COALESCE(rng.sale_cost, 0) AS saleCost,
+            COALESCE(rng.adjustment_amount, 0) AS adjustmentAmount,
             COALESCE(rev.sale_revenue, 0) AS saleRevenue,
             (COALESCE(rev.sale_revenue, 0) - COALESCE(rng.sale_cost, 0)) AS grossProfit
         FROM fin_stock_cost_layer layer
@@ -387,6 +388,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 - COALESCE(SUM(CASE WHEN cost_change_type = 'COST_REVERSE_OUT' THEN amount ELSE 0 END), 0) AS inbound_amount,
                 COALESCE(SUM(CASE WHEN cost_change_type = 'COST_OUT' THEN amount ELSE 0 END), 0)
                 - COALESCE(SUM(CASE WHEN cost_change_type = 'COST_REVERSE_IN' THEN amount ELSE 0 END), 0) AS sale_cost
+                , COALESCE(SUM(CASE WHEN cost_change_type = 'COST_ADJUST' THEN amount ELSE 0 END), 0) AS adjustment_amount
             FROM fin_stock_cost_ledger
             WHERE <include refid="CostLedgerAuthorizedBase"/>
               AND create_time &gt;= #{query.startDate}

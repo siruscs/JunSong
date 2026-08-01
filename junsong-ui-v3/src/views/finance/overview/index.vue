@@ -1,6 +1,7 @@
 <template>
   <div class="app-container report-page">
     <div class="page-head">
+      <h2 class="page-title">财务管理概览</h2>
       <el-button type="primary" icon="Refresh" :loading="loading" @click="loadData">刷新</el-button>
     </div>
 
@@ -585,17 +586,17 @@ export default {
 <style scoped>
 .page-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 12px 20px 4px;
+  padding: 8px 20px 2px;
   margin-bottom: 0;
 }
 
 .page-title {
-  margin: 0 0 6px;
+  margin: 0;
   color: #18202f;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
 }
 

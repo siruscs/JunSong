@@ -9,6 +9,8 @@ const miniModules = fs.readFileSync('junsong-miniprogram/src/config/modules.js',
 const miniStockPage = fs.readFileSync('junsong-miniprogram/src/pages/stock/index.vue', 'utf8')
 const miniPages = fs.readFileSync('junsong-miniprogram/src/pages.json', 'utf8')
 const miniDetail = fs.readFileSync('junsong-miniprogram/src/pages/detail/index.vue', 'utf8')
+const mpPerm = fs.readFileSync('junsong-ui-v3/src/views/member/mpPerm/index.vue', 'utf8')
+const stockSql = fs.readFileSync('sql/finance_stock_init.sql', 'utf8')
 
 for (const route of [
   '/finance/report/sale',
@@ -22,7 +24,7 @@ for (const route of [
 }
 
 assert.match(overview, /class="page-head"[\s\S]*?刷新/)
-assert.doesNotMatch(overview, /<h2 class="page-title">财务管理概览<\/h2>/)
+assert.match(overview, /<h2 class="page-title">财务管理概览<\/h2>/)
 assert.match(routes, /path: ['"]\/finance\/stockInit['"]/)
 assert.doesNotMatch(routes, /path: ['"]\/finance\/stockInit\/index['"]/)
 assert.match(stockReport, /@click="openCostAdjust\(scope\.row\)"/)
@@ -38,5 +40,8 @@ assert.doesNotMatch(miniStockPage, /成本调整|盘点过账|过账/)
 assert.match(miniModules, /paymentEdit: 'finance:sale:payment'/)
 assert.match(miniDetail, /openPaymentEdit\(payment\)/)
 assert.match(miniDetail, /method: this\.editingPaymentId \? 'PUT' : 'POST'/)
+assert.match(mpPerm, /key: "stockCost", name: "库存与成本"/)
+assert.match(stockSql, /icon = 'fa fa-archive'/)
+assert.match(stockReport, /prop="adjustmentAmount" label="成本调整"/)
 
 console.log('finance stock/miniprogram repair baseline checks passed')

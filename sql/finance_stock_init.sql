@@ -64,9 +64,16 @@ SELECT @finance_parent_id := menu_id FROM sys_menu
 INSERT INTO sys_menu (menu_name, parent_id, order_num, path, component, is_frame, is_cache,
     menu_type, visible, status, perms, icon, create_by, create_time, remark)
 SELECT '期初库存', @finance_parent_id, 50, 'stockInit', 'finance/stockInit/index', 1, 0,
-    'C', '0', '0', 'finance:stockInit:list', 'stock', 'admin', NOW(), '期初库存管理'
+    'C', '0', '0', 'finance:stockInit:list', 'fa fa-archive', 'admin', NOW(), '期初库存管理'
 FROM DUAL WHERE @finance_parent_id IS NOT NULL
     AND NOT EXISTS (SELECT 1 FROM sys_menu WHERE menu_name = '期初库存' AND parent_id = @finance_parent_id);
+
+-- 已存在菜单时同步图标，避免历史菜单仍保留无效图标值
+UPDATE sys_menu
+SET icon = 'fa fa-archive'
+WHERE menu_name = '期初库存'
+  AND parent_id = @finance_parent_id
+  AND status = '0';
 
 -- 获取期初库存菜单ID
 SELECT @stock_init_menu_id := menu_id FROM sys_menu

@@ -284,6 +284,7 @@
             <el-table-column prop="closingAmount" label="期末金额" width="120" align="right" :formatter="formatAmountCell" />
             <el-table-column prop="inboundAmount" label="入库金额" width="120" align="right" :formatter="formatAmountCell" />
             <el-table-column prop="saleCost" label="销售成本" width="120" align="right" :formatter="formatAmountCell" />
+            <el-table-column prop="adjustmentAmount" label="成本调整" width="120" align="right" :formatter="formatAmountCell" />
             <el-table-column prop="saleRevenue" label="销售收入" width="120" align="right" :formatter="formatAmountCell" />
             <el-table-column prop="grossProfit" label="毛利" width="120" align="right" :formatter="formatAmountCell" />
             <el-table-column label="操作" width="100" fixed="right">

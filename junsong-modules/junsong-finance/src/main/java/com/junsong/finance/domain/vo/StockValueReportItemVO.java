@@ -34,6 +34,9 @@ public class StockValueReportItemVO {
     /** 区间销售成本 */
     private BigDecimal saleCost;
 
+    /** 区间成本调整金额 */
+    private BigDecimal adjustmentAmount;
+
     /** 区间销售收入（不含赠品） */
     private BigDecimal saleRevenue;
 
@@ -126,6 +129,14 @@ public class StockValueReportItemVO {
 
     public void setSaleCost(BigDecimal saleCost) {
         this.saleCost = saleCost;
+    }
+
+    public BigDecimal getAdjustmentAmount() {
+        return adjustmentAmount;
+    }
+
+    public void setAdjustmentAmount(BigDecimal adjustmentAmount) {
+        this.adjustmentAmount = adjustmentAmount;
     }
 
     public BigDecimal getSaleRevenue() {

@@ -463,6 +463,12 @@ export const modules = {
     readonlyFields: ['periodNo', 'totalVerifiedExpense', 'totalPurchase', 'totalSalePayment', 'totalUnverifiedAdvance', 'netProfit', 'managerProfitRate', 'managerProfitAmount', 'investorProfitAmount', 'returnSituation'],
     pageActions: [{ name: '预览', action: 'view', url: '/finance/costAccounting/preview', method: 'GET' }]
   },
+  stockCost: {
+    group: '财务管理',
+    title: '库存与成本',
+    customPage: '/pages/stock/index',
+    permissions: { view: ['finance:report:stock', 'finance:stock:list'] }
+  },
   verificationRecord: {
     group: '财务管理',
     title: '核销记录',

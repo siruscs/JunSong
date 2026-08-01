@@ -129,6 +129,10 @@
       "style": { "navigationBarTitleText": "库存盘点" }
     },
     {
+      "path": "pages/stock/index",
+      "style": { "navigationBarTitleText": "库存与成本" }
+    },
+    {
       "path": "pages/stocktake/detail",
       "style": { "navigationBarTitleText": "盘点详情" }
     }

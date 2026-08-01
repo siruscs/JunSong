@@ -3,6 +3,8 @@ import fs from 'node:fs'
 
 const routes = fs.readFileSync('junsong-ui-v3/src/router/constantRoutes.ts', 'utf8')
 const overview = fs.readFileSync('junsong-ui-v3/src/views/finance/overview/index.vue', 'utf8')
+const stockReport = fs.readFileSync('junsong-ui-v3/src/views/finance/report/stock.vue', 'utf8')
+const stockInitApi = fs.readFileSync('junsong-ui-v3/src/api/finance/stockInit.ts', 'utf8')
 
 for (const route of [
   '/finance/report/sale',
@@ -17,5 +19,10 @@ for (const route of [
 
 assert.match(overview, /class="page-head"[\s\S]*?刷新/)
 assert.doesNotMatch(overview, /<h2 class="page-title">财务管理概览<\/h2>/)
+assert.match(routes, /path: ['"]\/finance\/stockInit['"]/)
+assert.doesNotMatch(routes, /path: ['"]\/finance\/stockInit\/index['"]/)
+assert.match(stockReport, /@click="openCostAdjust\(scope\.row\)"/)
+assert.match(stockReport, /createCostAdjustment\(/)
+assert.match(stockInitApi, /url: ['"]\/finance\/stockInit['"]/)
 
 console.log('finance stock/miniprogram repair baseline checks passed')

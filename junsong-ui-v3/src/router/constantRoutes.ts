@@ -178,7 +178,7 @@ export const constantRoutes: any[] = [
   },
   {
     // 期初库存工作台固定挂载，菜单显示由 sys_menu (menu_id=3240, parent_id=108) 驱动。
-    path: '/finance/stockInit/index',
+    path: '/finance/stockInit',
     component: Layout,
     hidden: true,
     children: [

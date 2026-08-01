@@ -117,7 +117,8 @@ public class FinPurchaseController extends BaseController
         {
             return error("进货单不存在或无权编辑");
         }
-        finPurchase.setDeptId(SecurityUtils.getDeptId());
+        // 保留原始 dept_id：admin 跨部门编辑时不应覆盖；非 admin 已在上方校验同部门
+        finPurchase.setDeptId(existing.getDeptId());
         if (!finPurchaseService.checkPurchaseNoUnique(finPurchase))
         {
             return error("修改进货单失败，进货单号已存在");

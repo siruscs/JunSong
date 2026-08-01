@@ -486,7 +486,8 @@ export default {
     giftUnitPrice(row) {
         const amount = Number(row?.saleAmount || 0)
         const totalQuantity = Number(row?.saleQuantity || 0) + Number(row?.giftQuantity || 0)
-        return totalQuantity > 0 ? `¥${(amount / totalQuantity).toFixed(2)}` : '-'
+        // 退货单 saleQuantity 为负，totalQuantity 可能为负；只要非零就应计算单价
+        return totalQuantity !== 0 ? `¥${(amount / totalQuantity).toFixed(2)}` : '-'
     },
     submitForm() {
       this.$refs["form"].validate(valid => {

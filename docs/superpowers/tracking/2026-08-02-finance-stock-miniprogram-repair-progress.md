@@ -97,3 +97,10 @@
 - 小程序库存与成本只读，不开放盘点、成本调整、过账。
 - 不覆盖用户现有未提交改动。
 - 每个通过阶段创建本地 Git 提交，不推送远程。
+
+## 2026-08-02 小程序库存报表 404 修复
+
+- 根因：小程序库存与成本、库存调整页面共用 `getStockValueReport`，请求地址写成 `/report/stock/value`，在生产域名下未经过 `/prod-api/finance` 网关路由，因而返回静态资源 404。
+- 修复：请求地址改为 `/finance/report/stock/value`，由现有请求基址拼接为 `/prod-api/finance/report/stock/value`。
+- 回归校验：专项检查先验证失败，再在修复后通过；重新编译后已核验生成包包含 `stockCost`、`stockAdjustment`、两个页面及修正后的接口地址。
+- 发布要求：微信开发者工具重新导入 `/Users/sirius/Documents/TRAE/JunSong-Cloud/junsong-miniprogram/dist`，清缓存并重新编译/预览；随后 WJS 退出重登刷新模块权限缓存。

@@ -235,9 +235,9 @@
         <h4 style="margin-bottom: 10px;">缴款记录</h4>
         <el-table :data="viewForm.payments" border>
           <el-table-column label="缴款单号" prop="paymentNo" width="180" />
-          <el-table-column label="缴款日期" prop="paymentDate" width="120" align="center">
+          <el-table-column label="缴款时间" prop="createTime" width="160" align="center">
             <template #default="scope">
-              <span>{{ parseTime(scope.row.paymentDate, '{y}-{m}-{d}') }}</span>
+              <span>{{ parseTime(scope.row.createTime, '{y}-{m}-{d} {h}:{i}') }}</span>
             </template>
           </el-table-column>
           <el-table-column label="缴款金额" width="120" align="center">
@@ -455,6 +455,10 @@ export default {
         this.viewOpen = true
       })
     },
+    formatToday() {
+      const d = new Date()
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    },
     handlePayment(row) {
       this.paymentForm = {
         saleId: row.saleId,
@@ -462,7 +466,7 @@ export default {
         periodNo: row.periodNo,
         saleAmount: row.saleAmount,
         paidAmount: row.paidAmount,
-        paymentDate: new Date().toISOString().split('T')[0],
+        paymentDate: this.formatToday(),
         paymentAmount: row.saleAmount - row.paidAmount,
         paymentMethod: undefined,
         remark: undefined
@@ -559,7 +563,7 @@ export default {
         saleNo: this.viewForm.saleNo,
         saleAmount: this.viewForm.saleAmount,
         paidAmount: this.viewForm.paidAmount,
-        paymentDate: row.paymentDate ? new Date(row.paymentDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        paymentDate: row.paymentDate ? String(row.paymentDate).substring(0, 10) : this.formatToday(),
         paymentAmount: row.paymentAmount,
         paymentMethod: row.paymentMethod,
         remark: row.remark,

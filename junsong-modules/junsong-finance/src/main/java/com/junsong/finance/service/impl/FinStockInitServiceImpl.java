@@ -557,6 +557,8 @@ public class FinStockInitServiceImpl implements IFinStockInitService {
             if (deptIds != null && !deptIds.contains(query.getDeptId())) {
                 return new ArrayList<>();
             }
+            // 当前部门选择是显式数据范围，即使管理员也不能因授权范围为空而回退到全门店。
+            deptIds = Collections.singletonList(query.getDeptId());
         }
         String status = query == null ? null : query.getStatus();
         String batchNo = query == null ? null : query.getBatchNo();

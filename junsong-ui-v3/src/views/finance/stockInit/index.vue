@@ -171,6 +171,9 @@
               <el-select v-model="createForm.adjustmentType" style="width: 100%" @change="onAdjustmentTypeChange">
                 <el-option v-for="item in adjustmentTypes" :key="item.value" :label="item.label" :value="item.value" />
               </el-select>
+              <div class="adjustment-hint" :class="adjustmentHint.includes('减少') ? 'is-decrease' : 'is-increase'">
+                {{ adjustmentHint }}
+              </div>
             </el-form-item>
           </el-col>
           <el-col v-if="createForm.adjustmentType === 'OTHER'" :span="12">
@@ -195,7 +198,7 @@
         <el-form-item label="商品明细" required>
           <div class="items-toolbar">
             <el-button type="primary" plain size="small" @click="addItemRow">添加行</el-button>
-            <span class="items-hint">数量填写正数；{{ adjustmentHint }}；金额 = 数量 × 单位成本</span>
+            <span class="items-hint items-hint--warning">⚠ 数量填写正数；{{ adjustmentHint }}；金额 = 数量 × 单位成本</span>
           </div>
           <el-table :data="createForm.items" border stripe size="small" style="width: 100%">
             <el-table-column label="商品" min-width="220">
@@ -428,9 +431,15 @@ const totalAmount = computed(() => {
 })
 
 const adjustmentHint = computed(() => {
+  const directionByType: Record<string, string> = {
+    OPENING_STOCK: '库存将增加',
+    HISTORY_REPLENISH: '库存将增加',
+    TRIAL_CONSUMPTION: '库存将减少',
+    STORE_USE: '库存将减少',
+    DAMAGE_LOSS: '库存将减少',
+  }
   if (createForm.adjustmentType === 'OTHER') return createForm.adjustmentDirection === 'DECREASE' ? '库存将减少' : '库存将增加'
-  const selected = adjustmentTypes.value.find((item: any) => item.value === createForm.adjustmentType)
-  return selected?.raw?.remark?.includes('减少') ? '库存将减少' : '库存将增加'
+  return directionByType[createForm.adjustmentType] || '请选择调整类型'
 })
 
 function statusLabel(value: string) {
@@ -849,6 +858,37 @@ onMounted(() => {
 .items-hint {
   color: #94a3b8;
   font-size: 12px;
+}
+
+.items-hint--warning {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 10px;
+  padding: 7px 12px;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  color: #b91c1c;
+  background: #fef2f2;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.adjustment-hint {
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.adjustment-hint.is-increase {
+  color: #18794e;
+  background: #effaf3;
+}
+
+.adjustment-hint.is-decrease {
+  color: #b45309;
+  background: #fff7ed;
 }
 .amount-cell {
   font-weight: 600;

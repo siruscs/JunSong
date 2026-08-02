@@ -54,6 +54,7 @@ import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { parseTime } from '@/utils/junsong'
 import { getStockLedgerPage, type StockLedgerRow } from '@/api/finance/stockreport'
+import { useDict } from '@/composables/useDict'
 
 const props = defineProps<{
   visible: boolean
@@ -73,6 +74,7 @@ const ledgerRows = ref<StockLedgerRow[]>([])
 const total = ref(0)
 const pageNum = ref(1)
 const pageSize = ref(10)
+const dict = useDict('finance_stock_adjustment_type')
 
 const drawerTitle = computed(() => `库存流水明细${props.productName ? ' - ' + props.productName : ''}`)
 
@@ -81,22 +83,40 @@ const changeTypeLabels: Record<string, string> = {
   PURCHASE_REVERSE: '采购冲销',
   SALE_OUT: '销售出库',
   SALE_REVERSE: '销售冲销',
+  STOCK_INIT: '期初库存',
+  OPENING_STOCK: '期初库存',
+  HISTORY_REPLENISH: '历史数据补录',
+  TRIAL_CONSUMPTION: '试用消耗',
+  STORE_USE: '店面自用',
+  DAMAGE_LOSS: '报损',
+  OTHER: '其他',
+  STOCK_ADJUSTMENT: '库存调整',
+  ADJUSTMENT_IN: '库存调整入库',
+  ADJUSTMENT_OUT: '库存调整出库',
+  STOCK_TAKE_GAIN: '盘点盘盈',
+  STOCK_TAKE_LOSS: '盘点盘亏',
+  STOCK_TAKE_REVERSE: '盘点冲销',
 }
 
 function changeTypeLabel(type: string) {
-  return changeTypeLabels[type] || type || '-'
+  const dictItem = (dict.type.finance_stock_adjustment_type || []).find((item: any) => item.value === type || item.dictValue === type)
+  return dictItem?.label || dictItem?.dictLabel || changeTypeLabels[type] || type || '-'
 }
 
 function changeTypeTag(type: string): 'success' | 'warning' | 'info' {
-  if (type === 'PURCHASE_IN') return 'success'
-  if (type === 'SALE_OUT') return 'warning'
-  if (type === 'PURCHASE_REVERSE' || type === 'SALE_REVERSE') return 'info'
+  if (type === 'PURCHASE_IN' || type === 'ADJUSTMENT_IN' || type === 'STOCK_TAKE_GAIN') return 'success'
+  if (type === 'SALE_OUT' || type === 'ADJUSTMENT_OUT' || type === 'STOCK_TAKE_LOSS') return 'warning'
+  if (type === 'DAMAGE_LOSS') return 'warning'
+  if (type === 'PURCHASE_REVERSE' || type === 'SALE_REVERSE' || type === 'STOCK_TAKE_REVERSE') return 'info'
   return 'info'
 }
 
 const referenceTypeLabels: Record<string, string> = {
   PURCHASE: '采购单',
   SALE: '销售单',
+  STOCK_INIT: '期初单',
+  STOCK_ADJUSTMENT: '调整单',
+  STOCK_TAKE: '盘点单',
 }
 
 function referenceTypeLabel(type: string) {

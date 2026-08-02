@@ -1,0 +1,1 @@
+"use strict";const t=require("./index.js"),e=require("../utils/workContext.js");exports.getStockValueReport=function(r={}){const o=e.workContext.snapshot().currentDeptId;return t.request({url:"/finance/report/stock/value",method:"POST",data:{...r,deptIds:r.deptIds||(o?[o]:[])}})};

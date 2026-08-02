@@ -277,6 +277,7 @@ export default {
   display: block;
 }
 
+
 .brand-copy {
   flex: 1;
   display: flex;

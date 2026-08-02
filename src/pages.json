@@ -133,6 +133,10 @@
       "style": { "navigationBarTitleText": "库存与成本" }
     },
     {
+      "path": "pages/stock-ledger/index",
+      "style": { "navigationBarTitleText": "库存流水" }
+    },
+    {
       "path": "pages/stock-adjustment/index",
       "style": { "navigationBarTitleText": "库存调整" }
     },

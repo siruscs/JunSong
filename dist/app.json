@@ -32,6 +32,9 @@
     "pages/operating-task/index",
     "pages/field-work/index",
     "pages/stocktake/index",
+    "pages/stock/index",
+    "pages/stock-ledger/index",
+    "pages/stock-adjustment/index",
     "pages/stocktake/detail"
   ],
   "window": {

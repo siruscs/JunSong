@@ -132,8 +132,7 @@ export default {
   onShareAppMessage() {
     return {
       title: '松·云助手｜连锁门店经营管理平台',
-      path: '/pages/login/index',
-      imageUrl: '/static/logo.png'
+      path: '/pages/login/index'
     }
   },
   data() {
@@ -540,6 +539,7 @@ export default {
   height: 100%;
   display: block;
 }
+
 
 .brand-copy {
   flex: 1;

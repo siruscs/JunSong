@@ -63,7 +63,7 @@ export function submitStockTake(params = {}) {
  */
 export function queryStockLedger(params = {}) {
   return request({
-    url: '/report/stock/ledger/page',
+    url: '/finance/report/stock/ledger/page',
     method: 'POST',
     data: params
   })

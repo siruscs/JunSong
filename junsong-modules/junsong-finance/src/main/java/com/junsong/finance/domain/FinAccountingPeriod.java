@@ -2,6 +2,7 @@ package com.junsong.finance.domain;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.junsong.common.core.annotation.Excel;
 import com.junsong.common.core.annotation.Excel.ColumnType;
@@ -16,6 +17,8 @@ public class FinAccountingPeriod extends BaseEntity
     @Excel(name = "周期ID", cellType = ColumnType.NUMERIC)
     private Long periodId;
     private Long deptId;
+    /** 仅用于列表查询的授权机构范围，不参与持久化。 */
+    private List<Long> deptIds;
     @Excel(name = "周期编号")
     private String periodNo;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
@@ -50,6 +53,8 @@ public class FinAccountingPeriod extends BaseEntity
     public void setPeriodId(Long periodId) { this.periodId = periodId; }
     public Long getDeptId() { return deptId; }
     public void setDeptId(Long deptId) { this.deptId = deptId; }
+    public List<Long> getDeptIds() { return deptIds; }
+    public void setDeptIds(List<Long> deptIds) { this.deptIds = deptIds; }
     public String getPeriodNo() { return periodNo; }
     public void setPeriodNo(String periodNo) { this.periodNo = periodNo; }
     public Date getStartTime() { return startTime; }

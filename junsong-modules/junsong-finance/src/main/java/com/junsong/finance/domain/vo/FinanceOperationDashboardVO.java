@@ -10,6 +10,9 @@ public class FinanceOperationDashboardVO {
     private BigDecimal monthExpense = BigDecimal.ZERO;
     private BigDecimal currentPeriodSales = BigDecimal.ZERO;
     private BigDecimal currentPeriodExpense = BigDecimal.ZERO;
+    private BigDecimal currentPeriodPurchase = BigDecimal.ZERO;
+    private BigDecimal currentPeriodUnverifiedAdvance = BigDecimal.ZERO;
+    private BigDecimal currentPeriodNetProfit = BigDecimal.ZERO;
     private BigDecimal grossProfit = BigDecimal.ZERO;
     private BigDecimal netProfit = BigDecimal.ZERO;
     private BigDecimal profitRate = BigDecimal.ZERO;
@@ -48,6 +51,12 @@ public class FinanceOperationDashboardVO {
     public void setCurrentPeriodSales(BigDecimal currentPeriodSales) { this.currentPeriodSales = currentPeriodSales; }
     public BigDecimal getCurrentPeriodExpense() { return currentPeriodExpense; }
     public void setCurrentPeriodExpense(BigDecimal currentPeriodExpense) { this.currentPeriodExpense = currentPeriodExpense; }
+    public BigDecimal getCurrentPeriodPurchase() { return currentPeriodPurchase; }
+    public void setCurrentPeriodPurchase(BigDecimal currentPeriodPurchase) { this.currentPeriodPurchase = currentPeriodPurchase; }
+    public BigDecimal getCurrentPeriodUnverifiedAdvance() { return currentPeriodUnverifiedAdvance; }
+    public void setCurrentPeriodUnverifiedAdvance(BigDecimal currentPeriodUnverifiedAdvance) { this.currentPeriodUnverifiedAdvance = currentPeriodUnverifiedAdvance; }
+    public BigDecimal getCurrentPeriodNetProfit() { return currentPeriodNetProfit; }
+    public void setCurrentPeriodNetProfit(BigDecimal currentPeriodNetProfit) { this.currentPeriodNetProfit = currentPeriodNetProfit; }
     public BigDecimal getGrossProfit() { return grossProfit; }
     public void setGrossProfit(BigDecimal grossProfit) { this.grossProfit = grossProfit; }
     public BigDecimal getNetProfit() { return netProfit; }

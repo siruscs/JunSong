@@ -303,6 +303,11 @@ import { useUserStore } from '@/stores/user'
 const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(false)
+const canViewDailyReview = computed(() => {
+  return userStore.roles.includes('admin')
+    || userStore.permissions.includes('*:*:*')
+    || userStore.permissions.includes('finance:dailyReview:view')
+})
 const selectedDeptId = ref<number | null>(userStore.currentDeptId)
 const reviewTasks = ref<any[]>([])
 const portfolio = ref<any>({})
@@ -539,9 +544,9 @@ async function loadData() {
 
   try {
     const results = await Promise.allSettled([
-      getDailyReviewBoard(deptPayload),
-      getWeeklyReviewBoard(deptPayload),
-      getWeeklyMemo(deptPayload),
+      canViewDailyReview.value ? getDailyReviewBoard(deptPayload) : Promise.resolve({ data: {} }),
+      canViewDailyReview.value ? getWeeklyReviewBoard(deptPayload) : Promise.resolve({ data: {} }),
+      canViewDailyReview.value ? getWeeklyMemo(deptPayload) : Promise.resolve({ data: {} }),
       getAuthorizedStorePortfolio({ deptIds, timeType: 'day' }),
       listReviewTasks({ pageNum: 1, pageSize: 8, deptId }),
       getDashboardOperation(deptIds),

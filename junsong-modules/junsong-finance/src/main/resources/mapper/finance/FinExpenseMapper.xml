@@ -222,6 +222,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 #{deptId}
             </foreach>
         </if>
+        <if test="periodId != null"> and period_id = #{periodId}</if>
         <if test="startTime != null">
             and expense_date &gt;= #{startTime}
         </if>
@@ -248,6 +249,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 #{deptId}
             </foreach>
         </if>
+        <if test="periodId != null"> and e.period_id = #{periodId}</if>
         <if test="startTime != null">
             and e.expense_date &gt;= #{startTime}
         </if>
@@ -272,6 +274,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 #{deptId}
             </foreach>
         </if>
+        <if test="periodId != null"> and e.period_id = #{periodId}</if>
         <if test="startTime != null">
             and e.expense_date &gt;= #{startTime}
         </if>
@@ -293,6 +296,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 #{deptId}
             </foreach>
         </if>
+        <if test="periodId != null"> and period_id = #{periodId}</if>
         <if test="startTime != null">
             and expense_date &gt;= #{startTime}
         </if>

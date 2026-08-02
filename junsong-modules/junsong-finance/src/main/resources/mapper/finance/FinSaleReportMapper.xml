@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.finance.mapper.FinSaleReportMapper">
+    <sql id="saleReportWhere">
+        <where> r.del_flag = '0'
+            <if test="deptIds != null and deptIds.size() > 0">
+                and r.dept_id in
+                <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">
+                    #{deptId}
+                </foreach>
+            </if>
+            <if test="periodId != null">
+                and r.period_id = #{periodId}
+            </if>
+            <if test="startTime != null">
+                and r.sale_date &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                and r.sale_date &lt;= #{endTime}
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectSaleTrendStats" resultType="java.util.HashMap">
+        select date_format(r.sale_date, '%Y-%m-%d') as dateStr,
+               r.dept_id as deptId,
+               d.dept_name as deptName,
+               ifnull(sum(r.sale_amount), 0) as totalSales
+        from fin_sale_record r
+        left join sys_dept d on r.dept_id = d.dept_id
+        <include refid="saleReportWhere"/>
+        group by date_format(r.sale_date, '%Y-%m-%d'), r.dept_id, d.dept_name
+        order by dateStr, r.dept_id
+    </select>
+
+    <select id="countSaleRecords" resultType="int">
+        select count(1) from fin_sale_record r
+        <include refid="saleReportWhere"/>
+    </select>
+
+    <select id="sumSaleQuantity" resultType="java.math.BigDecimal">
+        select ifnull(sum(r.total_quantity), 0) from fin_sale_record r
+        <include refid="saleReportWhere"/>
+    </select>
+
+    <select id="selectSalesByDept" resultType="java.util.HashMap">
+        select r.dept_id as deptId, d.dept_name as deptName,
+               ifnull(sum(r.sale_amount), 0) as totalSales,
+               count(1) as orderCount,
+               ifnull(sum(r.total_quantity), 0) as totalQuantity
+        from fin_sale_record r
+        left join sys_dept d on r.dept_id = d.dept_id
+        <include refid="saleReportWhere"/>
+        group by r.dept_id, d.dept_name
+        order by totalSales desc
+    </select>
+
+    <select id="selectMemberSales" resultType="java.math.BigDecimal">
+        select ifnull(sum(r.sale_amount), 0) from fin_sale_record r
+        <where> r.del_flag = '0'
+            and r.sale_no in (select sr.sale_no from fin_sale_record sr where sr.del_flag = '0' and sr.remark like '%member%')
+            <if test="deptIds != null and deptIds.size() > 0">and r.dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach></if>
+            <if test="periodId != null">and r.period_id = #{periodId}</if>
+            <if test="startTime != null">and r.sale_date &gt;= #{startTime}</if>
+            <if test="endTime != null">and r.sale_date &lt;= #{endTime}</if>
+        </where>
+    </select>
+
+    <select id="selectSeckillSales" resultType="java.math.BigDecimal">
+        select ifnull(sum(r.sale_amount), 0) from fin_sale_record r
+        <where> r.del_flag = '0' and r.remark like '%seckill%'
+            <if test="deptIds != null and deptIds.size() > 0">and r.dept_id in <foreach item="deptId" collection="deptIds" open="(" separator="," close=")">#{deptId}</foreach></if>
+            <if test="periodId != null">and r.period_id = #{periodId}</if>
+            <if test="startTime != null">and r.sale_date &gt;= #{startTime}</if>
+            <if test="endTime != null">and r.sale_date &lt;= #{endTime}</if>
+        </where>
+    </select>
+
+    <select id="selectProductSalesRank" resultType="java.util.HashMap">
+        select r.product_id as productId, r.product_name as productName,
+               ifnull(sum(r.sale_amount), 0) as totalSales,
+               ifnull(sum(r.total_quantity), 0) as totalQuantity,
+               r.dept_id as deptId, d.dept_name as deptName
+        from fin_sale_record r
+        left join sys_dept d on r.dept_id = d.dept_id
+        <include refid="saleReportWhere"/>
+        group by r.product_id, r.product_name, r.dept_id, d.dept_name
+        order by totalSales desc
+        limit 20
+    </select>
+</mapper>

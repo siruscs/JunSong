@@ -4,7 +4,7 @@
       <div class="period-header">
         <div>
           <div class="panel-title">店面核算状态</div>
-          <div class="panel-subtitle">按当前核算周期汇总销售缴款、已核销费用、进货款和借支未核销</div>
+          <div class="panel-subtitle">按当前核算周期汇总实际缴款、已核销费用、进货款和未核销借支；销售额不直接计入收入</div>
         </div>
         <div class="period-actions">
           <el-button type="warning" size="small" @click="handleTrialBreakEven" v-hasPermi="['finance:accountingPeriod:query']">试算回本</el-button>
@@ -25,7 +25,7 @@
         </div>
         <div class="metric-grid">
           <div class="metric-card">
-            <div class="metric-label">销售缴款总额</div>
+            <div class="metric-label">实际缴款收入</div>
             <div class="metric-value income">¥{{ formatMoney(currentPeriod.totalSalePayment) }}</div>
           </div>
           <div class="metric-card">
@@ -58,11 +58,11 @@
           <template #sub-title>
             <div class="trial-detail">
               <div class="trial-row">
-                <span class="trial-label">销售缴款总额</span>
+                <span class="trial-label">实际缴款收入</span>
                 <span class="trial-value income">¥{{ formatMoney(trialResult.totalSalePayment) }}</span>
               </div>
               <div class="trial-row">
-                <span class="trial-label">成本合计（费用+进货+借支未核销）</span>
+                <span class="trial-label">周期成本（已核销费用+进货+未核销借支）</span>
                 <span class="trial-value cost">¥{{ formatMoney(trialResult.costTotal) }}</span>
               </div>
               <div class="trial-row" v-if="!trialResult.isBreakEven">
@@ -225,6 +225,7 @@
           </el-table>
         </el-tab-pane>
         <el-tab-pane label="销售缴款" name="sale">
+          <div class="detail-hint">缴款按实际发生计入当前核算周期；历史销售欠款不会回写原销售周期。</div>
           <el-table v-loading="detailLoading" :data="salePaymentRows" height="360" border :span-method="salePaymentSpan">
             <el-table-column label="商品名称" prop="productName" min-width="140" show-overflow-tooltip />
             <el-table-column label="销售日期" prop="saleDate" width="120" align="center">
@@ -241,6 +242,12 @@
             </el-table-column>
             <el-table-column label="缴款时间" prop="paymentDate" width="170">
               <template #default="scope">{{ parseTime(scope.row.paymentDate, '{y}-{m}-{d} {h}:{i}:{s}') }}</template>
+            </el-table-column>
+            <el-table-column label="缴款归属" width="120" align="center">
+              <template #default="scope">
+                <el-tag v-if="scope.row.isHistoricalPayment" type="warning" size="small">历史欠款回收</el-tag>
+                <el-tag v-else type="success" size="small">本周期销售</el-tag>
+              </template>
             </el-table-column>
             <el-table-column label="缴款金额" prop="paymentAmount" width="120" align="right">
               <template #default="scope">¥{{ formatMoney(scope.row.paymentAmount) }}</template>
@@ -517,7 +524,10 @@ export default {
           saleDate: sale.saleDate,
           saleAmount: sale.saleAmount,
           paidAmount: sale.paidAmount,
-          unpaidAmount: Number(sale.saleAmount || 0) - Number(sale.paidAmount || 0)
+          unpaidAmount: Number(sale.saleAmount || 0) - Number(sale.paidAmount || 0),
+          salePeriodId: sale.periodId,
+          paymentPeriodId: p.periodId,
+          isHistoricalPayment: sale.periodId != null && p.periodId != null && String(sale.periodId) !== String(p.periodId)
         }
       })
       rows.sort((a, b) => String(a.saleNo).localeCompare(String(b.saleNo)))
@@ -1227,6 +1237,16 @@ export default {
   background: #fef0f0;
   color: #f56c6c;
   border: 1px solid #fde2e2;
+}
+
+.detail-hint {
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  border: 1px solid #d9ecff;
+  border-radius: 4px;
+  background: #f4f9ff;
+  color: #409eff;
+  font-size: 13px;
 }
 
 .check-summary-icon {

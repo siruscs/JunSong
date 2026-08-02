@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AccountingPeriodFilter: typeof import('./src/components/finance/AccountingPeriodFilter.vue')['default']
     Breadcrumb: typeof import('./src/components/Breadcrumb/index.vue')['default']
     DictTag: typeof import('./src/components/DictTag/index.vue')['default']
     Editor: typeof import('./src/components/Editor/index.vue')['default']

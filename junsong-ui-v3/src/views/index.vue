@@ -643,6 +643,10 @@ const isAdmin = computed(() => {
   return userStore.roles.includes('admin') || userStore.permissions.includes('*:*:*')
 })
 
+const canViewDailyReview = computed(() => {
+  return isAdmin.value || userStore.permissions.includes('finance:dailyReview:view')
+})
+
 const totalAssets = computed(() => {
   return number(stats.users + stats.roles + stats.depts + stats.posts + stats.dicts + stats.configs + stats.notices)
 })
@@ -749,6 +753,7 @@ function fetchWorkbenchTasks() {
 }
 
 function fetchDailyReview() {
+  if (!canViewDailyReview.value) return
   dailyReviewLoading.value = true
   dailyReviewError.value = ''
   getDailyReviewBoard({})
@@ -777,6 +782,7 @@ function fetchDailyReview() {
 }
 
 function fetchWeeklyBoard() {
+  if (!canViewDailyReview.value) return
   weeklyBoardLoading.value = true
   weeklyBoardError.value = ''
   getWeeklyReviewBoard({})
@@ -812,6 +818,7 @@ function fetchWeeklyBoard() {
 }
 
 function fetchWeeklyMemo() {
+  if (!canViewDailyReview.value) return
   weeklyMemoLoading.value = true
   getWeeklyMemo({})
     .then((res: any) => {
@@ -1048,9 +1055,11 @@ onMounted(async () => {
     fetchNotice()
     fetchDashboardHealth()
     fetchWorkbenchTasks()
-    fetchDailyReview()
-    fetchWeeklyBoard()
-    fetchWeeklyMemo()
+    if (canViewDailyReview.value) {
+      fetchDailyReview()
+      fetchWeeklyBoard()
+      fetchWeeklyMemo()
+    }
     fetchEffectSummary()
     healthTimer = window.setInterval(fetchDashboardHealth, 30000)
   }

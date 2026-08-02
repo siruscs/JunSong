@@ -18,6 +18,7 @@ import com.junsong.finance.mapper.FinProfitShareRecordMapper;
 import com.junsong.finance.mapper.FinSaleRecordMapper;
 import com.junsong.finance.mapper.StockReportMapper;
 import com.junsong.finance.service.IFinanceReportService;
+import com.junsong.finance.service.IFinAccountingPeriodService;
 import com.junsong.finance.service.IStockCostService;
 import com.junsong.finance.service.IStockHealthService;
 import com.junsong.finance.service.diagnosis.FinanceDiagnosisContext;
@@ -59,10 +60,16 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
     private FinSaleRecordMapper finSaleRecordMapper;
 
     @Autowired
+    private com.junsong.finance.mapper.FinSaleReportMapper finSaleReportMapper;
+
+    @Autowired
     private RemoteUserService remoteUserService;
 
     @Autowired
     private FinAccountingPeriodMapper finAccountingPeriodMapper;
+
+    @Autowired
+    private IFinAccountingPeriodService finAccountingPeriodService;
 
     @Autowired
     private StockReportMapper stockReportMapper;
@@ -141,10 +148,11 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
         SaleReportVO vo = new SaleReportVO();
 
         applyDataScope(params);
-        List<Map<String, Object>> trendStats = finSaleRecordMapper.selectSaleTrendStats(params.getDeptIds(), params.getStartTime(), params.getEndTime());
+        Map<String, Object> queryParams = buildQueryParams(params);
+        List<Map<String, Object>> trendStats = finSaleReportMapper.selectSaleTrendStats(queryParams);
         BigDecimal totalSales = sumField(trendStats, "totalSales");
-        int totalCount = finSaleRecordMapper.countSaleRecords(params.getDeptIds(), params.getStartTime(), params.getEndTime());
-        BigDecimal totalQuantity = nzBig(finSaleRecordMapper.sumSaleQuantity(params.getDeptIds(), params.getStartTime(), params.getEndTime()));
+        int totalCount = finSaleReportMapper.countSaleRecords(queryParams);
+        BigDecimal totalQuantity = nzBig(finSaleReportMapper.sumSaleQuantity(queryParams));
         vo.setTotalSales(totalSales);
         vo.setTotalCount(totalCount);
         vo.setAvgPrice(totalCount > 0
@@ -163,7 +171,7 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
 
         applyDataScope(params);
         Map<String, Object> queryParams = buildQueryParams(params);
-        List<Map<String, Object>> salesTrend = finSaleRecordMapper.selectSaleTrendStats(params.getDeptIds(), params.getStartTime(), params.getEndTime());
+        List<Map<String, Object>> salesTrend = finSaleReportMapper.selectSaleTrendStats(queryParams);
         List<Map<String, Object>> costTrend = buildCostTrendStats(finExpenseMapper.selectExpenseTrendStats(queryParams));
         List<Map<String, Object>> profitTrend = buildProfitTrendStats(salesTrend, costTrend);
         BigDecimal totalProfit = sumField(profitTrend, "profit");
@@ -390,6 +398,9 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
      */
     private void applyStockDataScope(StockReportQuery query) {
         if (SecurityUtils.isAdmin()) {
+            if (query.getDeptIds() != null && !query.getDeptIds().isEmpty()) {
+                query.setDeptIds(Collections.singletonList(query.getDeptIds().get(0)));
+            }
             return;
         }
         List<Long> allowed = loadAllowedDeptIds();
@@ -473,10 +484,16 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
         vo.setMonthExpense(nullSafe(finExpenseMapper.selectMonthTotalExpense(deptIds)));
         if (deptIds != null && !deptIds.isEmpty()) {
             FinAccountingPeriod period = finAccountingPeriodMapper.selectCurrentPeriodByDeptId(deptIds.get(0));
+            if (period != null) {
+                period = finAccountingPeriodService.selectCurrentPeriodByDeptId(deptIds.get(0));
+                vo.setCurrentPeriodExpense(nullSafe(period.getTotalVerifiedExpense()));
+                vo.setCurrentPeriodPurchase(nullSafe(period.getTotalPurchase()));
+                vo.setCurrentPeriodUnverifiedAdvance(nullSafe(period.getTotalUnverifiedAdvance()));
+                vo.setCurrentPeriodNetProfit(nullSafe(period.getNetProfit()));
+            }
             if (period != null && period.getStartTime() != null) {
                 Date periodEnd = period.getEndTime() != null ? period.getEndTime() : new Date();
                 vo.setCurrentPeriodSales(nullSafe(finSaleRecordMapper.selectPeriodTotalSales(deptIds, period.getStartTime(), periodEnd)));
-                vo.setCurrentPeriodExpense(nullSafe(finExpenseMapper.selectPeriodTotalExpense(deptIds, period.getStartTime(), periodEnd)));
             }
         }
 
@@ -543,7 +560,7 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
         List<Long> deptIds = params.getDeptIds();
         Map<String, Object> queryParams = buildQueryParams(params);
 
-        List<Map<String, Object>> salesTrend = finSaleRecordMapper.selectSaleTrendStats(deptIds, params.getStartTime(), params.getEndTime());
+        List<Map<String, Object>> salesTrend = finSaleReportMapper.selectSaleTrendStats(queryParams);
         BigDecimal salesSum = sumField(salesTrend, "totalSales");
         BigDecimal expenseSum = nullSafe(finExpenseMapper.selectExpenseTotal(queryParams));
 
@@ -559,7 +576,7 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
                 : BigDecimal.ZERO);
         vo.setRecoveryRate(BigDecimal.ZERO);
 
-        List<Map<String, Object>> salesByDept = finSaleRecordMapper.selectSalesByDept(deptIds, params.getStartTime(), params.getEndTime());
+        List<Map<String, Object>> salesByDept = finSaleReportMapper.selectSalesByDept(queryParams);
         vo.setStoreProfitRank(salesByDept);
         vo.setStoreProfitRateRank(salesByDept);
         vo.setTrendStats(buildProfitTrendStats(salesTrend, buildCostTrendStats(finExpenseMapper.selectExpenseTrendStats(queryParams))));
@@ -621,10 +638,11 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
         applyDataScope(params);
         List<Long> deptIds = params.getDeptIds();
 
-        List<Map<String, Object>> trendStats = finSaleRecordMapper.selectSaleTrendStats(deptIds, params.getStartTime(), params.getEndTime());
+        List<Map<String, Object>> trendStats = finSaleReportMapper.selectSaleTrendStats(buildQueryParams(params));
         BigDecimal totalSales = sumField(trendStats, "totalSales");
-        int orderCount = finSaleRecordMapper.countSaleRecords(deptIds, params.getStartTime(), params.getEndTime());
-        BigDecimal totalQuantity = nzBig(finSaleRecordMapper.sumSaleQuantity(deptIds, params.getStartTime(), params.getEndTime()));
+        Map<String, Object> queryParams = buildQueryParams(params);
+        int orderCount = finSaleReportMapper.countSaleRecords(queryParams);
+        BigDecimal totalQuantity = nzBig(finSaleReportMapper.sumSaleQuantity(queryParams));
 
         vo.setTotalSales(totalSales);
         vo.setOrderCount(orderCount);
@@ -634,15 +652,15 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
         vo.setAvgItemAmount(nzBig(totalQuantity).signum() > 0
                 ? totalSales.divide(nzBig(totalQuantity), 2, java.math.RoundingMode.HALF_UP) : BigDecimal.ZERO);
 
-        BigDecimal memberSales = nullSafe(finSaleRecordMapper.selectMemberSales(deptIds, params.getStartTime(), params.getEndTime()));
+        BigDecimal memberSales = nullSafe(finSaleReportMapper.selectMemberSales(queryParams));
         vo.setMemberSales(memberSales);
         vo.setNonMemberSales(totalSales.subtract(memberSales));
 
-        BigDecimal seckillSales = nullSafe(finSaleRecordMapper.selectSeckillSales(deptIds, params.getStartTime(), params.getEndTime()));
+        BigDecimal seckillSales = nullSafe(finSaleReportMapper.selectSeckillSales(queryParams));
         vo.setSeckillSales(seckillSales);
         vo.setNormalSales(totalSales.subtract(seckillSales));
 
-        List<Map<String, Object>> salesByDept = finSaleRecordMapper.selectSalesByDept(deptIds, params.getStartTime(), params.getEndTime());
+        List<Map<String, Object>> salesByDept = finSaleReportMapper.selectSalesByDept(queryParams);
         List<SalesRankRowVO> storeRank = new ArrayList<>();
         if (salesByDept != null) {
             for (Map<String, Object> row : salesByDept) {
@@ -656,7 +674,7 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
         }
         vo.setStoreRank(storeRank);
 
-        List<Map<String, Object>> productRankData = finSaleRecordMapper.selectProductSalesRank(deptIds, params.getStartTime(), params.getEndTime());
+        List<Map<String, Object>> productRankData = finSaleReportMapper.selectProductSalesRank(queryParams);
         List<SalesRankRowVO> productRank = new ArrayList<>();
         if (productRankData != null) {
             for (Map<String, Object> row : productRankData) {
@@ -716,7 +734,7 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
         vo.setInvestorShare(investorTotal);
 
         Map<String, Object> queryParams = buildQueryParams(params);
-        List<Map<String, Object>> salesTrend = finSaleRecordMapper.selectSaleTrendStats(deptIds, params.getStartTime(), params.getEndTime());
+        List<Map<String, Object>> salesTrend = finSaleReportMapper.selectSaleTrendStats(queryParams);
         BigDecimal salesSum = sumField(salesTrend, "totalSales");
         BigDecimal expenseSum = nullSafe(finExpenseMapper.selectExpenseTotal(queryParams));
         vo.setTotalSales(salesSum);
@@ -801,7 +819,7 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
         ctx.setUnsettledProfitShareCount(finProfitShareRecordMapper.countUnsettledRecords(deptIds));
 
         // Member metrics
-        BigDecimal memberSales = nullSafe(finSaleRecordMapper.selectMemberSales(deptIds, params.getStartTime(), params.getEndTime()));
+        BigDecimal memberSales = nullSafe(finSaleReportMapper.selectMemberSales(buildQueryParams(params)));
         ctx.setMemberSales(memberSales);
         if (ctx.getMonthSales().compareTo(BigDecimal.ZERO) > 0) {
             ctx.setMemberSalesRatio(memberSales.multiply(new BigDecimal("100"))
@@ -987,6 +1005,9 @@ public class FinanceReportServiceImpl implements IFinanceReportService {
         }
         if (params.getEndTime() != null) {
             map.put("endTime", params.getEndTime());
+        }
+        if (params.getPeriodId() != null) {
+            map.put("periodId", params.getPeriodId());
         }
         return map;
     }

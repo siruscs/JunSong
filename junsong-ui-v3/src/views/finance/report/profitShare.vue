@@ -7,6 +7,7 @@
             <el-option v-for="dept in depts" :key="dept.id" :label="dept.label" :value="dept.id" />
           </el-select>
         </el-form-item>
+        <AccountingPeriodFilter v-model="queryParams.periodId" />
         <el-form-item label="开始日期">
           <el-date-picker v-model="queryParams.startTime" type="date" placeholder="选择开始日期" value-format="YYYY-MM-DD" class="report-query-control" />
         </el-form-item>
@@ -120,6 +121,7 @@
 
 <script>
 import request from "@/utils/request";
+import AccountingPeriodFilter from "@/components/finance/AccountingPeriodFilter.vue";
 import { useUserStore } from "@/stores/user";
 import { useSettingsStore } from "@/stores/settings";
 
@@ -128,6 +130,7 @@ const settingsStore = useSettingsStore();
 
 export default {
   name: "ProfitShareReport",
+  components: { AccountingPeriodFilter },
   data() {
     return {
       depts: [],
@@ -135,6 +138,7 @@ export default {
         deptIds: [],
         startTime: null,
         endTime: null,
+        periodId: null,
         timeType: "day"
       },
       reportData: {
@@ -218,6 +222,7 @@ export default {
         deptIds: [],
         startTime: null,
         endTime: null,
+        periodId: null,
         timeType: "day"
       };
       this.handleQuery();

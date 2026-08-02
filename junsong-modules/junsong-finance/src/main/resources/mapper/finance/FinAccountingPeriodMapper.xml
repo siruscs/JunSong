@@ -35,6 +35,10 @@
         <where>
             p.del_flag='0'
             <if test="deptId != null"> and p.dept_id=#{deptId}</if>
+            <if test="deptIds != null and deptIds.size() > 0">
+                and p.dept_id in
+                <foreach item="deptIdItem" collection="deptIds" open="(" separator="," close=")">#{deptIdItem}</foreach>
+            </if>
             <if test="status != null and status != ''"> and p.status=#{status}</if>
             <if test="periodNo != null and periodNo != ''"> and p.period_no like concat('%', #{periodNo}, '%')</if>
         </where>

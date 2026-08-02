@@ -27,8 +27,11 @@ if [ "${DEPLOY_DRY_RUN}" != "1" ]; then
 fi
 
 if [ "${ENV}" = "dev" ]; then
-    run_cmd docker exec "${CONTAINER_NAME}" sh -c "rm -rf '${CONTAINER_DEST:?}'/*"
-    run_cmd docker cp "${UI_DIR}/dist/." "${CONTAINER_NAME}:${CONTAINER_DEST}/"
+    # DEV Nginx mounts the workspace directory; copying into the container
+    # layer is invisible to the mounted files and reports a false success.
+    DEV_DIST_DIR="${PROJECT_ROOT}/docker/nginx/html/dist"
+    run_cmd rm -rf "${DEV_DIST_DIR:?}"/*
+    run_cmd cp -R "${UI_DIR}/dist/." "${DEV_DIST_DIR}/"
     if [ "${DEPLOY_DRY_RUN}" = "1" ]; then
         log "✓ 前端 DEV DRY-RUN 计划生成完成（未复制）"
     else

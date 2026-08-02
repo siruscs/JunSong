@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.Collections;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,6 +20,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
+import com.junsong.common.core.constant.SecurityConstants;
+import com.junsong.common.core.domain.R;
 import com.junsong.common.core.idempotency.Idempotent;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
@@ -48,6 +51,8 @@ import com.junsong.finance.service.IFinPurchaseService;
 import com.junsong.finance.service.IFinSalePaymentService;
 import com.junsong.finance.service.IAccountingPeriodCheckService;
 import com.junsong.finance.service.IFinSaleRecordService;
+import com.junsong.system.api.RemoteUserService;
+import com.junsong.system.api.domain.SysDept;
 
 @RestController
 @RequestMapping("/accountingPeriod")
@@ -55,6 +60,9 @@ public class FinAccountingPeriodController extends BaseController
 {
     @Autowired
     private IFinAccountingPeriodService finAccountingPeriodService;
+
+    @Autowired
+    private RemoteUserService remoteUserService;
 
     @Autowired
     private IFinExpenseService finExpenseService;
@@ -102,11 +110,21 @@ public class FinAccountingPeriodController extends BaseController
     {
         if (!SecurityUtils.isAdmin())
         {
-            finAccountingPeriod.setDeptId(SecurityUtils.getDeptId());
+            finAccountingPeriod.setDeptIds(loadAllowedDeptIds());
+            finAccountingPeriod.setDeptId(null);
         }
         startPage();
         List<FinAccountingPeriod> list = finAccountingPeriodService.selectFinAccountingPeriodList(finAccountingPeriod);
         return getDataTable(list);
+    }
+
+    private List<Long> loadAllowedDeptIds()
+    {
+        String username = SecurityUtils.getUsername();
+        if (username == null || username.isEmpty()) return Collections.emptyList();
+        R<List<SysDept>> response = remoteUserService.getUserDeptList(username, SecurityConstants.INNER);
+        if (response == null || response.getData() == null) return Collections.emptyList();
+        return response.getData().stream().map(SysDept::getDeptId).filter(id -> id != null).distinct().collect(Collectors.toList());
     }
 
     @RequiresPermissions("finance:accountingPeriod:query")

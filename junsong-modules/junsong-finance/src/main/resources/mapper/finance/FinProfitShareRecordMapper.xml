@@ -69,6 +69,7 @@
                 #{deptId}
             </foreach>
         </if>
+        <if test="periodId != null"> and period_id = #{periodId}</if>
         <if test="startTime != null">
             and share_time &gt;= #{startTime}
         </if>
@@ -88,6 +89,7 @@
                 #{deptId}
             </foreach>
         </if>
+        <if test="periodId != null"> and period_id = #{periodId}</if>
         <if test="startTime != null">
             and share_time &gt;= #{startTime}
         </if>
@@ -107,6 +109,7 @@
                 #{deptId}
             </foreach>
         </if>
+        <if test="periodId != null"> and period_id = #{periodId}</if>
         <if test="startTime != null">
             and share_time &gt;= #{startTime}
         </if>
@@ -129,6 +132,7 @@
                 #{deptId}
             </foreach>
         </if>
+        <if test="periodId != null"> and s.period_id = #{periodId}</if>
         <if test="startTime != null">
             and s.share_time &gt;= #{startTime}
         </if>
@@ -153,6 +157,7 @@
                 #{deptId}
             </foreach>
         </if>
+        <if test="periodId != null"> and s.period_id = #{periodId}</if>
         <if test="startTime != null">
             and s.share_time &gt;= #{startTime}
         </if>
@@ -180,6 +185,7 @@
                 #{deptId}
             </foreach>
         </if>
+        <if test="periodId != null"> and s.period_id = #{periodId}</if>
         <if test="startTime != null">
             and s.share_time &gt;= #{startTime}
         </if>

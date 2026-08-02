@@ -38,20 +38,20 @@
     <!-- Top Metric Cards -->
     <div class="report-metrics">
       <div class="metric-card primary metric-card-hero">
-        <div class="metric-label">本期销售额</div>
-        <div class="metric-value">{{ money(dashboardData.currentPeriodSales) }}</div>
+        <div class="metric-label">本期实际缴款</div>
+        <div class="metric-value">{{ money(dashboardData.currentPeriodPaymentAmount) }}</div>
       </div>
       <div class="metric-card success metric-card-hero">
-        <div class="metric-label">毛利润</div>
-        <div class="metric-value">{{ money(Number(dashboardData.currentPeriodSales || 0) - Number(dashboardData.currentPeriodExpense || 0)) }}</div>
+        <div class="metric-label">周期净利</div>
+        <div class="metric-value">{{ money(dashboardData.currentPeriodNetProfit) }}</div>
       </div>
       <div class="metric-card success metric-card-hero">
-        <div class="metric-label">毛利率</div>
-        <div class="metric-value">{{ dashboardData.currentPeriodSales ? ((Number(dashboardData.currentPeriodSales - dashboardData.currentPeriodExpense) / Number(dashboardData.currentPeriodSales) * 100).toFixed(2)) : 0 }}%</div>
+        <div class="metric-label">周期净利率</div>
+        <div class="metric-value">{{ dashboardData.currentPeriodPaymentAmount ? ((Number(dashboardData.currentPeriodNetProfit || 0) / Number(dashboardData.currentPeriodPaymentAmount) * 100).toFixed(2)) : 0 }}%</div>
       </div>
-      <div class="metric-card info metric-card-hero">
-        <div class="metric-label">现金净流入</div>
-        <div class="metric-value">{{ money(cashflowData.netCashflowAmount) }}</div>
+        <div class="metric-card info metric-card-hero">
+          <div class="metric-label">待核销借支</div>
+          <div class="metric-value">{{ money(dashboardData.unverifiedAdvanceAmount) }}</div>
       </div>
       <div class="metric-card warning metric-card-hero">
         <div class="metric-label">期末应收余额</div>
@@ -72,7 +72,7 @@
     </el-card>
 
     <!-- 现金流速览 Section (R7-D) -->
-    <el-card class="section-card">
+    <el-card v-if="false" class="section-card">
       <template #header>
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <span>现金流速览</span>
@@ -170,7 +170,7 @@
     </el-card>
 
     <!-- R16: 现金流预测 Section -->
-    <el-card class="section-card">
+    <el-card v-if="false" class="section-card">
       <template #header>
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <span>现金流预测</span>
@@ -479,7 +479,7 @@ export default {
         + Number(this.dashboardData.overdueReceivableCount || 0)
         + Number(this.dashboardData.stockAnomalyCount || 0)
         + Number(this.dashboardData.unsettledProfitShareCount || 0);
-    }
+    },
   },
   methods: {
     getDepts() {
@@ -487,26 +487,22 @@ export default {
         id: dept.deptId,
         label: dept.deptName
       }));
-    },
+  },
     async loadData() {
       this.loading = true;
       this.loadError = '';
       this.permissionDenied = false;
       try {
-        const [dashRes, alertsRes, tasksRes, cashflowRes, effectRes, forecastRes] = await Promise.all([
+        const [dashRes, alertsRes, tasksRes, effectRes] = await Promise.all([
           request({ url: "/finance/dashboard/operation", method: "post", data: this.queryParams }),
           request({ url: "/finance/dashboard/alerts", method: "post", data: this.queryParams }),
           request({ url: "/finance/dashboard/review-tasks", method: "post", data: this.queryParams }),
-          request({ url: "/finance/cashflow/dashboard", method: "post", data: this.queryParams }),
-          request({ url: "/finance/review-task/effect-summary", method: "get", params: { windowDays: 7 } }),
-          request({ url: "/finance/cashflow-forecast/dashboard", method: "post", data: this.queryParams })
+          request({ url: "/finance/review-task/effect-summary", method: "get", params: { windowDays: 7 } })
         ]);
         this.dashboardData = dashRes.data || this.dashboardData;
         this.alerts = alertsRes.data || [];
         this.reviewTasks = tasksRes.data || [];
-        this.cashflowData = cashflowRes.data || this.cashflowData;
         this.effectSummary = effectRes.data || this.effectSummary;
-        this.cashflowForecastData = this.mapCashflowForecast(forecastRes.data);
       } catch (e) {
         if (e?.response?.status === 403 || e?.message?.includes('403')) {
           this.permissionDenied = true;

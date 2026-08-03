@@ -89,8 +89,8 @@ services:
     ports:
       - "8081:8080"
     environment:
-      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
-      - SPRING_CONFIG_IMPORT=optional:nacos:application-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:redis-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:junsong-gateway-${SPRING_PROFILES_ACTIVE:-prod}.yml
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_CONFIG_IMPORT=optional:nacos:application-prod.yml,optional:nacos:redis-prod.yml,optional:nacos:junsong-gateway-prod.yml
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
       - OPEN_INTERNAL_SECRET=${OPEN_INTERNAL_SECRET:?OPEN_INTERNAL_SECRET is required}
       - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
@@ -112,8 +112,8 @@ services:
     ports:
       - "9200:9200"
     environment:
-      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
-      - SPRING_CONFIG_IMPORT=optional:nacos:application-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:redis-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:junsong-auth-${SPRING_PROFILES_ACTIVE:-prod}.yml
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_CONFIG_IMPORT=optional:nacos:application-prod.yml,optional:nacos:redis-prod.yml,optional:nacos:junsong-auth-prod.yml
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
     depends_on:
       junsong-nacos:
@@ -131,8 +131,8 @@ services:
     ports:
       - "9201:9201"
     environment:
-      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
-      - SPRING_CONFIG_IMPORT=optional:nacos:application-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:redis-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:datasource-druid-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:junsong-system-${SPRING_PROFILES_ACTIVE:-prod}.yml
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_CONFIG_IMPORT=optional:nacos:application-prod.yml,optional:nacos:redis-prod.yml,optional:nacos:datasource-druid-prod.yml,optional:nacos:junsong-system-prod.yml
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
       - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
       - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
@@ -155,8 +155,8 @@ services:
     ports:
       - "9202:9202"
     environment:
-      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
-      - SPRING_CONFIG_IMPORT=optional:nacos:application-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:redis-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:datasource-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:junsong-gen-${SPRING_PROFILES_ACTIVE:-prod}.yml
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_CONFIG_IMPORT=optional:nacos:application-prod.yml,optional:nacos:redis-prod.yml,optional:nacos:datasource-prod.yml,optional:nacos:junsong-gen-prod.yml
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
     depends_on:
       junsong-nacos:
@@ -174,8 +174,8 @@ services:
     ports:
       - "9203:9203"
     environment:
-      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
-      - SPRING_CONFIG_IMPORT=optional:nacos:application-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:redis-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:datasource-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:junsong-job-${SPRING_PROFILES_ACTIVE:-prod}.yml
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_CONFIG_IMPORT=optional:nacos:application-prod.yml,optional:nacos:redis-prod.yml,optional:nacos:datasource-prod.yml,optional:nacos:junsong-job-prod.yml
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
     depends_on:
       junsong-nacos:
@@ -193,8 +193,8 @@ services:
     ports:
       - "9207:9207"
     environment:
-      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
-      - SPRING_CONFIG_IMPORT=optional:nacos:application-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:redis-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:datasource-druid-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:junsong-workflow-${SPRING_PROFILES_ACTIVE:-prod}.yml
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_CONFIG_IMPORT=optional:nacos:application-prod.yml,optional:nacos:redis-prod.yml,optional:nacos:datasource-druid-prod.yml,optional:nacos:junsong-workflow-prod.yml
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
       - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
       - spring.cloud.nacos.config.server-addr=junsong-nacos:8848
@@ -214,8 +214,8 @@ services:
     ports:
       - "9300:9300"
     environment:
-      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
-      - SPRING_CONFIG_IMPORT=optional:nacos:application-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:redis-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:datasource-druid-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:junsong-file-${SPRING_PROFILES_ACTIVE:-prod}.yml
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_CONFIG_IMPORT=optional:nacos:application-prod.yml,optional:nacos:redis-prod.yml,optional:nacos:datasource-druid-prod.yml,optional:nacos:junsong-file-prod.yml
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
     volumes:
     - ./junsong/uploadPath:/home/junsong/uploadPath
@@ -232,8 +232,8 @@ services:
     ports:
       - "9206:9206"
     environment:
-      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
-      - SPRING_CONFIG_IMPORT=optional:nacos:application-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:redis-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:datasource-druid-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:junsong-member-${SPRING_PROFILES_ACTIVE:-prod}.yml
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_CONFIG_IMPORT=optional:nacos:application-prod.yml,optional:nacos:redis-prod.yml,optional:nacos:datasource-druid-prod.yml,optional:nacos:junsong-member-prod.yml
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
     depends_on:
       junsong-nacos:
@@ -254,8 +254,8 @@ services:
     ports:
       - "9205:9205"
     environment:
-      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
-      - SPRING_CONFIG_IMPORT=optional:nacos:application-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:redis-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:datasource-druid-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:junsong-finance-${SPRING_PROFILES_ACTIVE:-prod}.yml
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_CONFIG_IMPORT=optional:nacos:application-prod.yml,optional:nacos:redis-prod.yml,optional:nacos:datasource-druid-prod.yml,optional:nacos:junsong-finance-prod.yml
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
       - OPEN_INTERNAL_SECRET=${OPEN_INTERNAL_SECRET:?OPEN_INTERNAL_SECRET is required}
     depends_on:
@@ -278,8 +278,8 @@ services:
     expose:
       - "9208"
     environment:
-      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
-      - SPRING_CONFIG_IMPORT=optional:nacos:application-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:redis-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:datasource-druid-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:junsong-open-${SPRING_PROFILES_ACTIVE:-prod}.yml
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_CONFIG_IMPORT=optional:nacos:application-prod.yml,optional:nacos:redis-prod.yml,optional:nacos:datasource-druid-prod.yml,optional:nacos:junsong-open-prod.yml
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}
       - OPEN_INTERNAL_SECRET=${OPEN_INTERNAL_SECRET:?OPEN_INTERNAL_SECRET is required}
       - spring.cloud.nacos.discovery.server-addr=junsong-nacos:8848
@@ -303,6 +303,6 @@ services:
     ports:
       - "9100:9100"
     environment:
-      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
-      - SPRING_CONFIG_IMPORT=optional:nacos:application-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:redis-${SPRING_PROFILES_ACTIVE:-prod}.yml,optional:nacos:junsong-monitor-${SPRING_PROFILES_ACTIVE:-prod}.yml
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_CONFIG_IMPORT=optional:nacos:application-prod.yml,optional:nacos:redis-prod.yml,optional:nacos:junsong-monitor-prod.yml
       - NACOS_PASSWORD=${NACOS_PASSWORD:?NACOS_PASSWORD is required}

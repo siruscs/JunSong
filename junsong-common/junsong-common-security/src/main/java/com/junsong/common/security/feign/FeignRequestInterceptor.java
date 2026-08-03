@@ -4,6 +4,7 @@ import java.util.Map;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Component;
 import com.junsong.common.core.constant.SecurityConstants;
+import com.junsong.common.core.idempotency.HeaderIdempotencyKeyResolver;
 import com.junsong.common.core.utils.ServletUtils;
 import com.junsong.common.core.utils.StringUtils;
 import com.junsong.common.core.utils.ip.IpUtils;
@@ -45,6 +46,13 @@ public class FeignRequestInterceptor implements RequestInterceptor
             if (StringUtils.isNotEmpty(authentication))
             {
                 requestTemplate.header(SecurityConstants.AUTHORIZATION_HEADER, authentication);
+            }
+
+            // 传递幂等键，确保内部服务调用链路中 @Idempotent 注解能正确解析
+            String idempotencyKey = headers.get(HeaderIdempotencyKeyResolver.HEADER_NAME);
+            if (StringUtils.isNotEmpty(idempotencyKey))
+            {
+                requestTemplate.header(HeaderIdempotencyKeyResolver.HEADER_NAME, idempotencyKey);
             }
 
             // 配置客户端IP

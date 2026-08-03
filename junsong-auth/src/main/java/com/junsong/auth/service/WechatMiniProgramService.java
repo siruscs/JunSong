@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.junsong.auth.config.WechatMiniProgramProperties;
@@ -56,7 +57,13 @@ public class WechatMiniProgramService
     public WechatMiniProgramService(WechatMiniProgramProperties properties)
     {
         this.properties = properties;
-        this.restClient = RestClient.create();
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        int timeoutMs = Math.max(1000, properties.getTimeoutMs());
+        requestFactory.setConnectTimeout(timeoutMs);
+        requestFactory.setReadTimeout(timeoutMs);
+        this.restClient = RestClient.builder()
+                .requestFactory(requestFactory)
+                .build();
     }
 
     /**

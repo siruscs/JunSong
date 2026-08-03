@@ -276,6 +276,7 @@ import { getData, addData, updateData, request } from '@/api/index.js'
 import { hasActionPermission, requireModulePermission } from '@/utils/permission.js'
 import { isUnknownWriteOutcome } from '@/utils/operationState.js'
 import { validateMemberContact } from '@/utils/memberWorkflow.js'
+import { saveDraft, loadDraft, clearDraft } from '@/utils/draftStore.js'
 
 export default {
   mixins: [miniProgramShare],
@@ -304,7 +305,8 @@ export default {
       productOptions: [],
       regionIndex: [0, 0, 0, 0],
       regionRange: [[], [], [], []],
-      regionOptions: []
+      regionOptions: [],
+      draftRestoring: true
     }
   },
   computed: {
@@ -343,6 +345,17 @@ export default {
     },
     regionText() {
       return [this.form.provinceName, this.form.cityName, this.form.districtName, this.form.streetName].filter(Boolean).join(' / ')
+    }
+  },
+  watch: {
+    form: {
+      deep: true,
+      handler(value) {
+        if (!this.id && this.moduleKey && !this.draftRestoring && !this.submitted) {
+          const deptId = this.getCurrentDeptId()
+          if (deptId) saveDraft(this.moduleKey, deptId, value)
+        }
+      }
     }
   },
   onLoad(options) {
@@ -447,8 +460,17 @@ export default {
         this.form.advanceDate = this.todayStr()
         this.form.status = '0'
       }
+      if (!this.id) await this.restoreDraft()
+      this.draftRestoring = false
       if (this.id) this.loadInfo()
       this.loadDictOptions()
+    },
+    async restoreDraft() {
+      const deptId = this.getCurrentDeptId()
+      if (!deptId) return
+      const draft = loadDraft(this.moduleKey, deptId)
+      if (!draft || !Object.keys(draft).length) return
+      await new Promise((resolve) => uni.showModal({ title: '发现未完成草稿', content: '检测到未完成的填写，是否恢复？', confirmText: '恢复', cancelText: '放弃', success: (result) => { if (result.confirm) this.form = { ...this.form, ...draft }; else clearDraft(this.moduleKey, deptId); resolve() }, fail: resolve }))
     },
     todayStr() {
       const d = new Date()
@@ -894,11 +916,13 @@ export default {
         if (this.id) {
           submitData[this.config.idKey] = this.id
           await updateData(this.config.path, submitData)
+          clearDraft(this.moduleKey, this.getCurrentDeptId())
           this.submitted = true
           uni.showToast({ title: '保存成功' })
           setTimeout(() => uni.navigateBack(), 500)
         } else {
           const res = await addData(this.config.path, submitData)
+          clearDraft(this.moduleKey, this.getCurrentDeptId())
           this.submitted = true
           const savedData = res.data || submitData
           if (this.moduleKey === 'member') {

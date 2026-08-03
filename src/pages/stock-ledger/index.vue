@@ -13,8 +13,7 @@
         <view class="meta"><text>{{ row.createTime || row.create_time || '-' }}</text><text>余额 {{ row.afterQuantity ?? row.after_quantity ?? 0 }}</text></view>
         <view class="remark">{{ row.remark || row.referenceNo || row.reference_no || row.referenceType || row.reference_type || '-' }}</view>
       </view>
-      <view v-if="loading" class="empty">加载中</view>
-      <view v-else-if="!rows.length" class="empty">暂无库存流水</view>
+      <StateView v-if="stateStatus !== 'normal'" :status="stateStatus" message="" @retry="reload" />
       <view v-else-if="finished" class="finished">已加载全部流水（{{ total }} 条）</view>
     </scroll-view>
   </view>
@@ -25,15 +24,17 @@ import { queryStockLedger } from '@/api/stocktake.js'
 import { request } from '@/api/index.js'
 import { workContext } from '@/utils/workContext.js'
 import { dictCache } from '@/utils/dictCache.js'
+import StateView from '@/components/StateView.vue'
 
 const FALLBACK_TYPES = { PURCHASE_IN: '采购入库', PURCHASE_REVERSE: '采购冲销', SALE_OUT: '销售出库', SALE_REVERSE: '销售冲销', STOCK_INIT: '期初库存', OPENING_STOCK: '期初库存', HISTORY_REPLENISH: '历史数据补录', TRIAL_CONSUMPTION: '试用消耗', STORE_USE: '店面自用', DAMAGE_LOSS: '报损', OTHER: '其他', STOCK_ADJUSTMENT: '库存调整', ADJUSTMENT_IN: '库存调整入库', ADJUSTMENT_OUT: '库存调整出库', STOCK_TAKE_GAIN: '盘点盘盈', STOCK_TAKE_LOSS: '盘点盘亏', STOCK_TAKE_REVERSE: '盘点冲销' }
 
 export default {
+  components: { StateView },
   data() {
     const today = new Date().toISOString().slice(0, 10)
-    return { productId: null, productName: '', rows: [], loading: false, loadingMore: false, finished: false, total: 0, currentDeptId: null, currentDeptName: '', pageNum: 1, pageSize: 30, startDate: '2000-01-01', endDate: today, selectedChangeType: '', typeOptions: [{ label: '全部变动类型', value: '' }], adjustmentDict: [] }
+    return { productId: null, productName: '', rows: [], loading: false, loadingMore: false, loadError: '', finished: false, total: 0, currentDeptId: null, currentDeptName: '', pageNum: 1, pageSize: 30, startDate: '2000-01-01', endDate: today, selectedChangeType: '', typeOptions: [{ label: '全部变动类型', value: '' }], adjustmentDict: [] }
   },
-  computed: { selectedTypeLabel() { return this.typeOptions.find(x => x.value === this.selectedChangeType)?.label || '全部变动类型' } },
+  computed: { selectedTypeLabel() { return this.typeOptions.find(x => x.value === this.selectedChangeType)?.label || '全部变动类型' }, stateStatus() { if (this.loading && !this.rows.length) return 'loading'; if (this.loadError && !this.rows.length) return 'error'; if (!this.rows.length) return 'empty'; return 'normal' } },
   onLoad(options = {}) {
     const s = workContext.snapshot()
     this.productId = options.productId || ''
@@ -61,7 +62,7 @@ export default {
     },
     changeType(e) { this.selectedChangeType = this.typeOptions[Number(e.detail.value)]?.value || '' },
     changeDate(key, value) { this[key] = value },
-    async reload() { this.pageNum = 1; this.rows = []; this.total = 0; this.finished = false; await this.load() },
+    async reload() { this.pageNum = 1; this.rows = []; this.total = 0; this.loadError = ''; this.finished = false; await this.load() },
     async load() {
       if (!this.currentDeptId || this.loading || this.loadingMore) return
       this.loading = this.pageNum === 1
@@ -73,10 +74,11 @@ export default {
         if (String(workContext.snapshot().currentDeptId) !== String(requestDeptId)) return
         const data = res.data || res
         const pageRows = data.rows || data.records || data.items || []
+        this.loadError = ''
         this.rows = this.pageNum === 1 ? pageRows : this.rows.concat(pageRows)
         this.total = Number(data.total ?? data.totalCount ?? this.rows.length) || 0
         this.finished = pageRows.length < this.pageSize || (this.total > 0 && this.rows.length >= this.total)
-      } catch (e) { uni.showToast({ title: e.msg || '库存流水加载失败', icon: 'none' }) } finally { this.loading = false; this.loadingMore = false }
+      } catch (e) { this.loadError = e.msg || '库存流水加载失败'; uni.showToast({ title: this.loadError, icon: 'none' }) } finally { this.loading = false; this.loadingMore = false }
     },
     loadMore() { if (!this.finished && !this.loading && !this.loadingMore) { this.pageNum += 1; this.load() } },
     changeTypeText(type) { const item = this.adjustmentDict.find(x => String(x.dictValue ?? x.value) === String(type)); return item?.dictLabel || item?.label || FALLBACK_TYPES[type] || type || '库存变动' }

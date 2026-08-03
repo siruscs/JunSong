@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "库存流水",
-  "usingComponents": {}
+  "usingComponents": {
+    "state-view": "../../components/StateView"
+  }
 }

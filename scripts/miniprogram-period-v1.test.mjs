@@ -7,6 +7,7 @@ const foregroundSession = fs.readFileSync(`${root}/utils/foregroundSession.js`, 
 const api = fs.readFileSync(`${root}/api/index.js`, 'utf8')
 const app = fs.readFileSync(`${root}/App.vue`, 'utf8')
 const home = fs.readFileSync(`${root}/pages/index/index.vue`, 'utf8')
+const stockInit = fs.readFileSync(`${root}/api/stockInit.js`, 'utf8')
 const workbench = fs.readFileSync(`${root}/pages/workbench/index.vue`, 'utf8')
 
 assert.match(authSession, /restoreSession/, 'session restore entry is required')
@@ -21,5 +22,8 @@ assert.match(home, /totalUnverifiedAdvance/, 'period cost must include unverifie
 assert.match(home, /periodAudienceLabel/, 'home must label the authorized period audience')
 assert.match(home, /暂无当前核算周期/, 'home must explain missing current period')
 assert.match(home, /periodStale/, 'home must distinguish cached stale period data')
+assert.match(home, /60000|lowFrequency/, 'home low-frequency requests must be throttled')
+assert.match(api, /contextSensitive/, 'request layer must protect context-sensitive writes')
+assert.match(stockInit, /contextSensitive:\s*true/, 'stock writes must validate department context after response')
 
 console.log('miniprogram period v1 baseline checks passed')

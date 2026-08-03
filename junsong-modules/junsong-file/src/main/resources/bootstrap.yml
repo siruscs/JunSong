@@ -1,6 +1,10 @@
 server:
   port: 9300
 
+junsong:
+  idempotency:
+    enabled: false
+
 spring:
   application:
     name: junsong-file

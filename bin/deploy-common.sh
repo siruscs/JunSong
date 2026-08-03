@@ -119,6 +119,8 @@ deploy_backend_service() {
             run_cmd docker restart "${container_name}"
         else
             run_cmd docker compose -f "${PROJECT_ROOT}/docker/docker-compose.yml" up -d "${service_name}"
+            run_cmd docker cp "${docker_jar_path}" "${container_name}:${container_dest}"
+            run_cmd docker restart "${container_name}"
         fi
         [ "${DEPLOY_DRY_RUN}" = "1" ] || wait_for_container "${container_name}" dev
         if [ "${DEPLOY_DRY_RUN}" = "1" ]; then

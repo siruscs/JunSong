@@ -47,7 +47,7 @@
 
     <!-- 版本 -->
     <view class="version">
-      <text class="version-text">松·云助手 v1.8.1</text>
+      <text class="version-text">松·云助手 v1.7.0</text>
     </view>
   </view>
 </template>

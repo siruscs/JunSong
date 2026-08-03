@@ -3,8 +3,10 @@ import { refreshForegroundSession } from '@/utils/foregroundSession.js'
 
 export default {
   onLaunch() {
-    // 线上小程序固定使用 PROD，避免历史缓存的 DEV/旧地址导致请求不进入当前服务。
-    uni.setStorageSync('baseUrl', 'https://www.junsong.vip/prod-api')
+    const baseUrl = uni.getStorageSync('baseUrl')
+    if (!baseUrl) {
+      uni.setStorageSync('baseUrl', 'https://www.junsong.vip/prod-api')
+    }
 
     const formatErrorMessage = (error) => {
       if (error == null) return ''

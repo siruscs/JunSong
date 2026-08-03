@@ -3,6 +3,7 @@ import { shouldRecoverAuth } from '@/utils/authSession.js'
 import { workContext } from '@/utils/workContext.js'
 import { mergePersistedUser, resolveDeptCollection } from '@/utils/workContext.js'
 import { classifyRequestError } from '@/utils/requestPolicy.js'
+import { normalizeListResponse, normalizeObjectResponse } from '@/utils/responseNormalize.js'
 import {
   applyIdempotencyHeader,
   clearIdempotencyKeyOnSuccess,
@@ -246,11 +247,11 @@ export function restoreSession() {
 }
 
 export function listData(path, params) {
-  return request({ url: path + '/list', method: 'GET', data: params })
+  return request({ url: path + '/list', method: 'GET', data: params }).then(normalizeListResponse)
 }
 
 export function getData(path, id) {
-  return request({ url: path + '/' + id, method: 'GET' })
+  return request({ url: path + '/' + id, method: 'GET' }).then(normalizeObjectResponse)
 }
 
 export function addData(path, data) {

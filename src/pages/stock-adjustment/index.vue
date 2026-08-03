@@ -49,6 +49,7 @@
 import { workContext } from '@/utils/workContext.js'
 import { requireModulePermission } from '@/utils/permission.js'
 import { request } from '@/api/index.js'
+import { dictCache } from '@/utils/dictCache.js'
 import { getStockValueReport } from '@/api/stock.js'
 import { listStockInit, getStockInitDetail, createStockInit, updateStockInit, deleteStockInit, validateStockInit, submitStockInit, approveStockInit, postStockInit } from '@/api/stockInit.js'
 
@@ -71,7 +72,7 @@ export default {
     syncContext() { const s = workContext.snapshot(); this.currentDeptId = s.currentDeptId; this.currentDeptName = s.currentDept?.name || ''; if (this.currentDeptId && this.editorVisible === false) this.load() },
     async load() { if (!this.currentDeptId) { this.rows = []; return } this.loading = true; try { const res = await listStockInit({ deptId: this.currentDeptId, pageNum: 1, pageSize: 50 }); const rows = res.rows || res.data?.rows || []; this.rows = rows.filter(item => String(item.deptId) === String(this.currentDeptId)) } catch (e) { uni.showToast({ title: e.msg || '调整单加载失败', icon: 'none' }) } finally { this.loading = false; this.refreshing = false } },
     refresh() { this.refreshing = true; this.syncContext() },
-    async loadOptions() { const [dictRes, productRes] = await Promise.all([request({ url: '/system/dict/data/type/finance_stock_adjustment_type', method: 'GET' }), request({ url: '/finance/product/selector', method: 'GET' })]); const dict = dictRes.data || dictRes.rows || []; this.typeOptions = dict.map(x => ({ label: x.dictLabel, value: x.dictValue, direction: x.dictValue === 'OTHER' || x.remark?.includes('选择方向') || x.remark?.includes('增减') ? 'BOTH' : x.remark?.includes('减少') ? 'DECREASE' : 'INCREASE', remark: x.remark || '' })); this.products = productRes.data || productRes.rows || [] },
+    async loadOptions() { const [dict, productRes] = await Promise.all([dictCache.get('finance_stock_adjustment_type', async () => { const dictRes = await request({ url: '/system/dict/data/type/finance_stock_adjustment_type', method: 'GET' }); return dictRes.data || dictRes.rows || [] }), request({ url: '/finance/product/selector', method: 'GET' })]); this.typeOptions = dict.map(x => ({ label: x.dictLabel, value: x.dictValue, direction: x.dictValue === 'OTHER' || x.remark?.includes('选择方向') || x.remark?.includes('增减') ? 'BOTH' : x.remark?.includes('减少') ? 'DECREASE' : 'INCREASE', remark: x.remark || '' })); this.products = productRes.data || productRes.rows || [] },
     async openCreate() { this.editingId = null; this.form = this.emptyForm(); this.typeIndex = 0; this.productIndex = -1; try { await this.loadOptions(); if (this.typeOptions.length) this.form.adjustmentType = this.typeOptions[0].value; this.editorVisible = true } catch (e) { uni.showToast({ title: '基础数据加载失败', icon: 'none' }) } },
     async openDetail(item) { try { this.detail = await getStockInitDetail(item.batchId); const batch = this.detail.data?.batch || this.detail.batch || item; if (this.canEdit(batch)) await this.openEdit(batch); else this.detailVisible = true } catch (e) { uni.showToast({ title: e.msg || '加载详情失败', icon: 'none' }) } },
     openEditFromRow(item) { this.openDetail(item) },

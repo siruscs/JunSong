@@ -102,6 +102,10 @@ function patchUniMpWeixinRuntime() {
         const source = path.join(tabSourceDir, icon)
         if (fs.existsSync(source)) fs.copyFileSync(source, path.join(tabTargetDir, icon))
       }
+      // 复制 logo.png 到输出目录
+      const logoSource = path.join(process.cwd(), 'src/static/logo.png')
+      const logoTarget = path.join(process.cwd(), 'dist/static/logo.png')
+      if (fs.existsSync(logoSource)) fs.copyFileSync(logoSource, logoTarget)
       for (const vendorPath of [
         path.join(outDir, 'common/vendor.js'),
         path.resolve(process.cwd(), 'dist/common/vendor.js')

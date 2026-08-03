@@ -124,67 +124,7 @@
       </view>
     </view>
 
-    <view class="section-card" v-if="moduleKey === 'purchase'">
-      <view class="section-header">
-        <view class="section-dot required"></view>
-        <text class="section-title">商品明细</text>
-        <text class="section-count" v-if="form.details && form.details.length">{{ form.details.length }}项</text>
-        <view class="add-detail-btn" @tap="addPurchaseDetail">
-          <text class="add-detail-icon">+</text>
-          <text class="add-detail-text">添加商品</text>
-        </view>
-      </view>
-      <view class="detail-list" v-if="form.details && form.details.length">
-        <view class="detail-item" v-for="(detail, index) in form.details" :key="index">
-          <view class="detail-item-header">
-            <text class="detail-item-title">商品{{ index + 1 }}</text>
-            <text class="detail-delete" @tap="deletePurchaseDetail(index)">删除</text>
-          </view>
-          <view class="detail-row">
-            <text class="detail-label">商品</text>
-            <picker class="detail-picker" :range="productLabels" :value="productIndex(detail.productId)" @change="onDetailProductChange(index, $event.detail.value)">
-              <view class="detail-control" :class="{ 'has-value': detail.productId }">
-                <text class="detail-picker-text">{{ detail.productName || '请选择商品' }}</text>
-                <text class="picker-arrow">›</text>
-              </view>
-            </picker>
-          </view>
-          <view class="detail-row">
-            <text class="detail-label">单位</text>
-            <text class="detail-value-text">{{ detail.unit || '-' }}</text>
-          </view>
-          <view class="detail-row">
-            <text class="detail-label">数量</text>
-            <input class="detail-input" type="digit" v-model="detail.quantity" @input="onDetailQuantityInput(index)" @blur="onDetailQuantityBlur(index)" placeholder="可输负数" />
-          </view>
-          <view class="detail-row">
-            <text class="detail-label">单价</text>
-            <input class="detail-input" type="digit" v-model="detail.price" :disabled="detail.isGift === '1'" @input="calculateDetailAmount(index)" />
-          </view>
-          <view class="detail-row">
-            <text class="detail-label">金额</text>
-            <text class="detail-value-text amount">{{ detail.isGift === '1' ? '赠品' : '¥' + (detail.amount || 0) }}</text>
-          </view>
-          <view class="detail-row">
-            <text class="detail-label">赠品</text>
-            <switch :checked="detail.isGift === '1'" @change="toggleGift(index, $event.detail.value)" color="#087CF0" />
-          </view>
-        </view>
-      </view>
-      <view class="detail-empty" v-else>
-        <text class="detail-empty-text">请添加商品明细</text>
-      </view>
-      <view class="detail-summary" v-if="form.details && form.details.length">
-        <view class="detail-summary-row">
-          <text class="detail-summary-label">总数量</text>
-          <text class="detail-summary-value">{{ form.totalQuantity || 0 }}</text>
-        </view>
-        <view class="detail-summary-row">
-          <text class="detail-summary-label">总金额</text>
-          <text class="detail-summary-value">¥{{ form.totalAmount || 0 }}</text>
-        </view>
-      </view>
-    </view>
+    <PurchaseDetailsForm v-if="moduleKey === 'purchase'" :details="form.details" :products="productOptions" :total-quantity="form.totalQuantity" :total-amount="form.totalAmount" @add="addPurchaseDetail" @remove="deletePurchaseDetail" @product-change="onPurchaseProductChange" @quantity-input="onDetailQuantityInput" @quantity-blur="onDetailQuantityBlur" @amount="calculateDetailAmount" @gift="onPurchaseGift" />
 
     <view class="section-card" v-if="optionalFields.length">
       <view class="section-header collapsible" @tap="optionalCollapsed = !optionalCollapsed">
@@ -277,9 +217,11 @@ import { hasActionPermission, requireModulePermission } from '@/utils/permission
 import { isUnknownWriteOutcome } from '@/utils/operationState.js'
 import { validateMemberContact } from '@/utils/memberWorkflow.js'
 import { saveDraft, loadDraft, clearDraft } from '@/utils/draftStore.js'
+import PurchaseDetailsForm from './form-modules/PurchaseDetailsForm.vue'
 
 export default {
   mixins: [miniProgramShare],
+  components: { PurchaseDetailsForm },
   data() {
     return {
       moduleKey: '',
@@ -991,6 +933,9 @@ export default {
       detail.price = Number(product.purchasePrice || 0)
       this.calculateDetailAmount(index)
     },
+    onPurchaseProductChange(payload) {
+      this.onDetailProductChange(payload.index, payload.value)
+    },
     onDetailQuantityInput(index) {
       const detail = this.form.details[index]
       if (!detail) return
@@ -1050,6 +995,9 @@ export default {
       if (!detail) return
       detail.isGift = checked ? '1' : '0'
       this.calculateDetailAmount(index)
+    },
+    onPurchaseGift(payload) {
+      this.toggleGift(payload.index, payload.value)
     },
     calculatePurchaseTotal() {
       if (!this.form.details || !this.form.details.length) {

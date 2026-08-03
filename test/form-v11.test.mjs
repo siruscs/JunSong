@@ -4,6 +4,7 @@ import test from 'node:test'
 
 const form = fs.readFileSync('src/pages/form/index.vue', 'utf8')
 const stateView = fs.readFileSync('src/components/StateView.vue', 'utf8')
+const purchaseForm = fs.readFileSync('src/pages/form/form-modules/PurchaseDetailsForm.vue', 'utf8')
 
 test('generic form restores and autosaves non-sensitive drafts', () => {
   assert.match(form, /saveDraft/)
@@ -23,4 +24,10 @@ test('shared state view provides loading empty and error states', () => {
   assert.match(stateView, /暂无数据/)
   assert.match(stateView, /加载失败/)
   assert.match(stateView, /retry/)
+})
+
+test('purchase details are isolated in a reusable form module', () => {
+  assert.match(form, /PurchaseDetailsForm/)
+  assert.match(purchaseForm, /product-change/)
+  assert.match(purchaseForm, /quantity-input/)
 })

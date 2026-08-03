@@ -103,9 +103,18 @@ export default {
 
       try {
         // 1. 调用 wx.login 获取新的临时 code
-        const loginResult = await new Promise((resolve, reject) => {
-          wx.login({ success: resolve, fail: reject })
-        })
+        let loginResult
+        try {
+          loginResult = await new Promise((resolve, reject) => {
+            wx.login({ success: resolve, fail: reject })
+          })
+        } catch (e) {
+          this.logRequestFailure('微信登录失败', e)
+          const loginMessage = e?.errMsg || e?.msg || e?.message || '微信授权失败，请重试'
+          uni.showToast({ title: loginMessage, icon: 'none', duration: 3000 })
+          this.loading = false
+          return
+        }
         const code = loginResult.code
         if (!code) {
           uni.showToast({ title: '微信授权失败，请重试', icon: 'none' })
@@ -120,7 +129,7 @@ export default {
           url: '/auth/mp/wechat/bind',
           method: 'POST',
           noRedirect: true,
-          silent: true,
+          silent: false,
           timeout: 30000,
           header: { isToken: false },
           data: {
@@ -166,8 +175,8 @@ export default {
         }, 500)
         this.loading = false
       } catch (e) {
-        this.logRequestFailure('绑定失败', e)
-        const msg = e?.msg || e?.errMsg || ''
+        this.logRequestFailure('绑定接口失败', e)
+        const msg = e?.msg || e?.message || e?.errMsg || ''
         if (msg.includes('已绑定')) {
           uni.showModal({
             title: '提示',

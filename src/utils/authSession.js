@@ -38,3 +38,27 @@ export function createAuthSession({ recover }) {
     }
   }
 }
+
+export function extractAccessToken(response) {
+  const payload = response?.data && typeof response.data === 'object'
+    ? response.data
+    : response || {}
+  return payload.access_token || payload.accessToken || payload.token || ''
+}
+
+export function createSessionRestorer({ getToken, refresh }) {
+  let restoring = null
+  return {
+    restoreSession() {
+      if (!getToken()) return Promise.resolve(null)
+      if (restoring) return restoring
+      restoring = Promise.resolve().then(() => refresh()).finally(() => {
+        restoring = null
+      })
+      return restoring
+    },
+    isRestoring() {
+      return restoring !== null
+    }
+  }
+}

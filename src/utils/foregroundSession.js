@@ -22,11 +22,11 @@ let singletonCoordinatorPromise = null
 
 function getSingletonCoordinator() {
   if (!singletonCoordinatorPromise) {
-    singletonCoordinatorPromise = import('../api/index.js').then(({ getToken, refreshAuthSession, refreshWorkContext }) => (
+    singletonCoordinatorPromise = import('../api/index.js').then(({ restoreSession }) => (
       createForegroundSessionCoordinator({
-        hasToken: () => Boolean(getToken()),
-        refreshAuth: refreshAuthSession,
-        refreshContext: refreshWorkContext
+        hasToken: () => Boolean(uni.getStorageSync('token')),
+        refreshAuth: restoreSession,
+        refreshContext: async () => null
       })
     ))
   }

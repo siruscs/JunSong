@@ -1,4 +1,4 @@
-import { createAuthSession, isAuthExpiredResponse } from '@/utils/authSession.js'
+import { createAuthSession, createSessionRestorer, extractAccessToken, isAuthExpiredResponse } from '@/utils/authSession.js'
 import { shouldRecoverAuth } from '@/utils/authSession.js'
 import { workContext } from '@/utils/workContext.js'
 import { mergePersistedUser, resolveDeptCollection } from '@/utils/workContext.js'
@@ -196,6 +196,10 @@ export function refreshAuthSession(options = {}) {
     silent: true,
     timeout: options.timeout || 8000,
     header: { isToken: true }
+  }).then((response) => {
+    const refreshedToken = extractAccessToken(response)
+    if (refreshedToken) setToken(refreshedToken)
+    return response
   })
 }
 
@@ -227,6 +231,18 @@ export async function refreshWorkContext(options = {}) {
   const persistedUser = mergePersistedUser(storedUser, user, snapshot)
   uni.setStorageSync('userInfo', persistedUser)
   return snapshot
+}
+
+const sessionRestorer = createSessionRestorer({
+  getToken,
+  refresh: async () => {
+    await refreshAuthSession({ noRedirect: true })
+    return refreshWorkContext({ noRedirect: true })
+  }
+})
+
+export function restoreSession() {
+  return sessionRestorer.restoreSession()
 }
 
 export function listData(path, params) {

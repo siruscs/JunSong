@@ -24,25 +24,20 @@
     <view class="kpi-row-wrap">
       <view class="kpi-row fade-in-up" style="animation-delay:0.05s">
         <view class="kpi-card">
-          <text class="kpi-value primary">{{ stats.todayMembers || 0 }}</text>
-          <text class="kpi-label">今日新增</text>
-          <view class="kpi-trend" v-if="stats.yesterdayMembers !== undefined">
-            <text class="trend-tag" :class="stats.todayMembers >= stats.yesterdayMembers ? 'up' : 'down'">
-              {{ stats.todayMembers >= stats.yesterdayMembers ? '↑' : '↓' }}
-            </text>
-          </view>
+          <text class="kpi-value primary">{{ fmtMoney(period?.totalSalePayment) }}</text>
+          <text class="kpi-label">本周期实际缴款</text>
         </view>
         <view class="kpi-card">
-          <text class="kpi-value success">{{ fmtMoney(stats.todaySale) }}</text>
-          <text class="kpi-label">今日销售</text>
+          <text class="kpi-value" :class="netProfitClass">{{ fmtMoney(period?.netProfit) }}</text>
+          <text class="kpi-label">本周期净利</text>
         </view>
         <view class="kpi-card">
-          <text class="kpi-value warning">{{ fmtMoney(stats.todayExpense) }}</text>
-          <text class="kpi-label">今日费用</text>
+          <text class="kpi-value warning">{{ fmtMoney(periodBreakEvenGap) }}</text>
+          <text class="kpi-label">距离回本</text>
         </view>
         <view class="kpi-card">
-          <text class="kpi-value info">{{ stats.totalMembers || 0 }}</text>
-          <text class="kpi-label">总会员</text>
+          <text class="kpi-value info">{{ fmtMoney(periodTotalCost) }}</text>
+          <text class="kpi-label">周期总成本</text>
         </view>
       </view>
     </view>
@@ -511,7 +506,8 @@ export default {
       const sale = Number(p.totalSalePayment) || 0
       const expense = Number(p.totalVerifiedExpense) || 0
       const purchase = Number(p.totalPurchase) || 0
-      const totalCost = expense + purchase
+      const advance = Number(p.totalUnverifiedAdvance) || 0
+      const totalCost = expense + purchase + advance
       if (totalCost <= 0) return sale > 0 ? 100 : 0
       const progress = Math.min(Math.round((sale / totalCost) * 100), 100)
       return Math.max(progress, 0)
@@ -537,6 +533,15 @@ export default {
       if (!this.period) return ''
       const n = Number(this.period.netProfit) || 0
       return n >= 0 ? 'positive' : 'negative'
+    },
+    periodTotalCost() {
+      if (!this.period) return 0
+      return (Number(this.period.totalVerifiedExpense) || 0)
+        + (Number(this.period.totalPurchase) || 0)
+        + (Number(this.period.totalUnverifiedAdvance) || 0)
+    },
+    periodBreakEvenGap() {
+      return Math.max(this.periodTotalCost - (Number(this.period?.totalSalePayment) || 0), 0)
     },
     // 销售缴款对比条宽度
     saleBarWidth() {
@@ -902,14 +907,17 @@ export default {
         })
         if (res.contextMeta?.staleContext) return
         this.period = res.data || res || null
+        if (this.period && this.currentDeptId) {
+          uni.setStorageSync(`periodSummary:${this.currentDeptId}`, this.period)
+        }
       } catch (e) {
         this.logRequestFailure('period load failed', e)
-        // 占位数据
-        this.period = {
-          status: '0', totalSalePayment: 0, totalVerifiedExpense: 0,
-          totalPurchase: 0, netProfit: 0, managerProfitAmount: 0,
-          investorProfitAmount: 0, breakEvenTime: ''
-        }
+        const cached = this.currentDeptId
+          ? uni.getStorageSync(`periodSummary:${this.currentDeptId}`)
+          : null
+        this.period = cached && typeof cached === 'object'
+          ? { ...cached, stale: true }
+          : null
       }
     },
     async loadExpenseSummary() {

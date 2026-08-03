@@ -14,8 +14,7 @@
         <view class="row-meta"><text>{{ adjustmentTypeLabel(item.adjustmentType) }}</text><text>{{ item.adjustmentDate || item.initDate || '-' }}</text></view>
         <view class="row-foot"><text>{{ currentDeptName }}</text><view class="actions"><text v-if="canEdit(item)" class="link" @tap.stop="openEditFromRow(item)">编辑</text><text v-if="canEdit(item)" class="link danger" @tap.stop="remove(item)">删除</text><text v-if="item.status === 'DRAFT'" class="link" @tap.stop="validate(item)">校验</text><text v-if="item.status === 'VALIDATED'" class="link" @tap.stop="submit(item)">提交</text><text v-if="item.status === 'SUBMITTED'" class="link" @tap.stop="approve(item)">审批</text><text v-if="item.status === 'APPROVED'" class="link" @tap.stop="post(item)">过账</text></view></view>
       </view>
-      <view v-if="!loading && !rows.length" class="empty">暂无库存调整单</view>
-      <view v-if="loading" class="empty">加载中</view>
+      <StateView v-if="stateStatus !== 'normal'" :status="stateStatus" @retry="load" />
     </scroll-view>
     <view class="bottom-action"><button class="primary add-button" @tap="openCreate">新增调整</button></view>
 
@@ -53,6 +52,7 @@ import { request } from '@/api/index.js'
 import { dictCache } from '@/utils/dictCache.js'
 import { getStockValueReport } from '@/api/stock.js'
 import { listStockInit, getStockInitDetail, createStockInit, updateStockInit, deleteStockInit, validateStockInit, submitStockInit, approveStockInit, postStockInit } from '@/api/stockInit.js'
+import StateView from '@/components/StateView.vue'
 
 function createEmptyForm() {
   return { deptId: null, adjustmentDate: new Date().toISOString().slice(0, 10), adjustmentType: '', adjustmentDirection: 'INCREASE', remark: '', items: [createEmptyItem()] }
@@ -63,18 +63,20 @@ function createEmptyItem(item = {}) {
 }
 
 export default {
-  data() { return { rows: [], loading: false, refreshing: false, currentDeptId: null, currentDeptName: '', editorVisible: false, detailVisible: false, submitting: false, editingId: null, detail: null, products: [], typeOptions: [], typeIndex: 0, form: createEmptyForm() } },
+  components: { StateView },
+  data() { return { rows: [], loading: false, loadError: '', refreshing: false, currentDeptId: null, currentDeptName: '', editorVisible: false, detailVisible: false, submitting: false, editingId: null, detail: null, products: [], typeOptions: [], typeIndex: 0, form: createEmptyForm() } },
   computed: {
     selectedType() { return this.typeOptions[this.typeIndex] || {} },
     detailBatch() { const detail = this.detail || {}; const data = detail.data || {}; return data.batch || detail.batch || {} },
     detailItems() { const detail = this.detail || {}; const data = detail.data || {}; return data.items || detail.items || [] },
+    stateStatus() { if (this.loading && !this.rows.length) return 'loading'; if (this.loadError && !this.rows.length) return 'error'; if (!this.rows.length) return 'empty'; return 'normal' },
   },
   onLoad() { this.syncContext(); if (requireModulePermission('stockAdjustment')) this.load() },
   onShow() { if (this.currentDeptId) this.syncContext() },
   methods: {
     emptyForm() { return createEmptyForm() },
     syncContext() { const s = workContext.snapshot(); this.currentDeptId = s.currentDeptId; this.currentDeptName = s.currentDept?.name || ''; if (this.currentDeptId && this.editorVisible === false) this.load() },
-    async load() { if (!this.currentDeptId) { this.rows = []; return } this.loading = true; try { const res = await listStockInit({ deptId: this.currentDeptId, pageNum: 1, pageSize: 50 }); const rows = res.rows || res.data?.rows || []; this.rows = rows.filter(item => String(item.deptId) === String(this.currentDeptId)) } catch (e) { uni.showToast({ title: e.msg || '调整单加载失败', icon: 'none' }) } finally { this.loading = false; this.refreshing = false } },
+    async load() { if (!this.currentDeptId) { this.rows = []; return } this.loading = true; this.loadError = ''; try { const res = await listStockInit({ deptId: this.currentDeptId, pageNum: 1, pageSize: 50 }); const rows = res.rows || res.data?.rows || []; this.rows = rows.filter(item => String(item.deptId) === String(this.currentDeptId)) } catch (e) { this.loadError = e.msg || '调整单加载失败'; uni.showToast({ title: this.loadError, icon: 'none' }) } finally { this.loading = false; this.refreshing = false } },
     refresh() { this.refreshing = true; this.syncContext() },
     async loadOptions() { const [dict, productRes] = await Promise.all([dictCache.get('finance_stock_adjustment_type', async () => { const dictRes = await request({ url: '/system/dict/data/type/finance_stock_adjustment_type', method: 'GET' }); return dictRes.data || dictRes.rows || [] }), request({ url: '/finance/product/selector', method: 'GET' })]); this.typeOptions = dict.map(x => ({ label: x.dictLabel, value: x.dictValue, direction: x.dictValue === 'OTHER' || x.remark?.includes('选择方向') || x.remark?.includes('增减') ? 'BOTH' : x.remark?.includes('减少') ? 'DECREASE' : 'INCREASE', remark: x.remark || '' })); this.products = productRes.data || productRes.rows || [] },
     async openCreate() { this.editingId = null; this.form = this.emptyForm(); this.typeIndex = 0; try { await this.loadOptions(); if (this.typeOptions.length) this.form.adjustmentType = this.typeOptions[0].value; this.editorVisible = true } catch (e) { uni.showToast({ title: '基础数据加载失败', icon: 'none' }) } },

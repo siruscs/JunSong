@@ -42,12 +42,19 @@
       </view>
     </view>
 
+    <view v-if="periodStale" class="stale-banner">当前显示最近一次成功的核算周期数据，正在等待最新数据</view>
+    <view v-if="!period && !periodLoading" class="period-empty section-card">
+      <text class="section-title">暂无当前核算周期</text>
+      <text class="empty-sub">请先初始化核算周期，或确认当前部门权限。</text>
+      <text class="section-link" @tap="go('/pages/detail/index?type=accountingPeriod')">去查看核算周期 ›</text>
+    </view>
+
     <scroll-view scroll-y class="scroll" refresher-enabled :refresher-triggered="refreshing" @refresherrefresh="onRefresh">
       <!-- 店面回本情况 -->
       <view class="section-card fade-in-up" style="animation-delay:0.12s" v-if="period || periodFallback">
         <view class="section-header">
           <view class="section-dot" style="background:#087CF0"></view>
-          <text class="section-title">店面回本情况</text>
+          <text class="section-title">{{ periodAudienceLabel }}回本情况</text>
           <text class="section-badge" v-if="periodStatusText" :class="periodStatusClass">{{ periodStatusText }}</text>
         </view>
         <view class="breakeven-body">
@@ -411,6 +418,7 @@ export default {
       stats: {},
       overview: null,
       period: null,
+      periodLoading: false,
       expenseSummary: null,
       seckillList: [],
       serverStatus: null,
@@ -473,6 +481,20 @@ export default {
     },
     currentDeptName() {
       return this.currentDept?.name || this.userInfo.deptName || ''
+    },
+    isInvestorView() {
+      return hasExactPermission('finance:investor:list') || hasModulePermission('investor', this.modules)
+    },
+    isSupervisorView() {
+      return this.canSwitchDept && !this.isInvestorView
+    },
+    periodAudienceLabel() {
+      if (this.isInvestorView) return '投资范围周期'
+      if (this.isSupervisorView) return '授权门店周期'
+      return '店面'
+    },
+    periodStale() {
+      return Boolean(this.period?.stale)
     },
     canSwitchDept() {
       // 基于登录页获取的部门列表实时判断（openDeptPicker 会重新请求）
@@ -892,6 +914,7 @@ export default {
       }
     },
     async loadPeriod() {
+      this.periodLoading = true
       try {
         const params = {}
         if (this.currentDeptId !== null && this.currentDeptId !== undefined) {
@@ -918,6 +941,8 @@ export default {
         this.period = cached && typeof cached === 'object'
           ? { ...cached, stale: true }
           : null
+      } finally {
+        this.periodLoading = false
       }
     },
     async loadExpenseSummary() {
@@ -1229,6 +1254,24 @@ export default {
   background: linear-gradient(180deg, #E6EEF6 0%, #F3F6FA 42%, #E8EEF5 100%);
   box-sizing: border-box;
   overflow: hidden;
+}
+
+.stale-banner {
+  margin: 16rpx 24rpx 0;
+  padding: 14rpx 18rpx;
+  border: 1rpx solid #f5d08a;
+  border-radius: 12rpx;
+  background: #fff8e6;
+  color: #946200;
+  font-size: 22rpx;
+}
+
+.period-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin: 18rpx 24rpx;
+  padding: 28rpx;
 }
 
 /* ===== 头部（参照我的页面：relative，非fixed） ===== */

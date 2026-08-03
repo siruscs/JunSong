@@ -18,5 +18,8 @@ assert.match(home, /周期净利|本周期净利/, 'home must prioritize period 
 assert.match(home, /回本差额|距回本|距离回本/, 'home must show break-even gap')
 assert.match(home, /实际缴款/, 'home must show actual payment income')
 assert.match(home, /totalUnverifiedAdvance/, 'period cost must include unverified advances')
+assert.match(home, /periodAudienceLabel/, 'home must label the authorized period audience')
+assert.match(home, /暂无当前核算周期/, 'home must explain missing current period')
+assert.match(home, /periodStale/, 'home must distinguish cached stale period data')
 
 console.log('miniprogram period v1 baseline checks passed')

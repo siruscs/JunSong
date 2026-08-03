@@ -121,6 +121,10 @@ export function request(options) {
         const ok = res.statusCode >= 200 && res.statusCode < 300
         const bizOk = data.code === undefined || data.code === 200
         if (ok && bizOk) {
+          if (options.contextSensitive && !workContext.isCurrent(contextVersion)) {
+            finish({ code: 'STALE_CONTEXT', msg: '部门已切换，操作结果待确认', url: requestUrl, contextVersion }, false)
+            return
+          }
           // 业务成功：清除暂存键，下次相同请求视为新业务
           clearIdempotencyKeyOnSuccess(options, usedKey)
           const result = options.withContextMeta

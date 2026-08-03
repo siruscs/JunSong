@@ -438,7 +438,8 @@ export default {
       showDeptPicker: false,
       allDepts: [],
       pendingDeptId: null,
-      operatingTaskCount: 0
+      operatingTaskCount: 0,
+      lowFrequencyAt: { seckill: 0, expense: 0 }
     }
   },
   computed: {
@@ -856,6 +857,12 @@ export default {
     seckillProgress(item) {
       return Number(item.claimProgress) || 0
     },
+    shouldRefreshLowFrequency(key, force = false) {
+      const now = Date.now()
+      if (!force && now - (this.lowFrequencyAt[key] || 0) < 60000) return false
+      this.lowFrequencyAt[key] = now
+      return true
+    },
     async loadDashboard() {
       this.loading = true
       try {
@@ -945,7 +952,8 @@ export default {
         this.periodLoading = false
       }
     },
-    async loadExpenseSummary() {
+    async loadExpenseSummary(force = false) {
+      if (!this.shouldRefreshLowFrequency('expense', force)) return
       try {
         const params = {}
         if (this.currentDeptId !== null && this.currentDeptId !== undefined) {
@@ -966,7 +974,8 @@ export default {
         this.expenseSummary = null
       }
     },
-    async loadSeckill() {
+    async loadSeckill(force = false) {
+      if (!this.shouldRefreshLowFrequency('seckill', force)) return
       try {
         const params = { status: '0' }
         if (this.currentDeptId !== null && this.currentDeptId !== undefined) {
@@ -1139,7 +1148,7 @@ export default {
         this.applyWorkContext(workContext.snapshot())
         this.clearModuleAccess()
         await this.refreshModules()
-        await Promise.all([this.loadDashboard(), this.loadOverview(), this.loadPeriod(), this.loadSeckill(), this.loadExpenseSummary(), this.loadOperatingTaskCount()])
+        await Promise.all([this.loadDashboard(), this.loadOverview(), this.loadPeriod(), this.loadSeckill(true), this.loadExpenseSummary(true), this.loadOperatingTaskCount()])
         uni.showToast({ title: '已切换部门', icon: 'success' })
       } catch (err) {
         uni.showToast({ title: err?.msg || err?.message || '部门切换失败', icon: 'none' })
@@ -1209,7 +1218,7 @@ export default {
         this.closeDeptPicker()
         this.clearModuleAccess()
         await this.refreshModules()
-        await Promise.all([this.loadDashboard(), this.loadOverview(), this.loadPeriod(), this.loadSeckill(), this.loadExpenseSummary(), this.loadOperatingTaskCount()])
+        await Promise.all([this.loadDashboard(), this.loadOverview(), this.loadPeriod(), this.loadSeckill(true), this.loadExpenseSummary(true), this.loadOperatingTaskCount()])
         uni.showToast({ title: '已切换部门', icon: 'success' })
       } catch (err) {
         uni.showToast({ title: err?.msg || err?.message || '部门切换失败', icon: 'none' })
@@ -1232,8 +1241,8 @@ export default {
       }).then(() => {
         return Promise.all([
           safe(this.refreshModules()),
-          safe(this.loadSeckill()),
-          safe(this.loadExpenseSummary())
+          safe(this.loadSeckill(true)),
+          safe(this.loadExpenseSummary(true))
         ])
       }).finally(() => {
         this.refreshing = false

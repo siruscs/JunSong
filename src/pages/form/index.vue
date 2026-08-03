@@ -1,5 +1,6 @@
 <template>
-  <view class="page" v-if="config">
+  <StateView v-if="formState !== 'normal'" :status="formState" :message="loadError" @retry="retryInit" />
+  <view class="page" v-else-if="config">
     <view class="hero-card">
       <view class="hero-icon">{{ id ? '✎' : '＋' }}</view>
       <view class="hero-info">
@@ -218,10 +219,11 @@ import { isUnknownWriteOutcome } from '@/utils/operationState.js'
 import { validateMemberContact } from '@/utils/memberWorkflow.js'
 import { saveDraft, loadDraft, clearDraft } from '@/utils/draftStore.js'
 import PurchaseDetailsForm from './form-modules/PurchaseDetailsForm.vue'
+import StateView from '@/components/StateView.vue'
 
 export default {
   mixins: [miniProgramShare],
-  components: { PurchaseDetailsForm },
+  components: { PurchaseDetailsForm, StateView },
   data() {
     return {
       moduleKey: '',
@@ -249,6 +251,8 @@ export default {
       regionRange: [[], [], [], []],
       regionOptions: [],
       draftRestoring: true
+      ,initializing: false
+      ,loadError: ''
     }
   },
   computed: {
@@ -287,6 +291,11 @@ export default {
     },
     regionText() {
       return [this.form.provinceName, this.form.cityName, this.form.districtName, this.form.streetName].filter(Boolean).join(' / ')
+    },
+    formState() {
+      if (this.initializing) return 'loading'
+      if (this.loadError) return 'error'
+      return this.config ? 'normal' : 'empty'
     }
   },
   watch: {
@@ -301,6 +310,7 @@ export default {
     }
   },
   onLoad(options) {
+    this.initializing = true
     this.moduleKey = options.module
       this.config = getModule(this.moduleKey)
       this.id = options.id || ''
@@ -313,10 +323,14 @@ export default {
         return
       }
       uni.setNavigationBarTitle({ title: this.id ? '编辑' + this.config.title : '新增' + this.config.title })
-      this.initForm()
+      this.initForm().catch(e => { this.loadError = e?.msg || '表单加载失败' }).finally(() => { this.initializing = false })
+    } else {
+      this.initializing = false
+      this.loadError = '暂无可用表单'
     }
   },
   methods: {
+    retryInit() { this.loadError = ''; this.initializing = true; this.initForm().catch(e => { this.loadError = e?.msg || '表单加载失败' }).finally(() => { this.initializing = false }) },
     async initForm() {
       this.config.fields.forEach((field) => {
         this.form[field.key] = ''
@@ -623,6 +637,7 @@ export default {
         this.syncRegionPickerFromForm()
       } catch (e) {
         console.error('加载详情失败', e)
+        this.loadError = e?.msg || '加载详情失败'
         uni.showToast({ title: '加载失败', icon: 'none' })
       }
     },

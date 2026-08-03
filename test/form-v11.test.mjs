@@ -24,6 +24,8 @@ test('shared state view provides loading empty and error states', () => {
   assert.match(stateView, /暂无数据/)
   assert.match(stateView, /加载失败/)
   assert.match(stateView, /retry/)
+  assert.match(form, /formState/)
+  assert.match(form, /@retry="retryInit"/)
 })
 
 test('purchase details are isolated in a reusable form module', () => {

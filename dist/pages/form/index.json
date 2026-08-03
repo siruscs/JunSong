@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "表单",
   "usingComponents": {
-    "purchase-details-form": "./form-modules/PurchaseDetailsForm"
+    "purchase-details-form": "./form-modules/PurchaseDetailsForm",
+    "state-view": "../../components/StateView"
   }
 }

@@ -82,6 +82,36 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         order by r.create_time desc
     </select>
 
+    <!-- 首页批量秒杀统计：一次查询按活动分组，且保留授权部门数据范围 -->
+    <select id="selectRecordStatisticsBatch" parameterType="com.junsong.member.domain.MemSeckillRecord" resultType="java.util.Map">
+        select
+            r.seckill_id as seckillId,
+            count(*) as totalPeople,
+            coalesce(sum(r.shares), 0) as totalShares,
+            coalesce(sum(r.total_amount), 0) as totalAmount,
+            coalesce(sum(case when r.status = '1' and coalesce(cs.claimed_shares, 0) = 0 then coalesce(r.shares, 0) else coalesce(cs.claimed_shares, 0) end), 0) as claimedShares,
+            count(case when (case when r.status = '1' and coalesce(cs.claimed_shares, 0) = 0 then coalesce(r.shares, 0) else coalesce(cs.claimed_shares, 0) end) &gt; 0 then 1 end) as claimedPeople
+        from mem_seckill_record r
+        left join (
+            select record_id, sum(claim_shares) as claimed_shares
+            from mem_seckill_claim_record
+            where del_flag = '0'
+            group by record_id
+        ) cs on r.record_id = cs.record_id
+        <where>
+            r.del_flag = '0'
+            <if test="seckillIds != null and seckillIds.size() > 0">
+                and r.seckill_id in
+                <foreach collection="seckillIds" item="seckillId" open="(" separator="," close=")">
+                    #{seckillId}
+                </foreach>
+            </if>
+            <if test="deptId != null">and r.dept_id = #{deptId}</if>
+            ${params.dataScope}
+        </where>
+        group by r.seckill_id
+    </select>
+
     <select id="selectMemSeckillRecordById" parameterType="Long" resultMap="MemSeckillRecordResult">
         <include refid="selectMemSeckillRecordVo"/>
         <where>

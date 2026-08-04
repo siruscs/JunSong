@@ -16,10 +16,14 @@ import com.junsong.member.mapper.MemMpDashboardMapper;
 import com.junsong.system.api.RemoteUserService;
 import com.junsong.system.api.domain.SysRole;
 import com.junsong.system.api.model.LoginUser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping({"/mp", "/member/mp"})
 public class MemMpController extends BaseController {
+
+    private static final Logger log = LoggerFactory.getLogger(MemMpController.class);
 
     private static final List<String> ALL_MODULES = Arrays.asList(
             "member", "pointsGoods", "pointsRecord", "pointsExchange",
@@ -227,5 +231,24 @@ public class MemMpController extends BaseController {
         Map<String, Object> caps = new HashMap<>();
         caps.put("wechatLoginEnabled", wechatLoginEnabled);
         return AjaxResult.success(caps);
+    }
+
+    /** 接收小程序脱敏错误摘要；不落库，仅进入服务日志供统一检索。 */
+    @PostMapping("/error-report")
+    public AjaxResult reportError(@RequestBody(required = false) Map<String, Object> report) {
+        LoginUser loginUser = SecurityUtils.getLoginUser();
+        if (loginUser == null) {
+            return AjaxResult.error("未登录");
+        }
+        Map<String, Object> safe = report == null ? Collections.emptyMap() : report;
+        log.info("mini-program error report user={} requestId={} category={} message={}",
+                SecurityUtils.getUserId(), truncate(safe.get("requestId")),
+                truncate(safe.get("category")), truncate(safe.get("message")));
+        return AjaxResult.success();
+    }
+
+    private String truncate(Object value) {
+        String text = value == null ? "" : String.valueOf(value);
+        return text.length() > 500 ? text.substring(0, 500) : text;
     }
 }

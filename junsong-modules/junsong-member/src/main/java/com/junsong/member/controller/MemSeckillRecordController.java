@@ -164,4 +164,15 @@ public class MemSeckillRecordController extends BaseController {
         stats.put("paymentMethodStats", paymentStats);
         return success(stats);
     }
+
+    /** 批量查询秒杀活动统计，避免首页对每个活动逐一请求。 */
+    @RequiresPermissions("member:seckillRecord:list")
+    @GetMapping("/statistics/batch")
+    public AjaxResult statisticsBatch(@RequestParam List<Long> seckillIds,
+                                      @RequestParam(required = false) Long deptId) {
+        MemSeckillRecord query = new MemSeckillRecord();
+        query.setSeckillIds(seckillIds);
+        query.setDeptId(deptId);
+        return success(memSeckillRecordService.getRecordStatisticsBatch(query));
+    }
 }

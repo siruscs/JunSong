@@ -83,6 +83,9 @@ public interface IMemSeckillRecordService {
      */
     public Map<String, Object> getRecordStatistics(MemSeckillRecord memSeckillRecord);
 
+    /** 批量查询多个秒杀活动统计，按授权部门范围返回。 */
+    public List<Map<String, Object>> getRecordStatisticsBatch(MemSeckillRecord memSeckillRecord);
+
     /**
      * 按付款方式统计
      *

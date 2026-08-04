@@ -89,6 +89,8 @@ public interface MemSeckillRecordMapper {
      */
     Map<String, Object> selectRecordStatistics(MemSeckillRecord record);
 
+    List<Map<String, Object>> selectRecordStatisticsBatch(MemSeckillRecord record);
+
     /**
      * 按付款方式统计
      *

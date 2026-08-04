@@ -6,6 +6,7 @@ const form = fs.readFileSync('src/pages/form/index.vue', 'utf8')
 const stateView = fs.readFileSync('src/components/StateView.vue', 'utf8')
 const purchaseForm = fs.readFileSync('src/pages/form/form-modules/PurchaseDetailsForm.vue', 'utf8')
 const fieldForm = fs.existsSync('src/pages/form/form-modules/FormField.vue') ? fs.readFileSync('src/pages/form/form-modules/FormField.vue', 'utf8') : ''
+const expenseForm = fs.existsSync('src/pages/form/form-modules/ExpenseForm.vue') ? fs.readFileSync('src/pages/form/form-modules/ExpenseForm.vue', 'utf8') : ''
 
 test('generic form restores and autosaves non-sensitive drafts', () => {
   assert.match(form, /saveDraft/)
@@ -43,4 +44,11 @@ test('required and optional fields share one reusable field renderer', () => {
   assert.match(form, /@set-value="setValueFromField\(field\.key, \$event\)"/)
   assert.match(form, /@select-value="selectValueFromField\(field, \$event\)"/)
   assert.match(form, /@input-value="inputValueFromField\(field\.key, \$event\)"/)
+})
+
+test('expense OCR controls are isolated in a reusable form module', () => {
+  assert.ok(expenseForm, 'expense form module must exist')
+  assert.match(form, /ExpenseForm/)
+  assert.match(expenseForm, /choose-ocr-image/)
+  assert.match(expenseForm, /ocr-loading/)
 })

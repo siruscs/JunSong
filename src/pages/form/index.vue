@@ -76,16 +76,7 @@
       <view class="section-header">
         <view class="section-dot required"></view>
         <text class="section-title">必填信息</text>
-        <view class="ocr-btn" v-if="moduleKey === 'expense' && !id" @tap="chooseOcrImage">
-          <text class="ocr-icon">📷</text>
-          <text class="ocr-label">拍照识别</text>
-        </view>
-      </view>
-      <view class="ocr-preview" v-if="ocrImageUrl">
-        <image class="ocr-image" :src="ocrImageUrl" mode="aspectFit" />
-        <view class="ocr-overlay" v-if="ocrLoading">
-          <text class="ocr-loading-text">识别中...</text>
-        </view>
+        <ExpenseForm v-if="moduleKey === 'expense' && !id" :image-url="ocrImageUrl" :loading="ocrLoading" @choose-ocr-image="chooseOcrImage" />
       </view>
       <FormField v-for="field in requiredFields" :key="field.key" :field="field" required :value="form[field.key]" :options="optionLabels(field)" :selected-index="optionIndex(field)" :display-text="displayOption(field)" :region-range="regionRange" :region-index="regionIndex" :region-text="regionText" :input-type="inputType(field)" :readonly="isReadonlyField(field)" :placeholder="fieldPlaceholder(field)" :image-url="resolveImageUrl(form[field.key])" @set-value="setValueFromField(field.key, $event)" @select-value="selectValueFromField(field, $event)" @region-column-change="onRegionColumnChange" @region-change="onRegionChange" @input-value="inputValueFromField(field.key, $event)" @choose-image="chooseImage(field.key)" />
     </view>
@@ -151,11 +142,12 @@ import { validateMemberContact } from '@/utils/memberWorkflow.js'
 import { saveDraft, loadDraft, clearDraft } from '@/utils/draftStore.js'
 import PurchaseDetailsForm from './form-modules/PurchaseDetailsForm.vue'
 import FormField from './form-modules/FormField.vue'
+import ExpenseForm from './form-modules/ExpenseForm.vue'
 import StateView from '@/components/StateView.vue'
 
 export default {
   mixins: [miniProgramShare],
-  components: { PurchaseDetailsForm, FormField, StateView },
+  components: { PurchaseDetailsForm, FormField, ExpenseForm, StateView },
   data() {
     return {
       moduleKey: '',
@@ -1508,56 +1500,6 @@ export default {
 
 .btn-icon {
   font-size: 28rpx;
-}
-
-.ocr-btn {
-  display: flex;
-  align-items: center;
-  gap: 6rpx;
-  margin-left: auto;
-  padding: 6rpx 16rpx;
-  background: #087CF0;
-  border-radius: 999rpx;
-}
-
-.ocr-icon {
-  font-size: 22rpx;
-}
-
-.ocr-label {
-  font-size: 22rpx;
-  color: #FFFFFF;
-}
-
-.ocr-preview {
-  position: relative;
-  margin-bottom: 20rpx;
-  border-radius: 14rpx;
-  overflow: hidden;
-  background: #F5F8FA;
-}
-
-.ocr-image {
-  width: 100%;
-  height: 300rpx;
-}
-
-.ocr-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.4);
-}
-
-.ocr-loading-text {
-  color: #FFFFFF;
-  font-size: 28rpx;
-  font-weight: 500;
 }
 
 .image-upload {

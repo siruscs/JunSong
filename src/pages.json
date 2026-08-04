@@ -130,7 +130,7 @@
     },
     {
       "path": "pages/stock/index",
-      "style": { "navigationBarTitleText": "库存与成本" }
+      "style": { "navigationBarTitleText": "库存查询" }
     },
     {
       "path": "pages/stock-ledger/index",

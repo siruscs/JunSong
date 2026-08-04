@@ -6,17 +6,23 @@ const stock = fs.readFileSync('src/pages/stock/index.vue', 'utf8')
 const ledger = fs.readFileSync('src/pages/stock-ledger/index.vue', 'utf8')
 const adjustment = fs.readFileSync('src/pages/stock-adjustment/index.vue', 'utf8')
 
-test('库存三个页面使用统一工作台结构和状态语义', () => {
+test('库存三个页面使用销售记录同款通用业务页结构', () => {
   for (const page of [stock, ledger, adjustment]) {
-    assert.match(page, /class="header"/)
+    assert.match(page, /class="hero"/)
+    assert.match(page, /class="work-scope"/)
     assert.match(page, /section-card/)
     assert.match(page, /section-header/)
   }
   assert.match(stock, /StateView/)
-  assert.match(stock, /kpi-row/)
+  assert.match(stock, /summary-bar/)
+  assert.doesNotMatch(stock, /库存明细/)
   assert.match(ledger, /filters-card/)
+  assert.match(ledger, /库存流水：\{\{ productName/)
+  assert.doesNotMatch(ledger, /<view class="product-context"/)
+  assert.match(ledger, /filter-inline/)
   assert.match(ledger, /ledger-card/)
   assert.match(adjustment, /adjustment-card/)
+  assert.match(adjustment, /bottom-action/)
   assert.match(adjustment, /sheet/)
 })
 

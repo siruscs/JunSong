@@ -5,7 +5,7 @@
   "main": "main.js",
   "scripts": {
     "dev:mp-weixin": "UNI_PLATFORM=mp-weixin node ./node_modules/vite/bin/vite.js --mode development",
-    "build:mp-weixin": "UNI_PLATFORM=mp-weixin node ./node_modules/vite/bin/vite.js build --mode production"
+    "build:mp-weixin": "node scripts/build-mp-weixin.mjs"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-5000720260410001",

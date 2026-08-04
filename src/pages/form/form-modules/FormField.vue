@@ -10,7 +10,7 @@
         <text class="picker-arrow">›</text>
       </view>
     </picker>
-    <picker v-else-if="field.type === 'select'" :range="options" :value="selectedIndex" @change="selectValue">
+    <picker v-else-if="field.type === 'select'" :range="options" :value="selectedIndex" @change="$emit('select-value', $event.detail.value)">
       <view class="control picker" :class="{ 'has-value': value }">
         <text class="picker-text">{{ displayText }}</text>
         <text class="picker-arrow">›</text>
@@ -62,7 +62,6 @@ export default {
   },
   methods: {
     setValue(event) { this.$emit('set-value', event.detail.value) },
-    selectValue(event) { this.$emit('select-value', Number(event.detail.value)) },
     regionColumnChange(event) { this.$emit('region-column-change', event) },
     regionChange(event) { this.$emit('region-change', event) },
     inputValue(event) { this.$emit('input-value', event.detail.value) }

@@ -6,6 +6,7 @@ const form = fs.readFileSync('src/pages/form/index.vue', 'utf8')
 const modules = fs.readFileSync('src/config/modules.js', 'utf8')
 const stateView = fs.readFileSync('src/components/StateView.vue', 'utf8')
 const purchaseForm = fs.readFileSync('src/pages/form/form-modules/PurchaseDetailsForm.vue', 'utf8')
+const detailPage = fs.readFileSync('src/pages/detail/index.vue', 'utf8')
 const fieldForm = fs.existsSync('src/pages/form/form-modules/FormField.vue') ? fs.readFileSync('src/pages/form/form-modules/FormField.vue', 'utf8') : ''
 const expenseForm = fs.existsSync('src/pages/form/form-modules/ExpenseForm.vue') ? fs.readFileSync('src/pages/form/form-modules/ExpenseForm.vue', 'utf8') : ''
 
@@ -20,7 +21,7 @@ test('generic form restores and autosaves non-sensitive drafts', () => {
 test('drafts are only restored for new records', () => {
   assert.match(form, /if \(!this\.id\)/)
   assert.match(form, /getCurrentUserId\(\)/)
-  assert.match(form, /saveDraft\(this\.moduleKey, deptId, value, userId\)/)
+  assert.match(form, /scheduleDraftSave\(value, deptId, userId\)/)
   assert.match(form, /loadDraft\(this\.moduleKey, deptId, userId\)/)
 })
 
@@ -37,14 +38,29 @@ test('purchase details are isolated in a reusable form module', () => {
   assert.match(form, /PurchaseDetailsForm/)
   assert.match(purchaseForm, /product-change/)
   assert.match(purchaseForm, /quantity-input/)
+  assert.match(purchaseForm, /min-height:76rpx/)
+  assert.match(form, /this\.loadProductOptions\(\)/)
+  assert.match(form, /this\.loadDictOptions\(\)/)
+  assert.doesNotMatch(form, /await this\.loadProductOptions\(\)/)
+  assert.doesNotMatch(form, /await this\.loadDictOptions\(\)/)
+  assert.match(purchaseForm, /\.detail-input\{flex:1;width:0/)
+  assert.match(purchaseForm, /\.detail-picker\{flex:1;width:0/)
+  assert.match(detailPage, /purchaseSupplierName\(\)/)
+  assert.match(detailPage, /loadSupplierOptions\(\)/)
+  assert.match(detailPage, /min-height: 72rpx/)
 })
 
 test('required and optional fields share one reusable field renderer', () => {
   assert.ok(fieldForm, 'generic form field renderer must exist')
   assert.match(form, /FormField/)
   assert.match(form, /@set-value="setValueFromField\(field\.key, \$event\)"/)
-  assert.match(form, /@select-value="selectValueFromField\(field, \$event\)"/)
   assert.match(form, /@input-value="inputValueFromField\(field\.key, \$event\)"/)
+  assert.match(form, /@change="selectValue\(field, \$event\.detail\.value\)"/)
+  assert.match(form, /native-form-picker/)
+  assert.match(form, /scheduleDraftSave\(value, deptId, userId\)/)
+  assert.match(form, /JSON\.parse\(JSON\.stringify\(value\)\)/)
+  assert.match(form, /onUnload\(\)/)
+  assert.match(form, /clearDraftSaveTimer\(\)/)
 })
 
 test('expense OCR controls are isolated in a reusable form module', () => {
@@ -57,10 +73,13 @@ test('expense OCR controls are isolated in a reusable form module', () => {
 test('expense and purchase business validation remains guarded by the form shell', () => {
   assert.match(modules, /expense:\s*\{[\s\S]*?expenseContent[^\n]*required: true[\s\S]*?expenseAmount[^\n]*required: true/)
   assert.match(modules, /purchase:\s*\{[\s\S]*?supplierId[^\n]*required: true[\s\S]*?purchaseDate[^\n]*required: true/)
+  assert.match(modules, /supplierId[^\n]*remoteUrl: '\/finance\/supplier\/list'/)
+  assert.match(modules, /productId[^\n]*remoteUrl: '\/finance\/product\/list'/)
   assert.match(form, /this\.moduleKey === 'purchase'/)
   assert.match(form, /请添加商品明细/)
   assert.match(form, /请选择所有商品/)
   assert.match(form, /data\.details = data\.details\.map/)
   assert.match(form, /quantity: this\.toNum3\(d\.quantity, true\)/)
   assert.match(form, /amount: d\.amount === ''/)
+  assert.match(form, /url: '\/finance\/product\/list'/)
 })

@@ -78,7 +78,15 @@
         <text class="section-title">必填信息</text>
         <ExpenseForm v-if="moduleKey === 'expense' && !id" :image-url="ocrImageUrl" :loading="ocrLoading" @choose-ocr-image="chooseOcrImage" />
       </view>
-      <FormField v-for="field in requiredFields" :key="field.key" :field="field" required :value="form[field.key]" :options="optionLabels(field)" :selected-index="optionIndex(field)" :display-text="displayOption(field)" :region-range="regionRange" :region-index="regionIndex" :region-text="regionText" :input-type="inputType(field)" :readonly="isReadonlyField(field)" :placeholder="fieldPlaceholder(field)" :image-url="resolveImageUrl(form[field.key])" @set-value="setValueFromField(field.key, $event)" @select-value="selectValueFromField(field, $event)" @region-column-change="onRegionColumnChange" @region-change="onRegionChange" @input-value="inputValueFromField(field.key, $event)" @choose-image="chooseImage(field.key)" />
+      <template v-for="field in requiredFields" :key="field.key">
+      <view v-if="field.type === 'select'" class="form-item">
+        <view class="label-row"><text class="label">{{ field.label }}</text><text class="required-tag">*</text></view>
+        <picker class="native-form-picker" :range="optionLabels(field)" :value="optionIndex(field)" @change="selectValue(field, $event.detail.value)">
+          <view class="control picker" :class="{ 'has-value': form[field.key] }"><text class="picker-text">{{ displayOption(field) }}</text><text class="picker-arrow">›</text></view>
+        </picker>
+      </view>
+      <FormField v-else :field="field" required :value="form[field.key]" :options="optionLabels(field)" :selected-index="optionIndex(field)" :display-text="displayOption(field)" :region-range="regionRange" :region-index="regionIndex" :region-text="regionText" :input-type="inputType(field)" :readonly="isReadonlyField(field)" :placeholder="fieldPlaceholder(field)" :image-url="resolveImageUrl(form[field.key])" @set-value="setValueFromField(field.key, $event)" @region-column-change="onRegionColumnChange" @region-change="onRegionChange" @input-value="inputValueFromField(field.key, $event)" @choose-image="chooseImage(field.key)" />
+      </template>
     </view>
 
     <PurchaseDetailsForm v-if="moduleKey === 'purchase'" :details="form.details" :products="productOptions" :total-quantity="form.totalQuantity" :total-amount="form.totalAmount" @add="addPurchaseDetail" @remove="deletePurchaseDetail" @product-change="onPurchaseProductChange" @quantity-input="onDetailQuantityInput" @quantity-blur="onDetailQuantityBlur" @amount="calculateDetailAmount" @gift="onPurchaseGift" />
@@ -90,7 +98,15 @@
         <text class="section-count">{{ optionalFields.length }}项</text>
         <text class="collapse-arrow" :class="{ collapsed: optionalCollapsed }">›</text>
       </view>
-      <FormField v-for="field in optionalFields" v-show="!optionalCollapsed" :key="field.key" :field="field" :value="form[field.key]" :options="optionLabels(field)" :selected-index="optionIndex(field)" :display-text="displayOption(field)" :region-range="regionRange" :region-index="regionIndex" :region-text="regionText" :input-type="inputType(field)" :readonly="isReadonlyField(field)" :placeholder="fieldPlaceholder(field)" :image-url="resolveImageUrl(form[field.key])" @set-value="setValueFromField(field.key, $event)" @select-value="selectValueFromField(field, $event)" @region-column-change="onRegionColumnChange" @region-change="onRegionChange" @input-value="inputValueFromField(field.key, $event)" @choose-image="chooseImage(field.key)" />
+      <template v-for="field in optionalFields" :key="field.key">
+      <view v-if="!optionalCollapsed && field.type === 'select'" class="form-item">
+        <view class="label-row"><text class="label">{{ field.label }}</text></view>
+        <picker class="native-form-picker" :range="optionLabels(field)" :value="optionIndex(field)" @change="selectValue(field, $event.detail.value)">
+          <view class="control picker" :class="{ 'has-value': form[field.key] }"><text class="picker-text">{{ displayOption(field) }}</text><text class="picker-arrow">›</text></view>
+        </picker>
+      </view>
+      <FormField v-else-if="!optionalCollapsed" :field="field" :value="form[field.key]" :options="optionLabels(field)" :selected-index="optionIndex(field)" :display-text="displayOption(field)" :region-range="regionRange" :region-index="regionIndex" :region-text="regionText" :input-type="inputType(field)" :readonly="isReadonlyField(field)" :placeholder="fieldPlaceholder(field)" :image-url="resolveImageUrl(form[field.key])" @set-value="setValueFromField(field.key, $event)" @region-column-change="onRegionColumnChange" @region-change="onRegionChange" @input-value="inputValueFromField(field.key, $event)" @choose-image="chooseImage(field.key)" />
+      </template>
     </view>
 
     <view class="preview-card" v-if="previewData">
@@ -175,6 +191,7 @@ export default {
       regionRange: [[], [], [], []],
       regionOptions: [],
       draftRestoring: true,
+      draftSaveTimer: null,
       initializing: false,
       loadError: ''
     }
@@ -229,7 +246,7 @@ export default {
         if (!this.id && this.moduleKey && !this.draftRestoring && !this.submitted) {
           const deptId = this.getCurrentDeptId()
           const userId = this.getCurrentUserId()
-          if (deptId) saveDraft(this.moduleKey, deptId, value, userId)
+          if (deptId) this.scheduleDraftSave(value, deptId, userId)
         }
       }
     }
@@ -253,6 +270,9 @@ export default {
       this.initializing = false
       this.loadError = '暂无可用表单'
     }
+  },
+  onUnload() {
+    this.clearDraftSaveTimer()
   },
   methods: {
     retryInit() { this.loadError = ''; this.initializing = true; this.initForm().catch(e => { this.loadError = e?.msg || '表单加载失败' }).finally(() => { this.initializing = false }) },
@@ -352,7 +372,30 @@ export default {
       const userId = this.getCurrentUserId()
       const draft = loadDraft(this.moduleKey, deptId, userId)
       if (!draft || !Object.keys(draft).length) return
-      await new Promise((resolve) => uni.showModal({ title: '发现未完成草稿', content: '检测到未完成的填写，是否恢复？', confirmText: '恢复', cancelText: '放弃', success: (result) => { if (result.confirm) this.form = { ...this.form, ...draft }; else clearDraft(this.moduleKey, deptId, userId); resolve() }, fail: resolve }))
+      await new Promise((resolve) => uni.showModal({ title: '发现未完成草稿', content: '检测到未完成的填写，是否恢复？', confirmText: '恢复', cancelText: '放弃', success: (result) => {
+        if (result.confirm) {
+          try {
+            const restored = JSON.parse(JSON.stringify(draft))
+            this.form = { ...this.form, ...restored }
+          } catch (e) {
+            uni.showToast({ title: '草稿数据异常，无法恢复', icon: 'none' })
+          }
+        } else clearDraft(this.moduleKey, deptId, userId)
+        resolve()
+      }, fail: resolve }))
+    },
+    scheduleDraftSave(value, deptId, userId) {
+      this.clearDraftSaveTimer()
+      let snapshot
+      try { snapshot = JSON.parse(JSON.stringify(value)) } catch (e) { return }
+      this.draftSaveTimer = setTimeout(() => {
+        this.draftSaveTimer = null
+        saveDraft(this.moduleKey, deptId, snapshot, userId)
+      }, 300)
+    },
+    clearDraftSaveTimer() {
+      if (this.draftSaveTimer) clearTimeout(this.draftSaveTimer)
+      this.draftSaveTimer = null
     },
     todayStr() {
       const d = new Date()
@@ -598,9 +641,6 @@ export default {
       const configField = this.config?.fields.find(f => f.key === field.key) || field
       const index = this.optionItems(configField).findIndex((item) => String(item.value) === String(this.form[configField.key]))
       return index < 0 ? 0 : index
-    },
-    selectValueFromField(field, index) {
-      this.selectValue(field, index)
     },
     selectValue(field, index) {
       const item = this.optionItems(field)[Number(index)]

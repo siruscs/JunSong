@@ -316,6 +316,7 @@ export default {
       startTimeAdjustSubmitting: false,
       startTimeAdjustForm: { startDate: '', reason: '' },
       dictPaymentMethods: [],
+      supplierOptions: [],
       reverseRequestId: '',
       pendingUnverify: null,
       expenseCapability: { canUnverify: false, batchId: null, operationDisabledReason: '正在检查反核销条件…' },
@@ -385,7 +386,9 @@ export default {
       if (!this.record || !this.config || !this.config.summary) return []
       const fields = this.config.summary.filter(key => !(this.moduleKey === 'sale' && key === 'status')).map(key => {
         const field = this.config.fields.find(f => f.key === key) || { key, label: key, options: [] }
-        const rawValue = this.record[key]
+        const rawValue = this.moduleKey === 'purchase' && key === 'supplierName'
+          ? this.purchaseSupplierName
+          : this.record[key]
         const isSensitive = field.sensitive
         const isVisible = isSensitive && this.sensitiveVisible[key]
         let displayVal
@@ -436,7 +439,9 @@ export default {
       return this.config.fields
         .filter(f => !f.hidden && !summaryKeys.includes(f.key))
         .map(field => {
-          const rawValue = this.record[field.key]
+          const rawValue = this.moduleKey === 'purchase' && field.key === 'supplierId'
+            ? this.purchaseSupplierName
+            : this.record[field.key]
           const isSensitive = field.sensitive
           const isVisible = isSensitive && this.sensitiveVisible[field.key]
           let displayVal
@@ -530,6 +535,13 @@ export default {
     purchaseDetails() {
       if (!this.record || !this.record.details) return []
       return this.record.details
+    },
+    purchaseSupplierName() {
+      if (this.moduleKey !== 'purchase' || !this.record) return '-'
+      if (this.record.supplierName) return String(this.record.supplierName)
+      if (this.record.supplier?.supplierName) return String(this.record.supplier.supplierName)
+      const hit = this.supplierOptions.find(item => String(item.supplierId) === String(this.record.supplierId))
+      return hit?.supplierName || (this.record.supplierId !== undefined && this.record.supplierId !== null ? String(this.record.supplierId) : '-')
     },
     giftUnitPriceText() {
       if (!this.record) return '-'
@@ -692,6 +704,20 @@ export default {
         console.error('加载付款方式字典失败', e)
       }
     },
+    async loadSupplierOptions() {
+      if (this.moduleKey !== 'purchase' || !this.record?.supplierId) return
+      try {
+        const res = await request({
+          url: '/finance/supplier/list',
+          method: 'GET',
+          data: { pageNum: 1, pageSize: 200, deptId: this.record.deptId || undefined },
+          silent: true
+        })
+        this.supplierOptions = res.rows || res.data || []
+      } catch (e) {
+        this.supplierOptions = []
+      }
+    },
     // 获取状态样式类
     getStatusClass(field) {
       if (!this.record) return ''
@@ -768,6 +794,7 @@ export default {
         if (this.record && this.record.period) {
           this.record = { ...this.record, ...this.record.period }
         }
+        await this.loadSupplierOptions()
         await this.loadExpenseCapability()
       } catch (e) {
         console.error('加载详情失败', e)
@@ -1754,7 +1781,10 @@ export default {
 .detail-row {
   display: flex;
   align-items: center;
-  padding: 12rpx 0;
+  min-height: 72rpx;
+  padding: 16rpx 0;
+  box-sizing: border-box;
+  line-height: 34rpx;
 }
 
 .sale-status-price-row {

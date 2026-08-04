@@ -1,8 +1,11 @@
 <script>
 import { refreshForegroundSession } from '@/utils/foregroundSession.js'
+import { installNavigationGuard } from '@/utils/permission.js'
+import { reportError } from '@/utils/errorReporter.js'
 
 export default {
   onLaunch() {
+    installNavigationGuard()
     const baseUrl = uni.getStorageSync('baseUrl')
     if (!baseUrl) {
       uni.setStorageSync('baseUrl', 'https://www.junsong.vip/prod-api')
@@ -28,11 +31,13 @@ export default {
 
     if (typeof uni.onUnhandledRejection === 'function') {
       uni.onUnhandledRejection((res) => {
+        reportError(res?.reason || res, { category: 'UNHANDLED_REJECTION' }).catch(() => {})
         console.warn('[unhandledRejection]', formatErrorMessage(res?.reason || res))
       })
     }
     if (typeof uni.onError === 'function') {
       uni.onError((err) => {
+        reportError(err, { category: 'APP_ERROR' }).catch(() => {})
         const errStr = formatErrorMessage(err)
         if (errStr.includes('webapi_getwxaasyncsecinfo')) {
           console.warn('[appError] webapi_getwxaasyncsecinfo internal error (can safely ignore):', errStr)

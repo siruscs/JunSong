@@ -9,6 +9,7 @@ import {
   clearIdempotencyKeyOnSuccess,
   releaseIdempotencyKeyOnFailure
 } from '@/utils/idempotency.js'
+import { reportError } from '@/utils/errorReporter.js'
 
 const DEFAULT_BASE_URL = 'https://www.junsong.vip/prod-api'
 const REQUEST_TIMEOUT = 30000
@@ -87,7 +88,15 @@ export function request(options) {
         console.warn('[request] slow request:', requestUrl, 'duration:', duration + 'ms')
       }
       if (isSuccess) resolve(result)
-      else reject(result)
+      else {
+        reportError(result, {
+          category: result?.code || 'REQUEST_FAILURE',
+          method: options.method || 'GET',
+          url: options.url,
+          contextVersion
+        }).catch(() => {})
+        reject(result)
+      }
     }
     
     const guardTimer = setTimeout(() => {

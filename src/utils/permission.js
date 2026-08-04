@@ -66,6 +66,58 @@ export function hasExactPermission(permission, grants) {
   return grants.some((grant) => grant === '*:*:*' || grant === permission)
 }
 
+export function getActionCapabilities(moduleKey, actions = [], grants) {
+  const names = Array.isArray(actions) ? actions : Object.keys(actions || {})
+  return names.reduce((result, action) => {
+    result[action] = hasActionPermission(moduleKey, action, grants)
+    return result
+  }, {})
+}
+
+function queryValue(url, name) {
+  const query = String(url || '').split('?')[1] || ''
+  const pair = query.split('&').find((item) => item.startsWith(name + '='))
+  return pair ? decodeURIComponent(pair.slice(name.length + 1)) : ''
+}
+
+export function routeModuleKey(url = '') {
+  const path = String(url).split('?')[0].replace(/^pages\//, '/pages/')
+  const queryModule = queryValue(url, 'module')
+  if (queryModule) return queryModule
+  const customPage = Object.entries(modules).find(([, config]) => config?.customPage?.split('?')[0] === path)
+  if (customPage) return customPage[0]
+  if (path === '/pages/user/index' || path === '/pages/user/detail' || path === '/pages/user/form') return 'userManage'
+  if (path === '/pages/dept/index' || path === '/pages/dept/detail' || path === '/pages/dept/form') return 'deptManage'
+  if (path.startsWith('/pages/member/')) return 'member'
+  if (path === '/pages/operating-task/index') return '__operatingTask__'
+  return ''
+}
+
+export function guardNavigation(options = {}, grants) {
+  const moduleKey = routeModuleKey(options.url || '')
+  if (!moduleKey) return true
+  const allowed = moduleKey === '__operatingTask__'
+    ? hasExactPermission('system:operatingTask:list', grants)
+    : hasModulePermission(moduleKey, grants)
+  if (allowed) return true
+  uni.showToast({ title: '暂无该功能权限', icon: 'none' })
+  options.fail?.({ errMsg: '当前操作没有权限' })
+  return false
+}
+
+export function installNavigationGuard() {
+  if (uni.__mpPermissionGuardInstalled) return
+  uni.__mpPermissionGuardInstalled = true
+  for (const method of ['navigateTo', 'redirectTo', 'reLaunch', 'switchTab']) {
+    const original = uni[method]
+    if (typeof original !== 'function') continue
+    uni[method] = function guardedNavigation(options = {}) {
+      if (!guardNavigation(options)) return { errMsg: '当前操作没有权限' }
+      return original.call(this, options)
+    }
+  }
+}
+
 export function filterAuthorizedGroups(groups, grants) {
   return groups.map((group) => ({
     ...group,

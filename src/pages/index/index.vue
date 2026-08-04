@@ -375,6 +375,7 @@ import { groups, modules } from '@/config/modules.js'
 import { request, getToken, getBaseUrl } from '@/api/index.js'
 import { filterAuthorizedGroups, hasModulePermission, hasExactPermission, isAdmin } from '@/utils/permission.js'
 import { applySeckillStats } from '@/utils/seckillStats.js'
+import { getSeckillStatisticsBatch } from '@/api/seckill.js'
 import { SERVICE_STATUS_TARGETS, buildSystemHealthItems, normalizeDeptOptions, resolveCurrentDept, normalizeServerStatus, isSystemAdminUser } from '@/utils/homeControl.js'
 import { getStatusBarHeight } from '@/utils/systemInfo.js'
 import { resolveDeptCollection, workContext } from '@/utils/workContext.js'
@@ -992,29 +993,18 @@ export default {
         if (res.contextMeta?.staleContext) return
         const list = res.data || res || []
         const activities = Array.isArray(list) ? list : (list.rows || [])
-        const results = await Promise.all(activities.map(async (item) => {
-          try {
-            const statsParams = { seckillId: item.seckillId }
-            if (this.currentDeptId !== null && this.currentDeptId !== undefined) {
-              statsParams.deptId = this.currentDeptId
-            }
-            const statsRes = await request({
-              url: '/member/seckillRecord/statistics',
-              method: 'GET',
-              data: statsParams,
-              silent: true,
-              timeout: 12000,
-              withContextMeta: true
-            })
-            if (statsRes.contextMeta?.staleContext) return null
-            return applySeckillStats(item, statsRes.data || statsRes || {})
-          } catch (e) {
-            this.logRequestFailure('seckill statistics load failed', e)
-            return applySeckillStats(item, {})
-          }
-        }))
-        if (results.some(item => item === null)) return
-        this.seckillList = results
+        if (!activities.length) {
+          this.seckillList = []
+          return
+        }
+        const statsRes = await getSeckillStatisticsBatch(activities.map((item) => item.seckillId), this.currentDeptId)
+        if (statsRes.contextMeta?.staleContext) return
+        const statsRows = statsRes.data || statsRes || []
+        const statsMap = (Array.isArray(statsRows) ? statsRows : []).reduce((map, row) => {
+          map[String(row.seckillId)] = row
+          return map
+        }, {})
+        this.seckillList = activities.map((item) => applySeckillStats(item, statsMap[String(item.seckillId)] || {}))
       } catch (e) {
         this.logRequestFailure('seckill load failed', e)
         this.seckillList = []

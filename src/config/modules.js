@@ -473,7 +473,13 @@ export const modules = {
     group: '财务管理',
     title: '库存调整',
     customPage: '/pages/stock-adjustment/index',
-    permissions: { view: ['finance:stockInit:list'] }
+    permissions: {
+      view: ['finance:stockInit:list'],
+      add: 'finance:stockInit:add',
+      remove: 'finance:stockInit:remove',
+      approve: 'finance:stockInit:approve',
+      post: 'finance:stockInit:post'
+    }
   },
   verificationRecord: {
     group: '财务管理',

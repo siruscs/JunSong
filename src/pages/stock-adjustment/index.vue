@@ -12,11 +12,11 @@
       <view v-for="item in rows" :key="item.batchId" class="card row-card" @tap="openDetail(item)">
         <view class="row-head"><text class="batch-no">{{ item.batchNo || '库存调整单' }}</text><text class="status" :class="statusClass(item.status)">{{ statusLabel(item.status) }}</text></view>
         <view class="row-meta"><text>{{ adjustmentTypeLabel(item.adjustmentType) }}</text><text>{{ item.adjustmentDate || item.initDate || '-' }}</text></view>
-        <view class="row-foot"><text>{{ currentDeptName }}</text><view class="actions"><text v-if="canEdit(item)" class="link" @tap.stop="openEditFromRow(item)">编辑</text><text v-if="canEdit(item)" class="link danger" @tap.stop="remove(item)">删除</text><text v-if="item.status === 'DRAFT'" class="link" @tap.stop="validate(item)">校验</text><text v-if="item.status === 'VALIDATED'" class="link" @tap.stop="submit(item)">提交</text><text v-if="item.status === 'SUBMITTED'" class="link" @tap.stop="approve(item)">审批</text><text v-if="item.status === 'APPROVED'" class="link" @tap.stop="post(item)">过账</text></view></view>
+        <view class="row-foot"><text>{{ currentDeptName }}</text><view class="actions"><text v-if="canEdit(item) && canUpdateAdjustment" class="link" @tap.stop="openEditFromRow(item)">编辑</text><text v-if="canEdit(item) && canRemoveAdjustment" class="link danger" @tap.stop="remove(item)">删除</text><text v-if="item.status === 'DRAFT' && canUpdateAdjustment" class="link" @tap.stop="validate(item)">校验</text><text v-if="item.status === 'VALIDATED' && canUpdateAdjustment" class="link" @tap.stop="submit(item)">提交</text><text v-if="item.status === 'SUBMITTED' && canApproveAdjustment" class="link" @tap.stop="approve(item)">审批</text><text v-if="item.status === 'APPROVED' && canPostAdjustment" class="link" @tap.stop="post(item)">过账</text></view></view>
       </view>
       <StateView v-if="stateStatus !== 'normal'" :status="stateStatus" @retry="load" />
     </scroll-view>
-    <view class="bottom-action"><button class="primary add-button" @tap="openCreate">新增调整</button></view>
+    <view class="bottom-action" v-if="canCreateAdjustment"><button class="primary add-button" @tap="openCreate">新增调整</button></view>
 
     <view v-if="editorVisible" class="mask" @tap="closeEditor">
       <view class="sheet" @tap.stop>
@@ -47,7 +47,7 @@
 
 <script>
 import { workContext } from '@/utils/workContext.js'
-import { requireModulePermission } from '@/utils/permission.js'
+import { getActionCapabilities, requireModulePermission } from '@/utils/permission.js'
 import { request } from '@/api/index.js'
 import { dictCache } from '@/utils/dictCache.js'
 import { getStockValueReport } from '@/api/stock.js'
@@ -64,14 +64,19 @@ function createEmptyItem(item = {}) {
 
 export default {
   components: { StateView },
-  data() { return { rows: [], loading: false, loadError: '', refreshing: false, currentDeptId: null, currentDeptName: '', editorVisible: false, detailVisible: false, submitting: false, editingId: null, detail: null, products: [], typeOptions: [], typeIndex: 0, form: createEmptyForm() } },
+  data() { return { rows: [], loading: false, loadError: '', refreshing: false, currentDeptId: null, currentDeptName: '', editorVisible: false, detailVisible: false, submitting: false, editingId: null, detail: null, products: [], typeOptions: [], typeIndex: 0, capabilities: {}, form: createEmptyForm() } },
   computed: {
     selectedType() { return this.typeOptions[this.typeIndex] || {} },
+    canCreateAdjustment() { return this.capabilities.add === true },
+    canUpdateAdjustment() { return this.capabilities.add === true },
+    canRemoveAdjustment() { return this.capabilities.remove === true },
+    canApproveAdjustment() { return this.capabilities.approve === true },
+    canPostAdjustment() { return this.capabilities.post === true },
     detailBatch() { const detail = this.detail || {}; const data = detail.data || {}; return data.batch || detail.batch || {} },
     detailItems() { const detail = this.detail || {}; const data = detail.data || {}; return data.items || detail.items || [] },
     stateStatus() { if (this.loading && !this.rows.length) return 'loading'; if (this.loadError && !this.rows.length) return 'error'; if (!this.rows.length) return 'empty'; return 'normal' },
   },
-  onLoad() { this.syncContext(); if (requireModulePermission('stockAdjustment')) this.load() },
+  onLoad() { this.syncContext(); this.capabilities = getActionCapabilities('stockAdjustment', ['add', 'remove', 'approve', 'post']); if (requireModulePermission('stockAdjustment')) this.load() },
   onShow() { if (this.currentDeptId) this.syncContext() },
   methods: {
     emptyForm() { return createEmptyForm() },

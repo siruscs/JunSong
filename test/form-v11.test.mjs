@@ -17,7 +17,9 @@ test('generic form restores and autosaves non-sensitive drafts', () => {
 
 test('drafts are only restored for new records', () => {
   assert.match(form, /if \(!this\.id\)/)
-  assert.match(form, /saveDraft\(this\.moduleKey, deptId/)
+  assert.match(form, /getCurrentUserId\(\)/)
+  assert.match(form, /saveDraft\(this\.moduleKey, deptId, value, userId\)/)
+  assert.match(form, /loadDraft\(this\.moduleKey, deptId, userId\)/)
 })
 
 test('shared state view provides loading empty and error states', () => {

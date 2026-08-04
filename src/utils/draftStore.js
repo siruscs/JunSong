@@ -5,7 +5,7 @@
  * 1. 只保存非敏感、未提交表单数据
  * 2. 不保存凭证、身份证、完整手机号、Token 或服务端响应
  * 3. 提交成功后必须清理草稿
- * 4. 草稿按 formKey + deptId 隔离，部门切换后旧草稿不污染新部门
+ * 4. 通用表单草稿按 formKey + deptId + userId 隔离；未传 userId 的旧调用保持兼容
  *
  * 敏感字段黑名单（永不保存）：
  * - idCard / idCardNo
@@ -47,11 +47,12 @@ export function filterSensitiveFields(data = {}) {
  * @param {string} formKey 表单标识（如 'expense' / 'stockTake'）
  * @param {number} deptId 门店ID（隔离不同门店草稿）
  * @param {Object} data 表单数据
+ * @param {string|number|null} userId 用户ID（通用表单使用，避免账号切换串草稿）
  */
-export function saveDraft(formKey, deptId, data = {}) {
+export function saveDraft(formKey, deptId, data = {}, userId = null) {
   if (!formKey || !deptId) return
   const safeData = filterSensitiveFields(data)
-  const key = STORAGE_PREFIX + formKey + ':' + deptId
+  const key = draftKey(formKey, deptId, userId)
   uni.setStorageSync(key, {
     data: safeData,
     savedAt: Date.now()
@@ -62,11 +63,12 @@ export function saveDraft(formKey, deptId, data = {}) {
  * 读取草稿。
  * @param {string} formKey 表单标识
  * @param {number} deptId 门店ID
+ * @param {string|number|null} userId 用户ID
  * @returns {Object|null} 草稿数据，无草稿返回 null
  */
-export function loadDraft(formKey, deptId) {
+export function loadDraft(formKey, deptId, userId = null) {
   if (!formKey || !deptId) return null
-  const key = STORAGE_PREFIX + formKey + ':' + deptId
+  const key = draftKey(formKey, deptId, userId)
   const draft = uni.getStorageSync(key)
   if (!draft || !draft.data) return null
   return draft.data
@@ -76,11 +78,17 @@ export function loadDraft(formKey, deptId) {
  * 清除草稿（提交成功后调用）。
  * @param {string} formKey 表单标识
  * @param {number} deptId 门店ID
+ * @param {string|number|null} userId 用户ID
  */
-export function clearDraft(formKey, deptId) {
+export function clearDraft(formKey, deptId, userId = null) {
   if (!formKey || !deptId) return
-  const key = STORAGE_PREFIX + formKey + ':' + deptId
+  const key = draftKey(formKey, deptId, userId)
   uni.removeStorageSync(key)
+}
+
+function draftKey(formKey, deptId, userId = null) {
+  const scope = userId === undefined || userId === null || userId === '' ? '' : ':' + userId
+  return STORAGE_PREFIX + formKey + ':' + deptId + scope
 }
 
 /**
@@ -91,7 +99,7 @@ export function clearDraftsByDept(deptId) {
   if (!deptId) return
   const keys = uni.getStorageInfoSync().keys || []
   for (const key of keys) {
-    if (key.startsWith(STORAGE_PREFIX) && key.endsWith(':' + deptId)) {
+    if (key.startsWith(STORAGE_PREFIX) && (key.endsWith(':' + deptId) || key.includes(':' + deptId + ':'))) {
       uni.removeStorageSync(key)
     }
   }

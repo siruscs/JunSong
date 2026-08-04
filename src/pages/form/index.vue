@@ -236,7 +236,8 @@ export default {
       handler(value) {
         if (!this.id && this.moduleKey && !this.draftRestoring && !this.submitted) {
           const deptId = this.getCurrentDeptId()
-          if (deptId) saveDraft(this.moduleKey, deptId, value)
+          const userId = this.getCurrentUserId()
+          if (deptId) saveDraft(this.moduleKey, deptId, value, userId)
         }
       }
     }
@@ -356,9 +357,10 @@ export default {
     async restoreDraft() {
       const deptId = this.getCurrentDeptId()
       if (!deptId) return
-      const draft = loadDraft(this.moduleKey, deptId)
+      const userId = this.getCurrentUserId()
+      const draft = loadDraft(this.moduleKey, deptId, userId)
       if (!draft || !Object.keys(draft).length) return
-      await new Promise((resolve) => uni.showModal({ title: '发现未完成草稿', content: '检测到未完成的填写，是否恢复？', confirmText: '恢复', cancelText: '放弃', success: (result) => { if (result.confirm) this.form = { ...this.form, ...draft }; else clearDraft(this.moduleKey, deptId); resolve() }, fail: resolve }))
+      await new Promise((resolve) => uni.showModal({ title: '发现未完成草稿', content: '检测到未完成的填写，是否恢复？', confirmText: '恢复', cancelText: '放弃', success: (result) => { if (result.confirm) this.form = { ...this.form, ...draft }; else clearDraft(this.moduleKey, deptId, userId); resolve() }, fail: resolve }))
     },
     todayStr() {
       const d = new Date()
@@ -551,6 +553,10 @@ export default {
     getCurrentDeptId() {
       const userInfo = uni.getStorageSync('userInfo') || {}
       return userInfo.currentDeptId || userInfo.deptId || null
+    },
+    getCurrentUserId() {
+      const userInfo = uni.getStorageSync('userInfo') || {}
+      return userInfo.userId || userInfo.id || userInfo.user?.userId || null
     },
     closeMemberCreateSuccess() {
       this.memberCreateSuccess = null
@@ -814,13 +820,13 @@ export default {
         if (this.id) {
           submitData[this.config.idKey] = this.id
           await updateData(this.config.path, submitData)
-          clearDraft(this.moduleKey, this.getCurrentDeptId())
+          clearDraft(this.moduleKey, this.getCurrentDeptId(), this.getCurrentUserId())
           this.submitted = true
           uni.showToast({ title: '保存成功' })
           setTimeout(() => uni.navigateBack(), 500)
         } else {
           const res = await addData(this.config.path, submitData)
-          clearDraft(this.moduleKey, this.getCurrentDeptId())
+          clearDraft(this.moduleKey, this.getCurrentDeptId(), this.getCurrentUserId())
           this.submitted = true
           const savedData = res.data || submitData
           if (this.moduleKey === 'member') {

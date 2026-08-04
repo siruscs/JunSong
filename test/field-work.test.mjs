@@ -307,6 +307,15 @@ test('clearDraft removes draft after successful submission', async () => {
     draftModule.clearDraft('fieldWork', 100)
     assert.equal(draftModule.loadDraft('fieldWork', 100), null, 'dept 100 草稿已清除')
     assert.ok(draftModule.loadDraft('fieldWork', 200), 'dept 200 草稿不受影响')
+
+    // 通用表单可进一步按 userId 隔离，账号切换不会读取其他账号草稿
+    draftModule.saveDraft('expense', 300, { expenseContent: '账号A' }, 10)
+    draftModule.saveDraft('expense', 300, { expenseContent: '账号B' }, 11)
+    assert.equal(draftModule.loadDraft('expense', 300, 10).expenseContent, '账号A')
+    assert.equal(draftModule.loadDraft('expense', 300, 11).expenseContent, '账号B')
+    draftModule.clearDraft('expense', 300, 10)
+    assert.equal(draftModule.loadDraft('expense', 300, 10), null)
+    assert.equal(draftModule.loadDraft('expense', 300, 11).expenseContent, '账号B')
   } finally {
     teardownUniMock()
   }

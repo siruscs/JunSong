@@ -126,11 +126,15 @@ export default {
   },
   methods: {
     restoreDraft() {
-      const draft = loadDraft('fieldWork', this.currentDeptId)
+      const draft = loadDraft('fieldWork', this.currentDeptId, this.currentUserId())
       if (draft) {
         this.takeForm.actualQuantity = draft.actualQuantity || ''
         this.takeForm.reason = draft.reason || ''
       }
+    },
+    currentUserId() {
+      const user = workContext.snapshot().user || uni.getStorageSync('userInfo') || {}
+      return user.userId || user.id || user.user?.userId || null
     },
     async doScan() {
       if (!this.scanCode) return
@@ -204,7 +208,7 @@ export default {
       saveDraft('fieldWork', this.currentDeptId, {
         actualQuantity: this.takeForm.actualQuantity,
         reason: this.takeForm.reason
-      })
+      }, this.currentUserId())
 
       try {
         await submitStockTake({
@@ -217,7 +221,7 @@ export default {
         })
 
         // 提交成功后清理草稿
-        clearDraft('fieldWork', this.currentDeptId)
+        clearDraft('fieldWork', this.currentDeptId, this.currentUserId())
 
         // 刷新任务列表和指标
         await refreshAfterTaskAction({

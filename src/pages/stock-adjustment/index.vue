@@ -2,7 +2,7 @@
   <view class="page">
     <view class="header">
       <view class="header-bg"></view>
-      <view class="header-content">
+      <view class="header-content" :style="headerContentStyle">
       <view class="header-row">
       <view class="header-left">
         <text class="header-title">库存调整</text>
@@ -61,6 +61,7 @@ import { dictCache } from '@/utils/dictCache.js'
 import { getStockValueReport } from '@/api/stock.js'
 import { listStockInit, getStockInitDetail, createStockInit, updateStockInit, deleteStockInit, validateStockInit, submitStockInit, approveStockInit, postStockInit } from '@/api/stockInit.js'
 import StateView from '@/components/StateView.vue'
+import { getStatusBarHeight } from '@/utils/systemInfo.js'
 
 function createEmptyForm() {
   return { deptId: null, adjustmentDate: new Date().toISOString().slice(0, 10), adjustmentType: '', adjustmentDirection: 'INCREASE', remark: '', items: [createEmptyItem()] }
@@ -72,7 +73,7 @@ function createEmptyItem(item = {}) {
 
 export default {
   components: { StateView },
-  data() { return { rows: [], loading: false, loadError: '', refreshing: false, currentDeptId: null, currentDeptName: '', editorVisible: false, detailVisible: false, submitting: false, editingId: null, detail: null, products: [], typeOptions: [], typeIndex: 0, capabilities: {}, form: createEmptyForm() } },
+  data() { return { rows: [], loading: false, loadError: '', refreshing: false, currentDeptId: null, currentDeptName: '', statusBarH: 0, menuButton: null, editorVisible: false, detailVisible: false, submitting: false, editingId: null, detail: null, products: [], typeOptions: [], typeIndex: 0, capabilities: {}, form: createEmptyForm() } },
   computed: {
     selectedType() { return this.typeOptions[this.typeIndex] || {} },
     canCreateAdjustment() { return this.capabilities.add === true },
@@ -82,9 +83,10 @@ export default {
     canPostAdjustment() { return this.capabilities.post === true },
     detailBatch() { const detail = this.detail || {}; const data = detail.data || {}; return data.batch || detail.batch || {} },
     detailItems() { const detail = this.detail || {}; const data = detail.data || {}; return data.items || detail.items || [] },
+    headerContentStyle() { const top = this.menuButton?.bottom ? this.menuButton.bottom + 8 : this.statusBarH + 48; return { paddingTop: top + 'px' } },
     stateStatus() { if (this.loading && !this.rows.length) return 'loading'; if (this.loadError && !this.rows.length) return 'error'; if (!this.rows.length) return 'empty'; return 'normal' },
   },
-  onLoad() { this.syncContext(); this.capabilities = getActionCapabilities('stockAdjustment', ['add', 'remove', 'approve', 'post']); if (requireModulePermission('stockAdjustment')) this.load() },
+  onLoad() { this.statusBarH = getStatusBarHeight(); try { this.menuButton = uni.getMenuButtonBoundingClientRect() } catch (_) { this.menuButton = null }; this.syncContext(); this.capabilities = getActionCapabilities('stockAdjustment', ['add', 'remove', 'approve', 'post']); if (requireModulePermission('stockAdjustment')) this.load() },
   onShow() { if (this.currentDeptId) this.syncContext() },
   methods: {
     emptyForm() { return createEmptyForm() },

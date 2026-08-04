@@ -1,6 +1,6 @@
 <template>
   <view class="page">
-    <view class="header"><view class="header-bg"></view><view class="header-content"><view class="header-row"><view class="header-left"><text class="header-title">{{ productName || '商品' }}</text><text class="header-sub">库存流水 · {{ currentDeptName || '当前部门' }}</text></view><view class="dept-static-inline"><text class="dept-name-inline">{{ currentDeptName || '当前部门' }}</text></view></view></view></view>
+    <view class="header"><view class="header-bg"></view><view class="header-content" :style="headerContentStyle"><view class="header-row"><view class="header-left"><text class="header-title">{{ productName || '商品' }}</text><text class="header-sub">库存流水 · {{ currentDeptName || '当前部门' }}</text></view><view class="dept-static-inline"><text class="dept-name-inline">{{ currentDeptName || '当前部门' }}</text></view></view></view></view>
     <view class="section-card filters-card">
       <view class="section-header"><view class="section-dot" style="background:#087CF0"></view><text class="section-title">筛选流水</text><text class="section-link">共 {{ total }} 条</text></view>
       <view class="filter-row"><text class="filter-label">变动类型</text><picker class="filter-control-wide" :range="typeOptions" range-key="label" @change="changeType"><view class="filter-picker">{{ selectedTypeLabel }}<text class="filter-chevron">⌄</text></view></picker></view>
@@ -26,6 +26,7 @@ import { request } from '@/api/index.js'
 import { workContext } from '@/utils/workContext.js'
 import { dictCache } from '@/utils/dictCache.js'
 import StateView from '@/components/StateView.vue'
+import { getStatusBarHeight } from '@/utils/systemInfo.js'
 
 const FALLBACK_TYPES = { PURCHASE_IN: '采购入库', PURCHASE_REVERSE: '采购冲销', SALE_OUT: '销售出库', SALE_REVERSE: '销售冲销', STOCK_INIT: '期初库存', OPENING_STOCK: '期初库存', HISTORY_REPLENISH: '历史数据补录', TRIAL_CONSUMPTION: '试用消耗', STORE_USE: '店面自用', DAMAGE_LOSS: '报损', OTHER: '其他', STOCK_ADJUSTMENT: '库存调整', ADJUSTMENT_IN: '库存调整入库', ADJUSTMENT_OUT: '库存调整出库', STOCK_TAKE_GAIN: '盘点盘盈', STOCK_TAKE_LOSS: '盘点盘亏', STOCK_TAKE_REVERSE: '盘点冲销' }
 
@@ -33,10 +34,12 @@ export default {
   components: { StateView },
   data() {
     const today = new Date().toISOString().slice(0, 10)
-    return { productId: null, productName: '', rows: [], loading: false, loadingMore: false, loadError: '', finished: false, total: 0, currentDeptId: null, currentDeptName: '', pageNum: 1, pageSize: 30, startDate: '2000-01-01', endDate: today, selectedChangeType: '', typeOptions: [{ label: '全部变动类型', value: '' }], adjustmentDict: [] }
+    return { productId: null, productName: '', rows: [], loading: false, loadingMore: false, loadError: '', finished: false, total: 0, currentDeptId: null, currentDeptName: '', statusBarH: 0, menuButton: null, pageNum: 1, pageSize: 30, startDate: '2000-01-01', endDate: today, selectedChangeType: '', typeOptions: [{ label: '全部变动类型', value: '' }], adjustmentDict: [] }
   },
-  computed: { selectedTypeLabel() { return this.typeOptions.find(x => x.value === this.selectedChangeType)?.label || '全部变动类型' }, stateStatus() { if (this.loading && !this.rows.length) return 'loading'; if (this.loadError && !this.rows.length) return 'error'; if (!this.rows.length) return 'empty'; return 'normal' } },
+  computed: { selectedTypeLabel() { return this.typeOptions.find(x => x.value === this.selectedChangeType)?.label || '全部变动类型' }, stateStatus() { if (this.loading && !this.rows.length) return 'loading'; if (this.loadError && !this.rows.length) return 'error'; if (!this.rows.length) return 'empty'; return 'normal' }, headerContentStyle() { const top = this.menuButton?.bottom ? this.menuButton.bottom + 8 : this.statusBarH + 48; return { paddingTop: top + 'px' } } },
   onLoad(options = {}) {
+    this.statusBarH = getStatusBarHeight()
+    try { this.menuButton = uni.getMenuButtonBoundingClientRect() } catch (_) { this.menuButton = null }
     const s = workContext.snapshot()
     this.productId = options.productId || ''
     this.productName = decodeURIComponent(options.productName || '')

@@ -2,7 +2,7 @@
   <view class="page">
     <view class="header">
       <view class="header-bg"></view>
-      <view class="header-content"><view class="header-row"><view class="header-left"><text class="header-title">库存情况</text><text class="header-sub">库存查询 · {{ currentDeptName || '当前授权门店' }}</text></view><view class="dept-static-inline"><text class="dept-name-inline">{{ currentDeptName || '当前部门' }}</text></view></view></view>
+      <view class="header-content" :style="headerContentStyle"><view class="header-row"><view class="header-left"><text class="header-title">库存情况</text><text class="header-sub">库存查询 · {{ currentDeptName || '当前授权门店' }}</text></view><view class="dept-static-inline"><text class="dept-name-inline">{{ currentDeptName || '当前部门' }}</text></view></view></view>
     </view>
     <view class="kpi-row-wrap" v-if="report"><view class="kpi-row"><view class="kpi-card"><text class="kpi-value primary">¥{{ money(report.closingAmount) }}</text><text class="kpi-label">库存金额</text></view><view class="kpi-card"><text class="kpi-value">{{ report.closingQuantity || 0 }}</text><text class="kpi-label">库存数量</text></view><view class="kpi-card"><text class="kpi-value success">{{ items.length }}</text><text class="kpi-label">商品数</text></view><view class="kpi-card"><text class="kpi-value warning">¥{{ money(report.saleCost) }}</text><text class="kpi-label">销售成本</text></view></view></view>
     <view class="section-card page-intro"><view class="section-header"><view class="section-dot" style="background:#087CF0"></view><text class="section-title">库存明细</text><text class="section-link">点击商品查看流水</text></view>
@@ -25,12 +25,13 @@ import { getStockValueReport } from '@/api/stock.js'
 import { requireModulePermission } from '@/utils/permission.js'
 import { workContext } from '@/utils/workContext.js'
 import StateView from '@/components/StateView.vue'
+import { getStatusBarHeight } from '@/utils/systemInfo.js'
 
 export default {
   components: { StateView },
-  data() { return { report: null, items: [], loading: false, refreshing: false, loadError: '', currentDeptName: '' } },
-  computed: { stateStatus() { if (this.loading && !this.items.length) return 'loading'; if (this.loadError && !this.items.length) return 'error'; if (!this.items.length) return 'empty'; return 'normal' } },
-  onLoad() { this.currentDeptName = workContext.snapshot().currentDept?.name || ''; if (requireModulePermission('stockCost')) this.load() },
+  data() { return { report: null, items: [], loading: false, refreshing: false, loadError: '', currentDeptName: '', statusBarH: 0, menuButton: null } },
+  computed: { stateStatus() { if (this.loading && !this.items.length) return 'loading'; if (this.loadError && !this.items.length) return 'error'; if (!this.items.length) return 'empty'; return 'normal' }, headerContentStyle() { const top = this.menuButton?.bottom ? this.menuButton.bottom + 8 : this.statusBarH + 48; return { paddingTop: top + 'px' } } },
+  onLoad() { this.statusBarH = getStatusBarHeight(); try { this.menuButton = uni.getMenuButtonBoundingClientRect() } catch (_) { this.menuButton = null }; this.currentDeptName = workContext.snapshot().currentDept?.name || ''; if (requireModulePermission('stockCost')) this.load() },
   methods: {
     money(value, digits = 2) { return Number(value || 0).toFixed(digits) },
     load() {

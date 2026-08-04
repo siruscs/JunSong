@@ -1,11 +1,12 @@
 {
   "name": "junsong-dianji",
-  "version": "26.1.0",
+  "version": "26.8.1",
   "description": "JunSong店记 - 会员与财务运营管理",
   "main": "main.js",
   "scripts": {
     "dev:mp-weixin": "UNI_PLATFORM=mp-weixin node ./node_modules/vite/bin/vite.js --mode development",
-    "build:mp-weixin": "node scripts/build-mp-weixin.mjs"
+    "build:mp-weixin": "node scripts/build-mp-weixin.mjs",
+    "release:mp-weixin": "npm run build:mp-weixin"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-5000720260410001",

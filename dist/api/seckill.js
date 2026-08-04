@@ -1,0 +1,1 @@
+"use strict";const t=require("./index.js");exports.getSeckillStatisticsBatch=function(e=[],s){const i={seckillIds:e.join(",")};return null!=s&&(i.deptId=s),t.request({url:"/member/seckillRecord/statistics/batch",method:"GET",data:i,silent:!0,timeout:12e3,withContextMeta:!0})};

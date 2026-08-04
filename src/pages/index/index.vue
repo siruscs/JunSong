@@ -6,7 +6,7 @@
       <view class="header-content" :style="headerContentStyle">
         <view class="header-row">
           <view class="header-left">
-            <text class="header-title">峻松运营</text>
+            <text class="header-title">松·云助手</text>
             <text class="header-sub">{{ greeting }}，{{ nickName }}</text>
           </view>
           <view class="header-right">

@@ -1,11 +1,15 @@
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
-import { spawnSync } from 'node:child_process'
+import { spawnSync, spawnSync as runVersionBump } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const distRoot = path.join(projectRoot, 'dist')
+const bump = runVersionBump(process.execPath, [path.join(projectRoot, 'scripts/bump-version.mjs'), 'build'], { cwd: projectRoot, encoding: 'utf8' })
+if (bump.error) throw bump.error
+if (bump.status !== 0) process.exit(bump.status || 1)
+const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'))
 const viteBin = path.join(projectRoot, 'node_modules', 'vite', 'bin', 'vite.js')
 
 const result = spawnSync(process.execPath, [viteBin, 'build', '--mode', 'production'], {
@@ -50,6 +54,7 @@ const sourceHashes = Object.fromEntries(sourceFiles.map((relativePath) => {
 }))
 fs.writeFileSync(path.join(distRoot, 'build-info.json'), `${JSON.stringify({
   platform: 'mp-weixin',
+  version: packageJson.version,
   builtAt: new Date().toISOString(),
   projectRoot,
   miniprogramRoot: projectConfig.miniprogramRoot || 'dist/',

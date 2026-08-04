@@ -47,7 +47,7 @@
 
     <!-- 版本 -->
     <view class="version">
-      <text class="version-text">松·云助手 v1.7.0</text>
+      <text class="version-text">松·云助手 v{{ appVersion }}</text>
     </view>
   </view>
 </template>
@@ -58,6 +58,7 @@ import { setToken } from '@/api/index.js'
 import { request } from '@/api/index.js'
 import { isAdmin } from '@/utils/permission.js'
 import { getStatusBarHeight } from '@/utils/systemInfo.js'
+import packageInfo from '../../../package.json'
 
 export default {
   mixins: [miniProgramShare],
@@ -66,7 +67,8 @@ export default {
       userInfo: {},
       statusBarH: 0,
       isAdmin: false,
-      wechatBound: false
+      wechatBound: false,
+      appVersion: packageInfo.version
     }
   },
   computed: {

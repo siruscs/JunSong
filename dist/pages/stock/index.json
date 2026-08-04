@@ -1,4 +1,6 @@
 {
-  "navigationBarTitleText": "库存与成本",
-  "usingComponents": {}
+  "navigationBarTitleText": "库存查询",
+  "usingComponents": {
+    "state-view": "../../components/StateView"
+  }
 }

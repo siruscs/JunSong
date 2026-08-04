@@ -1,25 +1,27 @@
 <template>
-  <view class="page">
-    <view class="hero">
+  <view class="page inventory-workbench">
+    <view class="workspace-header">
       <view>
-        <text class="eyebrow">库存与成本</text>
-        <text class="hero-title">库存调整</text>
-        <text class="hero-note">当前部门：{{ currentDeptName || '未选择部门' }}</text>
+        <text class="workspace-eyebrow">库存工作台 · 单据管理</text>
+        <text class="workspace-title">库存调整</text>
+        <text class="workspace-note">{{ currentDeptName || '未选择部门' }} · 管理库存增加、减少和调整单</text>
       </view>
     </view>
 
-    <scroll-view scroll-y class="scroll" refresher-enabled :refresher-triggered="refreshing" @refresherrefresh="refresh">
-      <view v-for="item in rows" :key="item.batchId" class="card row-card" @tap="openDetail(item)">
-        <view class="row-head"><text class="batch-no">{{ item.batchNo || '库存调整单' }}</text><text class="status" :class="statusClass(item.status)">{{ statusLabel(item.status) }}</text></view>
-        <view class="row-meta"><text>{{ adjustmentTypeLabel(item.adjustmentType) }}</text><text>{{ item.adjustmentDate || item.initDate || '-' }}</text></view>
-        <view class="row-foot"><text>{{ currentDeptName }}</text><view class="actions"><text v-if="canEdit(item) && canUpdateAdjustment" class="link" @tap.stop="openEditFromRow(item)">编辑</text><text v-if="canEdit(item) && canRemoveAdjustment" class="link danger" @tap.stop="remove(item)">删除</text><text v-if="item.status === 'DRAFT' && canUpdateAdjustment" class="link" @tap.stop="validate(item)">校验</text><text v-if="item.status === 'VALIDATED' && canUpdateAdjustment" class="link" @tap.stop="submit(item)">提交</text><text v-if="item.status === 'SUBMITTED' && canApproveAdjustment" class="link" @tap.stop="approve(item)">审批</text><text v-if="item.status === 'APPROVED' && canPostAdjustment" class="link" @tap.stop="post(item)">过账</text></view></view>
+    <view class="adjustment-overview"><view><text class="overview-label">当前部门</text><text class="overview-value">{{ currentDeptName || '未选择部门' }}</text></view><view><text class="overview-label">调整单</text><text class="overview-value">{{ rows.length }} 笔</text></view></view>
+
+    <scroll-view scroll-y class="workspace-scroll adjustment-scroll" refresher-enabled :refresher-triggered="refreshing" @refresherrefresh="refresh">
+      <view v-for="item in rows" :key="item.batchId" class="adjustment-card" @tap="openDetail(item)">
+        <view class="adjustment-card-head"><view><text class="adjustment-kicker">库存调整单</text><text class="batch-no">{{ item.batchNo || '未命名单据' }}</text></view><text class="status" :class="statusClass(item.status)">{{ statusLabel(item.status) }}</text></view>
+        <view class="adjustment-summary"><view><text>调整类型</text><strong>{{ adjustmentTypeLabel(item.adjustmentType) }}</strong></view><view><text>调整日期</text><strong>{{ item.adjustmentDate || item.initDate || '-' }}</strong></view><view><text>归属部门</text><strong>{{ currentDeptName || '-' }}</strong></view></view>
+        <view class="adjustment-actions"><text class="detail-hint">点击查看明细</text><view class="actions"><text v-if="canEdit(item) && canUpdateAdjustment" class="link" @tap.stop="openEditFromRow(item)">编辑</text><text v-if="canEdit(item) && canRemoveAdjustment" class="link danger" @tap.stop="remove(item)">删除</text><text v-if="item.status === 'DRAFT' && canUpdateAdjustment" class="link" @tap.stop="validate(item)">校验</text><text v-if="item.status === 'VALIDATED' && canUpdateAdjustment" class="link" @tap.stop="submit(item)">提交</text><text v-if="item.status === 'SUBMITTED' && canApproveAdjustment" class="link" @tap.stop="approve(item)">审批</text><text v-if="item.status === 'APPROVED' && canPostAdjustment" class="link" @tap.stop="post(item)">过账</text></view></view>
       </view>
       <StateView v-if="stateStatus !== 'normal'" :status="stateStatus" @retry="load" />
     </scroll-view>
     <view class="bottom-action" v-if="canCreateAdjustment"><button class="primary add-button" @tap="openCreate">新增调整</button></view>
 
     <view v-if="editorVisible" class="mask" @tap="closeEditor">
-      <view class="sheet" @tap.stop>
+      <view class="sheet adjustment-sheet" @tap.stop>
         <view class="sheet-head"><text>{{ editingId ? '编辑库存调整' : '新增库存调整' }}</text><text class="close" @tap="closeEditor">×</text></view>
         <scroll-view scroll-y class="form-scroll">
           <view class="field"><text class="label">调整类型</text><picker :range="typeOptions" range-key="label" :value="typeIndex" @change="changeType"><view class="picker">{{ selectedType.label || '请选择调整类型' }} <text>⌄</text></view></picker><text v-if="selectedType.remark" class="rule-warning">规则：{{ selectedType.remark }}</text></view>
@@ -37,7 +39,7 @@
       </view>
     </view>
     <view v-if="detailVisible" class="mask" @tap="detailVisible = false">
-      <view class="sheet detail-sheet" @tap.stop>
+      <view class="sheet adjustment-sheet detail-sheet" @tap.stop>
         <view class="sheet-head"><text>库存调整明细</text><text class="close" @tap="detailVisible = false">×</text></view>
         <scroll-view scroll-y class="form-scroll"><view class="detail-summary"><view class="detail-line"><text>批次号</text><strong>{{ detailBatch.batchNo || '-' }}</strong></view><view class="detail-line"><text>调整类型</text><strong>{{ adjustmentTypeLabel(detailBatch.adjustmentType) }}</strong></view><view class="detail-line"><text>调整日历</text><strong>{{ detailBatch.adjustmentDate || detailBatch.initDate || '-' }}</strong></view><view class="detail-line"><text>状态</text><strong>{{ statusLabel(detailBatch.status) }}</strong></view></view><view class="detail-section-title">商品明细</view><view v-for="row in detailItems" :key="row.itemId || row.productId" class="detail-item-card"><view class="detail-item-head"><strong>{{ row.productName || '-' }}</strong><text>{{ row.quantity || 0 }}</text></view><view class="detail-item-meta"><text>单位成本 ¥{{ Number(row.unitCost || 0).toFixed(2) }}</text><text>金额 ¥{{ (Number(row.quantity || 0) * Number(row.unitCost || 0)).toFixed(2) }}</text></view></view></scroll-view>
       </view>
@@ -113,4 +115,5 @@ export default {
 .rule-warning{display:block;margin-top:10rpx;padding:14rpx 16rpx;border:2rpx solid #ef4444;border-radius:10rpx;background:#fff1f2;color:#dc2626;font-size:22rpx;font-weight:700}
 .detail-summary{padding:6rpx 0 18rpx}.detail-line{display:flex;justify-content:space-between;align-items:center;padding:22rpx 0;border-bottom:1rpx solid #e5eaf1;color:#64748b;font-size:25rpx}.detail-line strong{color:#1e293b;font-weight:600}.detail-section-title{padding:24rpx 0 12rpx;color:#1e293b;font-size:28rpx;font-weight:700}.detail-item-card{padding:22rpx;margin-bottom:14rpx;border:1rpx solid #dbe4ef;border-radius:14rpx;background:#fff}.detail-item-head,.detail-item-meta{display:flex;justify-content:space-between;align-items:center}.detail-item-head{color:#1e293b;font-size:27rpx}.detail-item-meta{margin-top:14rpx;color:#64748b;font-size:23rpx}
 .bottom-action{position:fixed;left:0;right:0;bottom:0;z-index:5;display:flex;justify-content:center;padding:16rpx 28rpx calc(16rpx + env(safe-area-inset-bottom));background:rgba(244,247,251,.96);box-sizing:border-box}.add-button{width:82%;height:82rpx;line-height:82rpx;margin:0;box-shadow:0 8rpx 22rpx rgba(8,124,240,.2)}
+.inventory-workbench{color:#1e293b}.workspace-header{padding:34rpx 28rpx 44rpx;background:#087cf0;color:#fff}.workspace-eyebrow{display:block;font-size:22rpx;letter-spacing:1rpx;opacity:.78}.workspace-title{display:block;margin-top:12rpx;font-size:42rpx;font-weight:700;letter-spacing:-1rpx}.workspace-note{display:block;margin-top:10rpx;font-size:23rpx;line-height:34rpx;opacity:.86}.adjustment-overview{display:flex;justify-content:space-between;align-items:center;margin:-22rpx 24rpx 18rpx;padding:20rpx 24rpx;background:#fff;border:1rpx solid #e8eef6;border-radius:18rpx;box-shadow:0 10rpx 28rpx rgba(15,23,42,.07)}.overview-label{display:block;color:#94a3b8;font-size:20rpx}.overview-value{display:block;margin-top:6rpx;color:#1e293b;font-size:26rpx;font-weight:650}.workspace-scroll{height:calc(100vh - 270rpx);padding:0 24rpx 150rpx;box-sizing:border-box}.adjustment-scroll{padding-top:4rpx}.adjustment-card{margin-bottom:16rpx;padding:24rpx;background:#fff;border:1rpx solid #e8eef6;border-radius:18rpx;box-shadow:0 5rpx 18rpx rgba(15,23,42,.035)}.adjustment-card-head,.adjustment-actions{display:flex;justify-content:space-between;align-items:center}.adjustment-kicker{display:block;margin-bottom:6rpx;color:#94a3b8;font-size:19rpx}.batch-no{color:#0f172a;font-size:29rpx;font-weight:650}.status{padding:7rpx 14rpx;border-radius:9rpx;font-size:21rpx;font-weight:600}.adjustment-summary{display:flex;margin-top:22rpx;padding:16rpx 0;border-top:1rpx solid #f0f3f7;border-bottom:1rpx solid #f0f3f7}.adjustment-summary>view{flex:1;min-width:0;color:#64748b;font-size:20rpx}.adjustment-summary>view+view{padding-left:14rpx}.adjustment-summary strong{display:block;margin-top:7rpx;color:#334155;font-size:23rpx;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.detail-hint{color:#a0aec0;font-size:20rpx}.adjustment-actions{margin-top:16rpx}.adjustment-sheet{background:#f4f7fb}.form-section{margin-top:20rpx;padding:20rpx;background:#fff;border:1rpx solid #e8eef6;border-radius:16rpx}.form-section-head{display:flex;align-items:center;gap:10rpx}.section-index{color:#087cf0;font-size:20rpx;font-weight:700}.section-title{color:#1e293b;font-size:27rpx;font-weight:700}.section-action{margin-left:auto}.item-editor{padding:18rpx;background:#f8fafc;border:1rpx solid #eef2f7;border-radius:14rpx}.item-editor+.item-editor{margin-top:14rpx}.submit{box-shadow:0 8rpx 22rpx rgba(8,124,240,.2)}
 </style>

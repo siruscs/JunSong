@@ -5,6 +5,7 @@ import test from 'node:test'
 const form = fs.readFileSync('src/pages/form/index.vue', 'utf8')
 const stateView = fs.readFileSync('src/components/StateView.vue', 'utf8')
 const purchaseForm = fs.readFileSync('src/pages/form/form-modules/PurchaseDetailsForm.vue', 'utf8')
+const fieldForm = fs.existsSync('src/pages/form/form-modules/FormField.vue') ? fs.readFileSync('src/pages/form/form-modules/FormField.vue', 'utf8') : ''
 
 test('generic form restores and autosaves non-sensitive drafts', () => {
   assert.match(form, /saveDraft/)
@@ -32,4 +33,12 @@ test('purchase details are isolated in a reusable form module', () => {
   assert.match(form, /PurchaseDetailsForm/)
   assert.match(purchaseForm, /product-change/)
   assert.match(purchaseForm, /quantity-input/)
+})
+
+test('required and optional fields share one reusable field renderer', () => {
+  assert.ok(fieldForm, 'generic form field renderer must exist')
+  assert.match(form, /FormField/)
+  assert.match(form, /@set-value="setValueFromField\(field\.key, \$event\)"/)
+  assert.match(form, /@select-value="selectValueFromField\(field, \$event\)"/)
+  assert.match(form, /@input-value="inputValueFromField\(field\.key, \$event\)"/)
 })

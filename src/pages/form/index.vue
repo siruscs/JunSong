@@ -87,42 +87,7 @@
           <text class="ocr-loading-text">识别中...</text>
         </view>
       </view>
-      <view class="form-item" v-for="field in requiredFields" :key="field.key">
-        <view class="label-row">
-          <text class="label">{{ field.label }}</text>
-          <text class="required-tag">*</text>
-        </view>
-        <picker v-if="field.type === 'date'" mode="date" :value="form[field.key] || ''" @change="setValue(field.key, $event.detail.value)">
-          <view class="control picker" :class="{ 'has-value': form[field.key] }">
-            <text class="picker-text">{{ form[field.key] || '请选择日期' }}</text>
-            <text class="picker-arrow">›</text>
-          </view>
-        </picker>
-        <picker v-else-if="field.type === 'select'" :range="optionLabels(field)" :value="optionIndex(field)" @change="selectValue(field, $event.detail.value)">
-          <view class="control picker" :class="{ 'has-value': form[field.key] }">
-            <text class="picker-text">{{ displayOption(field) }}</text>
-            <text class="picker-arrow">›</text>
-          </view>
-        </picker>
-        <picker v-else-if="field.type === 'region'" mode="multiSelector" :range="regionRange" :value="regionIndex" @columnchange="onRegionColumnChange" @change="onRegionChange">
-          <view class="control picker" :class="{ 'has-value': regionText }">
-            <text class="picker-text">{{ regionText || '请选择省市区街道' }}</text>
-            <text class="picker-arrow">›</text>
-          </view>
-        </picker>
-        <textarea v-else-if="field.type === 'textarea'" class="control textarea" v-model="form[field.key]" maxlength="-1" :placeholder="'请输入' + field.label" />
-        <view v-else-if="field.type === 'image'" class="control image-upload">
-          <view class="image-preview" v-if="form[field.key]" @tap="chooseImage(field.key)">
-            <image :src="resolveImageUrl(form[field.key])" mode="aspectFit" class="upload-image" />
-            <text class="image-replace-text">点击更换</text>
-          </view>
-          <view class="image-picker" v-else @tap="chooseImage(field.key)">
-            <text class="image-picker-icon">+</text>
-            <text class="image-picker-text">上传图片</text>
-          </view>
-        </view>
-        <input v-else class="control input" v-model="form[field.key]" :type="inputType(field)" :disabled="isReadonlyField(field)" :placeholder="fieldPlaceholder(field)" @input="onFieldInput(field.key, $event.detail.value)" />
-      </view>
+      <FormField v-for="field in requiredFields" :key="field.key" :field="field" required :value="form[field.key]" :options="optionLabels(field)" :selected-index="optionIndex(field)" :display-text="displayOption(field)" :region-range="regionRange" :region-index="regionIndex" :region-text="regionText" :input-type="inputType(field)" :readonly="isReadonlyField(field)" :placeholder="fieldPlaceholder(field)" :image-url="resolveImageUrl(form[field.key])" @set-value="setValueFromField(field.key, $event)" @select-value="selectValueFromField(field, $event)" @region-column-change="onRegionColumnChange" @region-change="onRegionChange" @input-value="inputValueFromField(field.key, $event)" @choose-image="chooseImage(field.key)" />
     </view>
 
     <PurchaseDetailsForm v-if="moduleKey === 'purchase'" :details="form.details" :products="productOptions" :total-quantity="form.totalQuantity" :total-amount="form.totalAmount" @add="addPurchaseDetail" @remove="deletePurchaseDetail" @product-change="onPurchaseProductChange" @quantity-input="onDetailQuantityInput" @quantity-blur="onDetailQuantityBlur" @amount="calculateDetailAmount" @gift="onPurchaseGift" />
@@ -134,41 +99,7 @@
         <text class="section-count">{{ optionalFields.length }}项</text>
         <text class="collapse-arrow" :class="{ collapsed: optionalCollapsed }">›</text>
       </view>
-      <view class="form-item" v-for="field in optionalFields" :key="field.key" v-show="!optionalCollapsed">
-        <view class="label-row">
-          <text class="label">{{ field.label }}</text>
-        </view>
-        <picker v-if="field.type === 'date'" mode="date" :value="form[field.key] || ''" @change="setValue(field.key, $event.detail.value)">
-          <view class="control picker" :class="{ 'has-value': form[field.key] }">
-            <text class="picker-text">{{ form[field.key] || '请选择日期' }}</text>
-            <text class="picker-arrow">›</text>
-          </view>
-        </picker>
-        <picker v-else-if="field.type === 'select'" :range="optionLabels(field)" :value="optionIndex(field)" @change="selectValue(field, $event.detail.value)">
-          <view class="control picker" :class="{ 'has-value': form[field.key] }">
-            <text class="picker-text">{{ displayOption(field) }}</text>
-            <text class="picker-arrow">›</text>
-          </view>
-        </picker>
-        <picker v-else-if="field.type === 'region'" mode="multiSelector" :range="regionRange" :value="regionIndex" @columnchange="onRegionColumnChange" @change="onRegionChange">
-          <view class="control picker" :class="{ 'has-value': regionText }">
-            <text class="picker-text">{{ regionText || '请选择省市区街道' }}</text>
-            <text class="picker-arrow">›</text>
-          </view>
-        </picker>
-        <textarea v-else-if="field.type === 'textarea'" class="control textarea" v-model="form[field.key]" maxlength="-1" :placeholder="'请输入' + field.label" />
-        <view v-else-if="field.type === 'image'" class="control image-upload">
-          <view class="image-preview" v-if="form[field.key]" @tap="chooseImage(field.key)">
-            <image :src="resolveImageUrl(form[field.key])" mode="aspectFit" class="upload-image" />
-            <text class="image-replace-text">点击更换</text>
-          </view>
-          <view class="image-picker" v-else @tap="chooseImage(field.key)">
-            <text class="image-picker-icon">+</text>
-            <text class="image-picker-text">上传图片</text>
-          </view>
-        </view>
-        <input v-else class="control input" v-model="form[field.key]" :type="inputType(field)" :disabled="isReadonlyField(field)" :placeholder="fieldPlaceholder(field)" @input="onFieldInput(field.key, $event.detail.value)" />
-      </view>
+      <FormField v-for="field in optionalFields" v-show="!optionalCollapsed" :key="field.key" :field="field" :value="form[field.key]" :options="optionLabels(field)" :selected-index="optionIndex(field)" :display-text="displayOption(field)" :region-range="regionRange" :region-index="regionIndex" :region-text="regionText" :input-type="inputType(field)" :readonly="isReadonlyField(field)" :placeholder="fieldPlaceholder(field)" :image-url="resolveImageUrl(form[field.key])" @set-value="setValueFromField(field.key, $event)" @select-value="selectValueFromField(field, $event)" @region-column-change="onRegionColumnChange" @region-change="onRegionChange" @input-value="inputValueFromField(field.key, $event)" @choose-image="chooseImage(field.key)" />
     </view>
 
     <view class="preview-card" v-if="previewData">
@@ -219,11 +150,12 @@ import { isUnknownWriteOutcome } from '@/utils/operationState.js'
 import { validateMemberContact } from '@/utils/memberWorkflow.js'
 import { saveDraft, loadDraft, clearDraft } from '@/utils/draftStore.js'
 import PurchaseDetailsForm from './form-modules/PurchaseDetailsForm.vue'
+import FormField from './form-modules/FormField.vue'
 import StateView from '@/components/StateView.vue'
 
 export default {
   mixins: [miniProgramShare],
-  components: { PurchaseDetailsForm, StateView },
+  components: { PurchaseDetailsForm, FormField, StateView },
   data() {
     return {
       moduleKey: '',
@@ -250,9 +182,9 @@ export default {
       regionIndex: [0, 0, 0, 0],
       regionRange: [[], [], [], []],
       regionOptions: [],
-      draftRestoring: true
-      ,initializing: false
-      ,loadError: ''
+      draftRestoring: true,
+      initializing: false,
+      loadError: ''
     }
   },
   computed: {
@@ -418,7 +350,7 @@ export default {
       }
       if (!this.id) await this.restoreDraft()
       this.draftRestoring = false
-      if (this.id) this.loadInfo()
+      if (this.id) await this.loadInfo()
       this.loadDictOptions()
     },
     async restoreDraft() {
@@ -644,6 +576,12 @@ export default {
     setValue(key, value) {
       this.form[key] = value
     },
+    setValueFromField(key, value) {
+      this.setValue(key, value)
+    },
+    inputValueFromField(key, value) {
+      this.onFieldInput(key, value)
+    },
     inputType(field) {
       if (field.allowNegative) return 'text'
       if (field.type === 'number') return 'digit'
@@ -662,6 +600,9 @@ export default {
       const configField = this.config?.fields.find(f => f.key === field.key) || field
       const index = this.optionItems(configField).findIndex((item) => String(item.value) === String(this.form[configField.key]))
       return index < 0 ? 0 : index
+    },
+    selectValueFromField(field, index) {
+      this.selectValue(field, index)
     },
     selectValue(field, index) {
       const item = this.optionItems(field)[Number(index)]

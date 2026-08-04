@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 将库存查询、库存流水、库存调整统一为适合店长快速操作的库存工作台视觉和交互层级。
+**Goal:** 以核算周期首页为视觉基准，将库存查询、库存流水、库存调整统一为适合店长快速操作的库存工作台视觉和交互层级。
 
-**Architecture:** 仅在小程序现有 Vue 页面和 scoped CSS 内做局部重构，复用现有请求、权限、部门上下文、字典缓存和 `StateView`。库存查询补齐统一状态组件，流水调整筛选与卡片层级，库存调整统一列表卡片和底部操作区，不修改业务接口或状态机。
+**Architecture:** 仅在小程序现有 Vue 页面和 scoped CSS 内做局部重构，复用核算周期首页的 header、KPI、section-card 视觉语言以及现有请求、权限、部门上下文、字典缓存和 `StateView`。库存查询补齐统一状态组件，流水调整筛选与卡片层级，库存调整统一列表卡片和底部操作区，不修改业务接口或状态机。
 
 **Tech Stack:** uni-app、Vue 3、微信小程序原生视图组件、现有 `StateView` 和 CSS。
 

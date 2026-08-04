@@ -156,6 +156,7 @@ import { hasActionPermission, requireModulePermission } from '@/utils/permission
 import { isUnknownWriteOutcome } from '@/utils/operationState.js'
 import { validateMemberContact } from '@/utils/memberWorkflow.js'
 import { saveDraft, loadDraft, clearDraft } from '@/utils/draftStore.js'
+import { workContext } from '@/utils/workContext.js'
 import PurchaseDetailsForm from './form-modules/PurchaseDetailsForm.vue'
 import FormField from './form-modules/FormField.vue'
 import ExpenseForm from './form-modules/ExpenseForm.vue'
@@ -570,7 +571,7 @@ export default {
             if (deptId) params.deptId = deptId
           }
           if (field.remoteFilterStatus) params.status = field.remoteFilterStatus
-          const cacheKey = 'remote:' + field.remoteUrl + (field.remoteFilterDept ? ':dept' : '') + (field.remoteFilterStatus || '')
+          const cacheKey = 'remote:' + field.remoteUrl + (field.remoteFilterDept ? ':dept:' + (params.deptId || 'none') : '') + (field.remoteFilterStatus || '')
           let list = this.dictCache[cacheKey]
           if (!list) {
             const res = await request({ url: field.remoteUrl, method: 'GET', data: params })
@@ -586,6 +587,8 @@ export default {
       }
     },
     getCurrentDeptId() {
+      const contextDeptId = workContext.snapshot().currentDeptId
+      if (contextDeptId !== undefined && contextDeptId !== null && contextDeptId !== '') return contextDeptId
       const userInfo = uni.getStorageSync('userInfo') || {}
       return userInfo.currentDeptId || userInfo.deptId || null
     },
@@ -606,12 +609,18 @@ export default {
       try {
         const path = this.config.detailPath || this.config.path
         const res = await getData(path, this.id)
-        this.form = { ...this.form, ...(res.data || res) }
+        const detail = res?.data || res
+        if (!detail || typeof detail !== 'object' || Array.isArray(detail) || !Object.keys(detail).length) {
+          throw new Error('详情数据为空，无法编辑')
+        }
+        this.form = { ...this.form, ...detail }
         this.syncRegionPickerFromForm()
+        return detail
       } catch (e) {
         console.error('加载详情失败', e)
         this.loadError = e?.msg || '加载详情失败'
         uni.showToast({ title: '加载失败', icon: 'none' })
+        throw e
       }
     },
     setValue(key, value) {
@@ -656,8 +665,8 @@ export default {
         this.form.goodsName = item.raw.goodsName || ''
         this.syncPointsDeducted()
       }
-      // 投资款记录：选择投资人后同步deptId
-      if (this.moduleKey === 'investRecord' && field.key === 'investorId' && item.raw) {
+      // 投资相关表单：选择投资人后同步机构ID
+      if ((this.moduleKey === 'investRecord' || this.moduleKey === 'investorPayment') && field.key === 'investorId' && item.raw) {
         this.form.deptId = item.raw.deptId || this.getCurrentDeptId()
       }
       // 费用表单：切换费用类别时不应影响付款方式
@@ -819,8 +828,8 @@ export default {
       ;(this.config.fields || []).forEach((field) => {
         if (field.virtual) delete data[field.key]
       })
-      // 投资款记录新增时强制设置当前部门ID
-      if (this.moduleKey === 'investRecord' && !this.id) {
+      // 投资相关新增时强制绑定当前登录所选部门
+      if ((this.moduleKey === 'investRecord' || this.moduleKey === 'investor' || this.moduleKey === 'investorPayment') && !this.id) {
         data.deptId = this.getCurrentDeptId()
       }
       if (this.moduleKey === 'member' && !this.id) delete data.memberNo
@@ -1027,7 +1036,7 @@ export default {
       })
     },
     resolveImageUrl(url) {
-      if (!url) return ''
+      if (typeof url !== 'string' || !url) return ''
       if (url.startsWith('http://') || url.startsWith('https://')) return url
       if (url.startsWith('/statics/')) {
         const baseUrl = uni.getStorageSync('baseUrl') || 'https://www.junsong.vip/prod-api'

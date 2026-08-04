@@ -1,5 +1,7 @@
 <template>
   <view class="page">
+    <view v-if="initializing" class="loading-overlay"><text>加载中...</text></view>
+    <view v-else-if="loadError" class="loading-overlay error-overlay"><text>{{ loadError }}</text><button class="btn-submit" @tap="retryInit">重新加载</button></view>
     <view class="form-card">
       <view class="form-header">
         <text class="form-title">{{ isAdd ? '新增部门' : '编辑部门' }}</text>
@@ -80,6 +82,8 @@ export default {
       deptId: null,
       isAdd: true,
       parentOptions: [],
+      initializing: false,
+      loadError: '',
       saving: false,
       saved: false,
       form: {
@@ -103,15 +107,23 @@ export default {
       return this.parentOptions[this.selectedParentIndex] || null
     }
   },
-  async onLoad(options) {
+  onLoad(options) {
     this.deptId = options.id
     this.isAdd = !this.deptId
-    await this.loadParentOptions()
-    if (!this.isAdd) {
-      await this.loadDept()
-    }
+    this.initialize()
   },
   methods: {
+    async initialize() {
+      this.initializing = true
+      this.loadError = ''
+      try {
+        await this.loadParentOptions()
+        if (!this.isAdd) await this.loadDept()
+      } catch (e) {
+        this.loadError = e?.msg || e?.message || '部门信息加载失败'
+      } finally { this.initializing = false }
+    },
+    retryInit() { this.initialize() },
     async loadParentOptions() {
       try {
         const res = await request({ url: '/system/dept/list', method: 'GET' })
@@ -120,13 +132,17 @@ export default {
       } catch (e) {
         console.error('加载上级部门选项失败', e)
         this.parentOptions = [{ deptId: 0, deptName: '无（顶级部门）' }]
+        throw e
       }
     },
     async loadDept() {
       if (!this.deptId) return
       try {
         const res = await request({ url: '/system/dept/' + this.deptId, method: 'GET' })
-        const data = res.data || res
+        const data = res?.data || res
+        if (!data || typeof data !== 'object' || Array.isArray(data) || !Object.keys(data).length) {
+          throw new Error('部门详情为空，无法编辑')
+        }
         this.form = {
           parentId: data.parentId || 0,
           deptName: data.deptName || '',
@@ -139,6 +155,7 @@ export default {
         }
       } catch (e) {
         console.error('加载部门信息失败', e)
+        throw e
       }
     },
     onParentChange(e) {
@@ -203,12 +220,28 @@ export default {
 
 <style scoped>
 .page {
+  position: relative;
   min-height: 100vh;
   background: #E8EEF5;
   padding: 24rpx 28rpx;
   padding-bottom: 160rpx;
   box-sizing: border-box;
 }
+
+.loading-overlay {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(232, 238, 245, .96);
+  color: #64748B;
+  font-size: 28rpx;
+}
+
+.error-overlay { gap: 24rpx; color: #B42318; }
 
 .form-card {
   background: #FFFFFF;

@@ -733,6 +733,10 @@ export default {
         if (!workContext.isCurrent(contextVersion) || String(this.currentDeptId) !== String(requestDeptId)) return false
         if (this.refreshPending) return true
         let list = res.rows || res.data || []
+        // 核算周期必须与当前登录时选定的部门一致；即使后端返回了越权/跨部门数据，前端也不展示。
+        if (this.moduleKey === 'accountingPeriod') {
+          list = list.filter((item) => String(item.deptId) === String(requestDeptId))
+        }
         if (this.moduleKey === 'member' && query.memberNo && list.length === 0) {
           const fallbackQuery = { ...query }
           delete fallbackQuery.memberNo
@@ -741,6 +745,9 @@ export default {
           if (!workContext.isCurrent(contextVersion) || String(this.currentDeptId) !== String(requestDeptId)) return false
           if (this.refreshPending) return true
           list = res.rows || res.data || []
+          if (this.moduleKey === 'accountingPeriod') {
+            list = list.filter((item) => String(item.deptId) === String(requestDeptId))
+          }
         }
         this.rows = reset ? list : this.rows.concat(list)
         this.totalRecords = Number(res.total ?? this.rows.length) || 0

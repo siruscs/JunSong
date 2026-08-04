@@ -25,6 +25,19 @@ test('drafts are only restored for new records', () => {
   assert.match(form, /loadDraft\(this\.moduleKey, deptId, userId\)/)
 })
 
+test('editing a record must load and validate detail before showing the form', () => {
+  assert.match(form, /if \(this\.id\) await this\.loadInfo\(\)/)
+  assert.match(form, /详情数据为空，无法编辑/)
+})
+
+test('form image URL resolver ignores non-string field values', () => {
+  assert.match(form, /if \(typeof url !== 'string' \|\| !url\) return ''/)
+})
+
+test('shared form input keeps the common vertical alignment', () => {
+  assert.match(fieldForm, /\.input\{display:block;height:84rpx;line-height:84rpx;padding:0 24rpx;box-sizing:border-box;/)
+})
+
 test('shared state view provides loading empty and error states', () => {
   assert.match(stateView, /loading/)
   assert.match(stateView, /暂无数据/)
@@ -82,4 +95,13 @@ test('expense and purchase business validation remains guarded by the form shell
   assert.match(form, /quantity: this\.toNum3\(d\.quantity, true\)/)
   assert.match(form, /amount: d\.amount === ''/)
   assert.match(form, /url: '\/finance\/product\/list'/)
+})
+
+test('investor forms carry the selected department and repayment selects a scoped investor', () => {
+  assert.match(modules, /investorPayment:[\s\S]*?key: 'investorId', label: '投资人', type: 'select', remoteUrl: '\/finance\/investor\/list', remoteFilterDept: true/)
+  assert.match(modules, /investorPayment:[\s\S]*?key: 'investorName', label: '投资人姓名', hidden: true/)
+  assert.match(form, /this\.moduleKey === 'investor' && !this\.id[\s\S]*?data\.deptId = this\.getCurrentDeptId\(\)/)
+  assert.match(form, /this\.moduleKey === 'investorPayment' && !this\.id[\s\S]*?data\.deptId = this\.getCurrentDeptId\(\)/)
+  assert.match(form, /this\.moduleKey === 'investRecord' \|\| this\.moduleKey === 'investorPayment'[\s\S]*?field\.key === 'investorId'/)
+  assert.match(form, /remoteFilterDept \? ':dept:' \+ \(params\.deptId \|\| 'none'\)/)
 })

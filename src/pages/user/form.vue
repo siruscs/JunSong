@@ -1,5 +1,7 @@
 <template>
   <view class="page">
+    <view v-if="initializing" class="loading-overlay"><text>加载中...</text></view>
+    <view v-else-if="loadError" class="loading-overlay error-overlay"><text>{{ loadError }}</text><button class="btn-primary" @tap="retryInit">重新加载</button></view>
     <!-- 英雄卡片 -->
     <view class="hero-card">
       <view class="hero-icon">{{ id ? '✎' : '＋' }}</view>
@@ -157,6 +159,8 @@ export default {
       },
       roles: [],
       depts: [],
+      initializing: false,
+      loadError: '',
       saving: false,
       saved: false,
       sexOptions: [
@@ -204,14 +208,19 @@ export default {
     this.id = options.id || ''
     uni.setNavigationBarTitle({ title: this.id ? '编辑用户' : '新增用户' })
 
-    this.loadRoles()
-    this.loadDepts()
-
-    if (this.id) {
-      this.loadUser()
-    }
+    this.initialize()
   },
   methods: {
+    async initialize() {
+      this.initializing = true
+      this.loadError = ''
+      try {
+        await Promise.all([this.loadRoles(), this.loadDepts(), this.id ? this.loadUser() : Promise.resolve()])
+      } catch (e) {
+        this.loadError = e?.msg || e?.message || '用户信息加载失败'
+      } finally { this.initializing = false }
+    },
+    retryInit() { this.initialize() },
     onSexChange(e) {
       this.form.sex = this.sexOptions[e.detail.value].value
     },
@@ -277,7 +286,10 @@ export default {
     async loadUser() {
       try {
         const res = await request({ url: `/system/user/${this.id}`, method: 'GET' })
-        const data = res.data || res
+        const data = res?.data || res
+        if (!data || typeof data !== 'object' || Array.isArray(data) || !Object.keys(data).length) {
+          throw new Error('用户详情为空，无法编辑')
+        }
         this.form.userName = data.userName || ''
         this.form.nickName = data.nickName || ''
         this.form.phonenumber = data.phonenumber || ''
@@ -291,6 +303,7 @@ export default {
       } catch (e) {
         console.error('加载用户信息失败', e)
         uni.showToast({ title: '加载失败', icon: 'none' })
+        throw e
       }
     },
     validate() {
@@ -352,10 +365,27 @@ export default {
 
 <style scoped>
 .page {
+  position: relative;
   min-height: 100vh;
   padding: 0 0 140rpx;
   background: #E8EEF5;
 }
+
+.loading-overlay {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24rpx;
+  background: rgba(232, 238, 245, .96);
+  color: #64748B;
+  font-size: 28rpx;
+}
+
+.error-overlay { color: #B42318; }
 
 .hero-card {
   display: flex;

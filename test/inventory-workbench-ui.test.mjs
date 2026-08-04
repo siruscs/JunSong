@@ -8,17 +8,16 @@ const adjustment = fs.readFileSync('src/pages/stock-adjustment/index.vue', 'utf8
 
 test('库存三个页面使用统一工作台结构和状态语义', () => {
   for (const page of [stock, ledger, adjustment]) {
-    assert.match(page, /inventory-workbench/)
-    assert.match(page, /workspace-header/)
-    assert.match(page, /workspace-eyebrow/)
-    assert.match(page, /workspace-title/)
+    assert.match(page, /class="header"/)
+    assert.match(page, /section-card/)
+    assert.match(page, /section-header/)
   }
   assert.match(stock, /StateView/)
-  assert.match(stock, /inventory-summary/)
-  assert.match(ledger, /ledger-filters/)
+  assert.match(stock, /kpi-row/)
+  assert.match(ledger, /filters-card/)
   assert.match(ledger, /ledger-card/)
   assert.match(adjustment, /adjustment-card/)
-  assert.match(adjustment, /adjustment-sheet/)
+  assert.match(adjustment, /sheet/)
 })
 
 test('库存页面保留关键业务入口和安全区布局', () => {

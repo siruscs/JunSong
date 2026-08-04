@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import test from 'node:test'
 
 const form = fs.readFileSync('src/pages/form/index.vue', 'utf8')
+const modules = fs.readFileSync('src/config/modules.js', 'utf8')
 const stateView = fs.readFileSync('src/components/StateView.vue', 'utf8')
 const purchaseForm = fs.readFileSync('src/pages/form/form-modules/PurchaseDetailsForm.vue', 'utf8')
 const fieldForm = fs.existsSync('src/pages/form/form-modules/FormField.vue') ? fs.readFileSync('src/pages/form/form-modules/FormField.vue', 'utf8') : ''
@@ -51,4 +52,15 @@ test('expense OCR controls are isolated in a reusable form module', () => {
   assert.match(form, /ExpenseForm/)
   assert.match(expenseForm, /choose-ocr-image/)
   assert.match(expenseForm, /ocr-loading/)
+})
+
+test('expense and purchase business validation remains guarded by the form shell', () => {
+  assert.match(modules, /expense:\s*\{[\s\S]*?expenseContent[^\n]*required: true[\s\S]*?expenseAmount[^\n]*required: true/)
+  assert.match(modules, /purchase:\s*\{[\s\S]*?supplierId[^\n]*required: true[\s\S]*?purchaseDate[^\n]*required: true/)
+  assert.match(form, /this\.moduleKey === 'purchase'/)
+  assert.match(form, /请添加商品明细/)
+  assert.match(form, /请选择所有商品/)
+  assert.match(form, /data\.details = data\.details\.map/)
+  assert.match(form, /quantity: this\.toNum3\(d\.quantity, true\)/)
+  assert.match(form, /amount: d\.amount === ''/)
 })

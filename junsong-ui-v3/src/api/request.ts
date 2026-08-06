@@ -56,12 +56,12 @@ service.interceptors.request.use(
     //    - 业务内容改变 → bodyFingerprint 改变 → 视为新请求，生成新键
     //    - 成功响应后清除该签名的键（下次视为新业务）
     //    - 失败响应保留键，供下次重试复用
-    // 3. config.idempotencyNewKey=true 时强制生成新键（用于"另存为新业务"）
+    // 3. 人工 PUT 修改默认生成新键，避免失败后的旧业务结果污染下一次保存；显式幂等键仍由调用方控制。
     const method = String(config.method || 'get').toLowerCase()
     const isWrite = ['post', 'put', 'delete', 'patch'].includes(method)
     if (isWrite && !headers['X-Idempotency-Key'] && !headers['x-idempotency-key']) {
       const explicitKey = (config as any).idempotencyKey
-      const forceNewKey = (config as any).idempotencyNewKey === true
+      const forceNewKey = (config as any).idempotencyNewKey === true || (method === 'put' && !explicitKey)
       const scene = (config as any).idempotencyScene || inferIdempotencyScene(config.url, method)
       let autoKey: string | undefined
       if (explicitKey) {
@@ -139,6 +139,7 @@ service.interceptors.response.use(
     if (isWriteMethod(res.config.method)) {
       const explicitKey = (res.config as any).idempotencyKey
       const forceNewKey = (res.config as any).idempotencyNewKey === true
+        || (String(res.config.method || '').toLowerCase() === 'put' && !explicitKey)
       if (!explicitKey && !forceNewKey) {
         const signature = computeRequestSignature(res.config.url, res.config.method, res.config.data)
         const usedKey = res.config.headers?.['X-Idempotency-Key'] as string | undefined
@@ -222,6 +223,7 @@ service.interceptors.response.use(
     if (cfg && isWriteMethod(cfg.method)) {
       const explicitKey = (cfg as any).idempotencyKey
       const forceNewKey = (cfg as any).idempotencyNewKey === true
+        || (String(cfg.method || '').toLowerCase() === 'put' && !explicitKey)
       if (!explicitKey && !forceNewKey) {
         const signature = computeRequestSignature(cfg.url, cfg.method, cfg.data)
         const usedKey = cfg.headers?.['X-Idempotency-Key'] as string | undefined

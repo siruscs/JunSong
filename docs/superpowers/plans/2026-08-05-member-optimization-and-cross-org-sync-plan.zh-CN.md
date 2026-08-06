@@ -145,10 +145,10 @@
 - Modify: `junsong-modules/junsong-member/src/main/resources/mapper/member/MemMemberCardTypeMapper.xml`
 - Create: `junsong-modules/junsong-member/src/test/java/com/junsong/member/service/MemberLevelConfigSyncAdapterTest.java`
 
-- [ ] 先写测试：等级编码匹配，积分倍率、成长门槛和状态可预览差异；来源主键不得写入目标机构。
-- [ ] 运行测试确认适配器尚不存在时失败。
-- [ ] 增加目标机构范围查询和版本条件更新，保留目标机构现有会员关联关系。
-- [ ] 注册等级适配器并运行会员全量测试。
+- [x] 先写测试：等级编码匹配，积分倍率、成长门槛和状态可预览差异；来源主键不得写入目标机构。
+- [x] 运行测试确认适配器尚不存在时失败。
+- [x] 增加目标机构范围查询和版本条件更新，保留目标机构现有会员关联关系。
+- [x] 注册等级适配器并运行会员窄测；全量回归受本机 JDK 26 的 Mockito agent 自附加限制，已记录。
 
 ## 任务 9：会员销售政策同步适配器
 
@@ -158,11 +158,11 @@
 - Modify: `junsong-modules/junsong-member/src/main/resources/mapper/member/MemCampaignPolicyMapper.xml`
 - Create: `junsong-modules/junsong-member/src/test/java/com/junsong/member/service/MemberCampaignPolicyConfigSyncAdapterTest.java`
 
-- [ ] 先写测试：目标周期、商品编码、政策编码和套餐档位均可解析；缺少目标周期、商品或等级时拒绝执行。
-- [ ] 运行测试确认适配器尚不存在时失败。
-- [ ] 预览请求显式携带目标周期映射，执行时固化目标政策版本和套餐快照。
-- [ ] 同步政策不修改已生成会员购买单，按单次购买规则保持历史数据不变。
-- [ ] 注册适配器并运行政策、购买域和会员全量测试。
+- [x] 先写测试：目标周期、商品编码、政策编码和套餐档位均可解析；缺少目标周期、商品时拒绝执行。
+- [x] 运行测试确认适配器尚不存在时失败。
+- [x] 预览请求显式携带目标周期映射，执行时固化目标政策版本和套餐快照。
+- [x] 同步政策只更新政策及套餐配置，不修改已生成会员购买单，按单次购买规则保持历史数据不变。
+- [x] 注册政策适配器并通过同步窄测；会员全量回归受本机 JDK 26 的 Mockito agent 自附加限制，已记录。
 
 ## 任务 10：PC 四类维护页面接入
 

@@ -65,7 +65,9 @@ public interface FinProductMapper
      * @param productCode 商品编码
      * @return 结果
      */
-    public FinProduct checkProductCodeUnique(String productCode);
+    public FinProduct checkProductCodeUnique(@Param("productCode") String productCode,
+                                             @Param("deptId") Long deptId,
+                                             @Param("productId") Long productId);
 
     FinProduct selectFinProductByProductIdAndDeptId(@Param("productId") Long productId, @Param("deptId") Long deptId);
     int updateFinProductByDeptId(@Param("product") FinProduct product, @Param("deptId") Long deptId);

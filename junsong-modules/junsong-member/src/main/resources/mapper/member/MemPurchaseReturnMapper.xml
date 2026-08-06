@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.member.mapper.MemPurchaseReturnMapper">
+  <resultMap id="ReturnResult" type="com.junsong.member.domain.MemPurchaseReturn">
+    <id property="returnId" column="return_id"/><result property="tenantId" column="tenant_id"/><result property="deptId" column="dept_id"/>
+    <result property="purchaseId" column="purchase_id"/><result property="originalPeriodId" column="original_period_id"/><result property="returnPeriodId" column="return_period_id"/>
+    <result property="returnNo" column="return_no"/><result property="returnDate" column="return_date"/><result property="customerType" column="customer_type"/>
+    <result property="memberId" column="member_id"/><result property="customerName" column="customer_name"/><result property="customerPhone" column="customer_phone"/>
+    <result property="refundAmount" column="refund_amount"/><result property="refundedAmount" column="refunded_amount"/><result property="status" column="status"/>
+    <result property="reason" column="reason"/><result property="remark" column="remark"/><result property="version" column="version"/>
+    <collection property="items" ofType="com.junsong.member.domain.MemPurchaseReturnItem" column="{returnId=return_id,tenantId=tenant_id,deptId=dept_id}" select="selectReturnItems"/>
+  </resultMap>
+  <resultMap id="ItemResult" type="com.junsong.member.domain.MemPurchaseReturnItem">
+    <id property="returnItemId" column="return_item_id"/><result property="returnId" column="return_id"/><result property="purchaseId" column="purchase_id"/><result property="itemId" column="item_id"/>
+    <result property="productId" column="product_id"/><result property="productNameSnapshot" column="product_name_snapshot"/><result property="returnSaleQuantity" column="return_sale_quantity"/>
+    <result property="returnGiftQuantity" column="return_gift_quantity"/><result property="returnTotalQuantity" column="return_total_quantity"/><result property="refundUnitPrice" column="refund_unit_price"/><result property="refundAmount" column="refund_amount"/>
+  </resultMap>
+  <select id="selectReturnList" parameterType="com.junsong.member.domain.MemPurchaseReturn" resultMap="ReturnResult">
+    select return_id,tenant_id,dept_id,purchase_id,original_period_id,return_period_id,return_no,return_date,customer_type,member_id,customer_name,customer_phone,refund_amount,refunded_amount,status,reason,remark,version
+    from mem_purchase_return where tenant_id=#{tenantId} and dept_id=#{deptId} and del_flag='0'
+    <if test="purchaseId != null">and purchase_id=#{purchaseId}</if><if test="status != null and status != ''">and status=#{status}</if>
+    order by return_id desc
+  </select>
+  <select id="selectReturnById" parameterType="com.junsong.member.domain.MemPurchaseReturn" resultMap="ReturnResult">
+    select return_id,tenant_id,dept_id,purchase_id,original_period_id,return_period_id,return_no,return_date,customer_type,member_id,customer_name,customer_phone,refund_amount,refunded_amount,status,reason,remark,version
+    from mem_purchase_return where return_id=#{returnId} and tenant_id=#{tenantId} and dept_id=#{deptId} and del_flag='0'
+  </select>
+  <select id="selectReturnItems" resultMap="ItemResult">select * from mem_purchase_return_item where return_id=#{returnId} and tenant_id=#{tenantId} and dept_id=#{deptId} order by return_item_id</select>
+  <select id="selectReturnedQuantities" parameterType="com.junsong.member.domain.MemPurchaseReturn" resultMap="ItemResult">
+    select item_id,
+           sum(return_sale_quantity) as return_sale_quantity,
+           sum(return_gift_quantity) as return_gift_quantity
+    from mem_purchase_return
+    join mem_purchase_return_item using (return_id, tenant_id, dept_id)
+    where mem_purchase_return.purchase_id=#{purchaseId}
+      and mem_purchase_return.tenant_id=#{tenantId}
+      and mem_purchase_return.dept_id=#{deptId}
+      and mem_purchase_return.del_flag='0'
+      and mem_purchase_return.status &lt;&gt; 'CANCELLED'
+    group by item_id
+  </select>
+  <select id="selectExistingRefundAmount" parameterType="com.junsong.member.domain.MemPurchaseReturn" resultType="java.math.BigDecimal">
+    select coalesce(sum(refund_amount), 0)
+    from mem_purchase_return
+    where purchase_id=#{purchaseId} and tenant_id=#{tenantId} and dept_id=#{deptId}
+      and del_flag='0' and status &lt;&gt; 'CANCELLED'
+  </select>
+  <insert id="insertReturn" parameterType="com.junsong.member.domain.MemPurchaseReturn" useGeneratedKeys="true" keyProperty="returnId">
+    insert into mem_purchase_return(tenant_id,dept_id,purchase_id,original_period_id,return_period_id,return_no,return_date,customer_type,member_id,customer_name,customer_phone,refund_amount,refunded_amount,status,reason,remark,idempotency_key,version,del_flag,create_by,create_time)
+    values(#{tenantId},#{deptId},#{purchaseId},#{originalPeriodId},#{returnPeriodId},#{returnNo},coalesce(#{returnDate},sysdate()),#{customerType},#{memberId},#{customerName},#{customerPhone},#{refundAmount},#{refundedAmount},#{status},#{reason},#{remark},#{idempotencyKey},0,'0',#{createBy},sysdate())
+  </insert>
+  <insert id="insertReturnItem" parameterType="com.junsong.member.domain.MemPurchaseReturnItem" useGeneratedKeys="true" keyProperty="returnItemId">
+    insert into mem_purchase_return_item(return_id,purchase_id,item_id,tenant_id,dept_id,product_id,product_name_snapshot,return_sale_quantity,return_gift_quantity,return_total_quantity,refund_unit_price,refund_amount,create_time)
+    values(#{returnId},#{purchaseId},#{itemId},#{tenantId},#{deptId},#{productId},#{productNameSnapshot},#{returnSaleQuantity},#{returnGiftQuantity},#{returnTotalQuantity},#{refundUnitPrice},#{refundAmount},sysdate())
+  </insert>
+  <update id="completeReturn" parameterType="com.junsong.member.domain.MemPurchaseReturn">
+    update mem_purchase_return
+    set status='COMPLETED', update_by=#{updateBy}, update_time=sysdate(), version=version+1
+    where return_id=#{returnId} and tenant_id=#{tenantId} and dept_id=#{deptId}
+      and del_flag='0' and status='DRAFT' and version=#{version}
+  </update>
+</mapper>

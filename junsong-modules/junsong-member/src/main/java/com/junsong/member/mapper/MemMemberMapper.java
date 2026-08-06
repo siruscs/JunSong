@@ -74,6 +74,11 @@ public interface MemMemberMapper
      * @param prefix 前缀（店名前两个字母首拼）
      * @return 结果
      */
+    public int insertMemberNoSequence(@Param("deptId") Long deptId, @Param("prefix") String prefix);
+    public Long selectMemberNoSequenceForUpdate(@Param("deptId") Long deptId, @Param("prefix") String prefix);
+    public int incrementMemberNoSequence(@Param("deptId") Long deptId, @Param("prefix") String prefix);
+    /** @deprecated retained for legacy mapper fakes and compatibility. */
+    @Deprecated
     public String selectNextMemberNo(String prefix);
     
     /**

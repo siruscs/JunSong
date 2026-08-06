@@ -9,6 +9,7 @@
 <script>
 import { listAccountingPeriod } from '@/api/finance/accountingPeriod'
 import { useUserStore } from '@/stores/user'
+import { formatDateTime } from '@/utils/junsong'
 
 const userStore = useUserStore()
 
@@ -33,7 +34,7 @@ export default {
     formatPeriod(period) {
       const status = period.status === '2' ? '已结转' : '进行中'
       const deptName = this.deptNames.get(String(period.deptId)) || `机构${period.deptId || ''}`
-      return `${deptName} · ${period.periodNo || '周期'} · ${period.startTime || ''} 至 ${period.endTime || '当前'} · ${status}`
+      return `${deptName} · ${period.periodNo || '周期'} · ${formatDateTime(period.startTime)} 至 ${formatDateTime(period.endTime) || '当前'} · ${status}`
     }
   }
 }

@@ -215,7 +215,7 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="补差价金额" prop="diffAmount">
-              <el-input-number v-model="form.diffAmount" :precision="2" :min="0" style="width: 100%;" />
+              <el-input-number v-model="form.diffAmount" :precision="2" :min="0" :step="0.01" placeholder="0.00" style="width: 100%;" />
             </el-form-item>
           </el-col>
           <el-col :span="12">

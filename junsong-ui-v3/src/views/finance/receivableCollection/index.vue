@@ -92,7 +92,7 @@
           <el-date-picker v-model="followForm.promisedPayDate" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
         </el-form-item>
         <el-form-item label="承诺回款金额">
-          <el-input-number v-model="followForm.promisedAmount" :min="0" :precision="2" controls-position="right" style="width: 100%" />
+          <el-input-number v-model="followForm.promisedAmount" :min="0" :precision="2" :step="0.01" placeholder="0.00" controls-position="right" style="width: 100%" />
         </el-form-item>
         <el-form-item label="下次跟进">
           <el-date-picker v-model="followForm.nextFollowTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width: 100%" />
@@ -138,7 +138,7 @@ const query = reactive({
 const followForm = reactive({
   collectionStatus: 'CONTACTED',
   promisedPayDate: '',
-  promisedAmount: 0,
+  promisedAmount: undefined,
   nextFollowTime: '',
   followNote: '',
 })

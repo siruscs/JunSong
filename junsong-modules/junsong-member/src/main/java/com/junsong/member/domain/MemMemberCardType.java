@@ -21,6 +21,9 @@ public class MemMemberCardType extends BaseEntity
     /** 租户ID */
     private Long tenantId;
 
+    /** 机构ID，0表示租户级基线配置 */
+    private Long deptId;
+
     /** 类型名称 */
     @Excel(name = "等级名称")
     private String typeName;
@@ -74,6 +77,16 @@ public class MemMemberCardType extends BaseEntity
     public void setTenantId(Long tenantId)
     {
         this.tenantId = tenantId;
+    }
+
+    public Long getDeptId()
+    {
+        return deptId;
+    }
+
+    public void setDeptId(Long deptId)
+    {
+        this.deptId = deptId;
     }
 
     public String getTypeName()

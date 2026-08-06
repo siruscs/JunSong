@@ -46,7 +46,3 @@ export function disableMember(memberId: number) {
 export function invalidMember(memberId: number) {
   return disableMember(memberId)
 }
-
-export function getNextMemberNo(deptId: number) {
-  return request({ url: '/member/member/nextNo', method: 'get', params: { deptId } })
-}

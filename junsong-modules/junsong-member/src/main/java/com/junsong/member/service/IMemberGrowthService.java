@@ -29,6 +29,11 @@ public interface IMemberGrowthService
     public boolean awardSaleGrowth(Long memberId, String memberNo, String memberName, Long deptId,
                                    Long saleId, BigDecimal saleAmount, String operator);
 
+    /** 会员购买确认时按当前等级积分倍率和消费成长规则奖励，幂等键 PURCHASE_REWARD:{purchaseId}。 */
+    public boolean awardPurchaseReward(Long memberId, String memberNo, String memberName, Long deptId,
+                                       Long purchaseId, BigDecimal purchaseAmount, String operator);
+    public boolean reversePurchaseReward(Long memberId, Long purchaseId, String operator);
+
     /**
      * 签到奖励入账
      * 幂等键: SIGN_IN:{memberId}:{signDate}

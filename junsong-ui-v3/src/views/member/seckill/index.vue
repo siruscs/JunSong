@@ -230,14 +230,14 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="原价" prop="seckillAmount">
-              <el-input-number v-model="form.seckillAmount" :precision="2" :step="0.01" :min="0" style="width: 100%;" />
+              <el-input-number v-model="form.seckillAmount" :precision="2" :step="0.01" :min="0" placeholder="0.00" style="width: 100%;" />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="秒杀价" prop="seckillPrice">
-              <el-input-number v-model="form.seckillPrice" :precision="2" :step="0.01" :min="0" style="width: 100%;" />
+              <el-input-number v-model="form.seckillPrice" :precision="2" :step="0.01" :min="0" placeholder="0.00" style="width: 100%;" />
             </el-form-item>
           </el-col>
           <el-col :span="12">

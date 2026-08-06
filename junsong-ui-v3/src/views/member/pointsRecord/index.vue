@@ -169,7 +169,7 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="消费金额" prop="consumeAmount">
-              <el-input-number v-model="form.consumeAmount" :precision="2" :min="0" style="width: 100%;" @change="calculatePoints" @blur="handleConsumeBlur" />
+              <el-input-number v-model="form.consumeAmount" :precision="2" :min="0" :step="0.01" placeholder="0.00" style="width: 100%;" @change="calculatePoints" @blur="handleConsumeBlur" />
               <div v-if="effectiveRule" style="font-size: 12px; color: #909399; margin-top: 4px;">
                 当前规则：{{ effectiveRule.ruleName }}（每积分消费 {{ effectiveRule.pointsPerYuan }} 元，{{ getRuleTypeName(effectiveRule.ruleType) }}）
               </div>

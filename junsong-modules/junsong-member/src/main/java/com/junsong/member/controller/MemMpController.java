@@ -26,7 +26,7 @@ public class MemMpController extends BaseController {
     private static final Logger log = LoggerFactory.getLogger(MemMpController.class);
 
     private static final List<String> ALL_MODULES = Arrays.asList(
-            "member", "pointsGoods", "pointsRecord", "pointsExchange",
+            "member", "pointsGoods", "pointsRecord", "pointsExchange", "configSync",
             "seckill", "seckillRecord",
             "expense", "advance", "product", "supplier", "purchase", "sale",
             "investorPayment", "investor", "investRecord", "deptProfitConfig",

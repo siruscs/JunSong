@@ -62,6 +62,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="memberNo != null and memberNo != ''">
                 AND r.member_no like concat('%', #{memberNo}, '%')
             </if>
+            <if test="memberName != null and memberName != ''">
+                AND r.member_name like concat('%', #{memberName}, '%')
+            </if>
             <if test="seckillId != null">
                 AND r.seckill_id = #{seckillId}
             </if>

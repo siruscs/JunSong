@@ -185,7 +185,7 @@
     <select id="selectCurrentPeriodByDeptId" parameterType="Long" resultMap="FinAccountingPeriodResult">
         <include refid="selectVo"/>
         where p.dept_id = #{deptId} and p.del_flag = '0' and p.status = '0'
-        order by p.start_time desc
+        order by p.start_time desc, p.period_id desc
         limit 1
     </select>
 

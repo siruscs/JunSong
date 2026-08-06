@@ -126,6 +126,100 @@ public class MemberGrowthServiceImpl implements IMemberGrowthService
         return true;
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean awardPurchaseReward(Long memberId, String memberNo, String memberName, Long deptId,
+                                       Long purchaseId, BigDecimal purchaseAmount, String operator)
+    {
+        String dedupKey = "PURCHASE_REWARD:" + purchaseId;
+        if (growthRecordMapper.selectByDedupKey(dedupKey) != null) return false;
+        MemMember member = memberMapper.selectMemMemberByMemberId(memberId);
+        if (member == null || !"0".equals(member.getStatus())) return false;
+        MemGrowthRule rule = growthRuleService.getGrowthRule();
+        MemMemberCardType level = levelService.selectLevelByTypeCode(member.getCardType());
+        BigDecimal pointsRate = level != null && level.getPointsRate() != null
+                ? level.getPointsRate() : BigDecimal.ONE;
+        BigDecimal points = purchaseAmount == null ? BigDecimal.ZERO
+                : purchaseAmount.multiply(pointsRate).setScale(2, java.math.RoundingMode.DOWN);
+        long growth = purchaseAmount == null || rule == null || rule.getSaleGrowthRatio() == null ? 0L
+                : purchaseAmount.multiply(rule.getSaleGrowthRatio()).setScale(0, java.math.RoundingMode.FLOOR).longValue();
+        if (points.signum() == 0 && growth == 0) return false;
+        memberMapper.addPointsAndGrowth(memberId, points, growth, operator);
+        MemPointsRecord latest = pointsRecordService.selectLatestBalanceByMemberId(memberId);
+        MemPointsRecord pointsRecord = new MemPointsRecord();
+        pointsRecord.setDeptId(deptId != null ? deptId : member.getDeptId());
+        pointsRecord.setMemberId(memberId);
+        pointsRecord.setMemberNo(memberNo != null ? memberNo : member.getMemberNo());
+        pointsRecord.setMemberName(memberName != null ? memberName : member.getMemberName());
+        pointsRecord.setRecordType("1");
+        pointsRecord.setConsumeAmount(purchaseAmount);
+        pointsRecord.setPoints(points);
+        pointsRecord.setBalance((latest == null || latest.getBalance() == null ? BigDecimal.ZERO : latest.getBalance()).add(points));
+        pointsRecord.setRuleCode("PURCHASE_LEVEL_RATE");
+        pointsRecord.setRemark("会员购买奖励:" + purchaseId);
+        pointsRecord.setCreateBy(operator);
+        pointsRecordService.insertMemPointsRecord(pointsRecord);
+
+        MemMember updated = memberMapper.selectMemMemberByMemberId(memberId);
+        String beforeLevel = member.getCardType();
+        String afterLevel = levelService.calculateLevel(updated.getGrowthValue());
+        if (!afterLevel.equals(beforeLevel)) memberMapper.updateMemberLevel(memberId, afterLevel, operator);
+        MemGrowthRecord growthRecord = new MemGrowthRecord();
+        growthRecord.setTenantId(1L);
+        growthRecord.setDeptId(deptId != null ? deptId : member.getDeptId());
+        growthRecord.setMemberId(memberId);
+        growthRecord.setMemberNo(memberNo != null ? memberNo : member.getMemberNo());
+        growthRecord.setMemberName(memberName != null ? memberName : member.getMemberName());
+        growthRecord.setSourceType("PURCHASE");
+        growthRecord.setSourceId(purchaseId);
+        growthRecord.setDedupKey(dedupKey);
+        growthRecord.setGrowthChange(growth);
+        growthRecord.setBalance(updated.getGrowthValue());
+        growthRecord.setBeforeLevel(beforeLevel);
+        growthRecord.setAfterLevel(afterLevel);
+        growthRecord.setRemark("会员购买奖励:" + purchaseId);
+        growthRecord.setCreateBy(operator);
+        growthRecordMapper.insertGrowthRecord(growthRecord);
+        return true;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean reversePurchaseReward(Long memberId, Long purchaseId, String operator)
+    {
+        String originalKey = "PURCHASE_REWARD:" + purchaseId;
+        MemGrowthRecord original = growthRecordMapper.selectByDedupKey(originalKey);
+        if (original == null) return false;
+        String reversalKey = "PURCHASE_REWARD_REVERSAL:" + purchaseId;
+        if (growthRecordMapper.selectByDedupKey(reversalKey) != null) return false;
+        MemMember member = memberMapper.selectMemMemberByMemberId(memberId);
+        if (member == null) throw new IllegalArgumentException("member does not exist");
+        MemPointsRecord pointOriginal = pointsRecordService.selectMemPointsRecordByRemark("会员购买奖励:" + purchaseId)
+                .stream().findFirst().orElse(null);
+        BigDecimal points = pointOriginal == null || pointOriginal.getPoints() == null ? BigDecimal.ZERO : pointOriginal.getPoints().negate();
+        long growth = original.getGrowthChange() == null ? 0L : -original.getGrowthChange();
+        memberMapper.addPointsAndGrowth(memberId, points, growth, operator);
+        MemPointsRecord latest = pointsRecordService.selectLatestBalanceByMemberId(memberId);
+        MemPointsRecord reversal = new MemPointsRecord();
+        reversal.setDeptId(member.getDeptId()); reversal.setMemberId(memberId);
+        reversal.setMemberNo(member.getMemberNo()); reversal.setMemberName(member.getMemberName());
+        reversal.setRecordType("4"); reversal.setPoints(points);
+        reversal.setBalance((latest == null || latest.getBalance() == null ? BigDecimal.ZERO : latest.getBalance()).add(points));
+        reversal.setRemark("会员购买奖励冲正:" + purchaseId); reversal.setCreateBy(operator);
+        pointsRecordService.insertMemPointsRecord(reversal);
+        MemGrowthRecord record = new MemGrowthRecord();
+        record.setTenantId(original.getTenantId()); record.setDeptId(member.getDeptId()); record.setMemberId(memberId);
+        record.setMemberNo(member.getMemberNo()); record.setMemberName(member.getMemberName()); record.setSourceType("PURCHASE_REVERSAL");
+        record.setSourceId(purchaseId); record.setDedupKey(reversalKey); record.setGrowthChange(growth);
+        MemMember updated = memberMapper.selectMemMemberByMemberId(memberId); record.setBalance(updated.getGrowthValue());
+        String afterLevel = levelService.calculateLevel(updated.getGrowthValue());
+        record.setBeforeLevel(member.getCardType()); record.setAfterLevel(afterLevel);
+        if (!afterLevel.equals(member.getCardType())) memberMapper.updateMemberLevel(memberId, afterLevel, operator);
+        record.setRemark("会员购买奖励冲正:" + purchaseId); record.setCreateBy(operator);
+        growthRecordMapper.insertGrowthRecord(record);
+        return true;
+    }
+
     /**
      * 签到奖励入账
      */

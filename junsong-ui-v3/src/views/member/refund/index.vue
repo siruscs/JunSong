@@ -68,7 +68,7 @@
         </el-row>
         <el-row :gutter="16">
           <el-col :span="12"><el-form-item label="门店" prop="storeName"><el-input v-model="form.storeName" /></el-form-item></el-col>
-          <el-col :span="12"><el-form-item label="退款金额" prop="refundAmount"><el-input-number v-model="form.refundAmount" :min="0" :precision="2" style="width: 100%" /></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="退款金额" prop="refundAmount"><el-input-number v-model="form.refundAmount" :min="0" :precision="2" :step="0.01" placeholder="0.00" style="width: 100%" /></el-form-item></el-col>
         </el-row>
         <el-row :gutter="16">
           <el-col :span="12"><el-form-item label="门店负责人" prop="storeApprover"><el-input v-model="form.storeApprover" placeholder="请输入账号" /></el-form-item></el-col>

@@ -34,14 +34,21 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <sql id="selectMemMemberVo">
         select m.member_id, m.dept_id, m.member_no, m.member_name, m.phone, m.age, m.address, m.id_card,
-               m.card_type, c.type_name, m.card_id, m.join_date, m.expire_date, m.total_points,
+               m.card_type,
+               (select c1.type_name
+                  from mem_member_card_type c1
+                 where c1.type_code = m.card_type
+                   and c1.del_flag = '0'
+                   and (c1.dept_id = m.dept_id or c1.dept_id = 0)
+                 order by c1.dept_id desc, c1.type_id desc
+                 limit 1) as type_name,
+               m.card_id, m.join_date, m.expire_date, m.total_points,
                COALESCE(pr.balance, 0) as available_points,
                m.growth_value,
                m.last_active_time,
                COALESCE(sr.cnt, 0) as seckill_count,
                m.status, m.remark, m.del_flag, m.create_by, m.create_time, m.update_by, m.update_time
         from mem_member m
-        left join mem_member_card_type c on m.card_type = c.type_code
         left join (
             select r1.member_id, r1.balance from mem_points_record r1
             where r1.del_flag = '0' and r1.create_time = (
@@ -103,6 +110,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <where>
             AND m.member_id = #{memberId} and m.del_flag = '0'
         </where>
+        limit 1
     </select>
 
     <select id="checkMemberNoUnique" parameterType="com.junsong.member.domain.MemMember" resultType="int">
@@ -115,13 +123,24 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </where>
     </select>
     
-    <select id="selectNextMemberNo" parameterType="String" resultType="String">
-        select concat(#{prefix}, lpad(coalesce(max(cast(substr(member_no, length(#{prefix}) + 1) as signed)), 0) + 1, 5, '0'))
+    <insert id="insertMemberNoSequence">
+        insert into mem_member_no_sequence (dept_id, prefix, next_value)
+        select #{deptId}, #{prefix}, coalesce(max(cast(substr(member_no, length(#{prefix}) + 1) as signed)), 0) + 1
         from mem_member
-        <where>
-            AND member_no like concat(#{prefix}, '%') and del_flag = '0'
-        </where>
+        where member_no like concat(#{prefix}, '%') and dept_id = #{deptId} and del_flag = '0'
+        on duplicate key update sequence_id = sequence_id
+    </insert>
+
+    <select id="selectMemberNoSequenceForUpdate" resultType="long">
+        select next_value from mem_member_no_sequence
+        where dept_id = #{deptId} and prefix = #{prefix}
+        for update
     </select>
+
+    <update id="incrementMemberNoSequence">
+        update mem_member_no_sequence set next_value = next_value + 1, update_time = sysdate()
+        where dept_id = #{deptId} and prefix = #{prefix}
+    </update>
     
     <select id="selectDeptNameById" parameterType="Long" resultType="String">
         select dept_name from sys_dept where dept_id = #{deptId} and del_flag = '0'

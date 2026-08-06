@@ -200,7 +200,7 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="会员编号">
-              <el-input v-model="form.memberNo" placeholder="请输入会员编号" readonly>
+              <el-input v-model="form.memberNo" placeholder="保存后自动生成" readonly>
                 <template #prefix><el-icon><Key /></el-icon></template>
               </el-input>
             </el-form-item>
@@ -404,7 +404,7 @@ import { ElMessage, ElMessageBox } from "element-plus"
 import { parseTime } from "@/utils/junsong"
 import { useDownload } from "@/composables/useDownload"
 import { useDict, getDictDefaultValue } from "@/composables/useDict"
-import { listMember, getMember, delMember, addMember, updateMember, renewMember, cancelMember, invalidMember, getNextMemberNo } from "@/api/member/member"
+import { listMember, getMember, delMember, addMember, updateMember, renewMember, cancelMember, invalidMember } from "@/api/member/member"
 import { adjustGrowth } from "@/api/member/growth"
 import { listLevel } from "@/api/member/level"
 import ExcelImportDialog from '@/components/ExcelImportDialog/index.vue'
@@ -569,15 +569,7 @@ export default {
       }
       this.form.joinDate = this.getTodayDate()
       this.title = "添加会员"
-      // 自动获取下一个会员编号
-      this.fetchNextMemberNo()
       this.open = true
-    },
-    // 获取下一个会员编号
-    fetchNextMemberNo() {
-      getNextMemberNo().then(response => {
-        this.form.memberNo = response.data
-      })
     },
     handleView(row) {
       getMember(row.memberId).then(response => {

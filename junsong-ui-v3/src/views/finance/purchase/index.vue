@@ -195,7 +195,7 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="已付金额" prop="paidAmount">
-              <el-input-number v-model="form.paidAmount" :precision="2" :step="0.1" :min="0" style="width: 100%;" />
+              <el-input-number v-model="form.paidAmount" :precision="2" :step="0.01" :min="0" placeholder="0.00" style="width: 100%;" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -258,12 +258,12 @@
               </el-table-column>
               <el-table-column label="数量" width="150" align="center">
                 <template #default="scope">
-                  <el-input-number v-model="scope.row.quantity" :min="-99999" :step="0.1" :precision="3" size="medium" style="width: 100%;" @change="calculateAmount(scope.$index)" />
+                  <el-input-number v-model="scope.row.quantity" :min="-99999" :step="0.001" :precision="3" placeholder="0.000" size="medium" style="width: 100%;" @change="calculateAmount(scope.$index)" />
                 </template>
               </el-table-column>
               <el-table-column label="单价" width="160" align="center">
                 <template #default="scope">
-                  <el-input-number v-model="scope.row.price" :precision="2" :min="0" :step="1" size="medium" style="width: 100%;" @change="calculateAmount(scope.$index)" :disabled="scope.row.isGift === '1'" />
+                  <el-input-number v-model="scope.row.price" :precision="2" :min="0" :step="0.01" placeholder="0.00" size="medium" style="width: 100%;" @change="calculateAmount(scope.$index)" :disabled="scope.row.isGift === '1'" />
                 </template>
               </el-table-column>
               <el-table-column label="金额" width="120" align="center">
@@ -551,8 +551,8 @@ export default {
         productId: undefined,
         productName: undefined,
         unit: undefined,
-        quantity: 1,
-        price: 0,
+        quantity: undefined,
+        price: undefined,
         amount: 0,
         isGift: '0'
       })

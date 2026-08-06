@@ -55,6 +55,12 @@ public class MemMemberServiceImpl implements IMemMemberService {
     @Override
     @Transactional
     public int insertMemMember(MemMember memMember) {
+        if (!StringUtils.hasText(memMember.getMemberNo())) {
+            if (memMember.getDeptId() == null) {
+                throw new ServiceException("当前会员缺少所属机构，无法生成会员编号");
+            }
+            memMember.setMemberNo(generateMemberNo(memMember.getDeptId()));
+        }
         return memMemberMapper.insertMemMember(memMember);
     }
 
@@ -113,6 +119,7 @@ public class MemMemberServiceImpl implements IMemMemberService {
      * @return 会员编号
      */
     @Override
+    @Transactional
     public String generateMemberNo(Long deptId) {
         String deptName = memMemberMapper.selectDeptNameById(deptId);
         if (!StringUtils.hasText(deptName)) {
@@ -120,13 +127,13 @@ public class MemMemberServiceImpl implements IMemMemberService {
         }
         
         String prefix = PinyinUtils.getFirstTwoLetters(deptName);
-        String memberNo = memMemberMapper.selectNextMemberNo(prefix);
-        
-        if (!StringUtils.hasText(memberNo)) {
-            memberNo = prefix + "00001";
-        }
-        
-        return memberNo;
+        // 会员编号序列按机构和前缀独立递增，避免不同机构共用同一增长序列。
+        memMemberMapper.insertMemberNoSequence(deptId, prefix);
+        Long sequence = memMemberMapper.selectMemberNoSequenceForUpdate(deptId, prefix);
+        if (sequence == null) throw new ServiceException("会员编号序列生成失败");
+        if (memMemberMapper.incrementMemberNoSequence(deptId, prefix) != 1)
+            throw new ServiceException("会员编号序列更新失败");
+        return prefix + String.format("%05d", sequence);
     }
 
     /**

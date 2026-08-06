@@ -195,7 +195,7 @@ export default {
         periodId: undefined,
         investorId: undefined,
         investorName: undefined,
-        investAmount: 0,
+        investAmount: undefined,
         investTime: this.parseTime(new Date(), '{y}-{m}-{d} {h}:{i}:{s}'),
         remark: undefined
       }

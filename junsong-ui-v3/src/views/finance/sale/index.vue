@@ -142,13 +142,13 @@
           <el-date-picker v-model="form.saleDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 100%;" />
         </el-form-item>
         <el-form-item label="销售金额" prop="saleAmount">
-          <el-input-number v-model="form.saleAmount" :precision="2" :step="0.1" style="width: 100%;" @change="calculateUnitPrice" />
+          <el-input-number v-model="form.saleAmount" :precision="2" :step="0.01" placeholder="0.00" style="width: 100%;" @change="calculateUnitPrice" />
         </el-form-item>
         <el-form-item label="销售数量" prop="saleQuantity">
-          <el-input-number v-model="form.saleQuantity" :min="0.001" :step="0.1" :precision="3" style="width: 100%;" @change="calculateUnitPrice" />
+          <el-input-number v-model="form.saleQuantity" :min="0.001" :step="0.001" :precision="3" placeholder="0.000" style="width: 100%;" @change="calculateUnitPrice" />
         </el-form-item>
         <el-form-item label="赠品数量" prop="giftQuantity">
-          <el-input-number v-model="form.giftQuantity" :min="0" :step="0.1" :precision="3" style="width: 100%;" />
+          <el-input-number v-model="form.giftQuantity" :min="0" :step="0.001" :precision="3" placeholder="0.000" style="width: 100%;" />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" type="textarea" placeholder="请输入备注" :rows="3" />
@@ -183,7 +183,7 @@
           <el-date-picker v-model="paymentForm.paymentDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 100%;" />
         </el-form-item>
         <el-form-item label="缴款金额" prop="paymentAmount">
-          <el-input-number v-model="paymentForm.paymentAmount" :precision="2" :step="0.1" style="width: 100%;" />
+          <el-input-number v-model="paymentForm.paymentAmount" :precision="2" :step="0.01" placeholder="0.00" style="width: 100%;" />
         </el-form-item>
         <el-form-item label="付款方式" prop="paymentMethod">
           <el-select v-model="paymentForm.paymentMethod" placeholder="请选择付款方式" style="width: 100%;">
@@ -411,9 +411,9 @@ export default {
         productId: undefined,
         productName: undefined,
         saleDate: new Date().toISOString().split('T')[0],
-        saleAmount: 0,
-        saleQuantity: 0,
-        giftQuantity: 0,
+        saleAmount: undefined,
+        saleQuantity: undefined,
+        giftQuantity: undefined,
         totalQuantity: 0,
         unitPrice: 0,
         paidAmount: 0,

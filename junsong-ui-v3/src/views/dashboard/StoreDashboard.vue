@@ -279,7 +279,7 @@
         </div>
         <div class="period-body">
           <strong>{{ currentPeriod.periodNo || currentPeriod.periodName || '未初始化' }}</strong>
-          <p>{{ currentPeriod.startTime || '-' }} 至 {{ currentPeriod.endTime || '-' }}</p>
+            <p>{{ formatDateTime(currentPeriod.startTime) || '-' }} 至 {{ formatDateTime(currentPeriod.endTime) || '-' }}</p>
           <span :class="periodStatusClass">{{ periodStatusText }}</span>
         </div>
       </article>
@@ -299,6 +299,7 @@ import { getCurrentAccountingPeriod } from '@/api/finance/accountingPeriod'
 import { getDashboardOperation, getDashboardTrend } from '@/api/member/dashboard'
 import { listReceivable } from '@/api/finance/sale'
 import { useUserStore } from '@/stores/user'
+import { formatDateTime } from '@/utils/junsong'
 
 const router = useRouter()
 const userStore = useUserStore()

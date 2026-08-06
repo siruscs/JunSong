@@ -1,0 +1,401 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.member.mapper.MemPurchaseMapper">
+    <select id="selectProductNameById" resultType="String">
+        select product_name
+        from fin_product
+        where product_id = #{productId}
+          and tenant_id = #{tenantId}
+          and dept_id = #{deptId}
+          and del_flag = '0'
+    </select>
+
+    <select id="selectProductSalePriceById" resultType="java.math.BigDecimal">
+        select sale_price
+        from fin_product
+        where product_id = #{productId}
+          and tenant_id = #{tenantId}
+          and dept_id = #{deptId}
+          and del_flag = '0'
+    </select>
+
+    <resultMap id="PurchaseResult" type="com.junsong.member.domain.MemPurchaseOrder">
+        <id property="purchaseId" column="purchase_id"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="periodId" column="period_id"/>
+        <result property="purchaseDate" column="purchase_date"/>
+        <result property="purchaseNo" column="purchase_no"/>
+        <result property="customerType" column="customer_type"/>
+        <result property="memberId" column="member_id"/>
+        <result property="customerId" column="customer_id"/>
+        <result property="customerName" column="customer_name"/>
+        <result property="customerPhone" column="customer_phone"/>
+        <result property="identityMode" column="identity_mode"/>
+        <result property="identityConfirmed" column="identity_confirmed"/>
+        <result property="totalAmount" column="total_amount"/>
+        <result property="paidAmount" column="paid_amount"/>
+        <result property="receivableAmount" column="receivable_amount"/>
+        <result property="paymentStatus" column="payment_status"/>
+        <result property="deliveryStatus" column="delivery_status"/>
+        <result property="orderStatus" column="order_status"/>
+        <result property="idempotencyKey" column="idempotency_key"/>
+        <result property="purchaseQuantity" column="purchase_quantity"/>
+        <result property="giftQuantity" column="gift_quantity"/>
+    </resultMap>
+
+    <resultMap id="PurchaseDetailResult" type="com.junsong.member.domain.MemPurchaseOrder"
+               extends="PurchaseResult">
+        <collection property="items" ofType="com.junsong.member.domain.MemPurchaseItem"
+                    column="purchase_id" select="selectItemsByPurchaseId"/>
+        <collection property="payments" ofType="com.junsong.member.domain.MemPurchasePayment"
+                    column="{purchaseId=purchase_id,tenantId=tenant_id,deptId=dept_id}" select="selectPaymentsByPurchaseId"/>
+        <collection property="deliveries" ofType="com.junsong.member.domain.MemPurchaseDelivery"
+                    column="{purchaseId=purchase_id,tenantId=tenant_id,deptId=dept_id}" select="selectDeliveriesByPurchaseId"/>
+    </resultMap>
+
+    <resultMap id="ItemResult" type="com.junsong.member.domain.MemPurchaseItem">
+        <id property="itemId" column="item_id"/>
+        <result property="purchaseId" column="purchase_id"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="productId" column="product_id"/>
+        <result property="productNameSnapshot" column="product_name_snapshot"/>
+        <result property="policyId" column="policy_id"/>
+        <result property="policyVersion" column="policy_version"/>
+        <result property="packageId" column="package_id"/>
+        <result property="packageNameSnapshot" column="package_name_snapshot"/>
+        <result property="purchaseQuantity" column="purchase_quantity"/>
+        <result property="giftQuantity" column="gift_quantity"/>
+        <result property="totalQuantity" column="total_quantity"/>
+        <result property="deliveredQuantity" column="delivered_quantity"/>
+        <result property="deliveredSaleQuantity" column="delivered_sale_quantity"/>
+        <result property="deliveredGiftQuantity" column="delivered_gift_quantity"/>
+        <result property="remainingQuantity" column="remaining_quantity"/>
+        <result property="unitPrice" column="unit_price"/>
+        <result property="itemAmount" column="item_amount"/>
+        <result property="policySnapshot" column="policy_snapshot"/>
+    </resultMap>
+
+    <resultMap id="PaymentResult" type="com.junsong.member.domain.MemPurchasePayment">
+        <id property="paymentId" column="payment_id"/>
+        <result property="purchaseId" column="purchase_id"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="paymentNo" column="payment_no"/>
+        <result property="paymentAmount" column="payment_amount"/>
+        <result property="paymentMethod" column="payment_method"/>
+        <result property="paymentDate" column="payment_date"/>
+        <result property="operatorId" column="operator_id"/>
+        <result property="operatorName" column="operator_name"/>
+        <result property="status" column="status"/>
+        <result property="idempotencyKey" column="idempotency_key"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <resultMap id="DeliveryResult" type="com.junsong.member.domain.MemPurchaseDelivery">
+        <id property="deliveryId" column="delivery_id"/>
+        <result property="purchaseId" column="purchase_id"/>
+        <result property="itemId" column="item_id"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="deliveryNo" column="delivery_no"/>
+        <result property="saleDeliveryQuantity" column="sale_delivery_quantity"/>
+        <result property="giftDeliveryQuantity" column="gift_delivery_quantity"/>
+        <result property="totalDeliveryQuantity" column="total_delivery_quantity"/>
+        <result property="deliveryDate" column="delivery_date"/>
+        <result property="receiverName" column="receiver_name"/>
+        <result property="operatorId" column="operator_id"/>
+        <result property="operatorName" column="operator_name"/>
+        <result property="status" column="status"/>
+        <result property="idempotencyKey" column="idempotency_key"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <sql id="purchaseColumns">
+        select purchase_id, tenant_id, dept_id, period_id, purchase_no, customer_type,
+               member_id, customer_id, customer_name, customer_phone, identity_mode,
+               identity_confirmed, total_amount, paid_amount, receivable_amount,
+               payment_status, delivery_status, order_status, idempotency_key
+        from mem_purchase_order
+    </sql>
+
+    <select id="selectPurchaseById" resultMap="PurchaseDetailResult">
+        <include refid="purchaseColumns"/>
+        where purchase_id = #{purchaseId} and tenant_id = #{tenantId} and dept_id = #{deptId} and del_flag = '0'
+    </select>
+
+    <select id="selectPurchaseForUpdate" resultMap="PurchaseResult">
+        <include refid="purchaseColumns"/>
+        where purchase_id = #{purchaseId} and tenant_id = #{tenantId} and dept_id = #{deptId} and del_flag = '0'
+        for update
+    </select>
+
+    <select id="selectPurchaseOrderForUpdate" resultMap="PurchaseResult">
+        <include refid="purchaseColumns"/>
+        where purchase_id = #{purchaseId} and tenant_id = #{tenantId} and dept_id = #{deptId} and del_flag = '0'
+        for update
+    </select>
+
+    <select id="selectPurchaseList" parameterType="com.junsong.member.domain.MemPurchaseOrder" resultMap="PurchaseResult">
+        select o.purchase_id, o.tenant_id, o.dept_id, o.period_id, o.purchase_no, o.customer_type,
+               o.member_id, o.customer_id, o.customer_name, o.customer_phone, o.identity_mode, o.purchase_date,
+               o.identity_confirmed, o.total_amount, o.paid_amount, o.receivable_amount,
+               o.payment_status, o.delivery_status, o.order_status, o.idempotency_key,
+               coalesce(i.purchase_quantity, 0) purchase_quantity, coalesce(i.gift_quantity, 0) gift_quantity
+        from mem_purchase_order o
+        left join (select purchase_id, sum(purchase_quantity) purchase_quantity, sum(gift_quantity) gift_quantity
+                   from mem_purchase_item where del_flag = '0' group by purchase_id) i on i.purchase_id = o.purchase_id
+        <where>
+            o.del_flag = '0' and o.order_status &lt;&gt; '4'
+            <if test="tenantId != null">and o.tenant_id = #{tenantId}</if>
+            <if test="deptId != null">and o.dept_id = #{deptId}</if>
+            <if test="purchaseNo != null and purchaseNo != ''">and o.purchase_no like concat('%', #{purchaseNo}, '%')</if>
+            <if test="periodId != null">and o.period_id = #{periodId}</if>
+            <if test="memberId != null">and o.member_id = #{memberId}</if>
+            <if test="customerName != null and customerName != ''">and o.customer_name like concat('%', #{customerName}, '%')</if>
+            <if test="customerType != null and customerType != ''">and o.customer_type = #{customerType}</if>
+            <if test="paymentStatus != null and paymentStatus != ''">and o.payment_status = #{paymentStatus}</if>
+            <if test="deliveryStatus != null and deliveryStatus != ''">and o.delivery_status = #{deliveryStatus}</if>
+            <if test="beginTime != null and beginTime != ''">and o.purchase_date &gt;= #{beginTime}</if>
+            <if test="endTime != null and endTime != ''">and o.purchase_date &lt; DATE_ADD(#{endTime}, INTERVAL 1 DAY)</if>
+        </where>
+        order by o.purchase_id desc
+    </select>
+
+    <select id="selectPurchaseStatistics" parameterType="com.junsong.member.domain.MemPurchaseOrder"
+            resultType="java.util.Map">
+        select count(distinct o.purchase_id) as purchaseOrderCount,
+               coalesce(sum(o.total_amount), 0) as totalAmount,
+               coalesce(sum(o.paid_amount), 0) as paidAmount,
+               coalesce(sum(o.receivable_amount), 0) as receivableAmount,
+               coalesce(sum(i.purchase_quantity), 0) as purchaseQuantity,
+               coalesce(sum(i.gift_quantity), 0) as giftQuantity,
+               coalesce(sum(i.delivered_quantity), 0) as deliveredQuantity
+        from mem_purchase_order o
+        left join (select purchase_id, sum(purchase_quantity) purchase_quantity, sum(gift_quantity) gift_quantity, sum(delivered_quantity) delivered_quantity
+                   from mem_purchase_item where del_flag = '0' group by purchase_id) i on i.purchase_id = o.purchase_id
+        <where>
+            o.del_flag = '0'
+            and o.order_status &lt;&gt; '4'
+            and o.tenant_id = #{tenantId}
+            and o.dept_id = #{deptId}
+            <if test="periodId != null">and o.period_id = #{periodId}</if>
+            <if test="memberId != null">and o.member_id = #{memberId}</if>
+            <if test="customerName != null and customerName != ''">and o.customer_name like concat('%', #{customerName}, '%')</if>
+            <if test="customerType != null and customerType != ''">and o.customer_type = #{customerType}</if>
+            <if test="purchaseNo != null and purchaseNo != ''">and o.purchase_no like concat('%', #{purchaseNo}, '%')</if>
+            <if test="paymentStatus != null and paymentStatus != ''">and o.payment_status = #{paymentStatus}</if>
+            <if test="deliveryStatus != null and deliveryStatus != ''">and o.delivery_status = #{deliveryStatus}</if>
+            <if test="beginTime != null and beginTime != ''">and o.purchase_date &gt;= #{beginTime}</if>
+            <if test="endTime != null and endTime != ''">and o.purchase_date &lt; DATE_ADD(#{endTime}, INTERVAL 1 DAY)</if>
+        </where>
+    </select>
+
+    <select id="selectItemsByPurchaseId" resultMap="ItemResult">
+        select item_id, purchase_id, tenant_id, dept_id, product_id, product_name_snapshot,
+               policy_id, policy_version, package_id, package_name_snapshot,
+               purchase_quantity, gift_quantity, total_quantity, delivered_quantity,
+               delivered_sale_quantity, delivered_gift_quantity, remaining_quantity,
+               unit_price, item_amount, policy_snapshot
+        from mem_purchase_item
+        where purchase_id = #{purchaseId} and del_flag = '0'
+        order by item_id
+    </select>
+
+    <select id="selectPaymentsByPurchaseId" resultMap="PaymentResult">
+        select payment_id, purchase_id, tenant_id, dept_id, payment_no, payment_amount,
+               payment_method, payment_date, operator_id, operator_name, status,
+               idempotency_key, remark
+        from mem_purchase_payment
+        where purchase_id = #{purchaseId} and tenant_id = #{tenantId} and dept_id = #{deptId}
+        order by payment_id
+    </select>
+
+    <select id="selectDeliveriesByPurchaseId" resultMap="DeliveryResult">
+        select delivery_id, purchase_id, item_id, tenant_id, dept_id, delivery_no,
+               sale_delivery_quantity, gift_delivery_quantity, total_delivery_quantity,
+               delivery_date, receiver_name, operator_id, operator_name, status,
+               idempotency_key, remark
+        from mem_purchase_delivery
+        where purchase_id = #{purchaseId} and tenant_id = #{tenantId} and dept_id = #{deptId}
+        order by delivery_id
+    </select>
+
+    <insert id="insertPurchase" parameterType="com.junsong.member.domain.MemPurchaseOrder"
+            useGeneratedKeys="true" keyProperty="purchaseId">
+        insert into mem_purchase_order
+        (tenant_id, dept_id, period_id, purchase_no, customer_type, member_id, customer_id,
+         customer_name, customer_phone, identity_mode, identity_confirmed, total_amount,
+         paid_amount, receivable_amount, payment_status, delivery_status, order_status,
+         idempotency_key, del_flag, create_by, create_time, remark, purchase_date)
+        values
+        (#{tenantId}, #{deptId}, #{periodId}, #{purchaseNo}, #{customerType}, #{memberId}, #{customerId},
+         #{customerName}, #{customerPhone}, #{identityMode}, #{identityConfirmed}, #{totalAmount},
+         #{paidAmount}, #{receivableAmount}, #{paymentStatus}, #{deliveryStatus}, #{orderStatus},
+         #{idempotencyKey}, '0', #{createBy}, sysdate(), #{remark}, #{purchaseDate})
+    </insert>
+
+    <insert id="insertPurchaseItem" parameterType="com.junsong.member.domain.MemPurchaseItem"
+            useGeneratedKeys="true" keyProperty="itemId">
+        insert into mem_purchase_item
+        (purchase_id, tenant_id, dept_id, product_id, product_name_snapshot, policy_id,
+         policy_version, package_id, package_name_snapshot, purchase_quantity, gift_quantity,
+         total_quantity, delivered_quantity, delivered_sale_quantity, delivered_gift_quantity,
+         remaining_quantity, unit_price, item_amount,
+         policy_snapshot, del_flag, create_by, create_time)
+        values
+        (#{purchaseId}, #{tenantId}, #{deptId}, #{productId}, #{productNameSnapshot}, #{policyId},
+         #{policyVersion}, #{packageId}, #{packageNameSnapshot}, #{purchaseQuantity}, #{giftQuantity},
+         #{totalQuantity}, #{deliveredQuantity}, #{deliveredSaleQuantity}, #{deliveredGiftQuantity},
+         #{remainingQuantity}, #{unitPrice}, #{itemAmount},
+         #{policySnapshot}, '0', #{createBy}, sysdate())
+    </insert>
+
+    <update id="updatePurchaseBasic" parameterType="com.junsong.member.domain.MemPurchaseOrder">
+        update mem_purchase_order
+        set customer_name = #{customerName}, customer_phone = #{customerPhone}, remark = #{remark},
+            update_by = #{updateBy}, update_time = sysdate()
+        where purchase_id = #{purchaseId} and tenant_id = #{tenantId} and dept_id = #{deptId}
+          and order_status &lt;&gt; '4' and del_flag = '0'
+    </update>
+
+    <update id="updatePurchaseItem" parameterType="com.junsong.member.domain.MemPurchaseItem">
+        update mem_purchase_item
+        set purchase_quantity = #{purchaseQuantity}, gift_quantity = #{giftQuantity},
+            total_quantity = #{totalQuantity}, remaining_quantity = #{remainingQuantity},
+            unit_price = #{unitPrice}, item_amount = #{itemAmount}, update_by = #{updateBy}, update_time = sysdate()
+        where item_id = #{itemId} and purchase_id = #{purchaseId}
+          and tenant_id = #{tenantId} and dept_id = #{deptId} and del_flag = '0'
+    </update>
+
+    <update id="updateOrderAmount">
+        update mem_purchase_order
+        set total_amount = #{totalAmount},
+            receivable_amount = #{totalAmount} - paid_amount,
+            payment_status = case when paid_amount = 0 then '0' when paid_amount = #{totalAmount} then '2' else '1' end,
+            update_time = sysdate()
+        where purchase_id = #{purchaseId} and del_flag = '0' and order_status &lt;&gt; '4'
+    </update>
+
+    <insert id="insertPurchasePayment" parameterType="com.junsong.member.domain.MemPurchasePayment"
+            useGeneratedKeys="true" keyProperty="paymentId">
+        insert into mem_purchase_payment
+        (purchase_id, tenant_id, dept_id, payment_no, payment_amount, payment_method,
+         payment_date, operator_id, operator_name, status, idempotency_key, create_time, remark)
+        values
+        (#{purchaseId}, #{tenantId}, #{deptId}, #{paymentNo}, #{paymentAmount}, #{paymentMethod},
+         #{paymentDate}, #{operatorId}, #{operatorName}, '1', #{idempotencyKey}, sysdate(), #{remark})
+    </insert>
+
+    <select id="selectPurchasePaymentForUpdate" resultMap="PaymentResult">
+        select payment_id, purchase_id, tenant_id, dept_id, payment_no, payment_amount,
+               payment_method, payment_date, operator_id, operator_name, status,
+               idempotency_key, remark
+        from mem_purchase_payment
+        where payment_id = #{paymentId} and purchase_id = #{purchaseId}
+          and tenant_id = #{tenantId} and dept_id = #{deptId} and status = '1'
+        for update
+    </select>
+
+    <update id="updatePurchasePayment" parameterType="com.junsong.member.domain.MemPurchasePayment">
+        update mem_purchase_payment
+        set payment_amount = #{paymentAmount}, payment_method = #{paymentMethod},
+            payment_date = #{paymentDate}, remark = #{remark}
+        where payment_id = #{paymentId} and purchase_id = #{purchaseId}
+          and tenant_id = #{tenantId} and dept_id = #{deptId} and status = '1'
+    </update>
+
+    <update id="updatePaymentSnapshot">
+        update mem_purchase_order
+        set paid_amount = #{paidAmount}, receivable_amount = #{receivableAmount},
+            payment_status = #{paymentStatus}, update_time = sysdate()
+        where purchase_id = #{purchaseId} and del_flag = '0'
+    </update>
+
+    <update id="cancelPurchase" parameterType="com.junsong.member.domain.MemPurchaseOrder">
+        update mem_purchase_order set order_status = '4', update_by = #{updateBy}, update_time = sysdate()
+        where purchase_id = #{purchaseId} and tenant_id = #{tenantId} and dept_id = #{deptId}
+          and del_flag = '0' and order_status &lt;&gt; '4'
+    </update>
+
+    <update id="bindPurchaseMember" parameterType="com.junsong.member.domain.MemPurchaseOrder">
+        update mem_purchase_order
+        set customer_type = #{customerType}, member_id = #{memberId}, customer_name = #{customerName},
+            customer_phone = #{customerPhone}, identity_mode = #{identityMode},
+            identity_confirmed = #{identityConfirmed}, update_by = #{updateBy}, update_time = sysdate()
+        where purchase_id = #{purchaseId} and tenant_id = #{tenantId} and dept_id = #{deptId}
+          and del_flag = '0' and order_status &lt;&gt; '4' and member_id is null
+    </update>
+
+    <select id="selectPurchaseItemForUpdate" resultMap="ItemResult">
+        select item_id, purchase_id, tenant_id, dept_id, product_id, product_name_snapshot,
+               policy_id, policy_version, package_id, package_name_snapshot,
+               purchase_quantity, gift_quantity, total_quantity, delivered_quantity,
+               delivered_sale_quantity, delivered_gift_quantity, remaining_quantity,
+               unit_price, item_amount, policy_snapshot
+        from mem_purchase_item
+        where item_id = #{itemId} and purchase_id = #{purchaseId}
+          and tenant_id = #{tenantId} and dept_id = #{deptId} and del_flag = '0'
+        for update
+    </select>
+
+    <insert id="insertPurchaseDelivery" parameterType="com.junsong.member.domain.MemPurchaseDelivery"
+            useGeneratedKeys="true" keyProperty="deliveryId">
+        insert into mem_purchase_delivery
+        (purchase_id, item_id, tenant_id, dept_id, delivery_no, sale_delivery_quantity,
+         gift_delivery_quantity, total_delivery_quantity, delivery_date, receiver_name,
+         operator_id, operator_name, status, idempotency_key, create_time, remark)
+        values
+        (#{purchaseId}, #{itemId}, #{tenantId}, #{deptId}, #{deliveryNo}, #{saleDeliveryQuantity},
+         #{giftDeliveryQuantity}, #{totalDeliveryQuantity}, #{deliveryDate}, #{receiverName},
+         #{operatorId}, #{operatorName}, '1', #{idempotencyKey}, sysdate(), #{remark})
+    </insert>
+
+    <select id="selectPurchaseDeliveryForUpdate" resultMap="DeliveryResult">
+        select delivery_id, purchase_id, item_id, tenant_id, dept_id, delivery_no,
+               sale_delivery_quantity, gift_delivery_quantity, total_delivery_quantity,
+               delivery_date, receiver_name, operator_id, operator_name, status,
+               idempotency_key, remark
+        from mem_purchase_delivery
+        where delivery_id = #{deliveryId} and purchase_id = #{purchaseId}
+          and tenant_id = #{tenantId} and dept_id = #{deptId} and status = '1'
+        for update
+    </select>
+
+    <update id="updatePurchaseDelivery" parameterType="com.junsong.member.domain.MemPurchaseDelivery">
+        update mem_purchase_delivery
+        set sale_delivery_quantity = #{saleDeliveryQuantity},
+            gift_delivery_quantity = #{giftDeliveryQuantity},
+            total_delivery_quantity = #{totalDeliveryQuantity},
+            delivery_date = #{deliveryDate}, receiver_name = #{receiverName}, remark = #{remark}
+        where delivery_id = #{deliveryId} and purchase_id = #{purchaseId}
+          and tenant_id = #{tenantId} and dept_id = #{deptId} and status = '1'
+    </update>
+
+    <update id="updateDeliverySnapshot">
+        update mem_purchase_item
+        set delivered_quantity = #{deliveredQuantity}, delivered_sale_quantity = #{deliveredSaleQuantity},
+            delivered_gift_quantity = #{deliveredGiftQuantity}, remaining_quantity = #{remainingQuantity},
+            update_time = sysdate()
+        where item_id = #{itemId} and del_flag = '0'
+    </update>
+
+    <update id="updateDeliveryOrderStatus">
+        update mem_purchase_order
+        set delivery_status = case
+            when not exists (
+                select 1 from mem_purchase_item
+                where purchase_id = #{purchaseId} and del_flag = '0' and remaining_quantity > 0
+            ) then '2'
+            when exists (
+                select 1 from mem_purchase_item
+                where purchase_id = #{purchaseId} and del_flag = '0' and delivered_quantity > 0
+            ) then '1'
+            else '0' end,
+            update_time = sysdate()
+        where purchase_id = #{purchaseId} and del_flag = '0'
+    </update>
+</mapper>

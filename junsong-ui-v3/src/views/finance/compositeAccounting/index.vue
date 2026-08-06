@@ -283,7 +283,7 @@
             </el-table-column>
             <el-table-column label="出资款" width="180">
               <template #default="scope">
-                <el-input-number v-model="scope.row.investAmount" :min="0" :precision="2" :step="1000" style="width: 100%;" />
+                <el-input-number v-model="scope.row.investAmount" :min="0" :precision="2" :step="0.01" placeholder="0.00" style="width: 100%;" />
               </template>
             </el-table-column>
             <el-table-column label="操作" width="90" align="center">
@@ -572,7 +572,7 @@ export default {
         investAmount: Number(inv.investAmount) || 0
       }))
       if (this.bindInvestorForm.investors.length === 0) {
-        this.bindInvestorForm.investors.push({ investorId: undefined, investorName: '', investAmount: 0 })
+        this.bindInvestorForm.investors.push({ investorId: undefined, investorName: '', investAmount: undefined })
       }
       this.investorOptions = this.bindInvestorForm.investors
         .filter(inv => inv.investorId)
@@ -609,7 +609,7 @@ export default {
       }
     },
     addInvestorRow() {
-      this.bindInvestorForm.investors.push({ investorId: undefined, investorName: '', investAmount: 0 })
+      this.bindInvestorForm.investors.push({ investorId: undefined, investorName: '', investAmount: undefined })
     },
     removeInvestorRow(idx) {
       this.bindInvestorForm.investors.splice(idx, 1)

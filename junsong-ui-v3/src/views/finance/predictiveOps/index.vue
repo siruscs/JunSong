@@ -69,10 +69,10 @@
           <el-input-number v-model="simulationForm.windowDays" :min="1" :max="30" :step="1" controls-position="right" />
         </el-form-item>
         <el-form-item label="预计回款变化">
-          <el-input-number v-model="simulationForm.expectedCollectionDelta" :step="1000" controls-position="right" />
+          <el-input-number v-model="simulationForm.expectedCollectionDelta" :precision="2" :step="0.01" placeholder="0.00" controls-position="right" />
         </el-form-item>
         <el-form-item label="预计费用变化">
-          <el-input-number v-model="simulationForm.expectedExpenseDelta" :step="1000" controls-position="right" />
+          <el-input-number v-model="simulationForm.expectedExpenseDelta" :precision="2" :step="0.01" placeholder="0.00" controls-position="right" />
         </el-form-item>
         <el-form-item label="催收完成数">
           <el-input-number v-model="simulationForm.completedCollectionActions" :min="0" :step="1" controls-position="right" />
@@ -149,8 +149,8 @@ const deptOptions = computed<any[]>(() => userStore.depts || [])
 const simulationForm = reactive({
   deptId: undefined as number | undefined,
   windowDays: 7,
-  expectedCollectionDelta: 0,
-  expectedExpenseDelta: 0,
+  expectedCollectionDelta: undefined,
+  expectedExpenseDelta: undefined,
   completedCollectionActions: 0,
   completedMemberActions: 0,
   stockReplenishmentDelta: 0,
@@ -249,8 +249,8 @@ function resetWhatIf() {
   Object.assign(simulationForm, {
     deptId: undefined,
     windowDays: 7,
-    expectedCollectionDelta: 0,
-    expectedExpenseDelta: 0,
+    expectedCollectionDelta: undefined,
+    expectedExpenseDelta: undefined,
     completedCollectionActions: 0,
     completedMemberActions: 0,
     stockReplenishmentDelta: 0,

@@ -12,6 +12,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateSerializer;
+import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import com.junsong.common.security.auth.AuthUtil;
 import com.junsong.member.domain.MemConfigSyncBatch;
 import com.junsong.member.domain.MemConfigSyncDetail;
@@ -28,10 +34,18 @@ import com.junsong.member.service.IMemberConfigSyncService;
 public class MemberConfigSyncServiceImpl implements IMemberConfigSyncService
 {
     private static final List<String> SUPPORTED_PREVIEW_TYPES = List.of("PRODUCT", "SUPPLIER", "LEVEL", "CAMPAIGN_POLICY");
+    private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final JdbcTemplate jdbcTemplate;
-    /** JdbcTemplate 可能返回 LocalDateTime，快照序列化必须注册 Java 时间模块。 */
-    private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules()
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    /** 快照序列化统一使用 yyyy-MM-dd HH:mm:ss，避免 ISO T 分隔符导致前端解析不一致。 */
+    private final ObjectMapper objectMapper;
+    {
+        JavaTimeModule javaTimeModule = new JavaTimeModule();
+        javaTimeModule.addSerializer(LocalDateTime.class, new LocalDateTimeSerializer(DT_FMT));
+        javaTimeModule.addSerializer(LocalDate.class, new LocalDateSerializer(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+        objectMapper = new ObjectMapper()
+                .registerModule(javaTimeModule)
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    }
     private final MemConfigSyncMapper syncMapper;
     private final FinanceProductConfigSyncAdapter productAdapter;
     private final FinanceSupplierConfigSyncAdapter supplierAdapter;
@@ -59,8 +73,10 @@ public class MemberConfigSyncServiceImpl implements IMemberConfigSyncService
     {
         validateRequest(request, tenantId, sourceDeptId, userId);
         String type = request.getSyncType().toUpperCase();
-        Map<String, Object> source = loadSource(type, request.getSourceRecordId(), sourceDeptId, tenantId);
-        if (source == null) throw new IllegalArgumentException("source configuration does not exist or is out of scope");
+        Map<String, Object> source = "LEVEL".equals(type) ? null
+                : loadSource(type, request.getSourceRecordId(), sourceDeptId, tenantId);
+        if (!"LEVEL".equals(type) && source == null)
+            throw new IllegalArgumentException("source configuration does not exist or is out of scope");
         List<Map<String, Object>> sources = "LEVEL".equals(type)
                 ? loadLevelSources(tenantId, sourceDeptId) : List.of(source);
         String idempotencyKey = request.getIdempotencyKey();
@@ -343,13 +359,15 @@ public class MemberConfigSyncServiceImpl implements IMemberConfigSyncService
     private void validateRequest(ConfigSyncPreviewRequest request, Long tenantId, Long sourceDeptId, Long userId)
     {
         if (tenantId == null || sourceDeptId == null || userId == null || request == null
-                || request.getSourceRecordId() == null || request.getTargetDeptIds() == null
+                || request.getTargetDeptIds() == null
                 || request.getTargetDeptIds().isEmpty() || request.getIdempotencyKey() == null
                 || request.getIdempotencyKey().isBlank())
             throw new IllegalArgumentException("sync source, targets, user and idempotency key are required");
-        if (!SUPPORTED_PREVIEW_TYPES.contains(request.getSyncType() == null ? "" : request.getSyncType().toUpperCase()))
+        String type = request.getSyncType() == null ? "" : request.getSyncType().toUpperCase();
+        if (!"LEVEL".equals(type) && request.getSourceRecordId() == null)
+            throw new IllegalArgumentException("sync source, targets, user and idempotency key are required");
+        if (!SUPPORTED_PREVIEW_TYPES.contains(type))
             throw new IllegalArgumentException("sync type is not ready for preview");
-        String type = request.getSyncType().toUpperCase();
         AuthUtil.checkPermi(permissionFor(type));
     }
 

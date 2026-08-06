@@ -6,6 +6,8 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import com.junsong.member.service.ConfigSyncAdapter;
@@ -91,6 +93,8 @@ public class MemberCampaignPolicyConfigSyncAdapter implements ConfigSyncAdapter
         return ((Number) value).longValue();
     }
 
+    private static final DateTimeFormatter ISO_SPACE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter ISO_SPACE_MS_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
     private Timestamp toSqlDate(Object value)
     {
         if (value == null) return null;
@@ -101,8 +105,16 @@ public class MemberCampaignPolicyConfigSyncAdapter implements ConfigSyncAdapter
             if (values.size() < 5) throw new IllegalArgumentException("政策有效期格式无效");
             return Timestamp.valueOf(LocalDateTime.of(((Number) values.get(0)).intValue(), ((Number) values.get(1)).intValue(), ((Number) values.get(2)).intValue(), ((Number) values.get(3)).intValue(), ((Number) values.get(4)).intValue(), values.size() > 5 ? ((Number) values.get(5)).intValue() : 0));
         }
-        String text = String.valueOf(value);
-        try { return Timestamp.valueOf(LocalDateTime.parse(text)); }
-        catch (RuntimeException ignored) { return Timestamp.from(OffsetDateTime.parse(text).toInstant()); }
+        String text = String.valueOf(value).trim();
+        DateTimeParseException lastErr = null;
+        try { return Timestamp.valueOf(LocalDateTime.parse(text, DateTimeFormatter.ISO_LOCAL_DATE_TIME)); }
+        catch (DateTimeParseException e) { lastErr = e; }
+        try { return Timestamp.valueOf(LocalDateTime.parse(text, ISO_SPACE_FMT)); }
+        catch (DateTimeParseException e) { lastErr = e; }
+        try { return Timestamp.valueOf(LocalDateTime.parse(text, ISO_SPACE_MS_FMT)); }
+        catch (DateTimeParseException e) { lastErr = e; }
+        try { return Timestamp.from(OffsetDateTime.parse(text).toInstant()); }
+        catch (RuntimeException ignored) { }
+        throw new IllegalArgumentException("无法解析日期: " + text + (lastErr != null ? "（" + lastErr.getMessage() + "）" : ""));
     }
 }

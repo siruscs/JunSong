@@ -1,6 +1,7 @@
 package com.junsong.member.service.impl;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -10,12 +11,14 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.junsong.member.domain.MemPurchaseItem;
+import com.junsong.member.domain.MemPurchaseDelivery;
 import com.junsong.member.domain.MemPurchaseOrder;
 import com.junsong.member.domain.MemPurchaseReturn;
 import com.junsong.member.domain.MemPurchaseReturnItem;
 import com.junsong.member.mapper.MemPurchaseMapper;
 import com.junsong.member.mapper.MemPurchaseReturnMapper;
 import com.junsong.member.service.IMemberPurchaseReturnService;
+import com.junsong.member.service.IMemberGrowthService;
 import com.junsong.member.service.MemberPurchaseReturnCalculator;
 
 @Service
@@ -23,12 +26,15 @@ public class MemberPurchaseReturnServiceImpl implements IMemberPurchaseReturnSer
 {
     private final MemPurchaseReturnMapper returnMapper;
     private final MemPurchaseMapper purchaseMapper;
+    private final IMemberGrowthService growthService;
     private final MemberPurchaseReturnCalculator calculator = new MemberPurchaseReturnCalculator();
 
-    public MemberPurchaseReturnServiceImpl(MemPurchaseReturnMapper returnMapper, MemPurchaseMapper purchaseMapper)
+    public MemberPurchaseReturnServiceImpl(MemPurchaseReturnMapper returnMapper, MemPurchaseMapper purchaseMapper,
+                                           IMemberGrowthService growthService)
     {
         this.returnMapper = returnMapper;
         this.purchaseMapper = purchaseMapper;
+        this.growthService = growthService;
     }
 
     @Override
@@ -40,7 +46,17 @@ public class MemberPurchaseReturnServiceImpl implements IMemberPurchaseReturnSer
     @Override
     public MemPurchaseReturn selectReturnById(MemPurchaseReturn query)
     {
-        return returnMapper.selectReturnById(query);
+        MemPurchaseReturn r = returnMapper.selectReturnById(query);
+        if (r != null)
+        {
+            MemPurchaseReturn itemQuery = new MemPurchaseReturn();
+            itemQuery.setReturnId(r.getReturnId());
+            itemQuery.setTenantId(r.getTenantId());
+            itemQuery.setDeptId(r.getDeptId());
+            List<MemPurchaseReturnItem> items = returnMapper.selectReturnItems(itemQuery);
+            r.setItems(items);
+        }
+        return r;
     }
 
     @Override
@@ -108,15 +124,80 @@ public class MemberPurchaseReturnServiceImpl implements IMemberPurchaseReturnSer
     public int completeReturn(MemPurchaseReturn value)
     {
         if (value.getReturnId() == null) throw new IllegalArgumentException("退货单不存在");
-        MemPurchaseReturn current = returnMapper.selectReturnById(value);
+        // 1. 锁定退货单
+        MemPurchaseReturn current = returnMapper.selectReturnForUpdate(value);
         if (current == null) throw new IllegalArgumentException("退货单不存在或不在当前机构范围内");
         if (!"DRAFT".equals(current.getStatus())) throw new IllegalArgumentException("只有草稿状态的退货单可以完成");
+        if (current.getItems() == null || current.getItems().isEmpty())
+            throw new IllegalArgumentException("退货单没有明细，无法完成");
+        // 2. 锁定原购买单
+        MemPurchaseOrder purchaseScope = new MemPurchaseOrder();
+        purchaseScope.setPurchaseId(current.getPurchaseId());
+        purchaseScope.setTenantId(value.getTenantId());
+        purchaseScope.setDeptId(value.getDeptId());
+        MemPurchaseOrder purchase = purchaseMapper.selectPurchaseOrderForUpdate(purchaseScope);
+        if (purchase == null) throw new IllegalArgumentException("原购买单不存在或不在当前机构范围内");
+        if ("4".equals(purchase.getOrderStatus())) throw new IllegalArgumentException("原购买单已作废，不能完成退货");
+        BigDecimal refundAmount = current.getRefundAmount() == null ? BigDecimal.ZERO : current.getRefundAmount().setScale(2, RoundingMode.HALF_UP);
+        BigDecimal originalTotalAmount = purchase.getTotalAmount() == null ? BigDecimal.ZERO : purchase.getTotalAmount().setScale(2, RoundingMode.HALF_UP);
+        // 3. 逐条更新原购买明细数量
+        for (MemPurchaseReturnItem retItem : current.getItems())
+        {
+            MemPurchaseDelivery itemScope = new MemPurchaseDelivery();
+            itemScope.setItemId(retItem.getItemId()); itemScope.setPurchaseId(current.getPurchaseId());
+            itemScope.setTenantId(value.getTenantId()); itemScope.setDeptId(value.getDeptId());
+            MemPurchaseItem origin = purchaseMapper.selectPurchaseItemForUpdate(itemScope);
+            if (origin == null) throw new IllegalArgumentException("原购买明细不存在或不属于当前购买单");
+            BigDecimal returnSale = normalizeQuantity(retItem.getReturnSaleQuantity());
+            BigDecimal returnGift = normalizeQuantity(retItem.getReturnGiftQuantity());
+            BigDecimal newPurchaseQty = normalizeQuantity(origin.getPurchaseQuantity()).subtract(returnSale);
+            BigDecimal newGiftQty = normalizeQuantity(origin.getGiftQuantity()).subtract(returnGift);
+            BigDecimal newTotalQty = newPurchaseQty.add(newGiftQty);
+            // 已领取数量核减：退货正品不超过已领取正品，退货赠品不超过已领取赠品
+            BigDecimal newDeliveredSale = normalizeQuantity(origin.getDeliveredSaleQuantity()).subtract(
+                    returnSale.min(normalizeQuantity(origin.getDeliveredSaleQuantity())));
+            BigDecimal newDeliveredGift = normalizeQuantity(origin.getDeliveredGiftQuantity()).subtract(
+                    returnGift.min(normalizeQuantity(origin.getDeliveredGiftQuantity())));
+            BigDecimal newDelivered = newDeliveredSale.add(newDeliveredGift);
+            BigDecimal newRemaining = newTotalQty.subtract(newDelivered);
+            BigDecimal newItemAmount = origin.getItemAmount() == null ? BigDecimal.ZERO
+                    : origin.getItemAmount().setScale(2, RoundingMode.HALF_UP).subtract(
+                            retItem.getRefundAmount() == null ? BigDecimal.ZERO : retItem.getRefundAmount().setScale(2, RoundingMode.HALF_UP));
+            origin.setPurchaseQuantity(newPurchaseQty);
+            origin.setGiftQuantity(newGiftQty);
+            origin.setTotalQuantity(newTotalQty);
+            origin.setDeliveredSaleQuantity(newDeliveredSale);
+            origin.setDeliveredGiftQuantity(newDeliveredGift);
+            origin.setDeliveredQuantity(newDelivered);
+            origin.setRemainingQuantity(newRemaining);
+            origin.setItemAmount(newItemAmount);
+            origin.setUpdateBy(value.getUpdateBy());
+            if (purchaseMapper.updatePurchaseItem(origin) != 1)
+                throw new IllegalArgumentException("购买明细更新失败");
+        }
+        // 4. 更新原购买单金额
+        BigDecimal newTotalAmount = originalTotalAmount.subtract(refundAmount).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal newPaidAmount = (purchase.getPaidAmount() == null ? BigDecimal.ZERO : purchase.getPaidAmount())
+                .subtract(refundAmount).setScale(2, RoundingMode.HALF_UP);
+        if (newPaidAmount.signum() < 0) newPaidAmount = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        String paymentStatus;
+        if (newPaidAmount.signum() == 0) paymentStatus = "0";
+        else if (newPaidAmount.compareTo(newTotalAmount) == 0) paymentStatus = "2";
+        else paymentStatus = "1";
+        purchaseMapper.updatePurchaseAfterReturn(current.getPurchaseId(), newTotalAmount, newPaidAmount, paymentStatus);
+        // 5. 会员积分/成长值核减
+        if ("MEMBER".equals(current.getCustomerType()) && current.getMemberId() != null)
+        {
+            growthService.reversePurchaseRewardByReturn(current.getMemberId(), current.getPurchaseId(),
+                    current.getReturnId(), refundAmount, originalTotalAmount, value.getUpdateBy());
+        }
+        // 6. 更新退货单状态（乐观锁）
         value.setVersion(current.getVersion());
         return returnMapper.completeReturn(value);
     }
 
     private BigDecimal normalizeQuantity(BigDecimal value)
     {
-        return value == null ? BigDecimal.ZERO : value.setScale(3, java.math.RoundingMode.HALF_UP);
+        return value == null ? BigDecimal.ZERO : value.setScale(3, RoundingMode.HALF_UP);
     }
 }

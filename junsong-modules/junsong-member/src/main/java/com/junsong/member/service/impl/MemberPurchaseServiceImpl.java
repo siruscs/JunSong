@@ -171,8 +171,10 @@ public class MemberPurchaseServiceImpl implements IMemberPurchaseService
         MemPurchaseOrder order = purchaseMapper.selectPurchaseOrderForUpdate(query);
         if (order == null) throw new IllegalArgumentException("购买单不存在或不属于当前机构");
         if ("4".equals(order.getOrderStatus())) throw new IllegalArgumentException("已作废的购买单不能编辑");
+        BigDecimal oldTotalAmount = order.getTotalAmount() == null ? ZERO : order.getTotalAmount().setScale(2, RoundingMode.HALF_UP);
         int rows = purchaseMapper.updatePurchaseBasic(query);
         if (rows != 1) return rows;
+        BigDecimal newTotalAmount = null;
         if (query.getItems() != null)
         {
             BigDecimal total = ZERO;
@@ -198,6 +200,15 @@ public class MemberPurchaseServiceImpl implements IMemberPurchaseService
             total = total.setScale(2, RoundingMode.HALF_UP);
             if (query.getPaidAmount() != null && query.getPaidAmount().compareTo(total) > 0) throw new IllegalArgumentException("应收金额不能低于已收金额");
             purchaseMapper.updateOrderAmount(query.getPurchaseId(), total);
+            newTotalAmount = total;
+        }
+        // 会员购买单金额变更时，核减原积分/成长值并重新计算
+        if (newTotalAmount != null && "MEMBER".equals(order.getCustomerType()) && order.getMemberId() != null
+                && newTotalAmount.compareTo(oldTotalAmount) != 0)
+        {
+            growthService.reversePurchaseReward(order.getMemberId(), query.getPurchaseId(), query.getUpdateBy());
+            growthService.reawardPurchaseReward(order.getMemberId(), null, order.getCustomerName(),
+                    order.getDeptId(), query.getPurchaseId(), newTotalAmount, query.getUpdateBy());
         }
         return rows;
     }
@@ -213,18 +224,40 @@ public class MemberPurchaseServiceImpl implements IMemberPurchaseService
     @Transactional
     public int bindPurchaseMember(Long purchaseId, Long tenantId, Long deptId, Long memberId, String operator)
     {
+        // 1. 先按购买单ID定位订单，不依赖调用方传入的deptId（避免用户切换了当前部门导致找不到原订单）
+        MemPurchaseOrder baseQuery = new MemPurchaseOrder();
+        baseQuery.setPurchaseId(purchaseId);
+        baseQuery.setTenantId(tenantId);
+        MemPurchaseOrder baseOrder = purchaseMapper.selectPurchaseById(baseQuery);
+        if (baseOrder == null) throw new IllegalArgumentException("购买单不存在或不在权限范围内");
+
+        final Long orderDeptId = baseOrder.getDeptId();
+        if (orderDeptId == null) throw new IllegalArgumentException("购买单部门信息异常");
+
+        // 2. 用订单实际所属部门加行锁，避免并发修改
         MemPurchaseOrder scope = new MemPurchaseOrder();
         scope.setPurchaseId(purchaseId);
         scope.setTenantId(tenantId);
-        scope.setDeptId(deptId);
+        scope.setDeptId(orderDeptId);
         MemPurchaseOrder order = purchaseMapper.selectPurchaseOrderForUpdate(scope);
-        if (order == null) throw new IllegalArgumentException("purchase order does not exist or is out of scope");
-        if ("4".equals(order.getOrderStatus())) throw new IllegalArgumentException("cancelled purchase cannot be bound");
+        if (order == null) throw new IllegalArgumentException("购买单不存在或不在权限范围内");
+
+        if ("4".equals(order.getOrderStatus())) throw new IllegalArgumentException("已作废的购买单无法绑定会员");
         if ("MEMBER".equals(order.getCustomerType()) && memberId.equals(order.getMemberId())) return 1;
-        if (order.getMemberId() != null) throw new IllegalArgumentException("purchase order is already bound to a member");
+        if (order.getMemberId() != null) throw new IllegalArgumentException("该购买单已绑定会员，不可重复绑定");
+
+        // 3. 校验会员：必须与购买单属于同一部门，且状态为正常
         MemMember member = memberMapper.selectMemMemberByMemberId(memberId);
-        if (member == null || !deptId.equals(member.getDeptId()) || !"0".equals(member.getStatus()))
-            throw new IllegalArgumentException("member does not exist or is out of scope");
+        if (member == null) {
+            throw new IllegalArgumentException("会员不存在");
+        }
+        if (!"0".equals(member.getStatus())) {
+            throw new IllegalArgumentException("会员状态无效，无法绑定");
+        }
+        if (!orderDeptId.equals(member.getDeptId())) {
+            throw new IllegalArgumentException("会员与购买单不属于同一机构，无法绑定");
+        }
+
         scope.setMemberId(memberId);
         scope.setCustomerType("MEMBER");
         scope.setCustomerName(member.getMemberName());

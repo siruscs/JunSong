@@ -3,6 +3,7 @@ package com.junsong.member.controller;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -89,5 +90,22 @@ public class MemCampaignPolicyController
         int rows = policyService.changeStatus(policyId, TenantContext.getTenantId(), SecurityUtils.getDeptId(),
                 status, SecurityUtils.getUsername());
         return rows == 1 ? AjaxResult.success() : AjaxResult.error("政策状态更新失败");
+    }
+
+    @RequiresPermissions("member:campaignPolicy:remove")
+    @Log(title = "会员商品政策", businessType = BusinessType.DELETE)
+    @DeleteMapping("/{policyId}")
+    public AjaxResult delete(@PathVariable Long policyId)
+    {
+        try
+        {
+            int rows = policyService.deletePolicy(policyId, TenantContext.getTenantId(), SecurityUtils.getDeptId(),
+                    SecurityUtils.getUsername());
+            return rows == 1 ? AjaxResult.success() : AjaxResult.error("政策删除失败，可能已被删除或不存在");
+        }
+        catch (IllegalStateException e)
+        {
+            return AjaxResult.error(e.getMessage());
+        }
     }
 }

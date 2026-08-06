@@ -91,6 +91,7 @@ public class MemPurchaseController extends BaseController
 
     @RequiresPermissions("member:purchase:edit")
     @Log(title = "会员购买单编辑", businessType = BusinessType.UPDATE)
+    @Idempotent(scene = "member:purchase:edit")
     @PutMapping("/{purchaseId}")
     public AjaxResult edit(@PathVariable Long purchaseId, @RequestBody MemPurchaseOrder order)
     {

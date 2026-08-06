@@ -457,7 +457,7 @@ export default {
       queryParams: {
         pageNum: 1,
         pageSize: 10,
-        deptIds: [],
+        deptIds: userStore.currentDeptId ? [userStore.currentDeptId] : [],
         status: undefined,
         periodNo: undefined
       },

@@ -96,15 +96,20 @@
         where policy_id = #{policyId} and tenant_id = #{tenantId} and dept_id = #{deptId} and del_flag = '0'
     </update>
 
-    <update id="deletePolicyPackages">
-        update mem_campaign_policy_package
-        set del_flag = '2', update_by = #{updateBy}, update_time = sysdate()
-        where policy_id = #{policyId} and tenant_id = #{tenantId} and dept_id = #{deptId} and del_flag = '0'
-    </update>
+    <delete id="deletePolicyPackages">
+        delete from mem_campaign_policy_package
+        where policy_id = #{policyId} and tenant_id = #{tenantId} and dept_id = #{deptId}
+    </delete>
 
     <update id="updatePolicyStatus">
         update mem_campaign_policy
         set status = #{status}, update_by = #{updateBy}, update_time = sysdate()
+        where policy_id = #{policyId} and tenant_id = #{tenantId} and dept_id = #{deptId} and del_flag = '0'
+    </update>
+
+    <update id="deletePolicy">
+        update mem_campaign_policy
+        set del_flag = '2', update_by = #{updateBy}, update_time = sysdate()
         where policy_id = #{policyId} and tenant_id = #{tenantId} and dept_id = #{deptId} and del_flag = '0'
     </update>
 </mapper>

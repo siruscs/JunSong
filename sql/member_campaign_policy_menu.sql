@@ -35,9 +35,16 @@ SELECT (SELECT COALESCE(MAX(menu_id), 0) + 1 FROM sys_menu), '维护会员商品
 FROM DUAL WHERE @policy_menu_id IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM sys_menu WHERE perms = 'member:campaignPolicy:edit' AND menu_type = 'F');
 
+INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, is_frame, is_cache,
+                      menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+SELECT (SELECT COALESCE(MAX(menu_id), 0) + 1 FROM sys_menu), '删除会员商品政策', @policy_menu_id, 4, '', '', 1, 0, 'F', '0', '0',
+       'member:campaignPolicy:remove', '#', 'admin', NOW(), '', NULL, '删除会员商品销售政策及其套餐档位'
+FROM DUAL WHERE @policy_menu_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM sys_menu WHERE perms = 'member:campaignPolicy:remove' AND menu_type = 'F');
+
 INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT 1, menu_id FROM sys_menu
-WHERE perms IN ('member:campaignPolicy:list', 'member:campaignPolicy:query', 'member:campaignPolicy:add', 'member:campaignPolicy:edit')
+WHERE perms IN ('member:campaignPolicy:list', 'member:campaignPolicy:query', 'member:campaignPolicy:add', 'member:campaignPolicy:edit', 'member:campaignPolicy:remove')
   AND NOT EXISTS (SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = 1 AND rm.menu_id = sys_menu.menu_id);
 
 SELECT 'member_campaign_policy_menu' AS check_name,

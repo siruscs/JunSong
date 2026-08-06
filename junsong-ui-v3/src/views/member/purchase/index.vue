@@ -27,7 +27,7 @@
       <el-col :xs="12" :sm="8" :lg="4"><div class="purchase-summary-card purchase-summary-card--gift"><span class="purchase-summary-label">赠送数量</span><strong>{{ quantity(summary.giftQuantity) }}</strong><small>活动赠送</small></div></el-col>
       <el-col :xs="12" :sm="8" :lg="4"><div class="purchase-summary-card purchase-summary-card--receivable"><span class="purchase-summary-label">应收金额</span><strong>{{ money(summary.totalAmount) }}</strong><small>订单总应收</small></div></el-col>
       <el-col :xs="12" :sm="8" :lg="4"><div class="purchase-summary-card purchase-summary-card--paid"><span class="purchase-summary-label">已收金额</span><strong>{{ money(summary.paidAmount) }}</strong><small>累计已收</small></div></el-col>
-      <el-col :xs="12" :sm="8" :lg="4"><div class="purchase-summary-card purchase-summary-card--debt"><span class="purchase-summary-label">欠款金额</span><strong>{{ money(summary.receivableAmount) }}</strong><small>待收余额</small></div></el-col>
+      <el-col :xs="12" :sm="8" :lg="4"><div class="purchase-summary-card purchase-summary-card--debt"><span class="purchase-summary-label">待缴金额</span><strong>{{ money(summary.receivableAmount) }}</strong><small>待收余额</small></div></el-col>
     </el-row>
     <el-table v-loading="loading" :data="rows" border>
       <el-table-column prop="purchaseNo" label="购买单号" min-width="170" />
@@ -37,7 +37,7 @@
       <el-table-column prop="giftQuantity" label="赠送数量" width="110" />
       <el-table-column prop="totalAmount" label="应收金额" width="140"><template #default="scope"><span style="color: #F56C6C; font-weight: bold;">{{ money(scope.row.totalAmount) }}</span></template></el-table-column>
       <el-table-column prop="paidAmount" label="已收" width="140"><template #default="scope"><span style="color: #67C23A; font-weight: bold;">{{ money(scope.row.paidAmount) }}</span></template></el-table-column>
-      <el-table-column prop="receivableAmount" label="欠款" width="140"><template #default="scope"><span style="color: #E6A23C; font-weight: bold;">{{ money(scope.row.receivableAmount) }}</span></template></el-table-column>
+      <el-table-column prop="receivableAmount" label="待缴金额" width="140"><template #default="scope"><span style="color: #E6A23C; font-weight: bold;">{{ money(scope.row.receivableAmount) }}</span></template></el-table-column>
       <el-table-column prop="paymentStatus" label="收款状态" width="110"><template #default="scope">{{ paymentStatusLabel(scope.row.paymentStatus) }}</template></el-table-column>
       <el-table-column prop="deliveryStatus" label="领取状态" width="110"><template #default="scope">{{ deliveryStatusLabel(scope.row.deliveryStatus) }}</template></el-table-column>
       <el-table-column prop="createTime" label="创建时间" min-width="170"><template #default="scope">{{ formatDateTime(scope.row.createTime) }}</template></el-table-column>
@@ -126,7 +126,7 @@
         <el-descriptions-item label="联系电话"><el-input v-if="detailEditMode" v-model="detail.customerPhone" /><span v-else>{{ detail.customerPhone || '-' }}</span></el-descriptions-item>
         <el-descriptions-item label="应收"><span style="color: #F56C6C; font-weight: bold;">{{ money(detail.totalAmount) }}</span></el-descriptions-item>
         <el-descriptions-item label="已收"><span style="color: #67C23A; font-weight: bold;">{{ money(detail.paidAmount) }}</span></el-descriptions-item>
-        <el-descriptions-item label="欠款"><span style="color: #E6A23C; font-weight: bold;">{{ money(detail.receivableAmount) }}</span></el-descriptions-item>
+        <el-descriptions-item label="待缴金额"><span style="color: #E6A23C; font-weight: bold;">{{ money(detail.receivableAmount) }}</span></el-descriptions-item>
         <el-descriptions-item label="领取状态">{{ deliveryStatusLabel(detail.deliveryStatus) }}</el-descriptions-item>
         <el-descriptions-item label="订单状态">{{ orderStatusLabel(detail.orderStatus) }}</el-descriptions-item>
       </el-descriptions>

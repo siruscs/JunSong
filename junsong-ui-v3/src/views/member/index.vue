@@ -506,7 +506,7 @@ export default {
     // 加载等级配置选项
     loadLevelOptions() {
       listLevel({}).then(response => {
-        const list = response.data || []
+        const list = (response.data || []).filter(item => item.status === '0')
         this.cardTypeOptions = list.map(item => ({
           value: item.typeCode,
           label: item.typeName

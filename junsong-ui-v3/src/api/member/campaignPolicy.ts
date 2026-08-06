@@ -19,3 +19,7 @@ export function updateCampaignPolicy(policyId: number, data: any) {
 export function changeCampaignPolicyStatus(policyId: number, status: string) {
   return request({ url: `/member/campaign/policy/${policyId}/status`, method: 'put', params: { status } })
 }
+
+export function deleteCampaignPolicy(policyId: number) {
+  return request({ url: '/member/campaign/policy/' + policyId, method: 'delete' })
+}

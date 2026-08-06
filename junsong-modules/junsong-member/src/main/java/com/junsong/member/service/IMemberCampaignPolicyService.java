@@ -10,4 +10,5 @@ public interface IMemberCampaignPolicyService
     int createPolicy(MemCampaignPolicy policy);
     int updatePolicy(MemCampaignPolicy policy, String operator);
     int changeStatus(Long policyId, Long tenantId, Long deptId, String status, String operator);
+    int deletePolicy(Long policyId, Long tenantId, Long deptId, String operator);
 }

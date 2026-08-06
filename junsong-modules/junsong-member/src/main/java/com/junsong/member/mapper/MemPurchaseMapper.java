@@ -51,4 +51,8 @@ public interface MemPurchaseMapper
                                @org.apache.ibatis.annotations.Param("deliveredGiftQuantity") java.math.BigDecimal deliveredGiftQuantity,
                                @org.apache.ibatis.annotations.Param("remainingQuantity") java.math.BigDecimal remainingQuantity);
     int updateDeliveryOrderStatus(Long purchaseId);
+    int updatePurchaseAfterReturn(@org.apache.ibatis.annotations.Param("purchaseId") Long purchaseId,
+                                  @org.apache.ibatis.annotations.Param("totalAmount") java.math.BigDecimal totalAmount,
+                                  @org.apache.ibatis.annotations.Param("paidAmount") java.math.BigDecimal paidAmount,
+                                  @org.apache.ibatis.annotations.Param("paymentStatus") String paymentStatus);
 }

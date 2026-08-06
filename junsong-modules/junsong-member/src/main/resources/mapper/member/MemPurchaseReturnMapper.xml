@@ -36,14 +36,14 @@
       and mem_purchase_return.tenant_id=#{tenantId}
       and mem_purchase_return.dept_id=#{deptId}
       and mem_purchase_return.del_flag='0'
-      and mem_purchase_return.status &lt;&gt; 'CANCELLED'
+      and mem_purchase_return.status = 'DRAFT'
     group by item_id
   </select>
   <select id="selectExistingRefundAmount" parameterType="com.junsong.member.domain.MemPurchaseReturn" resultType="java.math.BigDecimal">
     select coalesce(sum(refund_amount), 0)
     from mem_purchase_return
     where purchase_id=#{purchaseId} and tenant_id=#{tenantId} and dept_id=#{deptId}
-      and del_flag='0' and status &lt;&gt; 'CANCELLED'
+      and del_flag='0' and status = 'DRAFT'
   </select>
   <insert id="insertReturn" parameterType="com.junsong.member.domain.MemPurchaseReturn" useGeneratedKeys="true" keyProperty="returnId">
     insert into mem_purchase_return(tenant_id,dept_id,purchase_id,original_period_id,return_period_id,return_no,return_date,customer_type,member_id,customer_name,customer_phone,refund_amount,refunded_amount,status,reason,remark,idempotency_key,version,del_flag,create_by,create_time)
@@ -59,4 +59,10 @@
     where return_id=#{returnId} and tenant_id=#{tenantId} and dept_id=#{deptId}
       and del_flag='0' and status='DRAFT' and version=#{version}
   </update>
+  <select id="selectReturnForUpdate" parameterType="com.junsong.member.domain.MemPurchaseReturn" resultMap="ReturnResult">
+    select return_id,tenant_id,dept_id,purchase_id,original_period_id,return_period_id,return_no,return_date,customer_type,member_id,customer_name,customer_phone,refund_amount,refunded_amount,status,reason,remark,version
+    from mem_purchase_return
+    where return_id=#{returnId} and tenant_id=#{tenantId} and dept_id=#{deptId} and del_flag='0'
+    for update
+  </select>
 </mapper>

@@ -39,6 +39,8 @@ public class MemPurchaseOrder extends BaseEntity
     private List<MemPurchaseDelivery> deliveries;
     @Excel(name = "购买数量", cellType = ColumnType.NUMERIC) private BigDecimal purchaseQuantity;
     @Excel(name = "赠送数量", cellType = ColumnType.NUMERIC) private BigDecimal giftQuantity;
+    /** 查询用：会员编号模糊匹配 */
+    private String memberNo;
 
     public Long getPurchaseId() { return purchaseId; }
     public void setPurchaseId(Long v) { purchaseId = v; }
@@ -96,4 +98,6 @@ public class MemPurchaseOrder extends BaseEntity
     public void setPurchaseQuantity(BigDecimal v) { purchaseQuantity = v; }
     public BigDecimal getGiftQuantity() { return giftQuantity; }
     public void setGiftQuantity(BigDecimal v) { giftQuantity = v; }
+    public String getMemberNo() { return memberNo; }
+    public void setMemberNo(String v) { memberNo = v; }
 }

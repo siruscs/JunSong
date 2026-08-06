@@ -79,6 +79,13 @@ JunSong-Cloud is a multi-tenant retail/member/finance platform.
 - Preserve idempotency keys/payloads across ambiguous retries; refresh affected list/detail/summary/capability data after success.
 - `junsong-miniprogram/` is a nested Git repository: commit/test there first, then deliberately update the parent gitlink. Never hand-edit generated `dist/`.
 
+### UI data-entry and display conventions
+
+- Amounts must use the shared `junsong-ui-v3/src/utils/money.ts` formatter and display as `¥8000.00` (two decimal places, with the `¥` prefix). Do not render raw amount fields or duplicate local money formatters.
+- Quantity inputs use three decimal places (`0.000`); amount inputs use two decimal places (`0.00`). Empty input fields must start empty and use placeholders, never a numeric zero default unless zero is a valid business value.
+- Storage codes must be converted to user-facing labels in tables and detail views; do not expose values such as `WECHAT`, `MEMBER`, or numeric status codes directly to users.
+- Direct purchases use the price entered for the current order and do not depend on a product default sale price; both client and server must reject a unit price less than or equal to zero.
+
 ## Required Workflow
 
 1. Read nested `AGENTS.md`; inspect `git status --short` before edits.

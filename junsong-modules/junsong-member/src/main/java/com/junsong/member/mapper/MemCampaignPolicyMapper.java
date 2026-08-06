@@ -17,4 +17,6 @@ public interface MemCampaignPolicyMapper
     int updatePolicyStatus(@Param("policyId") Long policyId, @Param("tenantId") Long tenantId,
                            @Param("deptId") Long deptId, @Param("status") String status,
                            @Param("updateBy") String updateBy);
+    int deletePolicy(@Param("policyId") Long policyId, @Param("tenantId") Long tenantId,
+                     @Param("deptId") Long deptId, @Param("updateBy") String updateBy);
 }

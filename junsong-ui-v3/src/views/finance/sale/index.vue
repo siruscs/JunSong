@@ -40,7 +40,7 @@
           <span style="color: #67C23A; font-weight: bold;">{{ money(scope.row.paidAmount) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="欠缴金额" align="center">
+      <el-table-column label="待缴金额" align="center">
         <template #default="scope">
           <span style="color: #E6A23C; font-weight: bold;">¥{{ ((scope.row.saleAmount || 0) - (scope.row.paidAmount || 0)).toFixed(2) }}</span>
         </template>
@@ -68,7 +68,7 @@
     <pagination v-show="total>0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
       </el-tab-pane>
 
-      <el-tab-pane label="历史欠款" name="receivable">
+      <el-tab-pane label="历史待缴" name="receivable">
         <el-form :model="receivableQuery" ref="receivableForm" :inline="true" v-show="showSearch" label-width="68px">
           <el-form-item label="销售单号" prop="saleNo">
             <el-input v-model="receivableQuery.saleNo" placeholder="请输入销售单号" clearable style="width: 180px;" />
@@ -89,7 +89,7 @@
         </el-form>
 
         <el-alert type="info" :closable="false" show-icon style="margin-bottom: 12px;"
-          title="历史欠款仅显示未缴清销售单，按账龄降序排列。对历史销售单缴款只新增缴款记录，销售业务仍归属原销售周期；本次缴款计入当前进行中核算周期。" />
+          title="历史待缴仅显示未缴清销售单，按账龄降序排列。对历史销售单缴款只新增缴款记录，销售业务仍归属原销售周期；本次缴款计入当前进行中核算周期。" />
 
         <el-table v-loading="receivableLoading" :data="receivableList" border>
           <el-table-column label="销售单号" align="center" prop="saleNo" width="170" />
@@ -215,7 +215,7 @@
         <el-descriptions-item label="已缴金额">
           <span style="color: #67C23A; font-weight: bold;">{{ money(viewForm.paidAmount) }}</span>
         </el-descriptions-item>
-        <el-descriptions-item label="待缴金额">
+        <el-descriptions-item v-if="Number(viewForm.saleAmount || 0) - Number(viewForm.paidAmount || 0) > 0.001" label="待缴金额">
           <span style="color: #E6A23C; font-weight: bold;">{{ money(viewForm.saleAmount - viewForm.paidAmount) }}</span>
         </el-descriptions-item>
         <el-descriptions-item label="销售数量">{{ viewForm.saleQuantity }}</el-descriptions-item>

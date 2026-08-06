@@ -22,7 +22,10 @@ public class MemMpPermController extends BaseController {
     static {
         String[][] defs = {
                 {"member", "会员管理", "会员服务"},
-                {"memberPurchase", "会员购买记录", "会员服务"},
+                {"memberPurchase", "购买记录", "会员服务"},
+                {"memberPurchaseReturn", "退货/退款", "会员服务"},
+                {"memberLevel", "等级配置", "会员服务"},
+                {"campaignPolicy", "销售政策", "会员服务"},
                 {"memberPurchasePayment", "会员购买收款", "会员服务"},
                 {"memberPurchaseDelivery", "会员购买领取", "会员服务"},
                 {"configSync", "配置同步", "系统管理"},

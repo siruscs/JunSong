@@ -174,6 +174,10 @@ import { listMpPerm, getMpPermRoles, getMpPermModules, saveMpPerm, deleteMpPerm,
 
 const DEFAULT_MODULES = [
   { key: "member", name: "会员管理", group: "会员服务" },
+  { key: "memberPurchase", name: "购买记录", group: "会员服务" },
+  { key: "memberPurchaseReturn", name: "退货/退款", group: "会员服务" },
+  { key: "memberLevel", name: "等级配置", group: "会员服务" },
+  { key: "campaignPolicy", name: "销售政策", group: "会员服务" },
   { key: "dashboard", name: "会员运营看板", group: "会员服务" },
   { key: "growth", name: "成长体系", group: "会员服务" },
   { key: "actions", name: "增长动作", group: "会员服务" },

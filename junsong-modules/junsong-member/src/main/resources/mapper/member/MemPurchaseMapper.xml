@@ -148,6 +148,7 @@
         from mem_purchase_order o
         left join (select purchase_id, sum(purchase_quantity) purchase_quantity, sum(gift_quantity) gift_quantity
                    from mem_purchase_item where del_flag = '0' group by purchase_id) i on i.purchase_id = o.purchase_id
+        left join mem_member m on m.member_id = o.member_id
         <where>
             o.del_flag = '0' and o.order_status &lt;&gt; '4'
             <if test="tenantId != null">and o.tenant_id = #{tenantId}</if>
@@ -155,6 +156,7 @@
             <if test="purchaseNo != null and purchaseNo != ''">and o.purchase_no like concat('%', #{purchaseNo}, '%')</if>
             <if test="periodId != null">and o.period_id = #{periodId}</if>
             <if test="memberId != null">and o.member_id = #{memberId}</if>
+            <if test="memberNo != null and memberNo != ''">and m.member_no like concat('%', #{memberNo}, '%')</if>
             <if test="customerName != null and customerName != ''">and o.customer_name like concat('%', #{customerName}, '%')</if>
             <if test="customerType != null and customerType != ''">and o.customer_type = #{customerType}</if>
             <if test="paymentStatus != null and paymentStatus != ''">and o.payment_status = #{paymentStatus}</if>
@@ -177,6 +179,7 @@
         from mem_purchase_order o
         left join (select purchase_id, sum(purchase_quantity) purchase_quantity, sum(gift_quantity) gift_quantity, sum(delivered_quantity) delivered_quantity
                    from mem_purchase_item where del_flag = '0' group by purchase_id) i on i.purchase_id = o.purchase_id
+        left join mem_member m on m.member_id = o.member_id
         <where>
             o.del_flag = '0'
             and o.order_status &lt;&gt; '4'
@@ -184,6 +187,7 @@
             and o.dept_id = #{deptId}
             <if test="periodId != null">and o.period_id = #{periodId}</if>
             <if test="memberId != null">and o.member_id = #{memberId}</if>
+            <if test="memberNo != null and memberNo != ''">and m.member_no like concat('%', #{memberNo}, '%')</if>
             <if test="customerName != null and customerName != ''">and o.customer_name like concat('%', #{customerName}, '%')</if>
             <if test="customerType != null and customerType != ''">and o.customer_type = #{customerType}</if>
             <if test="purchaseNo != null and purchaseNo != ''">and o.purchase_no like concat('%', #{purchaseNo}, '%')</if>
@@ -397,5 +401,15 @@
             else '0' end,
             update_time = sysdate()
         where purchase_id = #{purchaseId} and del_flag = '0'
+    </update>
+
+    <update id="updatePurchaseAfterReturn">
+        update mem_purchase_order
+        set total_amount = #{totalAmount},
+            paid_amount = #{paidAmount},
+            receivable_amount = #{totalAmount} - #{paidAmount},
+            payment_status = #{paymentStatus},
+            update_time = sysdate()
+        where purchase_id = #{purchaseId} and del_flag = '0' and order_status &lt;&gt; '4'
     </update>
 </mapper>

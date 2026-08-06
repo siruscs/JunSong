@@ -8,10 +8,27 @@
     </view>
     <scroll-view scroll-y class="scroll" @scrolltolower="loadMore">
       <view class="section-card ledger-list-card"><view class="section-header"><view class="section-dot" style="background:#10B981"></view><text class="section-title">流水明细</text></view>
-      <view v-for="row in rows" :key="row.ledgerId || row.id" class="ledger-card">
-        <view class="ledger-card-head"><view class="ledger-type"><text class="direction-mark" :class="changeDirection(row) === '入库' ? 'is-in' : 'is-out'">{{ changeDirection(row) === '入库' ? '入' : '出' }}</text><view><text class="ledger-kicker">{{ changeDirection(row) }}</text><text class="ledger-title">{{ changeTypeText(row.changeType || row.change_type) }}</text></view></view><text class="ledger-delta" :class="changeDirection(row) === '入库' ? 'is-in' : 'is-out'">{{ Number(row.changeQuantity ?? row.change_quantity ?? 0) >= 0 ? '+' : '' }}{{ row.changeQuantity ?? row.change_quantity ?? 0 }}</text></view>
-        <view class="ledger-card-meta"><text>{{ row.createTime || row.create_time || '-' }}</text><text>变动后余额 {{ row.afterQuantity ?? row.after_quantity ?? 0 }}</text></view>
-        <view class="ledger-card-source"><text class="source-label">来源</text><text class="remark">{{ row.remark || row.referenceNo || row.reference_no || row.referenceType || row.reference_type || '系统记录' }}</text></view>
+      <view class="record-card" v-for="row in rows" :key="row.ledgerId || row.id">
+        <view class="card-bar" :style="{ background: changeDirection(row) === '入库' ? 'linear-gradient(180deg,#10B981,#6EE7B7)' : 'linear-gradient(180deg,#F59E0B,#FCD34D)' }"></view>
+        <view class="card-body">
+          <view class="card-header">
+            <text class="record-title">
+              <text class="direction-tag" :class="changeDirection(row) === '入库' ? 'is-in' : 'is-out'">{{ changeDirection(row) === '入库' ? '入' : '出' }}</text>
+              {{ changeTypeText(row.changeType || row.change_type) }}
+            </text>
+            <text class="record-id" :class="changeDirection(row) === '入库' ? 'is-in' : 'is-out'">{{ changeQuantity(row) }}</text>
+          </view>
+          <view class="summary-grid">
+            <view class="summary-item"><text class="summary-label">变动后余额</text><text class="summary-value">{{ row.afterQuantity ?? row.after_quantity ?? 0 }}</text></view>
+            <view class="summary-item"><text class="summary-label">单位成本</text><text class="summary-value">¥{{ Number(row.unitCost ?? row.unit_cost ?? 0).toFixed(2) }}</text></view>
+            <view class="summary-item"><text class="summary-label">变动金额</text><text class="summary-value tone-money">¥{{ Number(row.changeAmount ?? row.change_amount ?? 0).toFixed(2) }}</text></view>
+            <view class="summary-item"><text class="summary-label">来源单据</text><text class="summary-value">{{ row.referenceNo || row.reference_no || row.referenceType || row.reference_type || '-' }}</text></view>
+          </view>
+          <view class="card-footer">
+            <text class="meta-text">{{ row.createTime || row.create_time || '-' }} · {{ row.remark || '系统记录' }}</text>
+            <text class="arrow-icon">›</text>
+          </view>
+        </view>
       </view>
       <StateView v-if="stateStatus !== 'normal'" :status="stateStatus" message="" @retry="reload" />
       <view v-else-if="finished" class="finished">已加载全部流水（{{ total }} 条）</view>
@@ -86,14 +103,56 @@ export default {
     },
     loadMore() { if (!this.finished && !this.loading && !this.loadingMore) { this.pageNum += 1; this.load() } },
     changeDirection(row) { const quantity = Number(row.changeQuantity ?? row.change_quantity ?? 0); return quantity >= 0 ? '入库' : '出库' },
+    changeQuantity(row) { const quantity = Number(row.changeQuantity ?? row.change_quantity ?? 0); return (quantity >= 0 ? '+' : '') + (row.changeQuantity ?? row.change_quantity ?? 0) },
     changeTypeText(type) { const item = this.adjustmentDict.find(x => String(x.dictValue ?? x.value) === String(type)); return item?.dictLabel || item?.label || FALLBACK_TYPES[type] || type || '库存变动' }
   }
 }
 </script>
 
 <style scoped>
-.page{min-height:100vh;background:#f4f7fb;color:#1e293b}.workspace-header{padding:34rpx 28rpx 44rpx;background:#087cf0;color:#fff}.workspace-eyebrow{display:block;font-size:22rpx;letter-spacing:1rpx;opacity:.78}.workspace-title{display:block;margin-top:12rpx;font-size:40rpx;font-weight:700;letter-spacing:-1rpx}.workspace-note{display:block;margin-top:10rpx;font-size:23rpx;line-height:34rpx;opacity:.86}.ledger-filters{padding:18rpx 24rpx 20rpx;background:#fff;border-bottom:1rpx solid #e8eef6}.filter-row{display:flex;align-items:center;gap:16rpx;min-height:70rpx}.filter-row+.filter-row{margin-top:10rpx}.filter-label{width:108rpx;color:#64748b;font-size:22rpx}.filter-control-wide{flex:1;min-width:0}.filter-picker,.filter-date{box-sizing:border-box;padding:16rpx 18rpx;border:1rpx solid #dbe4ef;border-radius:12rpx;background:#f8fafc;color:#334155;font-size:22rpx;white-space:nowrap}.filter-picker{display:flex;justify-content:space-between}.filter-chevron{color:#94a3b8;font-size:25rpx}.date-controls{display:flex;align-items:center;flex:1;min-width:0;gap:8rpx}.date-controls picker{flex:1;min-width:0}.filter-date{overflow:hidden;text-align:center}.date-separator{color:#94a3b8;font-size:21rpx}.filter-button{flex:none;margin:0;padding:0 18rpx;height:66rpx;line-height:66rpx;border:0;border-radius:11rpx;background:#087cf0;color:#fff;font-size:23rpx}.workspace-scroll{height:calc(100vh - 320rpx);padding:22rpx 24rpx 30rpx;box-sizing:border-box}.ledger-card{margin-bottom:16rpx;padding:24rpx;background:#fff;border:1rpx solid #e8eef6;border-radius:18rpx;box-shadow:0 5rpx 18rpx rgba(15,23,42,.035)}.ledger-card-head{display:flex;justify-content:space-between;align-items:flex-start}.ledger-type{display:flex;align-items:center;gap:14rpx;min-width:0}.direction-mark{display:flex;align-items:center;justify-content:center;width:48rpx;height:48rpx;border-radius:14rpx;font-size:24rpx;font-weight:700}.direction-mark.is-in{background:#eaf8ef;color:#16834b}.direction-mark.is-out{background:#fff2e9;color:#c2410c}.ledger-kicker{display:block;color:#94a3b8;font-size:19rpx}.ledger-title{display:block;margin-top:5rpx;color:#1e293b;font-size:28rpx;font-weight:650}.ledger-delta{font-size:30rpx;font-weight:700;font-variant-numeric:tabular-nums}.ledger-delta.is-in{color:#16834b}.ledger-delta.is-out{color:#c2410c}.ledger-card-meta{display:flex;justify-content:space-between;gap:16rpx;margin-top:20rpx;padding-top:16rpx;border-top:1rpx solid #f0f3f7;color:#64748b;font-size:21rpx}.ledger-card-source{display:flex;align-items:flex-start;gap:14rpx;margin-top:12rpx;color:#94a3b8;font-size:21rpx}.source-label{flex:none;color:#a0aec0}.remark{margin:0;color:#64748b;line-height:32rpx;word-break:break-all}.finished{text-align:center;padding:56rpx 0;color:#94a3b8;font-size:23rpx}
-.page{display:flex;flex-direction:column;height:100vh;width:100vw;max-width:750rpx;margin:0 auto;background:linear-gradient(180deg,#E6EEF6 0%,#F3F6FA 42%,#E8EEF5 100%);box-sizing:border-box;overflow:hidden}.header{position:relative;overflow:hidden;flex-shrink:0;background:linear-gradient(180deg,#C7DCF2 0%,#E1ECF8 100%);border-bottom:2rpx solid #AFCBE7}.header-bg{position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.58) 0%,rgba(202,224,246,.9) 100%)}.header-content{position:relative;z-index:2;padding:0 30rpx 42rpx}.header-row{display:flex;align-items:center;justify-content:space-between;gap:16rpx}.header-left{display:flex;flex-direction:column;flex:1;min-width:0;overflow:hidden}.header-title{font-size:36rpx;font-weight:700;color:#1F2D3D}.header-sub{font-size:24rpx;color:#8190A1;margin-top:10rpx;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dept-static-inline{display:flex;align-items:center;justify-content:center;padding:16rpx 24rpx;min-height:60rpx;border-radius:16rpx;background:#F1F6FF;border:1rpx solid #CFE0F8}.dept-name-inline{font-size:26rpx;font-weight:600;color:#087CF0;max-width:160rpx;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.scroll{flex:1;width:100%;min-height:0;padding:18rpx 28rpx 40rpx;box-sizing:border-box}.section-card{background:#fff;border-radius:20rpx;padding:28rpx;margin-top:24rpx;border:1rpx solid #D5E0EC;box-shadow:0 5rpx 18rpx rgba(45,72,98,.07);box-sizing:border-box;overflow:hidden}.filters-card{margin-top:-18rpx;position:relative;z-index:2;padding:24rpx 28rpx}.ledger-list-card{margin-top:0;padding:28rpx}.section-header{display:flex;align-items:center;gap:12rpx;margin-bottom:18rpx}.section-dot{width:12rpx;height:12rpx;border-radius:50%;flex-shrink:0}.section-title{font-size:28rpx;font-weight:700;color:#1A2332;flex:1}.section-link{font-size:22rpx;color:#94A3B8}.filter-row{min-height:66rpx}.filter-row+.filter-row{margin-top:10rpx}.filter-picker,.filter-date{border-color:#D5E0EC;background:#F8FBFD;color:#5A6B7F}.filter-button{background:#087CF0}.ledger-card{margin-bottom:14rpx;padding:20rpx 0;border:0;border-radius:0;box-shadow:none;border-bottom:1rpx solid #E8EEF5}.ledger-card:last-of-type{border-bottom:0}.ledger-card-head{align-items:center}.ledger-card-meta{border-top:0;padding-top:14rpx}.finished{padding:24rpx 0 0}
- .page{background:#e7eff7;overflow:hidden}.hero{margin:22rpx 30rpx 0;padding:28rpx 30rpx 30rpx;border-left:5rpx solid #1687f5;border-radius:20rpx;background:linear-gradient(110deg,#d9eaff,#f7faff);box-shadow:0 8rpx 22rpx rgba(46,82,120,.08)}.eyebrow{display:block;color:#1687f5;font-size:24rpx;font-weight:600}.hero-title{display:block;margin-top:10rpx;color:#1e293b;font-size:38rpx;font-weight:700}.work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx}.work-scope-mark{width:14rpx;height:14rpx;margin-right:16rpx;border-radius:50%;background:#1687f5}.work-scope-copy{display:flex;align-items:baseline;color:#8192a6;font-size:24rpx}.work-scope-name{margin-left:4rpx;color:#26384d;font-size:27rpx;font-weight:700}.product-context{display:flex;align-items:center;margin:14rpx 30rpx 0;padding:16rpx 20rpx;background:#fff;border-radius:14rpx;border:1rpx solid #dbe6f1}.product-context-label{color:#98a9ba;font-size:22rpx}.product-context-name{margin-left:16rpx;color:#26384d;font-size:26rpx;font-weight:600}.filters-card{margin:16rpx 30rpx 0!important;padding:22rpx 24rpx!important}.scroll{padding:0 30rpx 34rpx!important}.ledger-list-card{margin-top:16rpx!important;padding:20rpx 28rpx!important}.ledger-card{padding:22rpx 0!important}.filter-button{height:64rpx;line-height:64rpx;border-radius:32rpx}
-.filter-inline{display:flex;align-items:center;gap:10rpx;width:100%;min-width:0}.filter-type-picker{flex:1.05;min-width:0}.filter-inline .filter-picker{height:64rpx;line-height:32rpx;padding:16rpx 14rpx;overflow:hidden;text-overflow:ellipsis}.filter-inline .date-controls{flex:1.95;gap:6rpx;min-width:0}.filter-inline .filter-date{height:64rpx;line-height:32rpx;padding:16rpx 8rpx;font-size:20rpx}.filter-inline .date-separator{flex:none;font-size:19rpx}.filter-inline .filter-button{padding:0 14rpx;white-space:nowrap;font-size:22rpx}
+.page{display:flex;flex-direction:column;height:100vh;width:100vw;max-width:750rpx;margin:0 auto;background:#e7eff7;box-sizing:border-box;overflow:hidden}
+.hero{margin:22rpx 30rpx 0;padding:28rpx 30rpx 30rpx;border-left:5rpx solid #1687f5;border-radius:20rpx;background:linear-gradient(110deg,#d9eaff,#f7faff);box-shadow:0 8rpx 22rpx rgba(46,82,120,.08);color:#1e293b}
+.eyebrow{display:block;color:#1687f5;font-size:24rpx;font-weight:600}
+.hero-title{display:block;margin-top:10rpx;color:#1e293b;font-size:38rpx;font-weight:700}
+.work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx}
+.work-scope-mark{width:14rpx;height:14rpx;margin-right:16rpx;border-radius:50%;background:#1687f5}
+.work-scope-copy{display:flex;align-items:baseline;color:#8192a6;font-size:24rpx}
+.work-scope-name{margin-left:4rpx;color:#26384d;font-size:27rpx;font-weight:700}
+.scroll{flex:1;width:100%;min-height:0;padding:0 30rpx 34rpx!important;box-sizing:border-box}
+.section-card{background:#fff;border-radius:20rpx;padding:28rpx;margin-top:24rpx;border:1rpx solid #D5E0EC;box-shadow:0 5rpx 18rpx rgba(45,72,98,.07);box-sizing:border-box;overflow:hidden}
+.filters-card{margin:16rpx 30rpx 0!important;padding:22rpx 24rpx!important;position:relative;z-index:2}
+.ledger-list-card{margin-top:16rpx!important;padding:20rpx 28rpx!important}
+.section-header{display:flex;align-items:center;gap:12rpx;margin-bottom:18rpx}
+.section-dot{width:12rpx;height:12rpx;border-radius:50%;flex-shrink:0}
+.section-title{font-size:28rpx;font-weight:700;color:#1A2332;flex:1}
+.section-link{font-size:22rpx;color:#94A3B8}
+.filter-inline{display:flex;align-items:center;gap:10rpx;width:100%;min-width:0}
+.filter-type-picker{flex:1.05;min-width:0}
+.filter-inline .filter-picker{height:64rpx;line-height:32rpx;padding:16rpx 14rpx;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;border:1rpx solid #D5E0EC;border-radius:12rpx;background:#F8FBFD;color:#5A6B7F;font-size:22rpx;white-space:nowrap;display:flex;justify-content:space-between}
+.filter-chevron{color:#94a3b8;font-size:25rpx}
+.filter-inline .date-controls{flex:1.95;gap:6rpx;min-width:0;display:flex;align-items:center}
+.filter-inline .filter-date{height:64rpx;line-height:32rpx;padding:16rpx 8rpx;font-size:20rpx;box-sizing:border-box;border:1rpx solid #D5E0EC;border-radius:12rpx;background:#F8FBFD;color:#5A6B7F;overflow:hidden;text-align:center}
+.filter-inline .date-separator{flex:none;font-size:19rpx;color:#94a3b8}
+.filter-inline .filter-button{padding:0 14rpx;white-space:nowrap;font-size:22rpx;height:64rpx;line-height:64rpx;border:0;border-radius:32rpx;background:#087CF0;color:#fff;margin:0}
+
+.record-card{display:flex;margin-bottom:16rpx;background:#FFFFFF;border-radius:20rpx;box-shadow:0 2rpx 16rpx rgba(8,124,240,0.06);overflow:hidden}
+.card-bar{width:4rpx;background:linear-gradient(180deg,#087CF0,#A8C7E5);flex-shrink:0}
+.card-body{flex:1;padding:24rpx 28rpx}
+.card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:20rpx}
+.record-title{flex:1;font-size:30rpx;line-height:42rpx;font-weight:700;color:#1A2332;display:flex;align-items:center;gap:14rpx}
+.direction-tag{display:inline-flex;align-items:center;justify-content:center;width:48rpx;height:48rpx;border-radius:14rpx;font-size:24rpx;font-weight:700;flex-shrink:0}
+.direction-tag.is-in{background:#D1FAE5;color:#065F46}
+.direction-tag.is-out{background:#FEF3C7;color:#92400E}
+.record-id{padding:6rpx 18rpx;font-size:24rpx;border-radius:999rpx;flex-shrink:0;font-weight:700;font-variant-numeric:tabular-nums}
+.record-id.is-in{background:#D1FAE5;color:#065F46}
+.record-id.is-out{background:#FEF3C7;color:#92400E}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:12rpx;margin-top:16rpx}
+.summary-item{display:flex;flex-direction:column;gap:6rpx}
+.summary-label{font-size:22rpx;color:#94A3B8}
+.summary-value{font-size:26rpx;color:#1A2332;font-weight:500}
+.summary-value.tone-money{color:#B45309;font-weight:700}
+.card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:16rpx;padding-top:14rpx;border-top:1rpx solid #E8EEF5}
+.meta-text{font-size:24rpx;color:#94A3B8;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.arrow-icon{font-size:36rpx;color:#CBD5E1;font-weight:300;line-height:1;flex-shrink:0;margin-left:12rpx}
+.finished{text-align:center;padding:24rpx 0 0;color:#94a3b8;font-size:23rpx}
 </style>

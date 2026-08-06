@@ -25,15 +25,40 @@
     <scroll-view scroll-y class="scroll" @scrolltolower="nextPage">
       <view class="section-card list-card" v-if="rows.length">
         <view class="section-header"><view class="section-dot" style="background:#EF4444"></view><text class="section-title">退货明细</text></view>
-        <view class="return-card" v-for="row in rows" :key="row.returnId" @tap="openDetail(row)">
-          <view class="return-head">
-            <view class="return-title-row"><text class="return-title">{{ row.returnNo || '-' }}</text><text class="return-tag" :class="statusClass(row.status)">{{ statusText(row.status) }}</text></view>
-            <text class="return-amount">¥{{ money(row.refundAmount) }}</text>
+      </view>
+      <view class="record-card" v-for="row in rows" :key="row.returnId" @tap="openDetail(row)">
+        <view class="card-bar"></view>
+        <view class="card-body">
+          <view class="card-header">
+            <view class="record-title">{{ row.customerName || '未登记顾客' }}</view>
+            <view class="record-id">NO. {{ row.returnNo || row.returnId }}</view>
           </view>
-          <view class="return-customer-row"><text class="return-customer">{{ row.customerName || '未登记顾客' }}</text><text class="return-meta">退货日期 {{ dateText(row.returnDate) }}</text></view>
-          <view class="return-metrics"><text>原购买单 {{ row.purchaseId }}</text><text class="refunded">已退 ¥{{ money(row.refundedAmount) }}</text></view>
+          <view class="summary-grid">
+            <view class="summary-item">
+              <text class="summary-label">退货金额</text>
+              <text class="summary-value tone-money">¥{{ money(row.refundAmount) }}</text>
+            </view>
+            <view class="summary-item">
+              <text class="summary-label">已退金额</text>
+              <text class="summary-value">¥{{ money(row.refundedAmount) }}</text>
+            </view>
+            <view class="summary-item">
+              <text class="summary-label">原购买单</text>
+              <text class="summary-value">{{ row.purchaseId || '-' }}</text>
+            </view>
+            <view class="summary-item">
+              <text class="summary-label">退货数量</text>
+              <text class="summary-value">{{ returnQuantity(row) }}</text>
+            </view>
+          </view>
+          <view class="card-footer">
+            <text class="meta-text">{{ dateText(row.returnDate) }} · {{ statusText(row.status) }}</text>
+            <text class="arrow-icon">›</text>
+          </view>
         </view>
-        <view class="pagination" v-if="rows.length">
+      </view>
+      <view class="pagination-card" v-if="rows.length">
+        <view class="pagination">
           <button :disabled="pageNum <= 1" @tap="prevPage">上一页</button>
           <text class="page-info">{{ pageNum }} / {{ totalPages }}</text>
           <button :disabled="pageNum >= totalPages" @tap="nextPage">下一页</button>
@@ -207,6 +232,17 @@ export default {
     dateText(v) { return v ? String(v).replace('T',' ').slice(0,19) : '-' },
     money(v) { return Number(v || 0).toFixed(2) },
     quantity(v) { return Number(v || 0).toFixed(3).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1') },
+    returnQuantity(row) {
+      if (!row) return '-'
+      if (row.returnTotalQuantity != null && Number(row.returnTotalQuantity) !== 0) return this.quantity(row.returnTotalQuantity)
+      if (row.totalQuantity != null && Number(row.totalQuantity) !== 0) return this.quantity(row.totalQuantity)
+      if (row.returnQuantity != null && Number(row.returnQuantity) !== 0) return this.quantity(row.returnQuantity)
+      if (Array.isArray(row.items) && row.items.length) {
+        const s = row.items.reduce((acc, it) => acc + Number(it.returnTotalQuantity || it.totalQuantity || it.returnSaleQuantity || 0) + Number(it.returnGiftQuantity || 0), 0)
+        return s ? this.quantity(s) : '-'
+      }
+      return '-'
+    },
     statusText(v) { return ({ DRAFT: '草稿', PENDING: '待审核', APPROVED: '已批准', COMPLETED: '已完成', REFUNDED: '已退款', CANCELLED: '已作废' })[v] || v || '-' },
     statusClass(v) { const s = String(v ?? ''); return s === 'COMPLETED' || s === 'REFUNDED' ? 'status-ok' : s === 'CANCELLED' ? 'status-danger' : 'status-info' },
     periodLabel(v) { return `${v.periodNo || v.periodId}（${this.dateText(v.startTime)} 至 ${v.endTime ? this.dateText(v.endTime) : '当前'}）` },
@@ -377,30 +413,25 @@ export default {
 .list-card{margin-top:16rpx!important;padding:20rpx 28rpx!important}
 .state-card{padding:20rpx 28rpx 28rpx!important}
 
-/* ── 退货卡片 ── */
-.return-card{padding:22rpx 0;border-bottom:1rpx solid #e7edf3}
-.return-card:last-of-type{border-bottom:0}
-.return-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14rpx}
-.return-title-row{display:flex;align-items:center;gap:12rpx;min-width:0}
-.return-title{font-size:28rpx;font-weight:700;color:#1A2332}
-.return-tag{color:#1687f5;background:#edf5ff;padding:6rpx 14rpx;border-radius:20rpx;font-size:22rpx;flex:none}
-.return-tag.status-ok{color:#065F46;background:#D1FAE5}
-.return-tag.status-warn{color:#92400E;background:#FEF3C7}
-.return-tag.status-danger{color:#991B1B;background:#FEE2E2}
-.return-tag.status-info{color:#075985;background:#E0F2FE}
-.return-amount{font-size:32rpx;font-weight:700;color:#e6535b;flex:none;font-variant-numeric:tabular-nums}
-.return-customer-row{margin-top:14rpx}
-.return-customer{display:block;font-size:28rpx;font-weight:600;color:#1e293b}
-.return-meta{display:block;color:#64748b;font-size:23rpx;margin-top:6rpx}
-.return-metrics{display:flex;justify-content:flex-start;flex-wrap:wrap;gap:18rpx;color:#64748b;font-size:23rpx;padding:16rpx 0 0;margin-top:14rpx;border-top:1rpx solid #f0f3f7}
-.return-metrics .refunded{color:#22a06b}
-.return-footer{margin-top:16rpx;color:#64748b;font-size:22rpx;display:flex;align-items:flex-end;justify-content:space-between;gap:14rpx}
-.return-status{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.row-buttons{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8rpx;flex:none}
-.row-buttons button{border:0;border-radius:10rpx;font-size:22rpx;padding:6rpx 14rpx;background:#EEF3F8;color:#334155;margin:0;line-height:1.6}
-.row-buttons .warn{color:#b76b00!important;background:#FFF6E8}
-.row-buttons .success{color:#16865a!important;background:#E8F8EF}
-.row-buttons .danger{color:#d64545!important;background:#FDECEE}
+/* ── 标准记录卡片 ── */
+.record-card{display:flex;margin-bottom:16rpx;background:#FFFFFF;border-radius:20rpx;box-shadow:0 5rpx 18rpx rgba(45,72,98,.07);overflow:hidden}
+.card-bar{width:4rpx;background:linear-gradient(180deg,#087CF0,#A8C7E5);flex-shrink:0}
+.card-body{flex:1;padding:24rpx 28rpx;box-sizing:border-box}
+.card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:20rpx}
+.record-title{flex:1;font-size:30rpx;line-height:42rpx;font-weight:700;color:#1A2332;overflow-wrap:anywhere;word-break:break-word}
+.record-id{padding:4rpx 14rpx;background:#E8EEF5;color:#5A6B7F;font-size:20rpx;border-radius:999rpx;flex-shrink:0;font-variant-numeric:tabular-nums}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:12rpx;margin-top:16rpx}
+.summary-item{display:flex;flex-direction:column;gap:6rpx}
+.summary-label{font-size:22rpx;color:#94A3B8}
+.summary-value{font-size:26rpx;color:#1A2332;font-weight:500;font-variant-numeric:tabular-nums}
+.summary-value.tone-money{color:#B45309;font-weight:700}
+.summary-value.tone-danger{color:#B91C1C;font-weight:700}
+.summary-value.status-ok{color:#047857;font-weight:700}
+.summary-value.status-warn{color:#B45309;font-weight:700}
+.card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:16rpx;padding-top:14rpx;border-top:1rpx solid #E8EEF5}
+.meta-text{font-size:24rpx;color:#94A3B8}
+.arrow-icon{font-size:36rpx;color:#CBD5E1;font-weight:300;line-height:1}
+.pagination-card{margin-top:4rpx}
 
 /* ── 空状态 / 分页 ── */
 .empty{text-align:center;color:#94a3b8;padding:56rpx 0;font-size:23rpx}

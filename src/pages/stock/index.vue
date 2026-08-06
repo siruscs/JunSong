@@ -9,10 +9,25 @@
     <view class="work-scope"><view class="work-scope-mark"></view><view class="work-scope-copy"><text class="work-scope-label">当前部门 · </text><text class="work-scope-name">{{ currentDeptName || '当前部门' }}</text></view></view>
     <view class="summary-bar" v-if="report"><view><text class="summary-value">¥{{ money(report.closingAmount) }}</text><text class="summary-label">库存金额</text></view><view><text class="summary-value">{{ report.closingQuantity || 0 }}</text><text class="summary-label">库存数量</text></view><view><text class="summary-value">{{ items.length }}</text><text class="summary-label">商品数</text></view></view>
     <scroll-view scroll-y class="scroll" refresher-enabled :refresher-triggered="refreshing" @refresherrefresh="refresh">
-      <view v-if="stateStatus === 'normal'" class="section-card inventory-list">
-        <view class="inventory-card" v-for="item in items" :key="`${item.deptId}-${item.productId}`" @tap="openLedger(item)">
-          <view class="inventory-card-head"><view><text class="product-name">{{ item.productName || '-' }}</text><text class="dept-text">{{ item.deptName || item.deptId || '-' }}</text></view><text class="stock-entry">流水 ›</text></view>
-          <view class="inventory-card-main"><view><text>库存数量</text><strong>{{ item.closingQuantity || 0 }}</strong></view><view><text>平均成本</text><strong>¥{{ money(item.avgUnitCost, 6) }}</strong></view><view class="amount-cell"><text>库存金额</text><strong>¥{{ money(item.closingAmount) }}</strong></view></view>
+      <view v-if="stateStatus === 'normal'" class="record-list">
+        <view class="record-card" v-for="item in items" :key="`${item.deptId}-${item.productId}`" @tap="openLedger(item)">
+          <view class="card-bar"></view>
+          <view class="card-body">
+            <view class="card-header">
+              <text class="record-title">{{ item.productName || '-' }}</text>
+              <text class="record-id">{{ item.deptName || item.deptId || '-' }}</text>
+            </view>
+            <view class="summary-grid">
+              <view class="summary-item"><text class="summary-label">库存数量</text><text class="summary-value">{{ item.closingQuantity || 0 }}</text></view>
+              <view class="summary-item"><text class="summary-label">平均成本</text><text class="summary-value">¥{{ money(item.avgUnitCost, 6) }}</text></view>
+              <view class="summary-item"><text class="summary-label">库存金额</text><text class="summary-value tone-money">¥{{ money(item.closingAmount) }}</text></view>
+              <view class="summary-item"><text class="summary-value tone-warn">查看明细 ›</text></view>
+            </view>
+            <view class="card-footer">
+              <text class="meta-text">商品编号 {{ item.productId || '-' }}</text>
+              <text class="arrow-icon">›</text>
+            </view>
+          </view>
         </view>
       </view>
       <view v-else class="section-card state-card"><StateView :status="stateStatus" :message="loadError" @retry="load" /></view>
@@ -49,8 +64,37 @@ export default {
 </script>
 
 <style scoped>
-.page{min-height:100vh;background:#f4f7fb;color:#1e293b}.workspace-header{padding:34rpx 28rpx 48rpx;background:#087cf0;color:#fff}.workspace-eyebrow{display:block;font-size:22rpx;letter-spacing:1rpx;opacity:.78}.workspace-title{display:block;margin-top:12rpx;font-size:42rpx;font-weight:700;letter-spacing:-1rpx}.workspace-note{display:block;margin-top:12rpx;font-size:23rpx;line-height:34rpx;opacity:.86}.inventory-summary{display:flex;margin:-22rpx 24rpx 22rpx;padding:22rpx 8rpx;background:#fff;border:1rpx solid #e8eef6;border-radius:20rpx;box-shadow:0 10rpx 28rpx rgba(15,23,42,.07)}.summary-item{flex:1;min-width:0;padding:0 8rpx;color:#64748b;font-size:21rpx;text-align:center;border-right:1rpx solid #eef2f7}.summary-item:last-child{border-right:0}.summary-item strong{display:block;margin-top:10rpx;color:#0f172a;font-size:27rpx;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}.summary-item small{display:block;margin-top:6rpx;color:#94a3b8;font-size:18rpx}.summary-primary strong{color:#087cf0}.summary-muted strong{color:#64748b;font-size:23rpx}.workspace-scroll{height:calc(100vh - 270rpx);padding:0 24rpx 30rpx;box-sizing:border-box}.inventory-list{padding-bottom:20rpx}.inventory-card{margin-bottom:16rpx;padding:24rpx;background:#fff;border:1rpx solid #e8eef6;border-radius:18rpx;box-shadow:0 5rpx 18rpx rgba(15,23,42,.035)}.inventory-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16rpx}.inventory-card-kicker{display:block;margin-bottom:6rpx;color:#94a3b8;font-size:19rpx}.product-name{display:block;color:#0f172a;font-size:29rpx;font-weight:650}.dept{padding:6rpx 12rpx;border-radius:8rpx;background:#f1f6fd;color:#5b7ea8;font-size:20rpx;white-space:nowrap}.inventory-card-main{display:flex;margin-top:24rpx;padding:18rpx 0;border-top:1rpx solid #f0f3f7;border-bottom:1rpx solid #f0f3f7}.inventory-card-main>view{flex:1;min-width:0;color:#64748b;font-size:21rpx}.inventory-card-main>view+view{padding-left:14rpx}.inventory-card-main strong{display:block;margin-top:8rpx;color:#1e293b;font-size:27rpx;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}.amount-cell strong{color:#087cf0}.inventory-card-foot{display:flex;justify-content:space-between;align-items:center;margin-top:18rpx;color:#94a3b8;font-size:21rpx}.ledger-link{color:#087cf0;font-size:22rpx;font-weight:600}.arrow{margin-left:5rpx;font-size:27rpx}.state-view{padding-top:50rpx}
-.page{display:flex;flex-direction:column;height:100vh;width:100vw;max-width:750rpx;margin:0 auto;background:linear-gradient(180deg,#E6EEF6 0%,#F3F6FA 42%,#E8EEF5 100%);box-sizing:border-box;overflow:hidden}.header{position:relative;overflow:hidden;flex-shrink:0;background:linear-gradient(180deg,#C7DCF2 0%,#E1ECF8 100%);border-bottom:2rpx solid #AFCBE7}.header-bg{position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.58) 0%,rgba(202,224,246,.9) 100%);border-bottom:1rpx solid rgba(8,124,240,.08)}.header-bg:after{content:'';position:absolute;bottom:0;left:0;right:0;height:2rpx;background:#A8C7E5}.header-content{position:relative;z-index:2;padding:0 30rpx 42rpx;box-sizing:border-box}.header-row{display:flex;align-items:center;justify-content:space-between;gap:16rpx}.header-left{display:flex;flex-direction:column;flex:1;min-width:0;overflow:hidden}.header-title{font-size:36rpx;font-weight:700;line-height:1.2;color:#1F2D3D}.header-sub{font-size:24rpx;line-height:1.4;color:#8190A1;margin-top:10rpx;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dept-static-inline{display:flex;align-items:center;justify-content:center;padding:16rpx 24rpx;min-height:60rpx;border-radius:16rpx;background:#F1F6FF;border:1rpx solid #CFE0F8}.dept-name-inline{font-size:26rpx;font-weight:600;color:#087CF0;max-width:160rpx;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.kpi-row-wrap{padding:0 28rpx;margin-top:-16rpx;position:relative;z-index:2;flex-shrink:0}.kpi-row{display:flex;gap:16rpx;width:100%;box-sizing:border-box}.kpi-card{flex:1;min-width:0;background:#fff;border-radius:20rpx;padding:24rpx 12rpx;display:flex;flex-direction:column;align-items:center;border:1rpx solid #D5E0EC;box-shadow:0 5rpx 18rpx rgba(45,72,98,.08);position:relative}.kpi-value{font-size:30rpx;font-weight:700;color:#1A2332;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.kpi-value.primary{color:#087CF0}.kpi-value.success{color:#10B981}.kpi-value.warning{color:#F59E0B}.kpi-label{font-size:20rpx;color:#94A3B8;margin-top:8rpx}.scroll{flex:1;width:100%;min-height:0;padding:18rpx 28rpx 40rpx;box-sizing:border-box;overflow-x:hidden}.section-card{background:#fff;border-radius:20rpx;padding:28rpx;margin-top:24rpx;border:1rpx solid #D5E0EC;box-shadow:0 5rpx 18rpx rgba(45,72,98,.07);width:100%;box-sizing:border-box;overflow:hidden}.page-intro{margin-top:18rpx;padding:22rpx 28rpx}.section-header{display:flex;align-items:center;gap:12rpx;margin-bottom:18rpx}.section-dot{width:12rpx;height:12rpx;border-radius:50%;flex-shrink:0}.section-title{font-size:28rpx;font-weight:700;color:#1A2332;flex:1}.section-link{font-size:22rpx;color:#94A3B8;margin-left:auto}.stock-scope-note{font-size:22rpx;color:#94A3B8}.inventory-list{padding:28rpx;margin-top:24rpx}.inventory-card{margin:0;padding:0 0 20rpx;background:transparent;border:0;border-radius:0;box-shadow:none}.inventory-card+.inventory-card{padding-top:20rpx;border-top:1rpx solid #E8EEF5}.inventory-card-head{display:flex;justify-content:space-between;align-items:flex-start}.product-name{font-size:28rpx;color:#1A2332}.dept-text{display:block;margin-top:6rpx;color:#94A3B8;font-size:21rpx}.stock-entry{color:#087CF0;font-size:22rpx;font-weight:600}.inventory-card-main{display:flex;margin-top:18rpx;padding:0;border:0}.inventory-card-main>view{color:#94A3B8;font-size:21rpx}.inventory-card-main strong{margin-top:7rpx;font-size:27rpx;color:#1A2332}.amount-cell strong{color:#087CF0}.state-card{padding:0 28rpx 28rpx}.state-card .state-view{padding-top:20rpx}
-/* 通用业务页皮肤：与销售记录保持一致，避免使用首页式大面积 KPI 英雄区 */
-.page{background:#e7eff7;box-sizing:border-box;overflow:hidden}.hero{margin:22rpx 30rpx 0;padding:28rpx 30rpx 30rpx;border-left:5rpx solid #1687f5;border-radius:20rpx;background:linear-gradient(110deg,#d9eaff,#f7faff);box-shadow:0 8rpx 22rpx rgba(46,82,120,.08);color:#1e293b}.eyebrow{display:block;color:#1687f5;font-size:24rpx;font-weight:600}.hero-title{display:block;margin-top:10rpx;color:#1e293b;font-size:38rpx;font-weight:700}.work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx}.work-scope-mark{width:14rpx;height:14rpx;margin-right:16rpx;border-radius:50%;background:#1687f5}.work-scope-copy{display:flex;align-items:baseline;color:#8192a6;font-size:24rpx}.work-scope-name{margin-left:4rpx;color:#26384d;font-size:27rpx;font-weight:700}.summary-bar{display:flex;margin:16rpx 30rpx 0;padding:18rpx 8rpx;background:#fff;border-radius:18rpx;border:1rpx solid #dbe6f1}.summary-bar>view{flex:1;text-align:center;border-right:1rpx solid #edf1f5}.summary-bar>view:last-child{border-right:0}.summary-value{display:block;color:#1687f5;font-size:28rpx;font-weight:700}.summary-label{display:block;margin-top:6rpx;color:#98a9ba;font-size:20rpx}.page-intro{margin:18rpx 30rpx 0!important;padding:22rpx 24rpx!important}.scroll{padding:0 30rpx 34rpx!important}.inventory-list{margin-top:16rpx!important;padding:20rpx 28rpx!important}.inventory-card{padding:22rpx 0!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important}.inventory-card+.inventory-card{padding-top:22rpx!important;border-top:1rpx solid #e7edf3!important}.state-card{margin:16rpx 0 0!important}
+.page{display:flex;flex-direction:column;height:100vh;width:100vw;max-width:750rpx;margin:0 auto;background:#e7eff7;box-sizing:border-box;overflow:hidden}
+.hero{margin:22rpx 30rpx 0;padding:28rpx 30rpx 30rpx;border-left:5rpx solid #1687f5;border-radius:20rpx;background:linear-gradient(110deg,#d9eaff,#f7faff);box-shadow:0 8rpx 22rpx rgba(46,82,120,.08);color:#1e293b}
+.eyebrow{display:block;color:#1687f5;font-size:24rpx;font-weight:600}
+.hero-title{display:block;margin-top:10rpx;color:#1e293b;font-size:38rpx;font-weight:700}
+.work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx}
+.work-scope-mark{width:14rpx;height:14rpx;margin-right:16rpx;border-radius:50%;background:#1687f5}
+.work-scope-copy{display:flex;align-items:baseline;color:#8192a6;font-size:24rpx}
+.work-scope-name{margin-left:4rpx;color:#26384d;font-size:27rpx;font-weight:700}
+.summary-bar{display:flex;margin:16rpx 30rpx 0;padding:18rpx 8rpx;background:#fff;border-radius:18rpx;border:1rpx solid #dbe6f1}
+.summary-bar>view{flex:1;text-align:center;border-right:1rpx solid #edf1f5}
+.summary-bar>view:last-child{border-right:0}
+.summary-bar .summary-value{display:block;color:#1687f5;font-size:28rpx;font-weight:700}
+.summary-bar .summary-label{display:block;margin-top:6rpx;color:#98a9ba;font-size:20rpx}
+.scroll{flex:1;width:100%;min-height:0;padding:16rpx 30rpx 34rpx;box-sizing:border-box;overflow-x:hidden}
+.section-card{background:#fff;border-radius:20rpx;padding:28rpx;margin-top:24rpx;border:1rpx solid #D5E0EC;box-shadow:0 5rpx 18rpx rgba(45,72,98,.07);width:100%;box-sizing:border-box;overflow:hidden}
+.state-card{padding:0 28rpx 28rpx;margin:16rpx 0 0}
+.state-card .state-view{padding-top:20rpx}
+.record-list{margin-top:0;padding-top:8rpx}
+.record-card{display:flex;margin-bottom:16rpx;background:#fff;border-radius:20rpx;box-shadow:0 6rpx 16rpx rgba(46,82,120,.08);overflow:hidden}
+.card-bar{width:4rpx;flex-shrink:0;background:linear-gradient(180deg,#1687f5 0%,#58b0ff 100%);border-radius:4rpx 0 0 4rpx}
+.card-body{flex:1;min-width:0;padding:24rpx 26rpx 22rpx 22rpx;display:flex;flex-direction:column;gap:18rpx}
+.card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16rpx}
+.record-title{flex:1;min-width:0;color:#1A2332;font-size:29rpx;font-weight:700;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.record-id{flex-shrink:0;padding:6rpx 14rpx;border-radius:100rpx;background:#F1F6FF;color:#1687f5;font-size:20rpx;font-weight:600;white-space:nowrap;max-width:200rpx;overflow:hidden;text-overflow:ellipsis}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:14rpx 24rpx}
+.summary-item{display:flex;flex-direction:column;gap:6rpx;min-width:0}
+.summary-grid .summary-label{color:#8A9BB0;font-size:20rpx;line-height:1}
+.summary-grid .summary-value{color:#1A2332;font-size:26rpx;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tone-money{color:#1687f5!important}
+.tone-warn{color:#F59E0B!important;font-size:22rpx!important;font-weight:600!important}
+.card-footer{display:flex;justify-content:space-between;align-items:center;padding-top:4rpx;border-top:1rpx solid #F0F4F8}
+.meta-text{color:#98A9BA;font-size:21rpx;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.arrow-icon{color:#C0CCDA;font-size:30rpx;font-weight:700;line-height:1;margin-left:10rpx}
 </style>

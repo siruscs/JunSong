@@ -35,32 +35,49 @@
       @scrolltolower="loadMore"
     >
       <view
-        class="user-item"
-        hover-class="user-item--active"
+        class="record-card"
         v-for="item in rows"
         :key="item.userId"
         @tap="openDetail(item)"
       >
-        <view class="avatar" :style="{ background: avatarUrl(item.avatar) ? '#F1F5F9' : avatarColor(item.userName) }">
-          <image v-if="avatarUrl(item.avatar)" class="avatar-img" :src="avatarUrl(item.avatar)" mode="aspectFill" />
-          <text v-else class="avatar-fallback">{{ firstChar(item.userName) }}</text>
-        </view>
-        <view class="user-info">
-          <view class="user-name-row">
-            <text class="user-name">{{ item.userName || '-' }}</text>
-            <text class="nick-name">{{ item.nickName || '-' }}</text>
-          </view>
-          <view class="user-meta">
-            <text class="user-phone">{{ item.phonenumber || '-' }}</text>
-            <view class="status-pill" :class="item.status === '0' ? 'status-ok' : 'status-disabled'">
-              {{ item.status === '0' ? '正常' : '停用' }}
+        <view class="card-bar"></view>
+        <view class="card-body">
+          <view class="card-header">
+            <view class="record-title">
+              {{ item.userName || '-' }}
+              <text class="nick-name" v-if="item.nickName">（{{ item.nickName }}）</text>
             </view>
-            <view class="wechat-pill" :class="wechatBindingClass(item)">
-              {{ wechatBindingText(item) }}
+            <view class="record-id">NO. {{ item.userId }}</view>
+          </view>
+
+          <view class="summary-grid">
+            <view class="summary-item">
+              <text class="summary-label">手机号</text>
+              <text class="summary-value">{{ item.phonenumber || '-' }}</text>
+            </view>
+            <view class="summary-item">
+              <text class="summary-label">所属部门</text>
+              <text class="summary-value">{{ item.deptName || '-' }}</text>
+            </view>
+            <view class="summary-item">
+              <text class="summary-label">账号状态</text>
+              <text class="summary-value" :class="item.status === '0' ? 'status-ok' : 'status-danger'">
+                {{ item.status === '0' ? '正常' : '停用' }}
+              </text>
+            </view>
+            <view class="summary-item">
+              <text class="summary-label">微信绑定</text>
+              <text class="summary-value" :class="item.mpBindingStatus === 'BOUND' ? 'status-ok' : ''">
+                {{ wechatBindingText(item) }}
+              </text>
             </view>
           </view>
+
+          <view class="card-footer">
+            <text class="meta-text">{{ item.createTime ? '创建时间：' + item.createTime : '创建时间：-' }}</text>
+            <text class="arrow-icon">›</text>
+          </view>
         </view>
-        <text class="arrow">›</text>
       </view>
 
       <view class="empty" v-if="!loading && rows.length === 0">
@@ -347,120 +364,108 @@ export default {
   padding: 16rpx 0 30rpx;
 }
 
-.user-item {
+.record-card {
   display: flex;
-  align-items: center;
-  margin: 0 28rpx 12rpx;
-  padding: 24rpx;
+  margin: 0 28rpx 16rpx;
   background: #FFFFFF;
-  border-radius: 16rpx;
-  box-shadow: 0 2rpx 8rpx rgba(8, 124, 240, 0.04);
-}
-
-.user-item--active {
-  background: #E8EEF5;
-}
-
-.avatar {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 34rpx;
-  font-weight: 700;
-  color: #FFFFFF;
-  flex-shrink: 0;
+  border-radius: 20rpx;
+  box-shadow: 0 2rpx 16rpx rgba(8, 124, 240, 0.06);
   overflow: hidden;
 }
 
-.avatar-img {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 50%;
+.card-bar {
+  width: 4rpx;
+  background: linear-gradient(180deg, #087CF0, #A8C7E5);
+  flex-shrink: 0;
 }
 
-.avatar-fallback {
-  color: #FFFFFF;
-}
-
-.user-info {
+.card-body {
   flex: 1;
-  margin-left: 20rpx;
-  min-width: 0;
+  padding: 24rpx 28rpx;
 }
 
-.user-name-row {
+.card-header {
   display: flex;
-  align-items: center;
-  gap: 12rpx;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
 }
 
-.user-name {
+.record-title {
+  flex: 1;
   font-size: 30rpx;
-  font-weight: 600;
+  line-height: 42rpx;
+  font-weight: 700;
   color: #1A2332;
 }
 
-.nick-name {
+.record-title .nick-name {
   font-size: 26rpx;
   color: #5A6B7F;
+  font-weight: 500;
 }
 
-.user-meta {
-  display: flex;
-  align-items: center;
+.record-id {
+  padding: 4rpx 14rpx;
+  background: #E8EEF5;
+  color: #5A6B7F;
+  font-size: 20rpx;
+  border-radius: 999rpx;
+  flex-shrink: 0;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 12rpx;
-  margin-top: 8rpx;
-  flex-wrap: wrap;
+  margin-top: 16rpx;
 }
 
-.user-phone {
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.summary-label {
+  font-size: 22rpx;
+  color: #94A3B8;
+}
+
+.summary-value {
+  font-size: 26rpx;
+  color: #1A2332;
+  font-weight: 500;
+}
+
+.summary-value.status-ok {
+  color: #047857;
+  font-weight: 700;
+}
+
+.summary-value.status-danger {
+  color: #B91C1C;
+  font-weight: 700;
+}
+
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16rpx;
+  padding-top: 14rpx;
+  border-top: 1rpx solid #E8EEF5;
+}
+
+.meta-text {
   font-size: 24rpx;
   color: #94A3B8;
 }
 
-.status-pill {
-  font-size: 22rpx;
-  padding: 4rpx 14rpx;
-  border-radius: 999rpx;
-  font-weight: 500;
-}
-
-.status-ok {
-  background: #D1FAE5;
-  color: #065F46;
-}
-
-.status-disabled {
-  background: #FEE2E2;
-  color: #991B1B;
-}
-
-.wechat-pill {
-  font-size: 22rpx;
-  padding: 4rpx 14rpx;
-  border-radius: 999rpx;
-  font-weight: 500;
-}
-
-.wechat-bound {
-  background: #E0F2FE;
-  color: #0369A1;
-}
-
-.wechat-unbound {
-  background: #F1F5F9;
-  color: #64748B;
-}
-
-.arrow {
+.arrow-icon {
   font-size: 36rpx;
   color: #CBD5E1;
   font-weight: 300;
-  flex-shrink: 0;
-  margin-left: 12rpx;
 }
 
 .fab {

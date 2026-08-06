@@ -50,34 +50,36 @@
           <text class="section-title">政策列表</text>
           <text class="section-link">显示 {{ filteredRows.length }} / {{ rows.length }}</text>
         </view>
-        <!-- 单条政策卡片（分隔线式，参考 purchase-card） -->
-        <view class="policy-card" v-for="row in filteredRows" :key="row.policyId" @tap="openDetail(row)">
-          <!-- 政策头部：名称 + 套餐档位标签 + 状态 -->
-          <view class="policy-head">
-            <view class="policy-title-row">
-              <text class="policy-title">{{ row.policyName }}</text>
-              <text class="policy-tag">{{ (row.packages || []).length }} 档套餐</text>
+        <!-- 单条政策卡片（标准 record-card 结构） -->
+        <view class="record-card" v-for="row in filteredRows" :key="row.policyId" @tap="openDetail(row)">
+          <view class="card-bar"></view>
+          <view class="card-body">
+            <view class="card-header">
+              <view class="record-title">{{ row.policyName }}</view>
+              <view class="record-id">NO. {{ row.policyNo || '-' }}</view>
             </view>
-            <text class="policy-status" :class="row.status === '1' ? 'status-on' : 'status-off'">{{ row.status === '1' ? '启用' : '停用' }}</text>
-          </view>
-          <!-- 政策编号 + 商品名 -->
-          <view class="policy-info-row">
-            <text class="policy-no">{{ row.policyNo || '-' }}</text>
-            <text class="policy-product">{{ row.productName || row.productId || '商品' }}</text>
-          </view>
-          <!-- 套餐档位列表（小标签样式） -->
-          <view class="policy-packages" v-if="(row.packages || []).length">
-            <view class="package-item" v-for="p in row.packages" :key="p.packageId">
-              <text class="package-name">{{ p.packageName || '套餐' }}</text>
-              <text class="package-rule">买 {{ quantity(p.purchaseQuantity) }} 送 {{ quantity(p.giftQuantity) }}</text>
-              <text class="package-price">¥{{ money(p.packagePrice) }}</text>
+            <view class="summary-grid">
+              <view class="summary-item">
+                <text class="summary-label">商品名</text>
+                <text class="summary-value">{{ row.productName || row.productId || '-' }}</text>
+              </view>
+              <view class="summary-item">
+                <text class="summary-label">套餐档数</text>
+                <text class="summary-value">{{ (row.packages || []).length }} 档</text>
+              </view>
+              <view class="summary-item">
+                <text class="summary-label">购买合计数</text>
+                <text class="summary-value">{{ totalPurchaseQuantity(row.packages) }}</text>
+              </view>
+              <view class="summary-item">
+                <text class="summary-label">状态</text>
+                <text class="summary-value" :class="row.status === '1' ? 'tone-ok' : 'tone-warn'">{{ row.status === '1' ? '已启用' : '已停用' }}</text>
+              </view>
             </view>
-          </view>
-          <view class="policy-packages-empty" v-else>暂无套餐档位</view>
-          <!-- 底部状态 + 操作按钮 -->
-          <view class="policy-footer">
-            <text class="policy-status-text">{{ row.status === '1' ? '启用中' : '已停用' }}</text>
-            <text class="arrow-icon">›</text>
+            <view class="card-footer">
+              <text class="meta-text">政策编号：{{ row.policyNo || '-' }}</text>
+              <text class="arrow-icon">›</text>
+            </view>
           </view>
         </view>
       </view>
@@ -185,6 +187,11 @@ export default {
     can(a) { return hasActionPermission('campaignPolicy', a) },
     quantity(v) { return Number(v || 0).toFixed(3).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1') },
     money(v) { return Number(v || 0).toFixed(2) },
+    totalPurchaseQuantity(packages) {
+      const list = packages || []
+      const total = list.reduce((sum, p) => sum + Number(p.purchaseQuantity || 0), 0)
+      return this.quantity(total)
+    },
     async load() {
       const r = await request({ url: '/member/campaign/policy/list', method: 'GET', data: { pageNum: 1, pageSize: 200, deptId: this.deptId } })
       this.rows = r.rows || r.data || []
@@ -271,45 +278,25 @@ export default {
 .list-card{margin-top:16rpx!important;padding:20rpx 28rpx!important}
 .state-card{padding:20rpx 28rpx 28rpx!important}
 
-/* ── 政策卡片（分隔线式，与 purchase-card 保持一致） ── */
-.policy-card{padding:22rpx 0;border-bottom:1rpx solid #e7edf3}
-.policy-card:last-of-type{border-bottom:0}
-.policy-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14rpx}
-.policy-title-row{display:flex;align-items:center;gap:12rpx;min-width:0;flex:1}
-.policy-title{font-size:28rpx;font-weight:700;color:#1A2332;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.policy-tag{color:#1687f5;background:#edf5ff;padding:6rpx 14rpx;border-radius:20rpx;font-size:22rpx;flex:none;white-space:nowrap}
-.policy-status{flex:none;font-size:24rpx;font-weight:600;padding:6rpx 18rpx;border-radius:20rpx;white-space:nowrap}
-.policy-status.status-on{color:#16865a;background:#E8F8EF}
-.policy-status.status-off{color:#94745e;background:#FBF1E8}
-
-/* ── 政策编号 + 商品名 ── */
-.policy-info-row{display:flex;align-items:baseline;gap:16rpx;margin-top:14rpx;flex-wrap:wrap}
-.policy-no{font-size:23rpx;color:#64748b;font-variant-numeric:tabular-nums}
-.policy-product{font-size:23rpx;color:#334155;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.policy-product::before{content:'·';margin-right:16rpx;color:#cbd5e1}
-
-/* ── 套餐档位列表（小标签样式） ── */
-.policy-packages{display:flex;flex-wrap:wrap;gap:10rpx;padding:16rpx 0 0;margin-top:14rpx;border-top:1rpx solid #f0f3f7}
-.package-item{display:flex;align-items:center;gap:10rpx;padding:8rpx 14rpx;background:#F5F8FA;border:1rpx solid #E2E8F0;border-radius:12rpx;box-sizing:border-box}
-.package-name{font-size:22rpx;font-weight:600;color:#1A2332;max-width:200rpx;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.package-rule{font-size:22rpx;color:#5A6B7F;font-variant-numeric:tabular-nums}
-.package-rule::before{content:'';display:inline-block;width:4rpx;height:4rpx;margin-right:10rpx;border-radius:50%;background:#cbd5e1;vertical-align:middle}
-.package-price{font-size:22rpx;font-weight:700;color:#087CF0;font-variant-numeric:tabular-nums}
-.policy-packages-empty{padding:16rpx 0 0;margin-top:14rpx;border-top:1rpx solid #f0f3f7;color:#94a3b8;font-size:23rpx}
-
-/* ── 底部状态 + 操作按钮 ── */
-.policy-footer{margin-top:16rpx;color:#64748b;font-size:22rpx;display:flex;align-items:flex-end;justify-content:space-between;gap:14rpx}
-.policy-status-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.row-buttons{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8rpx;flex:none}
-.row-buttons button{border:0;border-radius:10rpx;font-size:22rpx;padding:6rpx 14rpx;background:#EEF3F8;color:#334155;margin:0;line-height:1.6}
-.row-buttons .sync{color:#1687f5!important;background:#edf5ff}
-.row-buttons .delete{color:#dc2626!important;background:#fde8e8}
+/* ── 标准 record-card 结构 ── */
+.record-card{display:flex;margin-bottom:16rpx;background:#FFFFFF;border-radius:20rpx;box-shadow:0 2rpx 16rpx rgba(8,124,240,.06);overflow:hidden}
+.card-bar{width:4rpx;background:linear-gradient(180deg,#087CF0,#A8C7E5);flex-shrink:0}
+.card-body{flex:1;padding:24rpx 28rpx}
+.card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:20rpx}
+.record-title{flex:1;font-size:30rpx;line-height:42rpx;font-weight:700;color:#1A2332;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.record-id{padding:4rpx 14rpx;background:#E8EEF5;color:#5A6B7F;font-size:20rpx;border-radius:999rpx;flex-shrink:0}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:12rpx;margin-top:16rpx}
+.summary-item{display:flex;flex-direction:column;gap:6rpx}
+.summary-label{font-size:22rpx;color:#94A3B8}
+.summary-value{font-size:26rpx;color:#1A2332;font-weight:500}
+.summary-value.tone-ok{color:#047857;font-weight:700}
+.summary-value.tone-warn{color:#B45309;font-weight:700}
+.card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:16rpx;padding-top:14rpx;border-top:1rpx solid #E8EEF5}
+.meta-text{font-size:24rpx;color:#94A3B8}
+.arrow-icon{font-size:36rpx;color:#CBD5E1}
 
 /* ── 空状态 / 分页 ── */
 .empty{text-align:center;color:#94a3b8;padding:56rpx 0;font-size:23rpx}
-
-/* ── 列表行箭头 ── */
-.arrow-icon{font-size:36rpx;color:#CBD5E1}
 
 /* ════════════════════════════════════════════════
  * 详情面板样式（与 member-purchase-return 一致）

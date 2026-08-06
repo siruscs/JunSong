@@ -31,11 +31,44 @@
     <scroll-view scroll-y class="scroll" @scrolltolower="nextPage">
       <view class="section-card list-card" v-if="rows.length">
         <view class="section-header"><view class="section-dot" style="background:#10B981"></view><text class="section-title">购买明细</text></view>
-        <view class="purchase-card" v-for="row in rows" :key="row.purchaseId" @tap="openDetail(row)">
-          <view class="purchase-head"><view class="purchase-title-row"><text class="purchase-title">{{ row.customerName || '未登记顾客' }}</text><text class="purchase-tag">{{ customerTypeText(row.customerType) }}</text></view><text class="purchase-amount">¥{{ money(row.totalAmount) }}</text></view>
-          <view class="purchase-customer-row"><text class="purchase-meta">购买日期 {{ dateText(row.purchaseDate) }}</text></view>
-          <view class="purchase-metrics"><text>购买 {{ quantity(row.purchaseQuantity) }}</text><text>赠送 {{ quantity(row.giftQuantity) }}</text><text class="paid">已收 ¥{{ money(row.paidAmount) }}</text><text class="debt">待缴 ¥{{ money(row.receivableAmount) }}</text></view>
-          <view class="purchase-footer"><text class="purchase-status">{{ paymentStatusText(row.paymentStatus) }} · {{ deliveryStatusText(row.deliveryStatus) }}</text><text class="arrow-icon">›</text></view>
+        <view class="record-card" v-for="row in rows" :key="row.purchaseId" @tap="openDetail(row)">
+          <view class="card-bar"></view>
+          <view class="card-body">
+            <view class="card-header">
+              <view class="record-title">{{ row.customerName || '未登记顾客' }}</view>
+              <view class="record-id">NO. {{ row.purchaseNo || row.purchaseId }}</view>
+            </view>
+            <view class="summary-grid">
+              <view class="summary-item">
+                <text class="summary-label">顾客类型</text>
+                <text class="summary-value tone-points">{{ customerTypeText(row.customerType) }}</text>
+              </view>
+              <view class="summary-item">
+                <text class="summary-label">应收金额</text>
+                <text class="summary-value tone-money">¥{{ money(row.totalAmount) }}</text>
+              </view>
+              <view class="summary-item">
+                <text class="summary-label">购买数量</text>
+                <text class="summary-value">{{ quantity(row.purchaseQuantity) }}</text>
+              </view>
+              <view class="summary-item">
+                <text class="summary-label">赠送数量</text>
+                <text class="summary-value">{{ quantity(row.giftQuantity) }}</text>
+              </view>
+              <view class="summary-item">
+                <text class="summary-label">已收金额</text>
+                <text class="summary-value" style="color:#22a06b;font-weight:700">¥{{ money(row.paidAmount) }}</text>
+              </view>
+              <view class="summary-item">
+                <text class="summary-label">待缴金额</text>
+                <text class="summary-value" style="color:#d98b21;font-weight:700">¥{{ money(row.receivableAmount) }}</text>
+              </view>
+            </view>
+            <view class="card-footer">
+              <text class="meta-text">{{ dateText(row.purchaseDate) }}  {{ paymentStatusText(row.paymentStatus) }} · {{ deliveryStatusText(row.deliveryStatus) }}</text>
+              <text class="arrow-icon">›</text>
+            </view>
+          </view>
         </view>
         <view class="pagination" v-if="rows.length">
           <button :disabled="pageNum <= 1" @tap="prevPage">上一页</button>
@@ -374,27 +407,22 @@ export default {
 .list-card{margin-top:16rpx!important;padding:20rpx 28rpx!important}
 .state-card{padding:20rpx 28rpx 28rpx!important}
 
-/* ── 购买单卡片（分隔线式，不是独立盒阴影） ── */
-.purchase-card{padding:22rpx 0;border-bottom:1rpx solid #e7edf3}
-.purchase-card:last-of-type{border-bottom:0}
-.purchase-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14rpx}
-.purchase-title-row{display:flex;align-items:center;gap:12rpx;min-width:0}
-.purchase-title{font-size:28rpx;font-weight:700;color:#1A2332}
-.purchase-tag{color:#1687f5;background:#edf5ff;padding:6rpx 14rpx;border-radius:20rpx;font-size:22rpx;flex:none}
-.purchase-amount{font-size:32rpx;font-weight:700;color:#e6535b;flex:none;font-variant-numeric:tabular-nums}
-.purchase-customer-row{margin-top:14rpx}
-.purchase-customer{display:block;font-size:28rpx;font-weight:600;color:#1e293b}
-.purchase-meta{display:block;color:#64748b;font-size:23rpx;margin-top:6rpx}
-.purchase-metrics{display:flex;justify-content:flex-start;flex-wrap:wrap;gap:18rpx;color:#64748b;font-size:23rpx;padding:16rpx 0 0;margin-top:14rpx;border-top:1rpx solid #f0f3f7}
-.purchase-metrics .paid{color:#22a06b}
-.purchase-metrics .debt{color:#d98b21}
-.purchase-footer{margin-top:16rpx;color:#64748b;font-size:22rpx;display:flex;align-items:flex-end;justify-content:space-between;gap:14rpx}
-.purchase-status{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.row-buttons{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8rpx;flex:none}
-.row-buttons button{border:0;border-radius:10rpx;font-size:22rpx;padding:6rpx 14rpx;background:#EEF3F8;color:#334155;margin:0;line-height:1.6}
-.row-buttons .warn{color:#b76b00!important;background:#FFF6E8}
-.row-buttons .success{color:#16865a!important;background:#E8F8EF}
-.row-buttons .danger{color:#d64545!important;background:#FDECEE}
+/* ── 记录卡片标准样式（record-card） ── */
+.record-card{display:flex;margin-bottom:16rpx;background:#FFFFFF;border-radius:20rpx;box-shadow:0 2rpx 16rpx rgba(8,124,240,.06);overflow:hidden}
+.card-bar{width:4rpx;background:linear-gradient(180deg,#087CF0,#A8C7E5);flex-shrink:0}
+.card-body{flex:1;padding:24rpx 28rpx}
+.card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:20rpx}
+.record-title{flex:1;font-size:30rpx;line-height:42rpx;font-weight:700;color:#1A2332}
+.record-id{padding:4rpx 14rpx;background:#E8EEF5;color:#5A6B7F;font-size:20rpx;border-radius:999rpx;flex-shrink:0}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:12rpx;margin-top:16rpx}
+.summary-item{display:flex;flex-direction:column;gap:6rpx}
+.summary-label{font-size:22rpx;color:#94A3B8}
+.summary-value{font-size:26rpx;color:#1A2332;font-weight:500}
+.summary-value.tone-money{color:#B45309;font-weight:700}
+.summary-value.tone-points{color:#087CF0;font-weight:700}
+.card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:16rpx;padding-top:14rpx;border-top:1rpx solid #E8EEF5}
+.meta-text{font-size:24rpx;color:#94A3B8}
+.arrow-icon{font-size:36rpx;color:#CBD5E1;font-weight:300}
 
 /* ── 空状态 / 分页 ── */
 .empty{text-align:center;color:#94a3b8;padding:56rpx 0;font-size:23rpx}

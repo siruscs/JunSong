@@ -2,13 +2,26 @@
 import { refreshForegroundSession } from '@/utils/foregroundSession.js'
 import { installNavigationGuard } from '@/utils/permission.js'
 import { reportError } from '@/utils/errorReporter.js'
+import { getConfiguredBaseUrl, detectEnvironment } from '@/config/env.js'
 
 export default {
   onLaunch() {
-    installNavigationGuard()
-    const baseUrl = uni.getStorageSync('baseUrl')
-    if (!baseUrl) {
-      uni.setStorageSync('baseUrl', 'https://www.junsong.vip/prod-api')
+    console.log('[APP] onLaunch started')
+    try {
+      installNavigationGuard()
+      console.log('[APP] installNavigationGuard ok')
+    } catch(e) {
+      console.error('[APP] installNavigationGuard failed', e)
+    }
+    
+    try {
+      const baseUrl = uni.getStorageSync('baseUrl') || getConfiguredBaseUrl()
+      console.log('[APP] baseUrl resolved:', baseUrl)
+      if (!baseUrl) {
+        uni.setStorageSync('baseUrl', 'https://www.junsong.vip/prod-api')
+      }
+    } catch(e) {
+      console.error('[APP] baseUrl setup failed', e)
     }
 
     const formatErrorMessage = (error) => {
@@ -16,12 +29,10 @@ export default {
       if (typeof error === 'string') {
         return error
       }
-      // 依次尝试常见错误消息字段
       const msg = error?.message || error?.errMsg || error?.msg
       if (typeof msg === 'string' && msg) {
         return msg
       }
-      // 兜底：JSON 序列化，避免 String(object) 输出 "[object Object]"
       try {
         return JSON.stringify(error)
       } catch (_) {
@@ -29,27 +40,43 @@ export default {
       }
     }
 
-    if (typeof uni.onUnhandledRejection === 'function') {
-      uni.onUnhandledRejection((res) => {
-        reportError(res?.reason || res, { category: 'UNHANDLED_REJECTION' }).catch(() => {})
-        console.warn('[unhandledRejection]', formatErrorMessage(res?.reason || res))
-      })
+    try {
+      if (typeof uni.onUnhandledRejection === 'function') {
+        uni.onUnhandledRejection((res) => {
+          reportError(res?.reason || res, { category: 'UNHANDLED_REJECTION' }).catch(() => {})
+          console.warn('[unhandledRejection]', formatErrorMessage(res?.reason || res))
+        })
+      }
+      if (typeof uni.onError === 'function') {
+        uni.onError((err) => {
+          reportError(err, { category: 'APP_ERROR' }).catch(() => {})
+          const errStr = formatErrorMessage(err)
+          if (errStr.includes('webapi_getwxaasyncsecinfo')) {
+            console.warn('[appError] webapi_getwxaasyncsecinfo internal error (can safely ignore):', errStr)
+            return
+          }
+          if (errStr.includes('SystemError') && errStr.includes('access_token missing')) {
+            console.warn('[appError] SystemError access_token missing (WeChat internal):', errStr)
+            return
+          }
+          console.warn('[appError]', errStr)
+        })
+      }
+      console.log('[APP] error handlers registered')
+    } catch(e) {
+      console.error('[APP] error handler setup failed', e)
     }
-    if (typeof uni.onError === 'function') {
-      uni.onError((err) => {
-        reportError(err, { category: 'APP_ERROR' }).catch(() => {})
-        const errStr = formatErrorMessage(err)
-        if (errStr.includes('webapi_getwxaasyncsecinfo')) {
-          console.warn('[appError] webapi_getwxaasyncsecinfo internal error (can safely ignore):', errStr)
-          return
-        }
-        if (errStr.includes('SystemError') && errStr.includes('access_token missing')) {
-          console.warn('[appError] SystemError access_token missing (WeChat internal):', errStr)
-          return
-        }
-        console.warn('[appError]', errStr)
+
+    setTimeout(() => {
+      console.log('[APP] starting environment detection')
+      detectEnvironment().then(url => {
+        console.log('[APP] environment detected:', url)
+      }).catch(e => {
+        console.warn('[APP] environment detection failed', formatErrorMessage(e))
       })
-    }
+    }, 1500)
+    
+    console.log('[APP] onLaunch finished')
   },
   onShow() {
     refreshForegroundSession().catch(() => {})

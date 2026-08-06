@@ -106,7 +106,7 @@ export function guardNavigation(options = {}, grants) {
   if (!moduleKey) return true
   const allowed = moduleKey === '__operatingTask__'
     ? hasExactPermission('system:operatingTask:list', grants)
-    : hasModuleOrActionPermission(moduleKey, grants)
+    : hasModulePermission(moduleKey, grants)
   if (allowed) return true
   uni.showToast({ title: '暂无该功能权限', icon: 'none' })
   options.fail?.({ errMsg: '当前操作没有权限' })
@@ -129,7 +129,7 @@ export function installNavigationGuard() {
 export function filterAuthorizedGroups(groups, grants) {
   return groups.map((group) => ({
     ...group,
-    items: group.items.filter((item) => hasModuleOrActionPermission(item.key, grants))
+    items: group.items.filter((item) => hasModulePermission(item.key, grants))
   })).filter((group) => group.items.length > 0)
 }
 

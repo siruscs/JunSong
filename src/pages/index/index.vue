@@ -373,7 +373,7 @@
 import miniProgramShare from '@/mixins/miniProgramShare.js'
 import { groups, modules } from '@/config/modules.js'
 import { request, getToken, getBaseUrl } from '@/api/index.js'
-import { filterAuthorizedGroups, hasModulePermission, hasModuleOrActionPermission, hasExactPermission, isAdmin } from '@/utils/permission.js'
+import { filterAuthorizedGroups, hasModulePermission, hasExactPermission, isAdmin } from '@/utils/permission.js'
 import { applySeckillStats } from '@/utils/seckillStats.js'
 import { SERVICE_STATUS_TARGETS, buildSystemHealthItems, normalizeDeptOptions, resolveCurrentDept, normalizeServerStatus, isSystemAdminUser } from '@/utils/homeControl.js'
 import { getStatusBarHeight } from '@/utils/systemInfo.js'
@@ -389,7 +389,10 @@ const MODULE_BG = {
   supplier: 'rgba(107,114,128,0.08)', purchase: 'rgba(249,115,22,0.08)', sale: 'rgba(16,185,129,0.08)',
   investorPayment: 'rgba(236,72,153,0.08)', investor: 'rgba(14,165,233,0.08)', investRecord: 'rgba(16,185,129,0.08)',
   deptProfitConfig: 'rgba(107,114,128,0.08)', accountingPeriod: 'rgba(245,158,11,0.08)', profitShare: 'rgba(244,63,94,0.08)',
-  costAccounting: 'rgba(6,182,212,0.08)', userManage: 'rgba(99,102,241,0.08)'
+  costAccounting: 'rgba(6,182,212,0.08)', userManage: 'rgba(99,102,241,0.08)',
+  stockCost: 'rgba(14,165,233,0.08)', stockAdjustment: 'rgba(245,158,11,0.08)', stockLedger: 'rgba(6,182,212,0.08)', stocktake: 'rgba(99,102,241,0.08)',
+  memberPurchase: 'rgba(8,124,240,0.08)', memberPurchaseReturn: 'rgba(239,68,68,0.08)',
+  configSync: 'rgba(107,114,128,0.08)', campaignPolicy: 'rgba(249,115,22,0.08)', memberLevel: 'rgba(139,92,246,0.08)'
 }
 
 const MODULE_LETTER = {
@@ -398,7 +401,10 @@ const MODULE_LETTER = {
   product: '📦', supplier: '🏪', purchase: '🛒', sale: '📈',
   investorPayment: '💸', investor: '🤝', investRecord: '💎',
   deptProfitConfig: '⚙️', accountingPeriod: '📅', profitShare: '📊',
-  costAccounting: '🧮', userManage: '👥'
+  costAccounting: '🧮', userManage: '👥',
+  stockCost: '📋', stockAdjustment: '⚖️', stockLedger: '📒', stocktake: '🔢',
+  memberPurchase: '🛍️', memberPurchaseReturn: '↩️',
+  configSync: '🔄', campaignPolicy: '🎯', memberLevel: '🎖️'
 }
 
 const MODULE_ICON_COLOR = {
@@ -408,7 +414,10 @@ const MODULE_ICON_COLOR = {
   supplier: '#6B7280', purchase: '#F97316', sale: '#10B981',
   investorPayment: '#EC4899', investor: '#0EA5E9', investRecord: '#10B981',
   deptProfitConfig: '#6B7280', accountingPeriod: '#F59E0B', profitShare: '#F43F5E',
-  costAccounting: '#06B6D4', userManage: '#6366F1'
+  costAccounting: '#06B6D4', userManage: '#6366F1',
+  stockCost: '#0EA5E9', stockAdjustment: '#F59E0B', stockLedger: '#06B6D4', stocktake: '#6366F1',
+  memberPurchase: '#087CF0', memberPurchaseReturn: '#EF4444',
+  configSync: '#6B7280', campaignPolicy: '#F97316', memberLevel: '#8B5CF6'
 }
 
 export default {
@@ -780,7 +789,7 @@ export default {
       }
     },
     openModule(key) {
-      if (!hasModuleOrActionPermission(key, this.modules)) {
+      if (!hasModulePermission(key, this.modules)) {
         uni.showToast({ title: '暂无该功能权限', icon: 'none' })
         return
       }

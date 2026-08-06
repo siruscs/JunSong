@@ -10,12 +10,27 @@ import {
   releaseIdempotencyKeyOnFailure
 } from '@/utils/idempotency.js'
 import { reportError } from '@/utils/errorReporter.js'
+import { getConfiguredBaseUrl } from '@/config/env.js'
 
 const DEFAULT_BASE_URL = 'https://www.junsong.vip/prod-api'
 const REQUEST_TIMEOUT = 30000
 
 export function getBaseUrl() {
-  return uni.getStorageSync('baseUrl') || DEFAULT_BASE_URL
+  return uni.getStorageSync('baseUrl') || getConfiguredBaseUrl()
+}
+
+export function formatMessage(error, fallback = '请求失败') {
+  if (error == null) return fallback
+  if (typeof error === 'string') return error
+  const msg = error.msg || error.message || error.errMsg
+  if (typeof msg === 'string' && msg) return msg
+  if (error.code) return `[${error.code}] ${fallback}`
+  try {
+    const s = JSON.stringify(error)
+    return s && s !== '{}' ? fallback : fallback
+  } catch (_) {
+    return fallback
+  }
 }
 
 export function setBaseUrl(url) {
@@ -161,7 +176,7 @@ export function request(options) {
           finish(data, false)
           return
         }
-        const message = data.msg || data.message || '请求失败'
+        const message = formatMessage({ msg: data.msg, message: data.message, errMsg: data.errMsg, code: data.code }, '请求失败')
         if (!options.silent) {
           uni.showToast({ title: message, icon: 'none' })
         }
@@ -247,11 +262,42 @@ export async function refreshWorkContext(options = {}) {
   return snapshot
 }
 
+// 刷新小程序端 permissions 和 modules 本地缓存。
+// /system/user/getInfo 不返回 modules，且 refreshWorkContext 不更新 permissions 存储，
+// 因此冷启动/会话恢复时需额外调用 /member/mp/userinfo 同步权限，避免 DB 权限变更后本地仍为旧值。
+export async function refreshMpUserInfo(options = {}) {
+  if (!getToken()) return null
+  try {
+    const response = await request({
+      url: '/member/mp/userinfo',
+      method: 'GET',
+      noRedirect: options.noRedirect === true,
+      silent: true,
+      timeout: options.timeout || 12000
+    })
+    const userInfo = response?.data || response
+    if (!userInfo) return null
+    const storedUser = uni.getStorageSync('userInfo') || {}
+    const persistedUser = mergePersistedUser(storedUser, userInfo)
+    uni.setStorageSync('userInfo', persistedUser)
+    if (Array.isArray(userInfo.permissions)) {
+      uni.setStorageSync('permissions', userInfo.permissions)
+    }
+    if (Array.isArray(userInfo.modules)) {
+      uni.setStorageSync('modules', userInfo.modules)
+    }
+    return userInfo
+  } catch (e) {
+    return null
+  }
+}
+
 const sessionRestorer = createSessionRestorer({
   getToken,
   refresh: async () => {
     await refreshAuthSession({ noRedirect: true })
-    return refreshWorkContext({ noRedirect: true })
+    await refreshWorkContext({ noRedirect: true })
+    return refreshMpUserInfo({ noRedirect: true })
   }
 })
 

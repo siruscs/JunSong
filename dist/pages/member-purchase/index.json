@@ -1,6 +1,6 @@
 {
-  "navigationBarTitleText": "会员购买记录",
+  "navigationBarTitleText": "购买记录",
   "usingComponents": {
-    "form-field": "../form/form-modules/FormField"
+    "member-search": "../../components/MemberSearch/index"
   }
 }

@@ -122,7 +122,7 @@
 </template>
 
 <script>
-import { request, setToken, getToken, clearSession, refreshAuthSession, refreshWorkContext } from '@/api/index.js'
+import { request, setToken, getToken, clearSession, refreshAuthSession, refreshWorkContext, refreshMpUserInfo } from '@/api/index.js'
 import { getStatusBarHeight } from '@/utils/systemInfo.js'
 import { mergePersistedUser } from '@/utils/workContext.js'
 import miniProgramShare from '@/mixins/miniProgramShare.js'
@@ -165,6 +165,7 @@ export default {
       try {
         await refreshAuthSession({ noRedirect: true, timeout: 8000 })
         await refreshWorkContext({ noRedirect: true, timeout: 12000 })
+        await refreshMpUserInfo({ noRedirect: true, timeout: 12000 })
         uni.reLaunch({
           url: '/pages/index/index',
           fail: () => {

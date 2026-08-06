@@ -1,60 +1,81 @@
 <template>
   <view class="page">
     <view class="hero">
-      <view class="eyebrow">系统管理 · 跨机构配置</view>
-      <view class="title">配置同步</view>
-      <view class="subtitle">当前源机构：{{ currentDeptName }}</view>
+      <text class="eyebrow">系统管理</text>
+      <text class="hero-title">配置同步</text>
+      <view class="hero-subtitle">当前源机构：{{ currentDeptName }}</view>
     </view>
 
-    <view class="section-card" v-if="availableTypes.length">
-      <view class="section-title">选择配置类型</view>
-      <picker :range="availableTypes" range-key="title" :value="typeIndex" @change="changeType">
-        <view class="picker-control"><text>{{ activeType.title }}</text><text class="arrow">›</text></view>
-      </picker>
-    </view>
-
-    <view class="section-card" v-if="activeType">
-      <view class="section-title">选择源配置</view>
-      <picker :range="sourceRows" :range-key="activeType.labelKey" :value="sourceIndex" @change="changeSource">
-        <view class="picker-control"><text>{{ sourceLabel || `请选择${activeType.title}` }}</text><text class="arrow">›</text></view>
-      </picker>
-      <view class="hint">会员等级同步会将当前机构的全部等级一次性同步到目标机构。</view>
-    </view>
-
-    <view class="section-card" v-if="activeType && sourceRecordId">
-      <view class="section-title">选择目标机构</view>
-      <view class="dept-list">
-        <label class="dept-option" v-for="dept in targetDepts" :key="dept.id">
-          <checkbox :value="String(dept.id)" :checked="selectedDeptIds.includes(dept.id)" @tap="toggleDept(dept.id)" />
-          <text>{{ dept.name }}</text>
-        </label>
+    <view class="work-scope">
+      <view class="work-scope-mark"></view>
+      <view class="work-scope-copy">
+        <text class="work-scope-label">跨机构配置同步 · </text>
+        <text class="work-scope-name">选择配置类型和目标机构</text>
       </view>
-      <view v-for="deptId in selectedDeptIds" :key="deptId" class="period-row" v-if="activeType.key === 'CAMPAIGN_POLICY'">
-        <text>{{ deptName(deptId) }}核算周期</text>
-        <picker :range="periodOptions(deptId)" range-key="label" :value="periodIndex(deptId)" @change="changePeriod(deptId, $event.detail.value)">
-          <view class="picker-control compact"><text>{{ selectedPeriodLabel(deptId) }}</text><text class="arrow">›</text></view>
+    </view>
+
+    <scroll-view scroll-y class="scroll">
+      <view class="section-card" v-if="availableTypes.length">
+        <view class="section-title">选择配置类型</view>
+        <picker :range="availableTypes" range-key="title" :value="typeIndex" @change="changeType">
+          <view class="picker-control"><text>{{ activeType.title }}</text><text class="arrow">›</text></view>
         </picker>
       </view>
-    </view>
 
-    <view class="section-card" v-if="details.length">
-      <view class="section-title">同步预检结果（{{ details.length }}项）</view>
-      <view class="detail-row" v-for="item in details" :key="item.detailId">
-        <view class="detail-main"><text>{{ deptName(item.targetDeptId) }}</text><text class="detail-message">{{ operationLabel(item.operation) }}</text></view>
-        <view v-if="item.sourceSnapshot?.packages?.length" class="package-preview">
-          <text v-for="pkg in item.sourceSnapshot.packages" :key="`${item.detailId}-${pkg.sortNo || pkg.packageName}`">买{{ quantity(pkg.purchaseQuantity) }}送{{ quantity(pkg.giftQuantity) }} · {{ money(pkg.packagePrice) }}</text>
+      <view class="section-card" v-if="activeType && activeType.key !== 'LEVEL'">
+        <view class="section-title">选择源配置</view>
+        <picker :range="sourceRows" :range-key="activeType.labelKey" :value="sourceIndex" @change="changeSource">
+          <view class="picker-control"><text>{{ sourceLabel || `请选择${activeType.title}` }}</text><text class="arrow">›</text></view>
+        </picker>
+      </view>
+
+      <view class="section-card" v-if="activeType && activeType.key === 'LEVEL'">
+        <view class="section-title">会员等级（全量同步）</view>
+        <view class="hint-info">已选择同步<strong>{{ sourceRows.length }}</strong>个会员等级，将一次性同步到所有目标机构。</view>
+        <view class="hint" style="margin-top:16rpx;">会员等级同步会将当前机构的全部等级一次性同步到目标机构。</view>
+      </view>
+
+      <view class="section-card" v-if="activeType && (activeType.key === 'LEVEL' || sourceRecordId)">
+        <view class="section-title">
+          <text>选择目标机构</text>
+          <text class="link-btn" v-if="activeType.key === 'LEVEL' && selectedDeptIds.length !== targetDepts.length" @tap="selectAllDepts">全选</text>
+          <text class="link-btn link-btn-secondary" v-else-if="selectedDeptIds.length === targetDepts.length" @tap="clearAllDepts">清空</text>
         </view>
-        <picker v-if="item.operation === 'DIFF'" :range="decisionOptions" :value="decisionIndex(item)" @change="changeDecision(item, $event.detail.value)">
-          <view class="decision-picker">{{ decisionLabel(item.decision) }} ›</view>
-        </picker>
-        <text v-else class="decision-text">{{ decisionLabel(item.decision) }}</text>
+        <view class="dept-list">
+          <label class="dept-option" v-for="dept in targetDepts" :key="dept.id">
+            <checkbox :value="String(dept.id)" :checked="selectedDeptIds.includes(dept.id)" @tap="toggleDept(dept.id)" />
+            <text>{{ dept.name }}</text>
+          </label>
+        </view>
+        <view v-for="deptId in selectedDeptIds" :key="deptId" class="period-row" v-if="activeType.key === 'CAMPAIGN_POLICY'">
+          <text>{{ deptName(deptId) }}核算周期</text>
+          <picker :range="periodOptions(deptId)" range-key="label" :value="periodIndex(deptId)" @change="changePeriod(deptId, $event.detail.value)">
+            <view class="picker-control compact"><text>{{ selectedPeriodLabel(deptId) }}</text><text class="arrow">›</text></view>
+          </picker>
+        </view>
       </view>
-    </view>
 
-    <view class="empty" v-if="!availableTypes.length">当前账号没有配置同步权限，请在“小程序权限”中勾选配置同步及对应的同步操作权限。</view>
-    <view class="footer" v-if="activeType">
-      <button class="secondary" v-if="details.length" @tap="resetPreview">重新预检</button>
-      <button class="primary" :disabled="loading" @tap="details.length ? execute() : preview()">{{ loading ? '处理中…' : (details.length ? '确认同步' : '预检差异') }}</button>
+      <view class="section-card" v-if="details.length">
+        <view class="section-title">同步预检结果（{{ details.length }}项）</view>
+        <view class="detail-row" v-for="item in details" :key="item.detailId">
+          <view class="detail-main"><text>{{ deptName(item.targetDeptId) }}</text><text class="detail-message">{{ operationLabel(item.operation) }}</text></view>
+          <view v-if="item.sourceSnapshot?.packages?.length" class="package-preview">
+            <text v-for="pkg in item.sourceSnapshot.packages" :key="`${item.detailId}-${pkg.sortNo || pkg.packageName}`">买{{ quantity(pkg.purchaseQuantity) }}送{{ quantity(pkg.giftQuantity) }} · {{ money(pkg.packagePrice) }}</text>
+          </view>
+          <picker v-if="item.operation === 'DIFF'" :range="decisionOptions" :value="decisionIndex(item)" @change="changeDecision(item, $event.detail.value)">
+            <view class="decision-picker">{{ decisionLabel(item.decision) }} ›</view>
+          </picker>
+          <text v-else class="decision-text">{{ decisionLabel(item.decision) }}</text>
+        </view>
+      </view>
+
+      <view class="empty" v-if="!availableTypes.length">当前账号没有配置同步权限，请在"小程序权限"中勾选配置同步及对应的同步操作权限。</view>
+
+      <view class="scroll-pad" v-if="activeType"></view>
+    </scroll-view>
+    <view class="bottom-bar" v-if="activeType">
+      <button class="refresh-button" v-if="details.length" @tap="resetPreview">重新预检</button>
+      <button class="add-button" :disabled="loading" @tap="details.length ? execute() : preview()">{{ loading ? '处理中…' : (details.length ? '确认同步' : '预检差异') }}</button>
     </view>
   </view>
 </template>
@@ -97,14 +118,16 @@ function periodIndex(deptId) { return Math.max(0, (periods[deptId] || []).findIn
 function periodLabel(period) { return `${period.periodNo || `周期${period.periodId}`}（${formatDateTime(period.startTime)} 至 ${period.endTime ? formatDateTime(period.endTime) : '当前'}）` }
 function periodOptions(deptId) { return (periods[deptId] || []).map((period) => ({ ...period, label: periodLabel(period) })) }
 function selectedPeriodLabel(deptId) { const item = (periods[deptId] || []).find((row) => String(row.periodId) === String(targetPeriodIds[deptId])); return item ? periodLabel(item) : '请选择核算周期' }
-async function loadSources() { if (!activeType.value) return; loading.value = true; try { const params = { pageNum: 1, pageSize: 200, deptId: currentDeptId }; if (activeType.value.key === 'CAMPAIGN_POLICY') params.status = '1'; sourceRows.value = unwrap(await request({ url: activeType.value.url, method: 'GET', data: params, silent: true })); const targetIndex = sourceRows.value.findIndex((row) => String(row[activeType.value.idKey]) === String(requestedSourceRecordId.value)); sourceIndex.value = targetIndex >= 0 ? targetIndex : 0 } finally { loading.value = false } }
+async function loadSources() { if (!activeType.value) return; loading.value = true; try { const params = { pageNum: 1, pageSize: 200, deptId: currentDeptId }; if (activeType.value.key === 'CAMPAIGN_POLICY') params.status = '1'; sourceRows.value = unwrap(await request({ url: activeType.value.url, method: 'GET', data: params, silent: true })); const targetIndex = sourceRows.value.findIndex((row) => String(row[activeType.value.idKey]) === String(requestedSourceRecordId.value)); sourceIndex.value = targetIndex >= 0 ? targetIndex : 0; if (activeType.value.key === 'LEVEL') { selectedDeptIds.value = targetDepts.value.map((d) => String(d.id)) } } finally { loading.value = false } }
 async function changeType(event) { typeIndex.value = Number(event.detail.value); sourceIndex.value = 0; sourceRows.value = []; resetPreview(); await loadSources() }
 function changeSource(event) { sourceIndex.value = Number(event.detail.value); resetPreview() }
 function toggleDept(id) { const next = selectedDeptIds.value.includes(id) ? selectedDeptIds.value.filter((item) => item !== id) : [...selectedDeptIds.value, id]; selectedDeptIds.value = next; if (activeType.value.key === 'CAMPAIGN_POLICY') next.filter((deptId) => !periods[deptId]).forEach(loadPeriods); resetPreview() }
+function selectAllDepts() { selectedDeptIds.value = targetDepts.value.map((d) => String(d.id)); if (activeType.value?.key === 'CAMPAIGN_POLICY') selectedDeptIds.value.filter((deptId) => !periods[deptId]).forEach(loadPeriods); resetPreview() }
+function clearAllDepts() { selectedDeptIds.value = []; resetPreview() }
 async function loadPeriods(deptId) { const response = await request({ url: '/finance/accountingPeriod/list', method: 'GET', data: { pageNum: 1, pageSize: 200, deptId }, silent: true }); periods[deptId] = unwrap(response).filter((period) => String(period.deptId) === String(deptId)) }
 function changePeriod(deptId, index) { targetPeriodIds[deptId] = periods[deptId]?.[Number(index)]?.periodId; resetPreview() }
 function resetPreview() { details.value = []; batch.value = null }
-async function preview() { if (!sourceRecordId.value || !selectedDeptIds.value.length) return uni.showToast({ title: '请选择源配置和目标机构', icon: 'none' }); if (activeType.value.key === 'CAMPAIGN_POLICY' && selectedDeptIds.value.some((id) => !targetPeriodIds[id])) return uni.showToast({ title: '请选择每个目标机构的核算周期', icon: 'none' }); loading.value = true; try { const response = await request({ url: '/member/config-sync/preview', method: 'POST', data: { syncType: activeType.value.key, sourceRecordId: sourceRecordId.value, targetDeptIds: selectedDeptIds.value, targetPeriodIds: activeType.value.key === 'CAMPAIGN_POLICY' ? targetPeriodIds : undefined, idempotencyKey: `${activeType.value.key}-${sourceRecordId.value}-${Date.now()}` } }); const data = response?.data || response; batch.value = data.batch; details.value = (data.details || []).map((item) => ({ ...item, decision: item.operation === 'CREATE' ? 'CREATE' : item.operation === 'DIFF' ? 'OVERWRITE' : 'SKIP' })) } catch (error) { uni.showToast({ title: error?.msg || '预检失败', icon: 'none' }) } finally { loading.value = false } }
+async function preview() { const hasSource = activeType.value?.key === 'LEVEL' ? sourceRows.value.length > 0 : !!sourceRecordId.value; if (!hasSource || !selectedDeptIds.value.length) return uni.showToast({ title: activeType.value?.key === 'LEVEL' ? '请加载会员等级并选择目标机构' : '请选择源配置和目标机构', icon: 'none' }); if (activeType.value.key === 'CAMPAIGN_POLICY' && selectedDeptIds.value.some((id) => !targetPeriodIds[id])) return uni.showToast({ title: '请选择每个目标机构的核算周期', icon: 'none' }); loading.value = true; try { const response = await request({ url: '/member/config-sync/preview', method: 'POST', data: { syncType: activeType.value.key, sourceRecordId: activeType.value?.key === 'LEVEL' ? null : sourceRecordId.value, targetDeptIds: selectedDeptIds.value, targetPeriodIds: activeType.value.key === 'CAMPAIGN_POLICY' ? targetPeriodIds : undefined, idempotencyKey: `${activeType.value.key}-${Date.now()}` } }); const data = response?.data || response; batch.value = data.batch; details.value = (data.details || []).map((item) => ({ ...item, decision: item.operation === 'CREATE' ? 'CREATE' : item.operation === 'DIFF' ? 'OVERWRITE' : 'SKIP' })) } catch (error) { uni.showToast({ title: error?.msg || '预检失败', icon: 'none' }) } finally { loading.value = false } }
 function changeDecision(item, event) { item.decision = decisionValues[Number(event.detail.value)] || 'SKIP' }
 async function execute() { if (!batch.value) return; if (details.value.some((item) => item.operation === 'IMPACT_BLOCKED')) return uni.showToast({ title: '存在影响会员的等级配置，不能直接覆盖，请先处理', icon: 'none' }); loading.value = true; try { await request({ url: '/member/config-sync/execute', method: 'POST', data: { batchId: batch.value.batchId, previewVersion: batch.value.previewVersion, decisions: details.value.map((item) => ({ detailId: item.detailId, decision: item.decision })) } }); uni.showToast({ title: '配置同步完成', icon: 'success' }); resetPreview() } catch (error) { uni.showToast({ title: error?.msg || '同步失败，可以重试', icon: 'none' }) } finally { loading.value = false } }
 onLoad((options = {}) => { requestedType.value = options.type || ''; requestedSourceRecordId.value = options.sourceRecordId || '' })
@@ -112,5 +135,62 @@ onMounted(async () => { if (!requireModulePermission('configSync')) return; cons
 </script>
 
 <style scoped>
-.page{min-height:100vh;padding:28rpx 24rpx 150rpx;background:#f5f8fc;box-sizing:border-box}.hero{padding:32rpx;background:linear-gradient(135deg,#087cf0,#2563eb);border-radius:24rpx;color:#fff}.eyebrow{font-size:24rpx;opacity:.8}.title{margin-top:10rpx;font-size:42rpx;font-weight:700}.subtitle{margin-top:16rpx;font-size:25rpx;opacity:.9}.section-card{margin-top:20rpx;padding:26rpx;background:#fff;border-radius:20rpx;box-shadow:0 8rpx 24rpx rgba(15,23,42,.05)}.section-title{margin-bottom:18rpx;color:#1e293b;font-size:29rpx;font-weight:700}.picker-control{display:flex;align-items:center;justify-content:space-between;min-height:78rpx;padding:0 22rpx;border:1rpx solid #dbe4ef;border-radius:12rpx;color:#1e293b}.compact{min-height:66rpx;flex:1;margin-left:16rpx}.arrow{color:#94a3b8;font-size:34rpx}.hint{margin-top:16rpx;color:#64748b;font-size:23rpx;line-height:34rpx}.dept-list{display:flex;flex-wrap:wrap;gap:18rpx 26rpx}.dept-option{display:flex;align-items:center;color:#334155;font-size:26rpx}.period-row{display:flex;align-items:center;margin-top:20rpx;color:#475569;font-size:24rpx}.detail-row{padding:18rpx 0;border-bottom:1rpx solid #edf2f7}.detail-main{display:flex;justify-content:space-between;gap:14rpx;color:#334155;font-size:25rpx}.detail-message{flex:1;text-align:right;color:#64748b}.package-preview{display:flex;flex-wrap:wrap;gap:8rpx;margin-top:12rpx}.package-preview text{padding:6rpx 10rpx;border-radius:8rpx;background:#f1f6ff;color:#2866bd;font-size:21rpx}.decision-picker,.decision-text{margin-top:12rpx;color:#087cf0;font-size:24rpx;text-align:right}.empty{margin-top:40rpx;padding:30rpx;color:#64748b;text-align:center;font-size:25rpx;line-height:38rpx}.footer{position:fixed;left:0;right:0;bottom:0;display:flex;gap:18rpx;padding:22rpx 24rpx calc(22rpx + env(safe-area-inset-bottom));background:#fff;box-shadow:0 -6rpx 20rpx rgba(15,23,42,.08)}button{flex:1;border-radius:14rpx;font-size:28rpx}.primary{background:#087cf0;color:#fff}.secondary{background:#eef4fb;color:#334155}
+/* ──────────────────────────────────────────────
+ * 配置同步页皮肤：与购买记录/等级配置保持一致
+ * ────────────────────────────────────────────── */
+.page{display:flex;flex-direction:column;height:100vh;width:100vw;max-width:750rpx;margin:0 auto;background:#e7eff7;color:#1e293b;box-sizing:border-box;overflow:hidden}
+
+/* ── 顶部标题栏（左边框 + 浅蓝渐变） ── */
+.hero{margin:22rpx 30rpx 0;padding:28rpx 30rpx 30rpx;border-left:5rpx solid #1687f5;border-radius:20rpx;background:linear-gradient(110deg,#d9eaff,#f7faff);box-shadow:0 8rpx 22rpx rgba(46,82,120,.08)}
+.eyebrow{display:block;color:#1687f5;font-size:24rpx;font-weight:600}
+.hero-title{display:block;margin-top:10rpx;color:#1e293b;font-size:38rpx;font-weight:700}
+.hero-subtitle{display:block;margin-top:12rpx;color:#5A6B7F;font-size:24rpx}
+
+/* ── 部门范围条 ── */
+.work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx}
+.work-scope-mark{width:14rpx;height:14rpx;margin-right:16rpx;border-radius:50%;background:#1687f5}
+.work-scope-copy{display:flex;align-items:baseline;color:#8192a6;font-size:24rpx}
+.work-scope-label{color:#5A6B7F}
+.work-scope-name{margin-left:4rpx;color:#26384d;font-size:27rpx;font-weight:700}
+
+/* ── 通用卡片容器（section-card） ── */
+.section-card{background:#fff;border-radius:20rpx;padding:28rpx;margin:16rpx 30rpx 0;border:1rpx solid #D5E0EC;box-shadow:0 5rpx 18rpx rgba(45,72,98,.07);box-sizing:border-box}
+.section-title{margin-bottom:18rpx;color:#1e293b;font-size:28rpx;font-weight:700}
+
+/* ── 下拉选择控件 ── */
+.picker-control{display:flex;align-items:center;justify-content:space-between;min-height:84rpx;padding:0 24rpx;border:1rpx solid #D5E0EC;border-radius:14rpx;background:#F5F8FA;color:#1A2332;font-size:28rpx}
+.compact{min-height:66rpx;flex:1;margin-left:16rpx}
+.arrow{color:#94a3b8;font-size:34rpx}
+.hint{margin-top:16rpx;color:#64748b;font-size:23rpx;line-height:34rpx}
+
+/* ── 机构选择列表 ── */
+.dept-list{display:flex;flex-wrap:wrap;gap:18rpx 26rpx}
+.dept-option{display:flex;align-items:center;color:#334155;font-size:26rpx}
+.period-row{display:flex;align-items:center;margin-top:20rpx;color:#475569;font-size:24rpx}
+
+/* ── 预检结果 ── */
+.detail-row{padding:18rpx 0;border-bottom:1rpx solid #edf2f7}
+.detail-main{display:flex;justify-content:space-between;gap:14rpx;color:#334155;font-size:25rpx}
+.detail-message{flex:1;text-align:right;color:#64748b}
+.package-preview{display:flex;flex-wrap:wrap;gap:8rpx;margin-top:12rpx}
+.package-preview text{padding:6rpx 10rpx;border-radius:8rpx;background:#f1f6ff;color:#2866bd;font-size:21rpx}
+.decision-picker,.decision-text{margin-top:12rpx;color:#087cf0;font-size:24rpx;text-align:right}
+
+/* ── 空状态 ── */
+.empty{margin:40rpx 30rpx;padding:30rpx;color:#64748b;text-align:center;font-size:25rpx;line-height:38rpx}
+
+/* ── 浮动底部操作栏 ── */
+.scroll{flex:1;width:100%;min-height:0;padding:0 0 200rpx;box-sizing:border-box;overflow-x:hidden}
+.scroll-pad{height:16rpx;margin:16rpx 0 0}
+.bottom-bar{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;gap:16rpx;padding:20rpx 24rpx;padding-bottom:calc(20rpx + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1rpx solid #E2E8F0;z-index:10}
+.bottom-bar .add-button{width:320rpx;height:84rpx;line-height:84rpx;background:linear-gradient(135deg,#087CF0,#5AA9E8);color:#FFF;font-size:28rpx;border-radius:999rpx;text-align:center;box-shadow:0 6rpx 20rpx rgba(8,124,240,.25);border:0;padding:0}
+.bottom-bar .add-button::after{border:none}
+.bottom-bar .add-button[disabled]{opacity:.5}
+.bottom-bar .refresh-button{width:160rpx;height:84rpx;line-height:84rpx;background:#EEF3F8;color:#334155;font-size:28rpx;border-radius:999rpx;border:0;padding:0}
+.bottom-bar .refresh-button::after{border:none}
+.section-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:18rpx;color:#1e293b;font-size:28rpx;font-weight:700}
+.link-btn{font-size:24rpx;font-weight:500;color:#087CF0;background:#edf5ff;padding:8rpx 20rpx;border-radius:999rpx}
+.link-btn-secondary{color:#64748b;background:#EEF2F7}
+.hint-info{padding:20rpx 24rpx;border-radius:14rpx;background:linear-gradient(135deg,#F0F7FF,#FAFCFF);border:1rpx solid #D6E8FF;color:#334155;font-size:24rpx;line-height:34rpx}
+.hint-info strong{color:#087CF0;font-weight:700;margin:0 6rpx}
 </style>

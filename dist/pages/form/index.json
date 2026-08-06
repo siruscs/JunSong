@@ -4,6 +4,7 @@
     "purchase-details-form": "./form-modules/PurchaseDetailsForm",
     "form-field": "./form-modules/FormField",
     "expense-form": "./form-modules/ExpenseForm",
-    "state-view": "../../components/StateView"
+    "state-view": "../../components/StateView",
+    "member-search": "../../components/MemberSearch/index"
   }
 }

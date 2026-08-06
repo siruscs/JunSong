@@ -61,7 +61,7 @@ export const modules = {
   },
   memberPurchase: {
     group: '会员服务',
-    title: '会员购买记录',
+    title: '购买记录',
     path: '/member/purchase',
     customPage: '/pages/member-purchase/index',
     permissions: {
@@ -106,7 +106,7 @@ export const modules = {
   },
   memberLevel: {
     group: '会员服务',
-    title: '会员等级配置',
+    title: '等级配置',
     path: '/member/level',
     customPage: '/pages/member-level/index',
     permissions: {
@@ -118,7 +118,7 @@ export const modules = {
   },
   memberPurchaseReturn: {
     group: '会员服务',
-    title: '购买退货/退款',
+    title: '退货/退款',
     path: '/member/purchase-return',
     customPage: '/pages/member-purchase-return/index',
     permissions: {
@@ -129,7 +129,7 @@ export const modules = {
   },
   campaignPolicy: {
     group: '会员服务',
-    title: '会员商品销售政策',
+    title: '销售政策',
     path: '/member/campaign/policy',
     customPage: '/pages/campaign-policy/index',
     permissions: {
@@ -190,11 +190,23 @@ export const modules = {
       { key: 'memberId', label: '会员ID', type: 'number' },
       { key: 'memberNo', label: '会员编号' },
       { key: 'memberName', label: '会员姓名' },
-      { key: 'recordType', label: '类型', type: 'select', options: ['消费得积分', '兑换扣积分', '过期清零', '手动调整'] },
+      { key: 'recordType', label: '类型', type: 'select', options: [
+        { label: '消费得积分', value: '1' },
+        { label: '兑换扣积分', value: '2' },
+        { label: '过期清零', value: '3' },
+        { label: '手动调整', value: '4' },
+        { label: '签到得积分', value: '5' }
+      ] },
       { key: 'consumeAmount', label: '消费金额', type: 'number' },
       { key: 'points', label: '积分变动', type: 'number' },
       { key: 'balance', label: '变动后余额', type: 'number' },
-      { key: 'ruleCode', label: '规则代码' },
+      { key: 'ruleCode', label: '规则名称', type: 'select', options: [
+        { label: '消费得积分', value: 'PURCHASE_LEVEL_RATE' },
+        { label: '兑换扣积分', value: 'EXCHANGE_DEDUCT' },
+        { label: '过期清零', value: 'EXPIRE_CLEAR' },
+        { label: '手动调整', value: 'MANUAL_ADJUST' },
+        { label: '签到得积分', value: 'SIGN_IN' }
+      ] },
       { key: 'expireDate', label: '过期日期', type: 'date' },
       { key: 'remark', label: '备注', type: 'textarea' }
     ]

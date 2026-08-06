@@ -421,6 +421,14 @@ export default {
           sensitive: false,
           class: this.salePaymentStatusClass
         }, {
+          key: 'receivableAmount',
+          label: '待缴金额',
+          value: '¥' + this.moneyText(this.remainingAmount),
+          rawValue: this.remainingAmount,
+          type: 'number',
+          sensitive: false,
+          class: 'tone-warning'
+        }, {
           key: 'giftUnitPrice',
           label: '加赠单价',
           value: this.giftUnitPriceText,

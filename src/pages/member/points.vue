@@ -23,20 +23,20 @@
         <view class="list" v-if="recordList.length">
           <view class="record-card" v-for="(item, idx) in recordList" :key="idx">
             <view class="record-main">
-              <text class="record-title">{{ item.changeType || '积分变动' }}</text>
+              <text class="record-title">{{ recordTypeText(item.recordType) }}</text>
               <text class="record-sub">{{ item.memberName || '-' }} · {{ formatTime(item.createTime) }}</text>
               <text class="record-remark" v-if="item.remark">{{ item.remark }}</text>
             </view>
             <view class="record-side">
-              <text class="record-points" :class="pointsClass(item.changePoints)">{{ pointsText(item.changePoints) }}</text>
-              <text class="record-balance" v-if="item.balancePoints !== undefined">余额 {{ item.balancePoints }}</text>
+              <text class="record-points" :class="pointsClass(item.points)">{{ pointsText(item.points) }}</text>
+              <text class="record-balance" v-if="item.balance !== undefined">余额 {{ item.balance }}</text>
             </view>
           </view>
         </view>
         <view class="empty-inline" v-else-if="!loading">
           <text class="empty-inline-text">暂无积分流水</text>
         </view>
-        <view class="load-more" v-if="recordHasMore">
+        <view class="load-more" v-if="recordHasMore && loading">
           <text class="load-more-text">加载中...</text>
         </view>
       </view>
@@ -63,15 +63,9 @@
         <view class="empty-inline" v-else-if="!loading">
           <text class="empty-inline-text">暂无待领取兑换</text>
         </view>
-        <view class="load-more" v-if="exchangeHasMore">
+        <view class="load-more" v-if="exchangeHasMore && loading">
           <text class="load-more-text">加载中...</text>
         </view>
-      </view>
-
-      <!-- 空状态 -->
-      <view class="empty" v-if="!recordList.length && !exchangeList.length && !loading">
-        <text class="empty-title">暂无积分数据</text>
-        <text class="empty-sub">请确认账号已分配积分模块权限</text>
       </view>
     </scroll-view>
   </view>
@@ -205,6 +199,10 @@ export default {
       const n = Number(val) || 0
       if (n >= 0) return '+' + n
       return String(n)
+    },
+    recordTypeText(type) {
+      const map = { '1': '消费得积分', '2': '兑换扣积分', '3': '过期清零', '4': '手动调整', '5': '签到得积分' }
+      return map[String(type)] || type || '积分变动'
     },
     pointsClass(val) {
       const n = Number(val) || 0
@@ -501,24 +499,5 @@ export default {
 .load-more-text {
   font-size: 22rpx;
   color: #94A3B8;
-}
-
-.empty {
-  padding: 80rpx 30rpx;
-  text-align: center;
-}
-
-.empty-title {
-  font-size: 30rpx;
-  font-weight: 700;
-  color: #1A2332;
-  display: block;
-}
-
-.empty-sub {
-  font-size: 24rpx;
-  color: #94A3B8;
-  margin-top: 12rpx;
-  display: block;
 }
 </style>

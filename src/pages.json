@@ -50,19 +50,19 @@
     },
     {
       "path": "pages/member-purchase/index",
-      "style": { "navigationBarTitleText": "会员购买记录" }
+      "style": { "navigationBarTitleText": "购买记录" }
     },
     {
       "path": "pages/member-level/index",
-      "style": { "navigationBarTitleText": "会员等级配置" }
+      "style": { "navigationBarTitleText": "等级配置" }
     },
     {
       "path": "pages/member-purchase-return/index",
-      "style": { "navigationBarTitleText": "购买退货/退款" }
+      "style": { "navigationBarTitleText": "退货/退款" }
     },
     {
       "path": "pages/campaign-policy/index",
-      "style": { "navigationBarTitleText": "会员商品销售政策" }
+      "style": { "navigationBarTitleText": "销售政策" }
     },
     {
       "path": "pages/campaign-policy/form",

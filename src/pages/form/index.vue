@@ -14,37 +14,9 @@
         <view class="section-dot required"></view>
         <text class="section-title">选择会员</text>
         <text class="section-count" v-if="form.memberId">已选择</text>
+        <text class="section-count" v-if="moduleKey === 'pointsExchange' && memberPoints !== ''">剩余积分 {{ memberPoints }}</text>
       </view>
-      <view class="member-search-row">
-        <input
-          class="member-search-input"
-          v-model="memberKeyword"
-          confirm-type="search"
-          placeholder="输入会员编号或姓名"
-          @confirm="searchMembers"
-        />
-        <button class="member-search-btn" @tap="searchMembers">搜索</button>
-      </view>
-      <view class="selected-member" v-if="form.memberId">
-        <view>
-          <text class="selected-member-name">{{ form.memberName || '-' }}</text>
-          <text class="selected-member-no">{{ form.memberNo || '-' }}</text>
-        </view>
-        <text class="selected-member-tag" v-if="moduleKey === 'pointsExchange' && memberPoints !== ''">剩余积分 {{ memberPoints }}</text>
-        <text class="selected-member-tag" v-else>当前会员</text>
-      </view>
-      <view class="member-result-list" v-if="memberResults.length">
-        <view class="member-result" v-for="member in memberResults" :key="member.memberId" @tap="selectMember(member)">
-          <view>
-            <text class="member-result-name">{{ member.memberName || '-' }}</text>
-            <text class="member-result-no">{{ member.memberNo || '-' }}</text>
-          </view>
-          <text class="member-result-arrow">›</text>
-        </view>
-      </view>
-      <view class="member-result-empty" v-if="memberSearched && !memberLoading && memberResults.length === 0">
-        未找到匹配会员
-      </view>
+      <MemberSearch :dept-id="currentDeptId" @select="selectMember" @clear="clearMember" />
     </view>
 
     <view class="section-card" v-if="pointsCalc">
@@ -162,10 +134,11 @@ import PurchaseDetailsForm from './form-modules/PurchaseDetailsForm.vue'
 import FormField from './form-modules/FormField.vue'
 import ExpenseForm from './form-modules/ExpenseForm.vue'
 import StateView from '@/components/StateView.vue'
+import MemberSearch from '@/components/MemberSearch/index.vue'
 
 export default {
   mixins: [miniProgramShare],
-  components: { PurchaseDetailsForm, FormField, ExpenseForm, StateView },
+  components: { PurchaseDetailsForm, FormField, ExpenseForm, StateView, MemberSearch },
   data() {
     return {
       moduleKey: '',
@@ -201,6 +174,9 @@ export default {
   computed: {
     isSeckillRecordCreate() {
       return this.moduleKey === 'seckillRecord' && !this.id
+    },
+    currentDeptId() {
+      return this.getCurrentDeptId()
     },
     showMemberSearch() {
       return (this.isSeckillRecordCreate || (this.moduleKey === 'pointsExchange' && !this.id))
@@ -515,6 +491,15 @@ export default {
         this.fetchMemberPoints(member.memberId)
       }
       uni.showToast({ title: '已选择会员', icon: 'none' })
+    },
+    clearMember() {
+      this.form.memberId = ''
+      this.form.memberNo = ''
+      this.form.memberName = ''
+      this.memberKeyword = ''
+      this.memberResults = []
+      this.memberSearched = false
+      this.memberPoints = ''
     },
     async fetchMemberPoints(memberId) {
       try {

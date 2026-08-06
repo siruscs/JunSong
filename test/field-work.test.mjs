@@ -177,7 +177,7 @@ test('submitStockTake passes actualQuantity and field-work validates non-negativ
   assert.match(api, /actualQuantity: params\.actualQuantity/)
   // 后端 VO 有 actualQuantity 字段且必须 >= 0
   const vo = readBackend('domain/vo/StockTakeRequest.java')
-  assert.match(vo, /private Integer actualQuantity/)
+  assert.match(vo, /private (?:java\.math\.)?BigDecimal actualQuantity/)
   // field-work 页面前端校验非负
   const page = readSource('src/pages/field-work/index.vue')
   assert.match(page, /isNaN\(actual\) \|\| actual < 0/)
@@ -200,21 +200,19 @@ test('reason is required when actual differs from expected on both client and ba
     '../../junsong-modules/junsong-finance/src/test/java/com/junsong/finance/service/impl/StockTakeServiceImplTest.java',
     import.meta.url
   ), 'utf8')
-  assert.match(test, /rejectsGainWithoutReason/)
-  assert.match(test, /原因/)
+  assert.match(test, /recordStockTake_alwaysThrows_migrationNotice/)
+  assert.match(test, /工作流/)
 })
 
 // 10. 库存版本冲突提示并刷新
-test('backend uses SELECT FOR UPDATE for inventory version safety', () => {
+test('legacy inventory endpoint is closed in favor of the safe workflow', () => {
   const service = readBackend('service/impl/StockTakeServiceImpl.java')
-  // 使用行锁查询当前库存
+  // 旧接口已收口，不能绕过新盘点工作流直接修改库存。
   assert.match(service, /selectPositionQuantityForUpdate/)
-  // 更新结存时检查影响行数
-  assert.match(service, /affected != 1/)
-  assert.match(service, /库存结存更新影响行数异常/)
-  // 事务回滚
-  assert.match(service, /@Transactional/)
-  assert.match(service, /rollbackFor = Exception\.class/)
+  assert.match(service, /updatePositionQuantity/)
+  assert.doesNotMatch(service, /recordStockTake[\s\S]*selectPositionQuantityForUpdate/)
+  assert.match(service, /旧盘点接口/)
+  assert.match(service, /工作流/)
 })
 
 // ============================================================
@@ -414,7 +412,7 @@ test('refreshAfterTaskAction invokes all refresh callbacks', async () => {
 })
 
 // 18. 重复提交不会重复写入
-test('idempotency: takeNo uniqueness enforced by backend and preserved by client on retry', () => {
+test('idempotency: new stocktake workflow uses versioned action keys', () => {
   // 客户端：生成唯一 takeNo
   const api = readSource('src/api/stocktake.js')
   assert.match(api, /export function generateTakeNo/)
@@ -422,19 +420,20 @@ test('idempotency: takeNo uniqueness enforced by backend and preserved by client
   // submitStockTake 使用 params.takeNo || generateTakeNo()
   assert.match(api, /params\.takeNo \|\| generateTakeNo\(\)/)
 
-  // 后端：countByReferenceNo 检查幂等
+  // 后端旧接口已收口，幂等由新工作流的 count_idempotency_key 负责。
   const service = readBackend('service/impl/StockTakeServiceImpl.java')
-  assert.match(service, /countByReferenceNo/)
-  assert.match(service, /盘点单号已存在/)
-  assert.match(service, /禁止重复提交/)
+  assert.match(service, /旧 POST \/stockTake 直接改库存的通道已关闭/)
+  const apiText = readSource('src/api/stocktake.js')
+  assert.match(apiText, /buildIdempotencyKey/)
+  assert.match(apiText, /stocktakeId.*productId.*action.*version/)
 
-  // 后端测试验证重复 takeNo 被拒绝
+  // 后端测试验证旧接口不会绕过新工作流。
   const test = fs.readFileSync(new URL(
     '../../junsong-modules/junsong-finance/src/test/java/com/junsong/finance/service/impl/StockTakeServiceImplTest.java',
     import.meta.url
   ), 'utf8')
-  assert.match(test, /rejectsDuplicateTakeNo/)
-  assert.match(test, /已存在/)
+  assert.match(test, /recordStockTake_alwaysThrows_migrationNotice/)
+  assert.match(test, /工作流/)
 
   // field-work 页面：超时后保留 takeNo 供用户确认，不自动重试
   const page = readSource('src/pages/field-work/index.vue')

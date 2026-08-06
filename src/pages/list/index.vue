@@ -208,7 +208,7 @@
       <view class="claim-panel" @tap.stop>
         <view class="claim-panel-title">领取份额</view>
         <view class="claim-panel-sub">{{ activeClaimRecord?.memberName || '-' }}，剩余 {{ activeClaimRecord?.remainingShares || 0 }} 份</view>
-        <input class="claim-input" v-model="claimForm.claimShares" type="number" placeholder="输入本次领取数量" />
+        <input class="claim-input" v-model="claimForm.claimShares" type="digit" placeholder="0.000" />
         <view class="claim-time-row">
           <picker mode="date" :value="claimForm.claimDate" @change="onClaimDateChange">
             <view class="claim-time-picker">{{ claimForm.claimDate }}</view>
@@ -737,10 +737,10 @@ export default {
         if (this.moduleKey === 'accountingPeriod') {
           list = list.filter((item) => String(item.deptId) === String(requestDeptId))
         }
-        if (this.moduleKey === 'member' && query.memberNo && list.length === 0) {
+        if (this.moduleKey === 'member' && query.phone && list.length === 0) {
           const fallbackQuery = { ...query }
-          delete fallbackQuery.memberNo
-          fallbackQuery.phone = query.memberNo
+          delete fallbackQuery.phone
+          fallbackQuery.memberNo = query.phone
           res = await listData(this.config.path, fallbackQuery)
           if (!workContext.isCurrent(contextVersion) || String(this.currentDeptId) !== String(requestDeptId)) return false
           if (this.refreshPending) return true

@@ -28,7 +28,7 @@
           <view v-for="(item, index) in form.items" :key="item.rowKey" class="item-editor">
             <view class="item-editor-head"><text>商品 {{ index + 1 }}</text><text v-if="form.items.length > 1" class="link danger" @tap="removeItem(index)">删除</text></view>
             <view class="field"><picker :range="products" range-key="productName" :value="item.productIndex" @change="e => changeProduct(index, e)"><view class="picker">{{ products[item.productIndex]?.productName || '请选择商品' }} <text>⌄</text></view></picker></view>
-            <view class="grid"><view class="field"><text class="label">调整数量</text><input class="input" type="digit" v-model="item.quantity" placeholder="" /><text class="field-hint">最多三位小数</text></view><view class="field"><text class="label">单位成本（元）</text><input class="input" type="digit" v-model="item.unitCost" placeholder="" /><text class="field-hint">最多两位小数</text></view></view>
+            <view class="grid"><view class="field"><text class="label">调整数量</text><input class="input" type="digit" v-model="item.quantity" placeholder="0.000" /><text class="field-hint">最多三位小数</text></view><view class="field"><text class="label">单位成本（元）</text><input class="input" type="digit" v-model="item.unitCost" placeholder="0.00" /><text class="field-hint">最多两位小数</text></view></view>
           </view>
           <view class="field"><text class="label">备注</text><textarea class="textarea" v-model="form.remark" placeholder="可选" /></view>
           <button class="btn-primary submit" :loading="submitting" @tap="save">保存调整单</button>

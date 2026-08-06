@@ -1,0 +1,1 @@
+"use strict";const e=require("./index.js");exports.createMemberLevel=function(r){return e.request({url:"/member/level",method:"POST",data:r})},exports.listMemberLevels=function(r={}){return e.request({url:"/member/level/list",method:"GET",data:r})},exports.updateMemberLevel=function(r){return e.request({url:"/member/level",method:"PUT",data:r})};

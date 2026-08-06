@@ -85,7 +85,7 @@
           <view class="control picker" :class="{ 'has-value': form[field.key] }"><text class="picker-text">{{ displayOption(field) }}</text><text class="picker-arrow">›</text></view>
         </picker>
       </view>
-      <FormField v-else :field="field" required :value="form[field.key]" :options="optionLabels(field)" :selected-index="optionIndex(field)" :display-text="displayOption(field)" :region-range="regionRange" :region-index="regionIndex" :region-text="regionText" :input-type="inputType(field)" :readonly="isReadonlyField(field)" :placeholder="fieldPlaceholder(field)" :image-url="resolveImageUrl(form[field.key])" @set-value="setValueFromField(field.key, $event)" @region-column-change="onRegionColumnChange" @region-change="onRegionChange" @input-value="inputValueFromField(field.key, $event)" @choose-image="chooseImage(field.key)" />
+      <FormField v-else :field="field" required :value="form[field.key]" :options="optionLabels(field)" :selected-index="optionIndex(field)" :display-text="displayOption(field)" :region-range="regionRange" :region-index="regionIndex" :region-text="regionText" :input-type="inputType(field)" :precision="fieldPrecision(field)" :readonly="isReadonlyField(field)" :placeholder="fieldPlaceholder(field)" :image-url="resolveImageUrl(form[field.key])" @set-value="setValueFromField(field.key, $event)" @region-column-change="onRegionColumnChange" @region-change="onRegionChange" @input-value="inputValueFromField(field.key, $event)" @choose-image="chooseImage(field.key)" />
       </template>
     </view>
 
@@ -105,7 +105,7 @@
           <view class="control picker" :class="{ 'has-value': form[field.key] }"><text class="picker-text">{{ displayOption(field) }}</text><text class="picker-arrow">›</text></view>
         </picker>
       </view>
-      <FormField v-else-if="!optionalCollapsed" :field="field" :value="form[field.key]" :options="optionLabels(field)" :selected-index="optionIndex(field)" :display-text="displayOption(field)" :region-range="regionRange" :region-index="regionIndex" :region-text="regionText" :input-type="inputType(field)" :readonly="isReadonlyField(field)" :placeholder="fieldPlaceholder(field)" :image-url="resolveImageUrl(form[field.key])" @set-value="setValueFromField(field.key, $event)" @region-column-change="onRegionColumnChange" @region-change="onRegionChange" @input-value="inputValueFromField(field.key, $event)" @choose-image="chooseImage(field.key)" />
+      <FormField v-else-if="!optionalCollapsed" :field="field" :value="form[field.key]" :options="optionLabels(field)" :selected-index="optionIndex(field)" :display-text="displayOption(field)" :region-range="regionRange" :region-index="regionIndex" :region-text="regionText" :input-type="inputType(field)" :precision="fieldPrecision(field)" :readonly="isReadonlyField(field)" :placeholder="fieldPlaceholder(field)" :image-url="resolveImageUrl(form[field.key])" @set-value="setValueFromField(field.key, $event)" @region-column-change="onRegionColumnChange" @region-change="onRegionChange" @input-value="inputValueFromField(field.key, $event)" @choose-image="chooseImage(field.key)" />
       </template>
     </view>
 
@@ -151,6 +151,7 @@
 <script>
 import miniProgramShare from '@/mixins/miniProgramShare.js'
 import { getModule, displayValue } from '@/config/modules.js'
+import { getFieldPrecision, formatNumber, QUANTITY_PRECISION } from '@/config/formStandards.js'
 import { getData, addData, updateData, request } from '@/api/index.js'
 import { hasActionPermission, requireModulePermission } from '@/utils/permission.js'
 import { isUnknownWriteOutcome } from '@/utils/operationState.js'
@@ -416,12 +417,18 @@ export default {
     },
     fieldPlaceholder(field) {
       if (this.moduleKey === 'member' && !this.id && field.serverGenerated) return '系统自动生成'
+      const precision = this.fieldPrecision(field)
+      if (precision) return `请输入${field.label}（0.${'0'.repeat(precision)}）`
       return '请输入' + field.label
+    },
+    fieldPrecision(field) {
+      return getFieldPrecision(field)
     },
     onFieldInput(key, value) {
       // 数量类字段：输入过程只做字符过滤（允许数字、单个小数点、开头负号），字符过滤后立刻触发总量重算
-      if (['saleQuantity', 'giftQuantity', 'totalQuantity'].includes(key)) {
-        this.form[key] = this.sanitizeDecimal(value, true)
+      const field = this.config?.fields?.find((item) => item.key === key)
+      if (field?.type === 'number' || ['saleQuantity', 'giftQuantity', 'totalQuantity'].includes(key)) {
+        this.form[key] = this.sanitizeDecimal(value, !!field?.allowNegative, this.fieldPrecision(field) || QUANTITY_PRECISION)
         if (this.moduleKey === 'sale' && (key === 'saleQuantity' || key === 'giftQuantity')) {
           // 销售单：销售/赠品数量变化时，立即安全重算 totalQuantity = saleQuantity + giftQuantity，默认 3 位小数
           const s = this.toNum3(this.form.saleQuantity)
@@ -435,7 +442,7 @@ export default {
       if (this.moduleKey === 'pointsExchange' && key === 'quantity') this.syncPointsDeducted()
     },
     // 小数字符过滤：允许数字、单个小数点、可选首位负号；只保留3位小数位以内。空、'-'、'0.'、'.'都视为合法过程态。
-    sanitizeDecimal(raw, allowNegative = false) {
+    sanitizeDecimal(raw, allowNegative = false, precision = QUANTITY_PRECISION) {
       if (raw === null || raw === undefined) return ''
       let s = String(raw)
       // 1) 只保留数字、小数点、首位负号
@@ -446,7 +453,7 @@ export default {
         s = s.slice(0, dotIdx).replace(/[^\d]/g, '') + '.' + s.slice(dotIdx + 1).replace(/[^\d]/g, '')
         // 只保留一个小数点
         const parts = s.split('.')
-        s = parts[0] + (parts.length > 1 ? '.' + parts.slice(1).join('').slice(0, 3) : '')
+        s = parts[0] + (parts.length > 1 ? '.' + parts.slice(1).join('').slice(0, precision) : '')
       } else {
         s = s.replace(/[^\d]/g, '')
       }
@@ -845,6 +852,12 @@ export default {
           amount: d.amount === '' || d.amount === null || d.amount === undefined ? 0 : Number(Number(d.amount).toFixed(2))
         }))
       }
+      ;(this.config.fields || []).forEach((field) => {
+        const precision = this.fieldPrecision(field)
+        if (precision && data[field.key] !== '' && data[field.key] !== null && data[field.key] !== undefined) {
+          data[field.key] = formatNumber(data[field.key], precision)
+        }
+      })
       return data
     },
     async submit() {

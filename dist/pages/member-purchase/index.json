@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "会员购买记录",
+  "usingComponents": {
+    "form-field": "../form/form-modules/FormField"
+  }
+}

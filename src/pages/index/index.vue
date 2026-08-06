@@ -373,9 +373,8 @@
 import miniProgramShare from '@/mixins/miniProgramShare.js'
 import { groups, modules } from '@/config/modules.js'
 import { request, getToken, getBaseUrl } from '@/api/index.js'
-import { filterAuthorizedGroups, hasModulePermission, hasExactPermission, isAdmin } from '@/utils/permission.js'
+import { filterAuthorizedGroups, hasModulePermission, hasModuleOrActionPermission, hasExactPermission, isAdmin } from '@/utils/permission.js'
 import { applySeckillStats } from '@/utils/seckillStats.js'
-import { getSeckillStatisticsBatch } from '@/api/seckill.js'
 import { SERVICE_STATUS_TARGETS, buildSystemHealthItems, normalizeDeptOptions, resolveCurrentDept, normalizeServerStatus, isSystemAdminUser } from '@/utils/homeControl.js'
 import { getStatusBarHeight } from '@/utils/systemInfo.js'
 import { resolveDeptCollection, workContext } from '@/utils/workContext.js'
@@ -781,7 +780,7 @@ export default {
       }
     },
     openModule(key) {
-      if (!hasModulePermission(key, this.modules)) {
+      if (!hasModuleOrActionPermission(key, this.modules)) {
         uni.showToast({ title: '暂无该功能权限', icon: 'none' })
         return
       }
@@ -953,8 +952,8 @@ export default {
         this.periodLoading = false
       }
     },
-    async loadExpenseSummary(force = false) {
-      if (!this.shouldRefreshLowFrequency('expense', force)) return
+    async loadExpenseSummary() {
+      if (!this.shouldRefreshLowFrequency('expense', arguments[0] || false)) return
       try {
         const params = {}
         if (this.currentDeptId !== null && this.currentDeptId !== undefined) {
@@ -975,8 +974,8 @@ export default {
         this.expenseSummary = null
       }
     },
-    async loadSeckill(force = false) {
-      if (!this.shouldRefreshLowFrequency('seckill', force)) return
+    async loadSeckill() {
+      if (!this.shouldRefreshLowFrequency('seckill', arguments[0] || false)) return
       try {
         const params = { status: '0' }
         if (this.currentDeptId !== null && this.currentDeptId !== undefined) {
@@ -997,8 +996,17 @@ export default {
           this.seckillList = []
           return
         }
-        const statsRes = await getSeckillStatisticsBatch(activities.map((item) => item.seckillId), this.currentDeptId)
-        if (statsRes.contextMeta?.staleContext) return
+        const statsRes = await request({
+          url: '/member/seckillRecord/statistics/batch',
+          silent: true,
+          timeout: 12000,
+          method: 'GET',
+          data: { seckillIds: activities.map((item) => item.seckillId).join(','), deptId: this.currentDeptId },
+          withContextMeta: true
+        })
+        if (statsRes.contextMeta?.staleContext) return null
+        const results = [res, statsRes]
+        if (results.some(item => item === null)) return
         const statsRows = statsRes.data || statsRes || []
         const statsMap = (Array.isArray(statsRows) ? statsRows : []).reduce((map, row) => {
           map[String(row.seckillId)] = row
@@ -1138,7 +1146,8 @@ export default {
         this.applyWorkContext(workContext.snapshot())
         this.clearModuleAccess()
         await this.refreshModules()
-        await Promise.all([this.loadDashboard(), this.loadOverview(), this.loadPeriod(), this.loadSeckill(true), this.loadExpenseSummary(true), this.loadOperatingTaskCount()])
+        this.lowFrequencyAt = { seckill: 0, expense: 0 }
+        await Promise.all([this.loadDashboard(), this.loadOverview(), this.loadPeriod(), this.loadSeckill(), this.loadExpenseSummary(), this.loadOperatingTaskCount()])
         uni.showToast({ title: '已切换部门', icon: 'success' })
       } catch (err) {
         uni.showToast({ title: err?.msg || err?.message || '部门切换失败', icon: 'none' })
@@ -1208,7 +1217,8 @@ export default {
         this.closeDeptPicker()
         this.clearModuleAccess()
         await this.refreshModules()
-        await Promise.all([this.loadDashboard(), this.loadOverview(), this.loadPeriod(), this.loadSeckill(true), this.loadExpenseSummary(true), this.loadOperatingTaskCount()])
+        this.lowFrequencyAt = { seckill: 0, expense: 0 }
+        await Promise.all([this.loadDashboard(), this.loadOverview(), this.loadPeriod(), this.loadSeckill(), this.loadExpenseSummary(), this.loadOperatingTaskCount()])
         uni.showToast({ title: '已切换部门', icon: 'success' })
       } catch (err) {
         uni.showToast({ title: err?.msg || err?.message || '部门切换失败', icon: 'none' })

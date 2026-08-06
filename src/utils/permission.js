@@ -61,6 +61,14 @@ export function hasActionPermission(moduleKey, action, grants) {
   })
 }
 
+// 页面入口既可能由模块授权驱动，也可能由后端下发的操作权限驱动。
+// 操作权限只解决“能否进入/看到页面”，具体接口仍由服务端权限校验。
+export function hasModuleOrActionPermission(moduleKey, moduleGrants, actionGrants) {
+  if (hasModulePermission(moduleKey, moduleGrants)) return true
+  const actions = Object.keys(modules[moduleKey]?.permissions || {})
+  return actions.some((action) => hasActionPermission(moduleKey, action, actionGrants))
+}
+
 export function hasExactPermission(permission, grants) {
   grants = rawActionGrants(grants).map(normalizeGrant).filter(Boolean)
   return grants.some((grant) => grant === '*:*:*' || grant === permission)
@@ -98,7 +106,7 @@ export function guardNavigation(options = {}, grants) {
   if (!moduleKey) return true
   const allowed = moduleKey === '__operatingTask__'
     ? hasExactPermission('system:operatingTask:list', grants)
-    : hasModulePermission(moduleKey, grants)
+    : hasModuleOrActionPermission(moduleKey, grants)
   if (allowed) return true
   uni.showToast({ title: '暂无该功能权限', icon: 'none' })
   options.fail?.({ errMsg: '当前操作没有权限' })
@@ -121,12 +129,19 @@ export function installNavigationGuard() {
 export function filterAuthorizedGroups(groups, grants) {
   return groups.map((group) => ({
     ...group,
-    items: group.items.filter((item) => hasModulePermission(item.key, grants))
+    items: group.items.filter((item) => hasModuleOrActionPermission(item.key, grants))
   })).filter((group) => group.items.length > 0)
 }
 
 export function requireModulePermission(moduleKey, grants) {
   if (hasModulePermission(moduleKey, grants)) return true
+  uni.showToast({ title: '暂无该功能权限', icon: 'none' })
+  setTimeout(() => uni.navigateBack(), 500)
+  return false
+}
+
+export function requireModuleOrActionPermission(moduleKey, moduleGrants, actionGrants) {
+  if (hasModuleOrActionPermission(moduleKey, moduleGrants, actionGrants)) return true
   uni.showToast({ title: '暂无该功能权限', icon: 'none' })
   setTimeout(() => uni.navigateBack(), 500)
   return false

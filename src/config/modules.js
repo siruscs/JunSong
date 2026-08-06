@@ -1,3 +1,5 @@
+import { MONEY_PRECISION, QUANTITY_PRECISION } from './formStandards.js'
+
 export const paymentMethods = [
   { label: '现金', value: '现金' },
   { label: '银行转账', value: '银行转账' },
@@ -56,6 +58,87 @@ export const modules = {
       { name: '设为无效', action: 'edit', url: '/member/member', method: 'PUT', bodyFactory: (item) => ({ memberId: item.memberId, status: '1' }) },
       { name: '退卡', action: 'edit', url: '/member/member', method: 'PUT', bodyFactory: (item) => ({ memberId: item.memberId, status: '2' }) }
     ]
+  },
+  memberPurchase: {
+    group: '会员服务',
+    title: '会员购买记录',
+    path: '/member/purchase',
+    customPage: '/pages/member-purchase/index',
+    permissions: {
+      view: ['member:purchase:list', 'member:purchase:query'],
+      add: 'member:purchase:add',
+      edit: 'member:purchase:edit',
+      remove: 'member:purchase:remove',
+      cancel: 'member:purchase:cancel',
+      payment: 'member:purchase:payment',
+      paymentEdit: 'member:purchase:payment:edit',
+      delivery: 'member:purchase:delivery',
+      deliveryEdit: 'member:purchase:delivery:edit',
+      bind: 'member:purchase:bind',
+      export: 'member:purchase:export',
+      return: 'member:purchaseReturn:add'
+    },
+    idKey: 'purchaseId',
+    searchKey: 'purchaseNo',
+    searchKeys: ['purchaseNo', 'customerName', 'customerPhone'],
+    summary: ['purchaseNo', 'customerName', 'purchaseQuantity', 'giftQuantity', 'totalAmount', 'paidAmount', 'receivableAmount', 'paymentStatus', 'deliveryStatus'],
+    fields: [
+      { key: 'purchaseNo', label: '购买单号', serverGenerated: true },
+      { key: 'purchaseDate', label: '购买日期', type: 'date', required: true },
+      { key: 'periodId', label: '核算周期', type: 'select', remoteUrl: '/finance/accountingPeriod/list', remoteLabel: 'periodNo', remoteValue: 'periodId', remoteFilterDept: true, required: true },
+      { key: 'customerType', label: '顾客类型', type: 'select', options: [{ label: '会员', value: 'MEMBER' }, { label: '非会员', value: 'CUSTOMER' }, { label: '散客', value: 'WALK_IN' }], required: true },
+      { key: 'memberId', label: '会员', type: 'select', remoteUrl: '/member/member/list', remoteLabel: 'memberName', remoteValue: 'memberId', remoteFilterDept: true },
+      { key: 'customerName', label: '顾客姓名' },
+      { key: 'customerPhone', label: '顾客手机号', type: 'phone' },
+      { key: 'productId', label: '商品', type: 'select', remoteUrl: '/finance/product/list', remoteLabel: 'productName', remoteValue: 'productId', remoteFilterDept: true, required: true },
+      { key: 'policyId', label: '销售政策', type: 'select', remoteUrl: '/member/campaign/policy/list', remoteLabel: 'policyName', remoteValue: 'policyId', remoteFilterDept: true },
+      { key: 'packageId', label: '购买套餐', type: 'select', remoteUrl: '/member/campaign/policy/package/list', remoteLabel: 'packageName', remoteValue: 'packageId', remoteFilterDept: true },
+      { key: 'purchaseQuantity', label: '购买数量', type: 'number', precision: 3, required: true },
+      { key: 'unitPrice', label: '单价', type: 'number', precision: 2, required: true },
+      { key: 'giftQuantity', label: '赠送数量', type: 'number', precision: 3, readonly: true },
+      { key: 'totalAmount', label: '应收金额', type: 'number', formHidden: true },
+      { key: 'paidAmount', label: '已收金额', type: 'number', formHidden: true },
+      { key: 'receivableAmount', label: '欠款金额', type: 'number', formHidden: true },
+      { key: 'paymentStatus', label: '付款状态', formHidden: true },
+      { key: 'deliveryStatus', label: '领取状态', formHidden: true },
+      { key: 'remark', label: '备注', type: 'textarea' }
+    ]
+  },
+  memberLevel: {
+    group: '会员服务',
+    title: '会员等级配置',
+    path: '/member/level',
+    customPage: '/pages/member-level/index',
+    permissions: {
+      view: ['member:level:list', 'member:level:query'],
+      add: 'member:level:add',
+      edit: 'member:level:edit',
+      sync: 'member:level:sync'
+    }
+  },
+  memberPurchaseReturn: {
+    group: '会员服务',
+    title: '购买退货/退款',
+    path: '/member/purchase-return',
+    customPage: '/pages/member-purchase-return/index',
+    permissions: {
+      view: ['member:purchaseReturn:list', 'member:purchaseReturn:query'],
+      add: 'member:purchaseReturn:add',
+      complete: 'member:purchaseReturn:complete'
+    }
+  },
+  campaignPolicy: {
+    group: '会员服务',
+    title: '会员商品销售政策',
+    path: '/member/campaign/policy',
+    customPage: '/pages/campaign-policy/index',
+    permissions: {
+      view: ['member:campaignPolicy:list', 'member:campaignPolicy:query'],
+      add: 'member:campaignPolicy:add',
+      edit: 'member:campaignPolicy:edit',
+      remove: 'member:campaignPolicy:remove',
+      sync: 'member:campaignPolicy:sync'
+    }
   },
   pointsGoods: {
     group: '会员服务',
@@ -271,6 +354,12 @@ export const modules = {
       { key: 'status', label: '供应商状态', type: 'select', options: [{ label: '正常', value: '0' }, { label: '停用', value: '1' }] },
       { key: 'remark', label: '备注', type: 'textarea' }
     ]
+  },
+  configSync: {
+    group: '系统管理',
+    title: '配置同步',
+    customPage: '/pages/config-sync/index',
+    permissions: { view: ['member:configSync:query'] }
   },
   purchase: {
     group: '财务管理',
@@ -566,7 +655,7 @@ export const modules = {
 
 export const moduleList = Object.keys(modules).map((key) => ({ key, ...modules[key] }))
 
-const memberServiceOrder = ['member', 'seckillRecord', 'pointsRecord', 'seckill', 'pointsExchange', 'pointsGoods']
+const memberServiceOrder = ['member', 'memberPurchase', 'memberPurchaseReturn', 'campaignPolicy', 'memberLevel', 'seckillRecord', 'pointsRecord', 'seckill', 'pointsExchange', 'pointsGoods']
 const orderedMemberServices = memberServiceOrder.map((key) => ({ key, ...modules[key] })).filter((item) => item.group === '会员服务')
 
 export const groups = [
@@ -626,10 +715,10 @@ export function formatDisplayValue(field, value, item) {
   const base = displayValue(field, value, item)
   if (base === '-') return base
   const key = field?.key || ''
-  if (MONEY_KEYS.includes(key) && isNumericLike(value)) return '¥' + Number(value).toFixed(2)
+  if (MONEY_KEYS.includes(key) && isNumericLike(value)) return '¥' + Number(value).toFixed(MONEY_PRECISION)
   if (POINT_KEYS.includes(key) && isNumericLike(value)) return trimNumber(value) + ' 积分'
   if (PERCENT_KEYS.includes(key) && isNumericLike(value)) return trimNumber(value) + '%'
-  if (COUNT_KEYS.includes(key) && isNumericLike(value)) return trimNumber(value)
+  if (COUNT_KEYS.includes(key) && isNumericLike(value)) return Number(value).toFixed(QUANTITY_PRECISION).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1')
   return base
 }
 

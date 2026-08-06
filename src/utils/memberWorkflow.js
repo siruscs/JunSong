@@ -1,5 +1,6 @@
 export function resolveMemberSearchField(value) {
   const keyword = String(value || '').trim()
+  if (/^\d+$/.test(keyword)) return 'phone'
   if (/^[A-Za-z0-9]+$/.test(keyword)) return 'memberNo'
   return 'memberName'
 }

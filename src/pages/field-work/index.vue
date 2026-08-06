@@ -49,7 +49,7 @@
       </view>
       <view class="form-row">
         <text class="form-label">实际数量</text>
-        <input class="form-input" type="number" v-model="takeForm.actualQuantity" placeholder="盘点后实际数量" />
+        <input class="form-input" type="digit" v-model="takeForm.actualQuantity" placeholder="0.000" />
       </view>
       <view class="form-row">
         <text class="form-label">差异原因</text>

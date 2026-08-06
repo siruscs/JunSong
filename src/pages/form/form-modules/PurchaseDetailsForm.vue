@@ -6,8 +6,8 @@
         <view class="detail-item-header"><text class="detail-item-title">商品{{ index + 1 }}</text><text class="detail-delete" @tap="$emit('remove', index)">删除</text></view>
         <view class="detail-row"><text class="detail-label">商品</text><picker class="detail-picker" :range="productLabels" :value="productIndex(detail.productId)" @change="$emit('product-change', { index, value: $event.detail.value })"><view class="detail-control" :class="{ 'has-value': detail.productId }"><text class="detail-picker-text">{{ detail.productName || '请选择商品' }}</text><text class="picker-arrow">›</text></view></picker></view>
         <view class="detail-row"><text class="detail-label">单位</text><text class="detail-value-text">{{ detail.unit || '-' }}</text></view>
-        <view class="detail-row"><text class="detail-label">数量</text><input class="detail-input" type="digit" v-model="detail.quantity" @input="$emit('quantity-input', index)" @blur="$emit('quantity-blur', index)" placeholder="可输负数" /></view>
-        <view class="detail-row"><text class="detail-label">单价</text><input class="detail-input" v-model="detail.price" type="digit" :disabled="detail.isGift === '1'" @input="$emit('amount', index)" /></view>
+        <view class="detail-row"><text class="detail-label">数量</text><input class="detail-input" type="digit" v-model="detail.quantity" @input="$emit('quantity-input', index)" @blur="$emit('quantity-blur', index)" placeholder="0.000" /></view>
+        <view class="detail-row"><text class="detail-label">单价</text><input class="detail-input" v-model="detail.price" type="digit" :disabled="detail.isGift === '1'" @input="$emit('amount', index)" placeholder="0.00" /></view>
         <view class="detail-row"><text class="detail-label">金额</text><text class="detail-value-text amount">{{ detail.isGift === '1' ? '赠品' : '¥' + (detail.amount || 0) }}</text></view>
         <view class="detail-row"><text class="detail-label">赠品</text><switch :checked="detail.isGift === '1'" @change="$emit('gift', { index, value: $event.detail.value })" color="#087CF0" /></view>
       </view>

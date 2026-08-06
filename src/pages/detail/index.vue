@@ -182,7 +182,7 @@
         </view>
         <view class="payment-row payment-row-stack">
           <text class="payment-label">缴款金额</text>
-          <input v-model="paymentForm.paymentAmount" type="digit" class="payment-input" placeholder="请输入缴款金额（支持正负数）" />
+          <input v-model="paymentForm.paymentAmount" type="digit" class="payment-input" placeholder="0.00，支持正负数" />
         </view>
         <view class="payment-row payment-row-stack">
           <text class="payment-label">付款方式</text>
@@ -205,7 +205,7 @@
       <view class="claim-panel" @tap.stop>
         <view class="claim-panel-title">领取份额</view>
         <view class="claim-panel-sub">{{ record?.memberName || '-' }}，剩余 {{ record?.remainingShares || 0 }} 份</view>
-        <input class="claim-input" v-model="claimForm.claimShares" type="number" placeholder="输入本次领取数量" />
+        <input class="claim-input" v-model="claimForm.claimShares" type="digit" placeholder="0.000" />
         <view class="claim-time-row">
           <picker mode="date" :value="claimForm.claimDate" @change="onClaimDateChange">
             <view class="claim-time-picker">{{ claimForm.claimDate }}</view>

@@ -106,7 +106,7 @@
             class="item-input"
             type="digit"
             v-model="editMap[item.itemId].recountQuantity"
-            placeholder="输入复盘数量"
+            placeholder="0.000"
           />
         </view>
         <view class="item-row" v-else-if="item.recountQuantity !== null && item.recountQuantity !== undefined">

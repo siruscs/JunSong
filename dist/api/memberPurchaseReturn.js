@@ -1,0 +1,1 @@
+"use strict";const e=require("./index.js");exports.createMemberPurchaseReturn=function(r){return e.request({url:"/member/purchase-return",method:"POST",data:r})},exports.listMemberPurchaseReturns=function(r={}){return e.request({url:"/member/purchase-return/list",method:"GET",data:r})};

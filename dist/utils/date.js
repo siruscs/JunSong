@@ -1,0 +1,1 @@
+"use strict";exports.formatDateTime=function(e,r="-"){if(!e)return r;const t=String(e).trim();if(!t)return r;const n=t.replace("T"," ").replace(/Z$/,"").replace(/\.\d{3}$/,"");return n.length>=19?n.slice(0,19):n};

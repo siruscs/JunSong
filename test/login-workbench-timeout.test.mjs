@@ -41,7 +41,7 @@ test('workbench background requests are silent and bounded', () => {
     '/finance/accountingPeriod/current',
     '/member/mp/modules',
     '/member/seckill/list',
-    '/member/seckillRecord/statistics',
+    '/member/seckillRecord/statistics/batch',
     '/finance/expense/summary'
   ]) {
     const escaped = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')

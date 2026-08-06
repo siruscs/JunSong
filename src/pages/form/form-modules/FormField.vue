@@ -33,7 +33,7 @@
         <text class="image-picker-text">上传图片</text>
       </view>
     </view>
-    <input v-else class="control input" :value="value || ''" :type="inputType" :disabled="readonly" :placeholder="placeholder" @input="inputValue" />
+    <input v-else class="control input" :value="value || ''" :type="inputType" :disabled="readonly" :placeholder="placeholder" :maxlength="precision ? precision + 20 : -1" @input="inputValue" />
   </view>
 </template>
 
@@ -50,6 +50,7 @@ export default {
     regionIndex: { type: Array, default: () => [0, 0, 0, 0] },
     regionText: { type: String, default: '' },
     inputType: { type: String, default: 'text' },
+    precision: { type: Number, default: null },
     readonly: { type: Boolean, default: false },
     placeholder: { type: String, default: '' },
     imageUrl: { type: String, default: '' }

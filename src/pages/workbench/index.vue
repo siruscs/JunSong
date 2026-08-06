@@ -133,7 +133,7 @@
 import miniProgramShare from '@/mixins/miniProgramShare.js'
 import { request } from '@/api/index.js'
 import { groups, modules } from '@/config/modules.js'
-import { filterAuthorizedGroups, hasModulePermission, hasExactPermission } from '@/utils/permission.js'
+import { filterAuthorizedGroups, hasModulePermission, hasModuleOrActionPermission, hasExactPermission } from '@/utils/permission.js'
 import {
   filterEntries,
   filterModuleGroups,
@@ -330,7 +330,7 @@ export default {
       this.searchQuery = ''
     },
     openModule(key) {
-      if (!hasModulePermission(key, this.modules)) {
+      if (!hasModulePermission(key, this.modules) && !hasModuleOrActionPermission(key, this.modules)) {
         uni.showToast({ title: '暂无该功能权限', icon: 'none' })
         return
       }

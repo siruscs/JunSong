@@ -23,48 +23,27 @@
     </view>
 
     <scroll-view scroll-y class="scroll" @scrolltolower="nextPage">
-      <view class="section-card list-card" v-if="rows.length">
-        <view class="section-header"><view class="section-dot" style="background:#EF4444"></view><text class="section-title">退货明细</text></view>
-      </view>
       <view class="record-card" v-for="row in rows" :key="row.returnId" @tap="openDetail(row)">
         <view class="card-bar"></view>
-        <view class="card-body">
-          <view class="card-header">
-            <view class="record-title">{{ row.customerName || '未登记顾客' }}</view>
-            <view class="record-id">NO. {{ row.returnNo || row.returnId }}</view>
+        <view class="card-body compact-body">
+          <view class="compact-row1">
+            <text class="compact-title">{{ row.customerName || '未登记顾客' }}</text>
+            <text class="compact-amount">¥{{ money(row.refundAmount) }}</text>
           </view>
-          <view class="summary-grid">
-            <view class="summary-item">
-              <text class="summary-label">退货金额</text>
-              <text class="summary-value tone-money">¥{{ money(row.refundAmount) }}</text>
-            </view>
-            <view class="summary-item">
-              <text class="summary-label">已退金额</text>
-              <text class="summary-value">¥{{ money(row.refundedAmount) }}</text>
-            </view>
-            <view class="summary-item">
-              <text class="summary-label">原购买单</text>
-              <text class="summary-value">{{ row.purchaseId || '-' }}</text>
-            </view>
-            <view class="summary-item">
-              <text class="summary-label">退货数量</text>
-              <text class="summary-value">{{ returnQuantity(row) }}</text>
-            </view>
+          <view class="compact-row2">
+            <text class="compact-id">NO.{{ row.returnNo || row.returnId }}</text>
+            <text class="compact-meta">原购买 {{ row.purchaseId || '-' }}</text>
+            <text class="compact-meta">退货 {{ returnQuantity(row) }}</text>
+            <text class="compact-meta date">{{ dateText(row.returnDate) }}</text>
           </view>
-          <view class="card-footer">
-            <text class="meta-text">{{ dateText(row.returnDate) }} · {{ statusText(row.status) }}</text>
+          <view class="compact-row3">
+            <text class="compact-meta paid">已退 ¥{{ money(row.refundedAmount) }}</text>
+            <text class="compact-status" :class="statusClass(row.status)">{{ statusText(row.status) }}</text>
             <text class="arrow-icon">›</text>
           </view>
         </view>
       </view>
-      <view class="pagination-card" v-if="rows.length">
-        <view class="pagination">
-          <button :disabled="pageNum <= 1" @tap="prevPage">上一页</button>
-          <text class="page-info">{{ pageNum }} / {{ totalPages }}</text>
-          <button :disabled="pageNum >= totalPages" @tap="nextPage">下一页</button>
-        </view>
-      </view>
-      <view class="section-card list-card state-card" v-else>
+      <view class="section-card list-card state-card" v-if="!rows.length">
         <view class="empty">暂无退货记录</view>
       </view>
     </scroll-view>
@@ -431,6 +410,22 @@ export default {
 .card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:16rpx;padding-top:14rpx;border-top:1rpx solid #E8EEF5}
 .meta-text{font-size:24rpx;color:#94A3B8}
 .arrow-icon{font-size:36rpx;color:#CBD5E1;font-weight:300;line-height:1}
+
+/* ── 紧凑3行卡片样式 ── */
+.compact-body{flex:1;padding:20rpx 24rpx}
+.compact-row1{display:flex;align-items:center;gap:18rpx}
+.compact-title{flex:1;min-width:0;font-size:29rpx;line-height:40rpx;font-weight:700;color:#1A2332;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.compact-amount{font-size:29rpx;line-height:40rpx;font-weight:800;color:#B45309;flex-shrink:0}
+.compact-row2{display:flex;align-items:center;gap:16rpx;margin-top:10rpx;flex-wrap:wrap}
+.compact-row3{display:flex;align-items:center;gap:14rpx;margin-top:10rpx}
+.compact-meta{flex-shrink:0;font-size:23rpx;line-height:32rpx;color:#94A3B8}
+.compact-meta.date{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.compact-meta.paid{color:#059669;font-weight:600}
+.compact-id{flex-shrink:0;font-size:21rpx;color:#5A6B7F;background:#E8EEF5;padding:2rpx 12rpx;border-radius:999rpx}
+.compact-status{flex-shrink:0;padding:4rpx 14rpx;border-radius:999rpx;font-size:21rpx;line-height:30rpx;background:#E8EEF5;color:#5A6B7F}
+.compact-status.status-ok{background:#D1FAE5;color:#065F46}
+.compact-status.status-warn{background:#FEF3C7;color:#92400E}
+.compact-status.status-danger{background:#FEE2E2;color:#991B1B}
 .pagination-card{margin-top:4rpx}
 
 /* ── 空状态 / 分页 ── */

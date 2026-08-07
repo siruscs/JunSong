@@ -374,7 +374,7 @@ export default {
 .summary-bar>view:last-child{border-right:0}
 .summary-value{display:block;color:#1687f5;font-size:28rpx;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .summary-value.success{color:#475569}
-.summary-value.warning{color:#7C3AED}
+.summary-value.warning{color:#EA580C}
 .summary-label{display:block;margin-top:6rpx;color:#98a9ba;font-size:20rpx}
 
 /* ── 操作行 ── */
@@ -421,7 +421,7 @@ export default {
 .compact-qty-group{display:inline-flex;align-items:baseline;gap:2rpx;white-space:nowrap}
 .compact-qty-label{font-size:22rpx;color:#94A3B8;font-weight:400}
 .compact-qty-value{font-size:30rpx;color:#1A2332;font-weight:700;margin-right:8rpx}
-.compact-amount{font-size:33rpx;color:#7C3AED;font-weight:700;text-align:right;white-space:nowrap}
+.compact-amount{font-size:33rpx;color:#EA580C;font-weight:700;text-align:right;white-space:nowrap}
 .compact-meta{flex-shrink:0;font-size:23rpx;line-height:32rpx;color:#94A3B8}
 .compact-meta.date{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .compact-meta.paid{color:#475569;font-weight:600}

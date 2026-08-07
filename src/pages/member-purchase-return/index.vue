@@ -4,12 +4,9 @@
     <view class="work-scope"><view class="work-scope-mark"></view><view class="work-scope-copy"><text class="work-scope-label">当前部门 · </text><text class="work-scope-name">{{ currentDeptName || '当前部门' }}</text></view></view>
 
     <view class="section-card filters-card">
-      <view class="section-header"><view class="section-dot" style="background:#087CF0"></view><text class="section-title">筛选退货</text><text class="section-link">共 {{ total }} 条</text></view>
-      <view class="filter-row">
+      <view class="filter-row filter-row-merged">
         <picker class="filter-type-picker" :range="statusFilters" range-key="label" :value="statusFilterIndex" @change="selectStatusFilter"><view class="filter-picker">{{ statusFilters[statusFilterIndex]?.label || '全部状态' }}<text class="filter-chevron">⌄</text></view></picker>
-      </view>
-      <view class="filter-row filter-row-tools">
-        <input class="filter-kw" v-model="keyword" placeholder="退货单号、顾客姓名或手机号" confirm-type="search" @confirm="load" />
+        <input class="filter-kw" v-model="keyword" placeholder="顾客姓名或手机号" confirm-type="search" @confirm="load" />
         <button class="filter-button" @tap="load">查询</button>
         <button class="filter-button filter-button-ghost" @tap="resetFilters">重置</button>
       </view>
@@ -31,15 +28,13 @@
             <text class="compact-amount">¥{{ money(row.refundAmount) }}</text>
           </view>
           <view class="compact-row2">
-            <text class="compact-id">NO.{{ row.returnNo || row.returnId }}</text>
-            <text class="compact-meta">原购买 {{ row.purchaseId || '-' }}</text>
-            <text class="compact-meta">退货 {{ returnQuantity(row) }}</text>
+            <text class="compact-meta qty">原购买 {{ row.purchaseQuantity || 0 }}</text>
+            <text class="compact-meta qty">退货 {{ returnQuantity(row) }}</text>
             <text class="compact-meta date">{{ dateText(row.returnDate) }}</text>
           </view>
           <view class="compact-row3">
             <text class="compact-meta paid">已退 ¥{{ money(row.refundedAmount) }}</text>
             <text class="compact-status" :class="statusClass(row.status)">{{ statusText(row.status) }}</text>
-            <text class="arrow-icon">›</text>
           </view>
         </view>
       </view>
@@ -223,7 +218,7 @@ export default {
       return '-'
     },
     statusText(v) { return ({ DRAFT: '草稿', PENDING: '待审核', APPROVED: '已批准', COMPLETED: '已完成', REFUNDED: '已退款', CANCELLED: '已作废' })[v] || v || '-' },
-    statusClass(v) { const s = String(v ?? ''); return s === 'COMPLETED' || s === 'REFUNDED' ? 'status-ok' : s === 'CANCELLED' ? 'status-danger' : 'status-info' },
+    statusClass(v) { const s = String(v ?? ''); return s === 'COMPLETED' || s === 'REFUNDED' ? 'status-ok' : s === 'CANCELLED' ? 'status-danger' : s === 'DRAFT' ? 'status-warn' : 'status-info' },
     periodLabel(v) { return `${v.periodNo || v.periodId}（${this.dateText(v.startTime)} 至 ${v.endTime ? this.dateText(v.endTime) : '当前'}）` },
     limit(item, key, value, precision) { const s = String(value || '').replace(/[^\d.]/g,'').replace(/\.(?=.*\.)/g,''); item[key] = s.includes('.') ? s.split('.')[0] + '.' + s.split('.')[1].slice(0, precision) : s },
 
@@ -362,6 +357,9 @@ export default {
 .filter-row{display:flex;align-items:center;gap:10rpx;min-height:66rpx;width:100%;box-sizing:border-box}
 .filter-row+.filter-row{margin-top:10rpx}
 .filter-row-tools{gap:12rpx;margin-top:14rpx}
+.filter-row-merged{gap:10rpx}
+.filter-row-merged .filter-type-picker{flex:0 0 180rpx}
+.filter-row-merged .filter-kw{flex:1}
 .filter-type-picker{flex:1;min-width:0}
 .filter-picker,.filter-kw{box-sizing:border-box!important;padding:16rpx 14rpx;height:64rpx;line-height:32rpx;border:1rpx solid #D5E0EC;border-radius:12rpx;background:#F8FBFD;color:#5A6B7F;font-size:22rpx;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%}
 .filter-picker{display:flex;align-items:center;justify-content:space-between}
@@ -419,6 +417,7 @@ export default {
 .compact-row2{display:flex;align-items:center;gap:16rpx;margin-top:10rpx;flex-wrap:wrap}
 .compact-row3{display:flex;align-items:center;gap:14rpx;margin-top:10rpx}
 .compact-meta{flex-shrink:0;font-size:23rpx;line-height:32rpx;color:#94A3B8}
+.compact-meta.qty{font-size:28rpx;font-weight:700;color:#1A2332}
 .compact-meta.date{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .compact-meta.paid{color:#059669;font-weight:600}
 .compact-id{flex-shrink:0;font-size:21rpx;color:#5A6B7F;background:#E8EEF5;padding:2rpx 12rpx;border-radius:999rpx}

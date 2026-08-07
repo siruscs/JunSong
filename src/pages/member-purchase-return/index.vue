@@ -373,8 +373,8 @@ export default {
 .summary-bar>view{flex:1;text-align:center;border-right:1rpx solid #edf1f5;min-width:0}
 .summary-bar>view:last-child{border-right:0}
 .summary-value{display:block;color:#1687f5;font-size:28rpx;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.summary-value.success{color:#475569}
-.summary-value.warning{color:#EA580C}
+.summary-value.success{color:#0F766E}
+.summary-value.warning{color:#C65A4A}
 .summary-label{display:block;margin-top:6rpx;color:#98a9ba;font-size:20rpx}
 
 /* ── 操作行 ── */
@@ -421,15 +421,15 @@ export default {
 .compact-qty-group{display:inline-flex;align-items:baseline;gap:2rpx;white-space:nowrap}
 .compact-qty-label{font-size:22rpx;color:#94A3B8;font-weight:400}
 .compact-qty-value{font-size:30rpx;color:#1A2332;font-weight:700;margin-right:8rpx}
-.compact-amount{font-size:33rpx;color:#EA580C;font-weight:700;text-align:right;white-space:nowrap}
+.compact-amount{font-size:33rpx;color:#C65A4A;font-weight:700;text-align:right;white-space:nowrap}
 .compact-meta{flex-shrink:0;font-size:23rpx;line-height:32rpx;color:#94A3B8}
 .compact-meta.date{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.compact-meta.paid{color:#475569;font-weight:600}
+.compact-meta.paid{color:#0F766E;font-weight:600}
 .compact-id{flex-shrink:0;font-size:21rpx;color:#5A6B7F;background:#E8EEF5;padding:2rpx 12rpx;border-radius:999rpx}
-.compact-status{flex-shrink:0;padding:4rpx 14rpx;border-radius:999rpx;font-size:21rpx;line-height:30rpx;background:#EEF3FB;color:#475569;border:1rpx solid #DCE7F5}
-.compact-status.status-ok{background:#DBEAFE;color:#1D4ED8;border:1rpx solid #BFDBFE}
-.compact-status.status-warn{background:#FFF7ED;color:#C2410C;border:1rpx solid #FFEDD5}
-.compact-status.status-danger{background:#F1F5F9;color:#64748B;border:1rpx solid #CBD5E1;text-decoration:line-through}
+.compact-status{flex-shrink:0;padding:4rpx 16rpx;border-radius:20rpx;font-size:22rpx;line-height:30rpx;font-weight:500;background:#EEF3FB;color:#475569}
+.compact-status.status-ok{background:#E0F2FE;color:#075985}
+.compact-status.status-warn{background:#FEF3C7;color:#92400E}
+.compact-status.status-danger{background:#FEE2E2;color:#991B1B;text-decoration:line-through}
 .pagination-card{margin-top:4rpx}
 
 /* ── 空状态 / 分页 ── */

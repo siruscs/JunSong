@@ -63,82 +63,85 @@
     </view>
 
     <!-- ════════ 详情面板（参考销售记录 detail/index.vue） ════════ -->
-    <view class="overlay-mask" v-if="panel === 'detail'" @tap="closePanel">
+    <view class="overlay-mask" v-if="panel === 'detail'" @tap="closePanel" @touchstart.stop.prevent @touchmove.stop.prevent @touchend.stop.prevent>
       <view
-        class="detail-page"
+        class="detail-swipe-wrap"
         :class="{ 'swipe-closing': detailSwipeClosing }"
         :style="detailSwipeStyle"
-        @tap.stop
-        @touchstart="onDetailTouchStart"
-        @touchmove="onDetailTouchMove"
-        @touchend="onDetailTouchEnd"
+        @touchstart.stop
+        @touchmove.stop
+        @touchend.stop
       >
-        <view class="detail-hero">
-          <view class="detail-hero-bg"></view>
-          <view class="detail-hero-content">
-            <view class="detail-hero-eyebrow">会员购买 · {{ customerTypeText(detail.customerType) }}</view>
-            <view class="detail-hero-title">{{ detail.purchaseNo || `购买单 #${detail.purchaseId}` }}</view>
-            <view class="detail-hero-value">¥{{ money(detail.totalAmount) }}</view>
-            <view class="detail-hero-meta">购买日期 {{ dateText(detail.purchaseDate) }}</view>
-          </view>
-        </view>
+        <scroll-view scroll-y class="detail-page-scroll">
+          <view class="detail-page">
+            <view class="detail-hero">
+              <view class="detail-hero-bg"></view>
+              <view class="detail-hero-content">
+                <view class="detail-hero-eyebrow">会员购买 · {{ customerTypeText(detail.customerType) }}</view>
+                <view class="detail-hero-title">{{ detail.purchaseNo || `购买单 #${detail.purchaseId}` }}</view>
+                <view class="detail-hero-value">¥{{ money(detail.totalAmount) }}</view>
+                <view class="detail-hero-meta">购买日期 {{ dateText(detail.purchaseDate) }}</view>
+              </view>
+            </view>
 
-        <view class="detail-section">
-          <view class="detail-section-title">概要信息</view>
-          <view class="detail-highlight-grid">
-            <view class="detail-highlight-item"><view class="detail-highlight-label">顾客姓名</view><view class="detail-highlight-value">{{ detail.customerName || '未登记顾客' }}</view></view>
-            <view class="detail-highlight-item"><view class="detail-highlight-label">手机号</view><view class="detail-highlight-value">{{ detail.customerPhone || '-' }}</view></view>
-            <view class="detail-highlight-item"><view class="detail-highlight-label">收款状态</view><view class="detail-highlight-value" :class="paymentStatusClass(detail.paymentStatus)">{{ paymentStatusText(detail.paymentStatus) }}</view></view>
-            <view class="detail-highlight-item"><view class="detail-highlight-label">领取状态</view><view class="detail-highlight-value" :class="deliveryStatusClass(detail.deliveryStatus)">{{ deliveryStatusText(detail.deliveryStatus) }}</view></view>
-            <view class="detail-highlight-item"><view class="detail-highlight-label">应收金额</view><view class="detail-highlight-value tone-money">¥{{ money(detail.totalAmount) }}</view></view>
-            <view class="detail-highlight-item"><view class="detail-highlight-label">已收金额</view><view class="detail-highlight-value tone-success">¥{{ money(detail.paidAmount) }}</view></view>
-            <view class="detail-highlight-item"><view class="detail-highlight-label">待缴金额</view><view class="detail-highlight-value tone-warning">¥{{ money(detail.receivableAmount) }}</view></view>
-            <view class="detail-highlight-item"><view class="detail-highlight-label">核算周期</view><view class="detail-highlight-value">{{ detail.periodNo || detail.periodId || '-' }}</view></view>
-          </view>
-        </view>
+            <view class="detail-section">
+              <view class="detail-section-title">概要信息</view>
+              <view class="detail-highlight-grid">
+                <view class="detail-highlight-item"><view class="detail-highlight-label">顾客姓名</view><view class="detail-highlight-value">{{ detail.customerName || '未登记顾客' }}</view></view>
+                <view class="detail-highlight-item"><view class="detail-highlight-label">手机号</view><view class="detail-highlight-value">{{ detail.customerPhone || '-' }}</view></view>
+                <view class="detail-highlight-item"><view class="detail-highlight-label">收款状态</view><view class="detail-highlight-value" :class="paymentStatusClass(detail.paymentStatus)">{{ paymentStatusText(detail.paymentStatus) }}</view></view>
+                <view class="detail-highlight-item"><view class="detail-highlight-label">领取状态</view><view class="detail-highlight-value" :class="deliveryStatusClass(detail.deliveryStatus)">{{ deliveryStatusText(detail.deliveryStatus) }}</view></view>
+                <view class="detail-highlight-item"><view class="detail-highlight-label">应收金额</view><view class="detail-highlight-value tone-money">¥{{ money(detail.totalAmount) }}</view></view>
+                <view class="detail-highlight-item"><view class="detail-highlight-label">已收金额</view><view class="detail-highlight-value tone-success">¥{{ money(detail.paidAmount) }}</view></view>
+                <view class="detail-highlight-item"><view class="detail-highlight-label">待缴金额</view><view class="detail-highlight-value tone-warning">¥{{ money(detail.receivableAmount) }}</view></view>
+                <view class="detail-highlight-item"><view class="detail-highlight-label">核算周期</view><view class="detail-highlight-value">{{ detail.periodNo || detail.periodId || '-' }}</view></view>
+              </view>
+            </view>
 
-        <view class="detail-section" v-if="(detail.items || []).length">
-          <view class="detail-section-title">购买明细</view>
-          <view class="detail-item" v-for="(item, idx) in detail.items || []" :key="idx">
-            <view class="detail-item-header"><text class="detail-item-title">{{ item.productNameSnapshot || `商品${idx + 1}` }}</text></view>
-            <view class="detail-row"><text class="detail-label">购买数量</text><text class="detail-value-text">{{ quantity(item.purchaseQuantity) }}</text></view>
-            <view class="detail-row"><text class="detail-label">赠送数量</text><text class="detail-value-text">{{ quantity(item.giftQuantity) }}</text></view>
-            <view class="detail-row"><text class="detail-label">单价</text><text class="detail-value-text">¥{{ money(item.unitPrice) }}</text></view>
-            <view class="detail-row"><text class="detail-label">已领取</text><text class="detail-value-text">{{ quantity(item.deliveredSaleQuantity) }} / 赠 {{ quantity(item.deliveredGiftQuantity) }}</text></view>
-            <view class="detail-row"><text class="detail-label">金额</text><text class="detail-value-text amount">¥{{ money(Number(item.purchaseQuantity || 0) * Number(item.unitPrice || 0)) }}</text></view>
-          </view>
-          <view class="detail-summary">
-            <view class="detail-summary-row"><text class="detail-summary-label">总数量</text><text class="detail-summary-value">{{ quantity(totalPurchaseQty) }}（赠 {{ quantity(totalGiftQty) }}）</text></view>
-            <view class="detail-summary-row"><text class="detail-summary-label">总金额</text><text class="detail-summary-value">¥{{ money(detail.totalAmount) }}</text></view>
-          </view>
-        </view>
+            <view class="detail-section" v-if="(detail.items || []).length">
+              <view class="detail-section-title">购买明细</view>
+              <view class="detail-item" v-for="(item, idx) in detail.items || []" :key="idx">
+                <view class="detail-item-header"><text class="detail-item-title">{{ item.productNameSnapshot || `商品${idx + 1}` }}</text></view>
+                <view class="detail-row"><text class="detail-label">购买数量</text><text class="detail-value-text">{{ quantity(item.purchaseQuantity) }}</text></view>
+                <view class="detail-row"><text class="detail-label">赠送数量</text><text class="detail-value-text">{{ quantity(item.giftQuantity) }}</text></view>
+                <view class="detail-row"><text class="detail-label">单价</text><text class="detail-value-text">¥{{ money(item.unitPrice) }}</text></view>
+                <view class="detail-row"><text class="detail-label">已领取</text><text class="detail-value-text">{{ quantity(item.deliveredSaleQuantity) }} / 赠 {{ quantity(item.deliveredGiftQuantity) }}</text></view>
+                <view class="detail-row"><text class="detail-label">金额</text><text class="detail-value-text amount">¥{{ money(Number(item.purchaseQuantity || 0) * Number(item.unitPrice || 0)) }}</text></view>
+              </view>
+              <view class="detail-summary">
+                <view class="detail-summary-row"><text class="detail-summary-label">总数量</text><text class="detail-summary-value">{{ quantity(totalPurchaseQty) }}（赠 {{ quantity(totalGiftQty) }}）</text></view>
+                <view class="detail-summary-row"><text class="detail-summary-label">总金额</text><text class="detail-summary-value">¥{{ money(detail.totalAmount) }}</text></view>
+              </view>
+            </view>
 
-        <view class="detail-section" v-if="detail.remark">
-          <view class="detail-section-title">备注</view>
-          <view class="detail-remark">{{ detail.remark }}</view>
-        </view>
+            <view class="detail-section" v-if="detail.remark">
+              <view class="detail-section-title">备注</view>
+              <view class="detail-remark">{{ detail.remark }}</view>
+            </view>
 
-        <view class="detail-section payment-history-section">
-          <view class="detail-section-title">收款记录</view>
-          <view class="payment-history-item" v-for="p in detail.payments || []" :key="p.paymentId">
-            <view class="payment-history-main"><text class="payment-history-no">{{ p.paymentNo || `缴款 #${p.paymentId}` }}</text><text class="payment-history-amount">¥{{ money(p.paymentAmount) }}</text></view>
-            <view class="payment-history-meta"><text>{{ dateText(p.paymentDate) }}</text><text>{{ paymentMethodText(p.paymentMethod) }}</text></view>
-            <view class="payment-history-meta" v-if="p.operatorName"><text>操作人 {{ p.operatorName }}</text></view>
+            <view class="detail-section payment-history-section">
+              <view class="detail-section-title">收款记录</view>
+              <view class="payment-history-item" v-for="p in detail.payments || []" :key="p.paymentId">
+                <view class="payment-history-main"><text class="payment-history-no">{{ p.paymentNo || `缴款 #${p.paymentId}` }}</text><text class="payment-history-amount">¥{{ money(p.paymentAmount) }}</text></view>
+                <view class="payment-history-meta"><text>{{ dateText(p.paymentDate) }}</text><text>{{ paymentMethodText(p.paymentMethod) }}</text></view>
+                <view class="payment-history-meta" v-if="p.operatorName"><text>操作人 {{ p.operatorName }}</text></view>
+              </view>
+              <view class="detail-empty" v-if="!(detail.payments || []).length">暂无收款记录</view>
+            </view>
+
+            <view class="detail-section payment-history-section">
+              <view class="detail-section-title">领取记录</view>
+              <view class="payment-history-item" v-for="d in detail.deliveries || []" :key="d.deliveryId">
+                <view class="payment-history-main"><text class="payment-history-no">{{ d.deliveryNo || `领取 #${d.deliveryId}` }}</text><text class="payment-history-amount">{{ quantity(d.totalDeliveryQuantity) }}</text></view>
+                <view class="payment-history-meta"><text>{{ dateText(d.deliveryDate) }}</text><text>领取人 {{ d.receiverName || '-' }}</text></view>
+                <view class="payment-history-meta" v-if="d.operatorName"><text>操作人 {{ d.operatorName }}</text></view>
+              </view>
+              <view class="detail-empty" v-if="!(detail.deliveries || []).length">暂无领取记录</view>
+            </view>
+
+            <view class="detail-footer-placeholder"></view>
           </view>
-          <view class="detail-empty" v-if="!(detail.payments || []).length">暂无收款记录</view>
-        </view>
-
-        <view class="detail-section payment-history-section">
-          <view class="detail-section-title">领取记录</view>
-          <view class="payment-history-item" v-for="d in detail.deliveries || []" :key="d.deliveryId">
-            <view class="payment-history-main"><text class="payment-history-no">{{ d.deliveryNo || `领取 #${d.deliveryId}` }}</text><text class="payment-history-amount">{{ quantity(d.totalDeliveryQuantity) }}</text></view>
-            <view class="payment-history-meta"><text>{{ dateText(d.deliveryDate) }}</text><text>领取人 {{ d.receiverName || '-' }}</text></view>
-            <view class="payment-history-meta" v-if="d.operatorName"><text>操作人 {{ d.operatorName }}</text></view>
-          </view>
-          <view class="detail-empty" v-if="!(detail.deliveries || []).length">暂无领取记录</view>
-        </view>
-
-        <view class="detail-footer-placeholder"></view>
+        </scroll-view>
         <view class="detail-footer-bar" v-if="detail && detail.purchaseId">
           <button v-if="can('edit')" class="detail-action-btn primary-btn" @tap="switchToEdit">编辑</button>
           <button v-if="can('payment') && Number(detail.receivableAmount || 0) > 0" class="detail-action-btn payment-btn" @tap="openPayment(detail)">收款</button>
@@ -364,11 +367,11 @@ export default {
 .summary-bar{display:flex;margin:16rpx 30rpx 0;padding:20rpx 4rpx;background:#fff;border-radius:18rpx;border:1rpx solid #dbe6f1;box-sizing:border-box}
 .summary-bar>view{flex:1;text-align:center;border-right:1rpx solid #edf1f5;min-width:0}
 .summary-bar>view:last-child{border-right:0}
-.summary-value{display:block;font-size:28rpx;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#102A3A}
+.summary-value{display:block;font-size:30rpx;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#102A3A}
 .summary-value.primary{color:#C65A4A}
-.summary-value.success{color:#0F766E}
+.summary-value.success{color:#087CF0}
 .summary-value.warning{color:#B45309}
-.summary-gift{display:inline-block;margin-left:6rpx;font-size:22rpx;font-weight:700;color:#64748B}
+.summary-gift{display:inline-block;margin-left:8rpx;font-size:30rpx;font-weight:700;color:#64748B}
 .summary-label{display:block;margin-top:6rpx;color:#98a9ba;font-size:20rpx;font-weight:400}
 
 /* ── 浮动底部操作栏 ── */
@@ -410,19 +413,19 @@ export default {
 .compact-body{flex:1;padding:22rpx 24rpx}
 .compact-row1{display:flex;align-items:center;gap:18rpx}
 .compact-title-wrap{flex:1;min-width:0;display:flex;align-items:center;gap:12rpx}
-.compact-title{flex:1;min-width:0;font-size:29rpx;line-height:40rpx;font-weight:800;color:#102A3A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.compact-title{flex:1;min-width:0;font-size:32rpx;line-height:44rpx;font-weight:800;color:#102A3A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .compact-type-tag{flex-shrink:0;padding:2rpx 12rpx;border-radius:999rpx;font-size:20rpx;line-height:30rpx;font-weight:700}
 .compact-type-tag.type-member{background:#E0F2FE;color:#075985}
 .compact-type-tag.type-customer{background:#F1F5F9;color:#475569}
 .compact-type-tag.type-walkin{background:#FFEDD5;color:#C2410C}
-.compact-amount{font-size:29rpx;line-height:40rpx;font-weight:800;color:#C65A4A;flex-shrink:0}
+.compact-amount{font-size:32rpx;line-height:44rpx;font-weight:800;color:#C65A4A;flex-shrink:0}
 .compact-row2{display:flex;align-items:center;gap:18rpx;margin-top:12rpx}
 .compact-row3{display:flex;align-items:center;gap:14rpx;margin-top:12rpx}
 .compact-meta{flex-shrink:0;font-size:23rpx;line-height:32rpx;color:#708196;font-weight:600}
 .compact-meta.date{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
-.compact-meta.paid{color:#0F766E;font-weight:700}
+.compact-meta.paid{color:#087CF0;font-weight:700}
 .compact-meta.debt{color:#B45309;font-weight:700}
-.compact-meta.qty{font-size:28rpx;font-weight:700;color:#102A3A}
+.compact-meta.qty{font-size:24rpx;font-weight:600;color:#475569}
 .compact-id{flex-shrink:0;font-size:21rpx;color:#5A6B7F;background:#E8EEF5;padding:2rpx 12rpx;border-radius:999rpx}
 .compact-status-group{display:flex;align-items:center;gap:8rpx;flex-shrink:0;margin-left:auto}
 .compact-status{flex-shrink:0;padding:4rpx 16rpx;border-radius:20rpx;font-size:22rpx;line-height:30rpx;font-weight:500}
@@ -483,8 +486,10 @@ export default {
 .overlay-mask{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:50;overflow:hidden}
 
 /* ────────────────── 详情页 ────────────────── */
-.detail-page{height:100vh;background:#E8EEF5;padding-bottom:calc(40rpx + env(safe-area-inset-bottom));box-sizing:border-box;overflow-y:auto;-webkit-overflow-scrolling:touch;will-change:transform}
-.detail-page.swipe-closing{pointer-events:none}
+.detail-swipe-wrap{display:flex;flex-direction:column;height:100vh;background:#E8EEF5;overflow:hidden;will-change:transform}
+.detail-swipe-wrap.swipe-closing{pointer-events:none}
+.detail-page-scroll{flex:1;min-height:0;box-sizing:border-box}
+.detail-page{min-height:100%;padding-bottom:20rpx;box-sizing:border-box}
 
 /* 详情页 hero 区（参考 hero-card） */
 .detail-hero{position:relative;margin:24rpx 28rpx;border-radius:20rpx;overflow:hidden}
@@ -511,7 +516,7 @@ export default {
 .detail-highlight-value.status-warn{display:inline-block;background:#FEF3C7;color:#92400E;font-size:24rpx;font-weight:500;padding:4rpx 16rpx;border-radius:20rpx}
 .detail-highlight-value.status-info{display:inline-block;background:#E0F2FE;color:#075985;font-size:24rpx;font-weight:500;padding:4rpx 16rpx;border-radius:20rpx}
 .detail-highlight-value.tone-money{color:#B45309}
-.detail-highlight-value.tone-success{color:#059669}
+.detail-highlight-value.tone-success{color:#087CF0}
 .detail-highlight-value.tone-warning{color:#C26A1B}
 
 /* 详情页 明细列表（参考 detail-list） */
@@ -543,9 +548,10 @@ export default {
 .payment-history-meta{margin-top:10rpx;color:#64748B;font-size:24rpx}
 .detail-empty{text-align:center;color:#94A3B8;padding:32rpx 0;font-size:24rpx}
 
-/* 详情页 底部操作栏（参考 footer-bar） */
-.detail-footer-placeholder{height:140rpx}
-.detail-footer-bar{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;gap:16rpx;padding:16rpx 24rpx;padding-bottom:calc(16rpx + env(safe-area-inset-bottom));background:#fff;box-shadow:0 -2rpx 16rpx rgba(8,124,240,.06);z-index:100;flex-wrap:wrap}
+/* 详情页 底部占位（在 scroll 内给 footer-bar 留空间） */
+.detail-footer-placeholder{height:160rpx}
+/* 详情页 底部操作栏（在 swipe-wrap flex 列底部，非 fixed） */
+.detail-footer-bar{flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:16rpx;padding:16rpx 24rpx;padding-bottom:calc(16rpx + env(safe-area-inset-bottom));background:#fff;box-shadow:0 -2rpx 16rpx rgba(8,124,240,.06);z-index:100}
 .detail-action-btn{flex:1;height:76rpx;line-height:76rpx;font-size:28rpx;font-weight:500;border-radius:16rpx;text-align:center;border:none;margin:0;padding:0;min-width:calc(25% - 12rpx)}
 .detail-action-btn::after{border:none}
 .detail-action-btn.primary-btn{background:#087CF0;color:#fff}

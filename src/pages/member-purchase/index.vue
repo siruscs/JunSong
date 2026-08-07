@@ -4,9 +4,9 @@
     <view class="work-scope"><view class="work-scope-mark"></view><view class="work-scope-copy"><text class="work-scope-label">当前部门 · </text><text class="work-scope-name">{{ currentDeptName || '当前部门' }}</text></view></view>
     <view class="summary-bar" v-if="summary">
       <view><text class="summary-value">{{ quantity(summary.purchaseQuantity) }}<text class="summary-gift">赠</text><text class="summary-gift-num">{{ quantity(summary.giftQuantity) }}</text></text><text class="summary-label">数量</text></view>
-      <view><text class="summary-value primary">¥{{ money(summary.totalAmount) }}</text><text class="summary-label">应收金额</text></view>
-      <view><text class="summary-value success">¥{{ money(summary.paidAmount) }}</text><text class="summary-label">已收金额</text></view>
-      <view><text class="summary-value warning">¥{{ money(summary.receivableAmount) }}</text><text class="summary-label">待缴金额</text></view>
+      <view><text class="summary-value primary"><text class="summary-currency">¥</text>{{ money(summary.totalAmount) }}</text><text class="summary-label">应收金额</text></view>
+      <view><text class="summary-value success"><text class="summary-currency">¥</text>{{ money(summary.paidAmount) }}</text><text class="summary-label">已收金额</text></view>
+      <view><text class="summary-value warning"><text class="summary-currency">¥</text>{{ money(summary.receivableAmount) }}</text><text class="summary-label">待缴金额</text></view>
     </view>
     <view class="list-header-bar">
       <text class="list-header-count">共 {{ total }} 条</text>
@@ -63,19 +63,17 @@
     </view>
 
     <!-- ════════ 详情面板（参考销售记录 detail/index.vue） ════════ -->
-    <view class="overlay-mask" v-if="panel === 'detail'" @tap="closePanel" @touchmove.stop>
+    <view class="overlay-mask" v-if="panel === 'detail'" @tap="closePanel">
       <view
-        class="detail-swipe-wrap"
+        class="detail-page"
         :class="{ 'swipe-closing': detailSwipeClosing }"
         :style="detailSwipeStyle"
+        @tap.stop
         @touchstart="onDetailTouchStart"
         @touchmove="onDetailTouchMove"
         @touchend="onDetailTouchEnd"
-        @tap.stop
       >
-        <scroll-view scroll-y class="detail-page-scroll">
-          <view class="detail-page">
-            <view class="detail-hero">
+        <view class="detail-hero">
               <view class="detail-hero-bg"></view>
               <view class="detail-hero-content">
                 <view class="detail-hero-eyebrow">会员购买 · {{ customerTypeText(detail.customerType) }}</view>
@@ -141,8 +139,7 @@
             </view>
 
             <view class="detail-footer-placeholder"></view>
-          </view>
-        </scroll-view>
+
         <view class="detail-footer-bar" v-if="detail && detail.purchaseId">
           <button v-if="can('edit')" class="detail-action-btn primary-btn" @tap="switchToEdit">编辑</button>
           <button v-if="can('payment') && Number(detail.receivableAmount || 0) > 0" class="detail-action-btn payment-btn" @tap="openPayment(detail)">收款</button>
@@ -318,10 +315,10 @@ export default {
     unwrap(res) { return res?.rows || res?.data?.rows || res?.data || [] }, async loadOptions() { try { const [p, a] = await Promise.all([request({ url:'/finance/product/list', method:'GET', data:{ pageNum:1, pageSize:200, deptId:this.currentDeptId }, silent:true }), request({ url:'/finance/accountingPeriod/list', method:'GET', data:{ pageNum:1, pageSize:200, deptId:this.currentDeptId }, silent:true })]); this.products = this.unwrap(p); this.periods = this.unwrap(a).filter(x => String(x.deptId) === String(this.currentDeptId)).map(x => ({ ...x, label: `${x.periodNo || x.periodId}（${this.dateText(x.startTime)} 至 ${x.endTime ? this.dateText(x.endTime) : '当前'}）` })); if (this.periods.length && !this.form.periodId) { this.form.periodId = this.periods[0].periodId } } catch (e) { this.products = []; this.periods = [] } }, async loadPolicies() { if (!this.form.item.productId || !this.form.periodId) { this.policies = []; return }; const res = await request({ url:'/member/campaign/policy/list', method:'GET', data:{ pageNum:1, pageSize:200, deptId:this.currentDeptId, productId:this.form.item.productId, periodId:this.form.periodId, status:'1' } }); const rows = this.unwrap(res).filter(x => String(x.productId) === String(this.form.item.productId) && String(x.periodId) === String(this.form.periodId)); const detailed = await Promise.all(rows.map(async (policy) => { if (Array.isArray(policy.packages) && policy.packages.length) return policy; try { const detail = await request({ url:`/member/campaign/policy/${policy.policyId}`, method:'GET' }); return detail?.data || detail || policy } catch (e) { return policy } })); this.policies = [{ policyId:'', policyName:'不参加活动，按单价购买', packages:[] }, ...detailed] }, async load() { this.loading = true; try { const res = await request({ url:'/member/purchase/list', method:'GET', data:this.listParams() }); this.rows = this.unwrap(res); this.total = Number(res?.total ?? 0) || 0 } finally { this.loading = false } this.loadStatistics(); if (this.pageNum === 1) this.loadReturns() }, listParams() { const p = { pageNum:this.pageNum, pageSize:this.pageSize, deptId:this.currentDeptId, customerName:this.keyword || undefined, customerType:this.filters.customerType || undefined, paymentStatus:this.filters.paymentStatus || undefined, beginTime:this.filters.beginTime || undefined, endTime:this.filters.endTime || undefined }; Object.keys(p).forEach(k => p[k] === undefined && delete p[k]); return p }, async loadStatistics() { try { const res = await request({ url:'/member/purchase/statistics', method:'GET', data:this.listParams() }); this.summary = res?.data || res || {} } catch (e) {} }, async loadReturns() { try { const res = await request({ url:'/member/purchase-return/list', method:'GET', data:{ pageNum:1, pageSize:200, deptId:this.currentDeptId }, silent:true }); this.returnPurchaseIds = Array.from(new Set(this.unwrap(res).map(x => String(x.purchaseId)))) } catch (e) { this.returnPurchaseIds = [] } }, hasReturn(row) { return this.returnPurchaseIds.includes(String(row?.purchaseId)) },
     selectCustomerType(e) { this.form.customerType = this.customerTypes[Number(e.detail.value)].value; if (this.form.customerType !== 'MEMBER') { this.form.memberId = ''; this.form.memberNo = ''; this.form.memberName = '' } }, selectMember(member) { this.form.memberId = member?.memberId || ''; this.form.memberNo = member?.memberNo || ''; this.form.memberName = member?.memberName || ''; this.form.customerName = member?.memberName || ''; this.form.customerPhone = member?.phone || '' }, clearMember() { this.form.memberId = ''; this.form.memberNo = ''; this.form.memberName = '' }, selectCustomerTypeFilter(e) { this.filters.customerType = this.customerTypeFilters[Number(e.detail.value)].value }, selectPaymentStatusFilter(e) { this.filters.paymentStatus = this.paymentStatusFilters[Number(e.detail.value)].value }, openFilterSheet() { this.filterSheetOpen = true }, closeFilterSheet() { this.filterSheetOpen = false }, applyFilterSheet() { this.pageNum = 1; this.filterSheetOpen = false; this.load() }, resetFilters() { this.keyword = ''; this.filters = { customerType: '', paymentStatus: '', beginTime: '', endTime: '' }; this.pageNum = 1; this.load() }, prevPage() { if (this.pageNum <= 1) return; this.pageNum--; this.load() }, nextPage() { if (this.pageNum >= this.totalPages) return; this.pageNum++; this.load() }, selectProduct(e) { const p = this.products[Number(e.detail.value)]; this.form.item.productId = p?.productId || ''; this.form.item.policyId = ''; this.form.item.packageId = ''; this.form.item.giftQuantity = ''; if (p && (p.salePrice != null || p.defaultSalePrice != null || p.price != null)) { this.form.item.unitPrice = this.money(p.salePrice ?? p.defaultSalePrice ?? p.price) } this.loadPolicies() }, selectPolicy(e) { const policy = this.policies[Number(e.detail.value)]; this.form.item.policyId = policy?.policyId || ''; this.form.item.packageId = ''; if (policy?.packages?.length === 1) this.selectPackage({ detail: { value: 0 } }) }, selectPackage(e) { const pkg = this.packages[Number(e.detail.value)]; this.form.item.packageId = pkg?.packageId || ''; if (pkg) { this.form.item.purchaseQuantity = this.quantity(pkg.purchaseQuantity); this.form.item.giftQuantity = this.quantity(pkg.giftQuantity); this.form.item.unitPrice = this.money(Number(pkg.packagePrice || 0) / Number(pkg.purchaseQuantity || 1)) } }, selectPeriod(e) { this.form.periodId = this.periods[Number(e.detail.value)]?.periodId || ''; this.loadPolicies() }, limit(key, value, precision) { const s = String(value || '').replace(/[^\d.]/g,'').replace(/\.(?=.*\.)/g,''); this.form.item[key] = s.includes('.') ? s.split('.')[0] + '.' + s.split('.')[1].slice(0, precision) : s }, limitPayment(e) { this.paymentForm.paymentAmount = String(e.detail.value || '').replace(/[^\d.]/g,'').replace(/\.(?=.*\.)/g,'').replace(/(\.\d{2}).*/,'$1') },
     openCreate() { this.showCustomerTypePicker = true }, pickCustomerType(e) { const idx = Number(e.detail.value); this.form = this.emptyForm(); this.form.customerType = this.customerTypes[idx].value; if (this.periods.length) { this.form.periodId = this.periods[0].periodId } this.showCustomerTypePicker = false; this.panel = 'create' }, openReturn(row) { uni.navigateTo({ url:`/pages/member-purchase-return/index?purchaseId=${row.purchaseId}` }) }, openReturnDetail(row) { uni.navigateTo({ url:`/pages/member-purchase-return/index?purchaseId=${row.purchaseId}` }) }, openBind(row) { this.bindTarget = row; this.bindForm = { memberId: '' }; this.panel = 'bind' }, selectBindMember(member) { this.bindForm = { memberId: member?.memberId || '', memberName: member?.memberName || '' } }, clearBindMember() { this.bindForm = { memberId: '' } }, async confirmBind() { if (!this.bindForm.memberId) return uni.showToast({ title:'请选择要绑定的会员', icon:'none' }); await request({ url:`/member/purchase/${this.bindTarget.purchaseId}/bind-member/${this.bindForm.memberId}`, method:'PUT' }); uni.showToast({ title:'绑定成功', icon:'success' }); this.closePanel(); this.load() }, async openDetail(row) { const res = await request({ url:`/member/purchase/${row.purchaseId}`, method:'GET' }); this.detail = res.data || res; this.form = { ...this.emptyForm(), ...this.detail, item: { ...(this.detail.items?.[0] || {}) } }; this.active = row; this.panel = 'detail' }, async openEdit(row) { await this.openDetail(row); this.panel = 'edit' }, switchToEdit() { this.panel = 'edit' }, closePanel() { this.panel = '' },
-    /* ── 右滑返回手势（返回购买记录列表） ── */
-    onDetailTouchStart(e) { const t = e.touches?.[0] || e.changedTouches?.[0]; if (!t) return; this.detailSwipeStart = { x: t.clientX, y: t.clientY, startedAt: Date.now(), triggered: false, lockAxis: null, verticalScroll: false }; this.detailSwipeX = 0; this.detailSwipeClosing = false },
-    onDetailTouchMove(e) { const s = this.detailSwipeStart; if (!s) return; const t = e.touches?.[0] || e.changedTouches?.[0]; if (!t) return; const dx = t.clientX - s.x; const dy = t.clientY - s.y; if (!s.lockAxis && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) { s.lockAxis = Math.abs(dy) > Math.abs(dx) ? 'y' : 'x'; if (s.lockAxis === 'x') s.triggered = true; else s.verticalScroll = true } if (s.lockAxis === 'y') return; if (!s.triggered) return; if (dx > 0 && s.x < 40) { this.detailSwipeX = Math.max(0, dx) } else if (dx < 0) { this.detailSwipeX = 0 } },
-    onDetailTouchEnd() { const s = this.detailSwipeStart; if (!s) return; if (s.verticalScroll) { this.detailSwipeStart = null; this.detailSwipeX = 0; return } const threshold = 100; const velocityThreshold = 300; const dt = Math.max(1, Date.now() - s.startedAt); const vx = (this.detailSwipeX * 1000) / dt; if (s.triggered && (this.detailSwipeX > threshold || vx > velocityThreshold)) { this.detailSwipeClosing = true; const w = typeof screen !== 'undefined' ? (screen.width || 420) : 420; this.detailSwipeX = Math.max(w, 420); setTimeout(() => { this.closePanel(); this.detailSwipeStart = null; this.detailSwipeX = 0; this.detailSwipeClosing = false }, 220) } else { this.detailSwipeClosing = true; this.detailSwipeX = 0; setTimeout(() => { this.detailSwipeStart = null; this.detailSwipeClosing = false }, 180) } },
+    /* ── 右滑返回手势（参考 member-purchase-return detail-page） ── */
+    onDetailTouchStart(e) { const t = e.touches?.[0] || e.changedTouches?.[0]; if (!t) return; this.detailSwipeStart = { x: t.clientX, y: t.clientY, startedAt: Date.now(), triggered: false, lockAxis: null }; this.detailSwipeX = 0; this.detailSwipeClosing = false },
+    onDetailTouchMove(e) { const s = this.detailSwipeStart; if (!s) return; const t = e.touches?.[0] || e.changedTouches?.[0]; if (!t) return; const dx = t.clientX - s.x; const dy = t.clientY - s.y; if (!s.lockAxis && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) { s.lockAxis = Math.abs(dy) > Math.abs(dx) ? 'y' : 'x'; if (s.lockAxis === 'x') s.triggered = true } if (s.lockAxis !== 'x' || !s.triggered) return; if (dx > 0 && s.x < 40) { this.detailSwipeX = Math.max(0, dx) } else if (dx < 0) { this.detailSwipeX = 0 } },
+    onDetailTouchEnd() { const s = this.detailSwipeStart; if (!s) return; const threshold = 100; const velocityThreshold = 300; const dt = Math.max(1, Date.now() - s.startedAt); const vx = (this.detailSwipeX * 1000) / dt; if (this.detailSwipeX > threshold || vx > velocityThreshold) { this.detailSwipeClosing = true; this.detailSwipeX = Math.max(typeof screen !== 'undefined' ? (screen.width || 420) : 420, 420); setTimeout(() => { this.closePanel(); this.detailSwipeStart = null; this.detailSwipeX = 0; this.detailSwipeClosing = false }, 220) } else { this.detailSwipeClosing = true; this.detailSwipeX = 0; setTimeout(() => { this.detailSwipeStart = null; this.detailSwipeClosing = false }, 220) } },
     async saveCreate() { const f = this.form; if (!f.periodId || !f.item.productId || Number(f.item.purchaseQuantity) <= 0 || Number(f.item.unitPrice) <= 0) return uni.showToast({ title:'请完整填写周期、商品、数量和单价', icon:'none' }); if (f.customerType === 'MEMBER' && !f.memberId) return uni.showToast({ title:'请选择会员', icon:'none' }); await request({ url:'/member/purchase', method:'POST', data:{ ...f, identityConfirmed:false, purchaseDate:f.purchaseDate, items:[{ ...f.item, giftQuantity:Number(f.item.giftQuantity || 0) }], idempotencyKey:`mp-purchase-${Date.now()}` } }); uni.showToast({ title:'购买单已保存', icon:'success' }); this.closePanel(); this.load() },
     async saveEdit() { await request({ url:`/member/purchase/${this.detail.purchaseId}`, method:'PUT', data:{ customerName:this.form.customerName, customerPhone:this.form.customerPhone, purchaseDate:this.form.purchaseDate, remark:this.form.remark, items:[this.form.item] } }); uni.showToast({ title:'购买单已保存', icon:'success' }); this.closePanel(); this.load() },
     async openPayment(row) { this.active = row; this.paymentForm = { paymentAmount: this.money(row.receivableAmount) }; this.paymentIndex = 0; this.panel = 'payment' }, async savePayment() { const n = Number(this.paymentForm.paymentAmount); if (!(n > 0) || n > Number(this.active.receivableAmount || 0)) return uni.showToast({ title:'收款金额必须大于0且不能超过待缴金额', icon:'none' }); await request({ url:`/member/purchase/${this.active.purchaseId}/payment`, method:'POST', data:{ paymentAmount:n, paymentMethod:this.paymentMethods[this.paymentIndex].value, paymentDate:this.isoDateTime(this.today()), idempotencyKey:`mp-payment-${Date.now()}` } }); uni.showToast({ title:'收款成功', icon:'success' }); this.closePanel(); this.load() },
@@ -374,6 +371,7 @@ export default {
 .summary-value.warning{color:#B45309}
 .summary-gift{display:inline-block;margin-left:8rpx;font-size:22rpx;font-weight:400;color:#64748B}
 .summary-gift-num{font-size:30rpx;font-weight:800;color:#102A3A}
+.summary-currency{font-size:24rpx;font-weight:400;margin-right:2rpx}
 .summary-label{display:block;margin-top:6rpx;color:#98a9ba;font-size:20rpx;font-weight:400}
 
 /* ── 浮动底部操作栏 ── */
@@ -488,10 +486,8 @@ export default {
 .overlay-mask{position:fixed;inset:0;background:#1a2332;z-index:50;overflow:hidden}
 
 /* ────────────────── 详情页 ────────────────── */
-.detail-swipe-wrap{display:flex;flex-direction:column;height:100vh;background:#E8EEF5;overflow:hidden;will-change:transform}
-.detail-swipe-wrap.swipe-closing{pointer-events:none}
-.detail-page-scroll{flex:1;min-height:0;box-sizing:border-box}
-.detail-page{min-height:100%;padding-bottom:20rpx;box-sizing:border-box}
+.detail-page{height:100vh;background:#E8EEF5;padding-bottom:calc(40rpx + env(safe-area-inset-bottom));box-sizing:border-box;overflow-y:auto;-webkit-overflow-scrolling:touch;will-change:transform}
+.detail-page.swipe-closing{pointer-events:none}
 
 /* 详情页 hero 区（参考 hero-card） */
 .detail-hero{position:relative;margin:24rpx 28rpx;border-radius:20rpx;overflow:hidden}
@@ -551,9 +547,9 @@ export default {
 .detail-empty{text-align:center;color:#94A3B8;padding:32rpx 0;font-size:24rpx}
 
 /* 详情页 底部占位（在 scroll 内给 footer-bar 留空间） */
-.detail-footer-placeholder{height:160rpx}
-/* 详情页 底部操作栏（在 swipe-wrap flex 列底部，非 fixed） */
-.detail-footer-bar{flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:16rpx;padding:16rpx 24rpx;padding-bottom:calc(16rpx + env(safe-area-inset-bottom));background:#fff;box-shadow:0 -2rpx 16rpx rgba(8,124,240,.06);z-index:100}
+.detail-footer-placeholder{height:140rpx}
+/* 详情页 底部操作栏（参考 footer-bar） */
+.detail-footer-bar{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;gap:16rpx;padding:16rpx 24rpx;padding-bottom:calc(16rpx + env(safe-area-inset-bottom));background:#fff;box-shadow:0 -2rpx 16rpx rgba(8,124,240,.06);z-index:100;flex-wrap:wrap}
 .detail-action-btn{flex:1;height:76rpx;line-height:76rpx;font-size:28rpx;font-weight:500;border-radius:16rpx;text-align:center;border:none;margin:0;padding:0;min-width:calc(25% - 12rpx)}
 .detail-action-btn::after{border:none}
 .detail-action-btn.primary-btn{background:#087CF0;color:#fff}

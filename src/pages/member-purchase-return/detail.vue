@@ -22,8 +22,8 @@
           <view class="detail-highlight-item"><view class="detail-highlight-label">原购买单</view><view class="detail-highlight-value">{{ detail.purchaseId }}</view></view>
           <view class="detail-highlight-item"><view class="detail-highlight-label">应退金额</view><view class="detail-highlight-value tone-warning">¥{{ money(detail.refundAmount) }}</view></view>
           <view class="detail-highlight-item"><view class="detail-highlight-label">已退金额</view><view class="detail-highlight-value tone-success">¥{{ money(detail.refundedAmount) }}</view></view>
-          <view class="detail-highlight-item"><view class="detail-highlight-label">退货办理周期</view><view class="detail-highlight-value">{{ detail.returnPeriodId || '-' }}</view></view>
-          <view class="detail-highlight-item"><view class="detail-highlight-label">原核算周期</view><view class="detail-highlight-value">{{ detail.originalPeriodId || '-' }}</view></view>
+          <view class="detail-highlight-item"><view class="detail-highlight-label">退货办理周期</view><view class="detail-highlight-value">{{ periodLabel(detail.returnPeriodId, returnPeriod) }}</view></view>
+          <view class="detail-highlight-item"><view class="detail-highlight-label">原核算周期</view><view class="detail-highlight-value">{{ periodLabel(detail.originalPeriodId, originalPeriod) }}</view></view>
         </view>
       </view>
 
@@ -67,7 +67,7 @@ import { getMemberPurchaseReturn } from '@/api/memberPurchaseReturn.js'
 import { hasActionPermission } from '@/utils/permission.js'
 
 export default {
-  data() { return { loading: true, returnId: null, detail: {} } },
+  data() { return { loading: true, returnId: null, detail: {}, returnPeriod: null, originalPeriod: null } },
   onLoad(options) {
     this.returnId = options.returnId
     this.loadDetail()
@@ -83,8 +83,26 @@ export default {
       try {
         const res = await getMemberPurchaseReturn(this.returnId)
         this.detail = res.data || res
+        this.loadPeriods()
       } catch (e) { this.detail = {} }
       this.loading = false
+    },
+    async loadPeriods() {
+      try {
+        if (this.detail.returnPeriodId) {
+          const r = await request({ url: `/accountingPeriod/${this.detail.returnPeriodId}`, method: 'GET' })
+          this.returnPeriod = r.data || r
+        }
+        if (this.detail.originalPeriodId) {
+          const r = await request({ url: `/accountingPeriod/${this.detail.originalPeriodId}`, method: 'GET' })
+          this.originalPeriod = r.data || r
+        }
+      } catch (e) {}
+    },
+    periodLabel(id, period) {
+      if (!id) return '-'
+      if (period && period.periodNo) return `${period.periodNo}（${this.dateText(period.startTime)} 至 ${period.endTime ? this.dateText(period.endTime) : '当前'}）`
+      return `周期#${id}`
     },
     async complete() {
       const ok = await new Promise(resolve => uni.showModal({
@@ -94,7 +112,7 @@ export default {
       }))
       if (!ok) return
       try {
-        await request({ url: `/member/purchase-return/${this.detail.returnId}/complete`, method: 'PUT' })
+        await request({ url: `/member/purchase-return/${this.detail.returnId}/complete`, method: 'PUT', data: { refundAmount: this.detail.refundAmount } })
         uni.showToast({ title: '退货单已完成', icon: 'success' })
         setTimeout(() => uni.navigateBack(), 300)
       } catch (e) {}

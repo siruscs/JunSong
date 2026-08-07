@@ -149,11 +149,7 @@ export default {
     displayPurchaseQty(row) {
       const q = Number(row?.purchaseQuantity || 0)
       if (q > 0) return this.quantity(q)
-      if (Array.isArray(row?.items) && row.items.length) {
-        const s = row.items.reduce((acc, it) => acc + Number(it.purchaseQuantity || 0) + Number(it.returnSaleQuantity || 0) + Number(it.returnGiftQuantity || 0), 0)
-        return s ? this.quantity(s) : '0'
-      }
-      return '0'
+      return '-'
     },
     displayReturnQty(row) {
       const q = Number(row?.totalReturnQuantity || 0)

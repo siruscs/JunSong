@@ -8,5 +8,6 @@ public interface IMemberPurchaseReturnService
     List<MemPurchaseReturn> selectReturnList(MemPurchaseReturn query);
     MemPurchaseReturn selectReturnById(MemPurchaseReturn query);
     int createReturn(MemPurchaseReturn value);
+    int updateReturn(MemPurchaseReturn value);
     int completeReturn(MemPurchaseReturn value);
 }

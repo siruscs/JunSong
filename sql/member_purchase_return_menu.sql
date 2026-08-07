@@ -31,9 +31,16 @@ SELECT (SELECT COALESCE(MAX(menu_id), 0) + 1 FROM sys_menu), '完成退货单', 
 FROM DUAL WHERE @purchase_menu_id IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM sys_menu WHERE perms = 'member:purchaseReturn:complete' AND menu_type = 'F');
 
+INSERT INTO sys_menu (menu_id, menu_name, parent_id, order_num, path, component, is_frame, is_cache,
+                      menu_type, visible, status, perms, icon, create_by, create_time, update_by, update_time, remark)
+SELECT (SELECT COALESCE(MAX(menu_id), 0) + 1 FROM sys_menu), '编辑退货单', @purchase_menu_id, 13, '', '', 1, 0, 'F', '0', '0',
+       'member:purchaseReturn:edit', '#', 'admin', NOW(), '', NULL, '编辑草稿状态退货单的顾客信息及备注'
+FROM DUAL WHERE @purchase_menu_id IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM sys_menu WHERE perms = 'member:purchaseReturn:edit' AND menu_type = 'F');
+
 INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT 1, menu_id FROM sys_menu
-WHERE perms IN ('member:purchaseReturn:list', 'member:purchaseReturn:query', 'member:purchaseReturn:add', 'member:purchaseReturn:complete')
+WHERE perms IN ('member:purchaseReturn:list', 'member:purchaseReturn:query', 'member:purchaseReturn:add', 'member:purchaseReturn:complete', 'member:purchaseReturn:edit')
   AND NOT EXISTS (SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = 1 AND rm.menu_id = sys_menu.menu_id);
 
 SELECT 'member_purchase_return_menu' AS check_name, COUNT(*) AS permission_count

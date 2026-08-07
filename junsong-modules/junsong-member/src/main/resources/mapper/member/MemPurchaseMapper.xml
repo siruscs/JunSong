@@ -118,7 +118,8 @@
         select purchase_id, tenant_id, dept_id, period_id, purchase_no, customer_type,
                member_id, customer_id, customer_name, customer_phone, identity_mode,
                identity_confirmed, total_amount, paid_amount, receivable_amount,
-               payment_status, delivery_status, order_status, idempotency_key
+               payment_status, delivery_status, order_status, idempotency_key,
+               purchase_date, remark
         from mem_purchase_order
     </sql>
 

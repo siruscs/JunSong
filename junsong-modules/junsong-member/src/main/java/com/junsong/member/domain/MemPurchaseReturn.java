@@ -9,6 +9,7 @@ public class MemPurchaseReturn extends BaseEntity
 {
     private Long returnId, tenantId, deptId, purchaseId, originalPeriodId, returnPeriodId, memberId;
     private String returnNo, customerType, customerName, customerPhone, status, reason, remark, idempotencyKey, delFlag;
+    private String purchaseNo;
     private Date returnDate;
     private BigDecimal refundAmount, refundedAmount;
     private Integer purchaseQuantity, totalReturnQuantity;
@@ -37,4 +38,5 @@ public class MemPurchaseReturn extends BaseEntity
     public Integer getPurchaseQuantity(){return purchaseQuantity;} public void setPurchaseQuantity(Integer v){purchaseQuantity=v;}
     public Integer getTotalReturnQuantity(){return totalReturnQuantity;} public void setTotalReturnQuantity(Integer v){totalReturnQuantity=v;}
     public List<MemPurchaseReturnItem> getItems(){return items;} public void setItems(List<MemPurchaseReturnItem> v){items=v;}
+    public String getPurchaseNo(){return purchaseNo;} public void setPurchaseNo(String v){purchaseNo=v;}
 }

@@ -41,6 +41,11 @@ public class MemPurchaseReturnController extends BaseController
     @PostMapping
     public AjaxResult create(@RequestBody MemPurchaseReturn value){value.setTenantId(TenantContext.getTenantId());value.setDeptId(SecurityUtils.getDeptId());value.setCreateBy(SecurityUtils.getUsername());return returnService.createReturn(value)==1?AjaxResult.success(value):AjaxResult.error("退货单创建失败");}
 
+    @RequiresPermissions("member:purchaseReturn:edit")
+    @Log(title="编辑会员购买退货",businessType=BusinessType.UPDATE)
+    @PutMapping("/{returnId}")
+    public AjaxResult update(@PathVariable Long returnId, @RequestBody MemPurchaseReturn value){value.setReturnId(returnId);value.setTenantId(TenantContext.getTenantId());value.setDeptId(SecurityUtils.getDeptId());value.setUpdateBy(SecurityUtils.getUsername());return returnService.updateReturn(value)==1?AjaxResult.success():AjaxResult.error("退货单更新失败，请刷新后重试");}
+
     @RequiresPermissions("member:purchaseReturn:complete")
     @Log(title="完成会员购买退货",businessType=BusinessType.UPDATE)
     @Idempotent(scene="member:purchase-return:complete")

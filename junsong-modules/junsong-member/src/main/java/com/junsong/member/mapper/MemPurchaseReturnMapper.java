@@ -15,5 +15,8 @@ public interface MemPurchaseReturnMapper
     int insertReturn(MemPurchaseReturn value);
     int insertReturnItem(MemPurchaseReturnItem value);
     int completeReturn(MemPurchaseReturn value);
+    int updateReturn(MemPurchaseReturn value);
+    int deleteReturnItems(MemPurchaseReturn query);
+    int updateReturnTotalAmount(MemPurchaseReturn value);
     MemPurchaseReturn selectReturnForUpdate(MemPurchaseReturn query);
 }

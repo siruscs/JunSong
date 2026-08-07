@@ -3,7 +3,7 @@
 <mapper namespace="com.junsong.member.mapper.MemPurchaseReturnMapper">
   <resultMap id="ReturnResult" type="com.junsong.member.domain.MemPurchaseReturn">
     <id property="returnId" column="return_id"/><result property="tenantId" column="tenant_id"/><result property="deptId" column="dept_id"/>
-    <result property="purchaseId" column="purchase_id"/><result property="originalPeriodId" column="original_period_id"/><result property="returnPeriodId" column="return_period_id"/>
+    <result property="purchaseId" column="purchase_id"/><result property="purchaseNo" column="purchase_no"/><result property="originalPeriodId" column="original_period_id"/><result property="returnPeriodId" column="return_period_id"/>
     <result property="returnNo" column="return_no"/><result property="returnDate" column="return_date"/><result property="customerType" column="customer_type"/>
     <result property="memberId" column="member_id"/><result property="customerName" column="customer_name"/><result property="customerPhone" column="customer_phone"/>
     <result property="refundAmount" column="refund_amount"/><result property="refundedAmount" column="refunded_amount"/><result property="status" column="status"/>
@@ -17,17 +17,20 @@
     <result property="returnGiftQuantity" column="return_gift_quantity"/><result property="returnTotalQuantity" column="return_total_quantity"/><result property="refundUnitPrice" column="refund_unit_price"/><result property="refundAmount" column="refund_amount"/>
   </resultMap>
   <select id="selectReturnList" parameterType="com.junsong.member.domain.MemPurchaseReturn" resultMap="ReturnResult">
-    select r.return_id,r.tenant_id,r.dept_id,r.purchase_id,r.original_period_id,r.return_period_id,r.return_no,r.return_date,r.customer_type,r.member_id,r.customer_name,r.customer_phone,r.refund_amount,r.refunded_amount,r.status,r.reason,r.remark,r.version,
+    select r.return_id,r.tenant_id,r.dept_id,r.purchase_id,po.purchase_no,r.original_period_id,r.return_period_id,r.return_no,r.return_date,r.customer_type,r.member_id,r.customer_name,r.customer_phone,r.refund_amount,r.refunded_amount,r.status,r.reason,r.remark,r.version,
            coalesce((select sum(pi.purchase_quantity) from mem_purchase_item pi where pi.purchase_id=r.purchase_id and pi.tenant_id=r.tenant_id and pi.dept_id=r.dept_id), 0) as purchase_quantity,
            (select sum(ri.return_total_quantity) from mem_purchase_return_item ri where ri.return_id=r.return_id and ri.tenant_id=r.tenant_id and ri.dept_id=r.dept_id) as total_return_quantity
     from mem_purchase_return r
+    left join mem_purchase_order po on po.purchase_id=r.purchase_id and po.tenant_id=r.tenant_id and po.dept_id=r.dept_id
     where r.tenant_id=#{tenantId} and r.dept_id=#{deptId} and r.del_flag='0'
     <if test="purchaseId != null">and r.purchase_id=#{purchaseId}</if><if test="status != null and status != ''">and r.status=#{status}</if>
     order by r.return_id desc
   </select>
   <select id="selectReturnById" parameterType="com.junsong.member.domain.MemPurchaseReturn" resultMap="ReturnResult">
-    select return_id,tenant_id,dept_id,purchase_id,original_period_id,return_period_id,return_no,return_date,customer_type,member_id,customer_name,customer_phone,refund_amount,refunded_amount,status,reason,remark,version
-    from mem_purchase_return where return_id=#{returnId} and tenant_id=#{tenantId} and dept_id=#{deptId} and del_flag='0'
+    select r.return_id,r.tenant_id,r.dept_id,r.purchase_id,po.purchase_no,r.original_period_id,r.return_period_id,r.return_no,r.return_date,r.customer_type,r.member_id,r.customer_name,r.customer_phone,r.refund_amount,r.refunded_amount,r.status,r.reason,r.remark,r.version
+    from mem_purchase_return r
+    left join mem_purchase_order po on po.purchase_id=r.purchase_id and po.tenant_id=r.tenant_id and po.dept_id=r.dept_id
+    where r.return_id=#{returnId} and r.tenant_id=#{tenantId} and r.dept_id=#{deptId} and r.del_flag='0'
   </select>
   <select id="selectReturnItems" resultMap="ItemResult">select * from mem_purchase_return_item where return_id=#{returnId} and tenant_id=#{tenantId} and dept_id=#{deptId} order by return_item_id</select>
   <select id="selectReturnedQuantities" parameterType="com.junsong.member.domain.MemPurchaseReturn" resultMap="ItemResult">
@@ -40,14 +43,14 @@
       and mem_purchase_return.tenant_id=#{tenantId}
       and mem_purchase_return.dept_id=#{deptId}
       and mem_purchase_return.del_flag='0'
-      and mem_purchase_return.status = 'DRAFT'
+      and mem_purchase_return.status not in ('CANCELLED')
     group by item_id
   </select>
   <select id="selectExistingRefundAmount" parameterType="com.junsong.member.domain.MemPurchaseReturn" resultType="java.math.BigDecimal">
     select coalesce(sum(refund_amount), 0)
     from mem_purchase_return
     where purchase_id=#{purchaseId} and tenant_id=#{tenantId} and dept_id=#{deptId}
-      and del_flag='0' and status = 'DRAFT'
+      and del_flag='0' and status not in ('CANCELLED')
   </select>
   <insert id="insertReturn" parameterType="com.junsong.member.domain.MemPurchaseReturn" useGeneratedKeys="true" keyProperty="returnId">
     insert into mem_purchase_return(tenant_id,dept_id,purchase_id,original_period_id,return_period_id,return_no,return_date,customer_type,member_id,customer_name,customer_phone,refund_amount,refunded_amount,status,reason,remark,idempotency_key,version,del_flag,create_by,create_time)
@@ -59,7 +62,21 @@
   </insert>
   <update id="completeReturn" parameterType="com.junsong.member.domain.MemPurchaseReturn">
     update mem_purchase_return
-    set status='COMPLETED', refunded_amount=#{refundAmount}, update_by=#{updateBy}, update_time=sysdate(), version=version+1
+    set status='COMPLETED', refunded_amount=#{refundedAmount}, update_by=#{updateBy}, update_time=sysdate(), version=version+1
+    where return_id=#{returnId} and tenant_id=#{tenantId} and dept_id=#{deptId}
+      and del_flag='0' and status='DRAFT' and version=#{version}
+  </update>
+  <update id="updateReturn" parameterType="com.junsong.member.domain.MemPurchaseReturn">
+    update mem_purchase_return
+    set customer_name=#{customerName}, customer_phone=#{customerPhone}, reason=#{reason}, remark=#{remark},
+        update_by=#{updateBy}, update_time=sysdate(), version=version+1
+    where return_id=#{returnId} and tenant_id=#{tenantId} and dept_id=#{deptId}
+      and del_flag='0' and status='DRAFT' and version=#{version}
+  </update>
+  <delete id="deleteReturnItems">delete from mem_purchase_return_item where return_id=#{returnId} and tenant_id=#{tenantId} and dept_id=#{deptId}</delete>
+  <update id="updateReturnTotalAmount" parameterType="com.junsong.member.domain.MemPurchaseReturn">
+    update mem_purchase_return
+    set refund_amount=#{refundAmount}, update_by=#{updateBy}, update_time=sysdate(), version=version+1
     where return_id=#{returnId} and tenant_id=#{tenantId} and dept_id=#{deptId}
       and del_flag='0' and status='DRAFT' and version=#{version}
   </update>

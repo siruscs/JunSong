@@ -404,9 +404,9 @@ export default {
 .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:12rpx;margin-top:16rpx}
 .summary-item{display:flex;flex-direction:column;gap:6rpx}
 .summary-label{font-size:22rpx;color:#94A3B8}
-.summary-value{font-size:26rpx;color:#1A2332;font-weight:500}
-.summary-value.tone-money{color:#B45309;font-weight:700}
-.summary-value.tone-points{color:#087CF0;font-weight:700}
+.record-summary-value{font-size:26rpx;color:#1A2332;font-weight:500}
+.record-summary-value.tone-money{color:#B45309;font-weight:700}
+.record-summary-value.tone-points{color:#087CF0;font-weight:700}
 .card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:16rpx;padding-top:14rpx;border-top:1rpx solid #E8EEF5}
 .meta-text{font-size:24rpx;color:#94A3B8}
 .arrow-icon{font-size:36rpx;color:#CBD5E1;font-weight:300}
@@ -485,7 +485,7 @@ export default {
  * ════════════════════════════════════════════════ */
 
 /* ── 全屏遮罩（详情页/表单页） ── */
-.overlay-mask{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:50;overflow:hidden}
+.overlay-mask{position:fixed;inset:0;background:#1a2332;z-index:50;overflow:hidden}
 
 /* ────────────────── 详情页 ────────────────── */
 .detail-swipe-wrap{display:flex;flex-direction:column;height:100vh;background:#E8EEF5;overflow:hidden;will-change:transform}

@@ -412,10 +412,11 @@ export default {
 /* ── 紧凑2行卡片样式 ── */
 .compact-body{flex:1;padding:20rpx 24rpx}
 .compact-title{font-size:29rpx;line-height:40rpx;font-weight:700;color:#1A2332;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.compact-row1{display:grid;grid-template-columns:1fr auto 140rpx;align-items:center;gap:8rpx}
-.compact-row2{display:grid;grid-template-columns:1fr 1fr 140rpx;align-items:center;gap:8rpx;margin-top:8rpx}
+.compact-row1{display:grid;grid-template-columns:1fr 180rpx 140rpx;align-items:center;gap:8rpx}
+.compact-row2{display:grid;grid-template-columns:1fr 180rpx 140rpx;align-items:center;gap:8rpx;margin-top:8rpx}
 .compact-row2 .date{text-align:left}
-.compact-row2 .paid{text-align:center}
+.compact-row2 .paid{text-align:left}
+.compact-row1 .compact-qty-group{justify-self:start}
 .compact-row2 .compact-status{justify-self:end}
 .compact-qty-group{display:inline-flex;align-items:baseline;gap:2rpx;white-space:nowrap}
 .compact-qty-label{font-size:22rpx;color:#94A3B8;font-weight:400}

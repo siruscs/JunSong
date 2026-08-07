@@ -65,6 +65,10 @@
       "style": { "navigationBarTitleText": "退货/退款" }
     },
     {
+      "path": "pages/member-purchase-return/detail",
+      "style": { "navigationBarTitleText": "退货详情" }
+    },
+    {
       "path": "pages/campaign-policy/index",
       "style": { "navigationBarTitleText": "销售政策" }
     },

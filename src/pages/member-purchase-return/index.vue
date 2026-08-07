@@ -43,84 +43,6 @@
       </view>
     </scroll-view>
 
-    <!-- ════════ 详情面板（参考 member-purchase detail-page） ════════ -->
-    <view class="overlay-mask" v-if="panel === 'detail'" @tap="closePanel">
-      <view
-        class="detail-page"
-        :class="{ 'swipe-closing': detailSwipeClosing }"
-        :style="detailSwipeStyle"
-        @tap.stop
-        @touchstart="onDetailTouchStart"
-        @touchmove="onDetailTouchMove"
-        @touchend="onDetailTouchEnd"
-      >
-        <!-- 顶部导航栏 → 返回 -->
-        <view class="detail-nav">
-          <view class="detail-nav-back" @tap="closePanel">
-            <text class="detail-nav-back-icon">‹</text>
-            <text class="detail-nav-back-text">返回</text>
-          </view>
-          <view class="detail-nav-title">退货详情</view>
-          <view class="detail-nav-spacer"></view>
-        </view>
-
-        <view class="detail-hero">
-          <view class="detail-hero-bg"></view>
-          <view class="detail-hero-content">
-            <view class="detail-hero-eyebrow">购买退货 · {{ statusText(detail.status) }}</view>
-            <view class="detail-hero-title">{{ detail.returnNo || `退货单 #${detail.returnId}` }}</view>
-            <view class="detail-hero-value">¥{{ money(detail.refundAmount) }}</view>
-            <view class="detail-hero-meta">退货日期 {{ dateText(detail.returnDate) }}</view>
-          </view>
-        </view>
-
-        <view class="detail-section">
-          <view class="detail-section-title">概要信息</view>
-          <view class="detail-highlight-grid">
-            <view class="detail-highlight-item"><view class="detail-highlight-label">顾客姓名</view><view class="detail-highlight-value">{{ detail.customerName || '未登记顾客' }}</view></view>
-            <view class="detail-highlight-item"><view class="detail-highlight-label">手机号</view><view class="detail-highlight-value">{{ detail.customerPhone || '-' }}</view></view>
-            <view class="detail-highlight-item"><view class="detail-highlight-label">退货状态</view><view class="detail-highlight-value" :class="statusClass(detail.status)">{{ statusText(detail.status) }}</view></view>
-            <view class="detail-highlight-item"><view class="detail-highlight-label">原购买单</view><view class="detail-highlight-value">{{ detail.purchaseId }}</view></view>
-            <view class="detail-highlight-item"><view class="detail-highlight-label">应退金额</view><view class="detail-highlight-value tone-warning">¥{{ money(detail.refundAmount) }}</view></view>
-            <view class="detail-highlight-item"><view class="detail-highlight-label">已退金额</view><view class="detail-highlight-value tone-success">¥{{ money(detail.refundedAmount) }}</view></view>
-            <view class="detail-highlight-item"><view class="detail-highlight-label">退货办理周期</view><view class="detail-highlight-value">{{ detail.returnPeriodId || '-' }}</view></view>
-            <view class="detail-highlight-item"><view class="detail-highlight-label">原核算周期</view><view class="detail-highlight-value">{{ detail.originalPeriodId || '-' }}</view></view>
-          </view>
-        </view>
-
-        <view class="detail-section" v-if="(detail.items || []).length">
-          <view class="detail-section-title">退货明细</view>
-          <view class="detail-item" v-for="(item, idx) in detail.items || []" :key="idx">
-            <view class="detail-item-header"><text class="detail-item-title">{{ item.productNameSnapshot || `商品${idx + 1}` }}</text></view>
-            <view class="detail-row"><text class="detail-label">退正品数量</text><text class="detail-value-text">{{ quantity(item.returnSaleQuantity) }}</text></view>
-            <view class="detail-row"><text class="detail-label">退赠品数量</text><text class="detail-value-text">{{ quantity(item.returnGiftQuantity) }}</text></view>
-            <view class="detail-row"><text class="detail-label">退货总数</text><text class="detail-value-text">{{ quantity(item.returnTotalQuantity) }}</text></view>
-            <view class="detail-row"><text class="detail-label">退款单价</text><text class="detail-value-text">¥{{ money(item.refundUnitPrice) }}</text></view>
-            <view class="detail-row"><text class="detail-label">退款金额</text><text class="detail-value-text amount">¥{{ money(item.refundAmount) }}</text></view>
-          </view>
-          <view class="detail-summary">
-            <view class="detail-summary-row"><text class="detail-summary-label">应退总额</text><text class="detail-summary-value">¥{{ money(detail.refundAmount) }}</text></view>
-            <view class="detail-summary-row"><text class="detail-summary-label">已退总额</text><text class="detail-summary-value">¥{{ money(detail.refundedAmount) }}</text></view>
-          </view>
-        </view>
-
-        <view class="detail-section" v-if="detail.reason">
-          <view class="detail-section-title">退货原因</view>
-          <view class="detail-remark">{{ detail.reason }}</view>
-        </view>
-
-        <view class="detail-section" v-if="detail.remark">
-          <view class="detail-section-title">备注</view>
-          <view class="detail-remark">{{ detail.remark }}</view>
-        </view>
-
-        <view class="detail-footer-placeholder"></view>
-        <view class="detail-footer-bar" v-if="detail.status === 'DRAFT' && can('complete')">
-          <button class="detail-action-btn primary-btn" @tap="complete(detail)">完成退货</button>
-        </view>
-      </view>
-    </view>
-
     <!-- ════════ 新建退货单面板（参考 member-purchase form-page） ════════ -->
     <view class="overlay-mask" v-if="panel === 'create'" @tap="closePanel">
       <view class="form-page" @tap.stop>
@@ -183,7 +105,7 @@
 
 <script>
 import { request } from '@/api/index.js'
-import { createMemberPurchaseReturn, listMemberPurchaseReturns, getMemberPurchaseReturn } from '@/api/memberPurchaseReturn.js'
+import { createMemberPurchaseReturn, listMemberPurchaseReturns } from '@/api/memberPurchaseReturn.js'
 import { hasActionPermission, requireModulePermission } from '@/utils/permission.js'
 import { workContext } from '@/utils/workContext.js'
 
@@ -194,23 +116,17 @@ export default {
     return {
       authorized: false, currentDeptId: '', currentDeptName: '',
       rows: [], loading: false, keyword: '', panel: '',
-      detail: {}, form: newReturnForm(),
+      form: newReturnForm(),
       periods: [], purchaseOptions: [], purchaseIndex: 0, periodIndex: 0, returnItems: [],
       filters: { status: '' }, summary: null,
       pageNum: 1, pageSize: 20, total: 0,
-      remarkCollapsed: false, fixedPurchaseId: '',
-      detailSwipeStart: null, detailSwipeX: 0, detailSwipeClosing: false
+      remarkCollapsed: false, fixedPurchaseId: ''
     }
   },
   computed: {
     statusFilters() { return [{ label: '全部', value: '' }, { label: '草稿', value: 'DRAFT' }, { label: '已完成', value: 'COMPLETED' }, { label: '已作废', value: 'CANCELLED' }] },
     statusFilterIndex() { const i = this.statusFilters.findIndex(x => x.value === this.filters.status); return i < 0 ? 0 : i },
-    totalPages() { return Math.max(1, Math.ceil(Number(this.total || 0) / Number(this.pageSize || 1))) },
-    detailSwipeStyle() {
-      if (!this.detailSwipeStart) return {}
-      const x = Math.max(0, this.detailSwipeX)
-      return { transform: `translateX(${x}px)`, transition: this.detailSwipeClosing ? 'transform .24s ease' : 'none' }
-    }
+    totalPages() { return Math.max(1, Math.ceil(Number(this.total || 0) / Number(this.pageSize || 1))) }
   },
   onLoad(options) {
     this.authorized = requireModulePermission('memberPurchaseReturn')
@@ -313,69 +229,8 @@ export default {
     selectPeriod(e) { this.periodIndex = Number(e.detail.value); this.form.returnPeriodId = this.periods[this.periodIndex]?.periodId || '' },
 
     openCreate() { this.fixedPurchaseId = ''; this.form = newReturnForm(); this.periodIndex = 0; this.purchaseIndex = 0; this.returnItems = []; if (this.periods.length) { this.form.returnPeriodId = this.periods[0].periodId } this.panel = 'create' },
-    async openDetail(row) {
-      try {
-        const res = await getMemberPurchaseReturn(row.returnId)
-        this.detail = res.data || res
-      } catch (e) { this.detail = row }
-      this.panel = 'detail'
-    },
+    async openDetail(row) { uni.navigateTo({ url: `/pages/member-purchase-return/detail?returnId=${row.returnId}` }) },
     closePanel() { this.panel = '' },
-
-    /* ── 右滑返回手势 ── */
-    onDetailTouchStart(e) {
-      const t = e.touches?.[0] || e.changedTouches?.[0]
-      if (!t) return
-      // 仅在页面左侧 1/8 或已有位移时允许触发右滑
-      this.detailSwipeStart = { x: t.clientX, y: t.clientY, startedAt: Date.now(), triggered: false, lockAxis: null }
-      this.detailSwipeX = 0
-      this.detailSwipeClosing = false
-    },
-    onDetailTouchMove(e) {
-      const s = this.detailSwipeStart
-      if (!s) return
-      const t = e.touches?.[0] || e.changedTouches?.[0]
-      if (!t) return
-      const dx = t.clientX - s.x
-      const dy = t.clientY - s.y
-      // 第一次大幅移动锁轴：竖直方向就放弃右滑
-      if (!s.lockAxis && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
-        s.lockAxis = Math.abs(dy) > Math.abs(dx) ? 'y' : 'x'
-        if (s.lockAxis === 'x') s.triggered = true
-      }
-      if (s.lockAxis !== 'x' || !s.triggered) return
-      // 只允许右滑( dx>=0 )，同时起点必须在左侧 40px 内或已经在滑动
-      if (dx > 0 && s.x < 40) {
-        this.detailSwipeX = Math.max(0, dx)
-      } else if (dx < 0) {
-        this.detailSwipeX = 0
-      }
-    },
-    onDetailTouchEnd() {
-      const s = this.detailSwipeStart
-      if (!s) return
-      const threshold = 100
-      const velocityThreshold = 300 // px/s
-      const dt = Math.max(1, Date.now() - s.startedAt)
-      const vx = (this.detailSwipeX * 1000) / dt
-      if (this.detailSwipeX > threshold || vx > velocityThreshold) {
-        this.detailSwipeClosing = true
-        this.detailSwipeX = Math.max(screen.width, 420)
-        setTimeout(() => {
-          this.closePanel()
-          this.detailSwipeStart = null
-          this.detailSwipeX = 0
-          this.detailSwipeClosing = false
-        }, 220)
-      } else {
-        this.detailSwipeClosing = true
-        this.detailSwipeX = 0
-        setTimeout(() => {
-          this.detailSwipeStart = null
-          this.detailSwipeClosing = false
-        }, 220)
-      }
-    },
 
     async submit() {
       const items = this.returnItems
@@ -388,20 +243,6 @@ export default {
       uni.showToast({ title: '退货单已保存', icon: 'success' })
       this.closePanel()
       this.load()
-    },
-    async complete(row) {
-      const ok = await new Promise(resolve => uni.showModal({
-        title: '操作确认',
-        content: `确认完成退货单 ${row.returnNo || row.returnId} 吗？`,
-        success: r => resolve(r.confirm)
-      }))
-      if (!ok) return
-      try {
-        await request({ url: `/member/purchase-return/${row.returnId}/complete`, method: 'PUT' })
-        uni.showToast({ title: '退货单已完成', icon: 'success' })
-        this.closePanel()
-        this.load()
-      } catch (e) {}
     }
   }
 }

@@ -7,6 +7,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <resultMap type="com.junsong.member.domain.MemMemberCardType" id="MemMemberCardTypeResult">
         <id property="typeId" column="type_id"/>
         <result property="tenantId" column="tenant_id"/>
+        <result property="deptId" column="dept_id"/>
         <result property="typeName" column="type_name"/>
         <result property="typeCode" column="type_code"/>
         <result property="cardFee" column="card_fee"/>
@@ -24,7 +25,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <sql id="selectCardTypeVo">
         select type_id, tenant_id, type_name, type_code, card_fee, discount_rate, points_rate,
-               min_growth, sign_in_points, status, del_flag, create_by, create_time, update_by, update_time
+               min_growth, sign_in_points, status, del_flag, create_by, create_time, update_by, update_time, dept_id
         from mem_member_card_type
     </sql>
 
@@ -32,6 +33,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <include refid="selectCardTypeVo"/>
         <where>
             del_flag = '0'
+            <if test="tenantId != null">AND tenant_id = #{tenantId}</if>
+            <if test="deptId != null">AND (dept_id = #{deptId} OR (dept_id = 0 AND NOT EXISTS (select 1 from mem_member_card_type scoped where scoped.tenant_id = mem_member_card_type.tenant_id and scoped.type_code = mem_member_card_type.type_code and scoped.dept_id = #{deptId} and scoped.del_flag = '0')))</if>
             <if test="typeCode != null and typeCode != ''">
                 AND type_code = #{typeCode}
             </if>
@@ -45,21 +48,31 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         order by min_growth asc
     </select>
 
-    <select id="selectCardTypeByTypeCode" parameterType="String" resultMap="MemMemberCardTypeResult">
+    <select id="selectCardTypeByTypeCode" resultMap="MemMemberCardTypeResult">
         <include refid="selectCardTypeVo"/>
-        where type_code = #{typeCode} and del_flag = '0'
+        where type_code = #{typeCode} and tenant_id = #{tenantId} and del_flag = '0'
+          and (dept_id = #{deptId} or dept_id = 0)
+        order by dept_id desc, type_id desc limit 1
+    </select>
+
+    <select id="selectCardTypeById" resultMap="MemMemberCardTypeResult">
+        <include refid="selectCardTypeVo"/>
+        where type_id = #{typeId} and tenant_id = #{tenantId} and dept_id = #{deptId} and del_flag = '0'
+        limit 1
     </select>
 
     <select id="selectEnabledCardTypes" resultMap="MemMemberCardTypeResult">
         <include refid="selectCardTypeVo"/>
-        where status = '0' and del_flag = '0'
-        order by min_growth asc
+        where status = '0' and del_flag = '0' and tenant_id = #{tenantId}
+          and (dept_id = #{deptId} or (dept_id = 0 AND NOT EXISTS (select 1 from mem_member_card_type scoped where scoped.tenant_id = mem_member_card_type.tenant_id and scoped.type_code = mem_member_card_type.type_code and scoped.dept_id = #{deptId} and scoped.del_flag = '0')))
+        order by min_growth asc, dept_id desc
     </select>
 
     <select id="selectLevelByGrowth" resultMap="MemMemberCardTypeResult">
         <include refid="selectCardTypeVo"/>
-        where status = '0' and del_flag = '0' and min_growth &lt;= #{growthValue}
-        order by min_growth desc, type_id desc
+        where status = '0' and del_flag = '0' and tenant_id = #{tenantId}
+          and (dept_id = #{deptId} or (dept_id = 0 AND NOT EXISTS (select 1 from mem_member_card_type scoped where scoped.tenant_id = mem_member_card_type.tenant_id and scoped.type_code = mem_member_card_type.type_code and scoped.dept_id = #{deptId} and scoped.del_flag = '0'))) and min_growth &lt;= #{growthValue}
+        order by min_growth desc, dept_id desc, type_id desc
         limit 1
     </select>
 
@@ -76,13 +89,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="updateBy != null">update_by = #{updateBy},</if>
             update_time = sysdate()
         </trim>
-        where type_id = #{typeId}
+        where type_id = #{typeId} and tenant_id = #{tenantId} and dept_id = #{deptId}
     </update>
 
     <insert id="insertCardType" parameterType="com.junsong.member.domain.MemMemberCardType" useGeneratedKeys="true" keyProperty="typeId">
         insert into mem_member_card_type
         <trim prefix="(" suffix=")" suffixOverrides=",">
             tenant_id,
+            dept_id,
             <if test="typeName != null and typeName != ''">type_name,</if>
             <if test="typeCode != null and typeCode != ''">type_code,</if>
             <if test="cardFee != null">card_fee,</if>
@@ -95,7 +109,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             create_time
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
-            1,
+            <choose><when test="tenantId != null">#{tenantId}</when><otherwise>1</otherwise></choose>,
+            <choose><when test="deptId != null">#{deptId}</when><otherwise>0</otherwise></choose>,
             <if test="typeName != null and typeName != ''">#{typeName},</if>
             <if test="typeCode != null and typeCode != ''">#{typeCode},</if>
             <if test="cardFee != null">#{cardFee},</if>
@@ -111,7 +126,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="checkTypeCodeUnique" parameterType="String" resultMap="MemMemberCardTypeResult">
         <include refid="selectCardTypeVo"/>
-        where type_code = #{typeCode} and del_flag = '0' limit 1
+        where type_code = #{typeCode} and tenant_id = #{tenantId} and dept_id = #{deptId}
+          and del_flag = '0' limit 1
     </select>
 
 </mapper>

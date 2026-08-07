@@ -167,6 +167,9 @@ class MemberLifecycleTaskTest
         @Override public int deleteMemMemberByMemberIds(Long[] ids) { return 1; }
         @Override public int checkMemberNoUnique(MemMember m) { return 0; }
         @Override public String selectNextMemberNo(String prefix) { return prefix + "00001"; }
+        @Override public int insertMemberNoSequence(Long deptId, String prefix) { return 1; }
+        @Override public Long selectMemberNoSequenceForUpdate(Long deptId, String prefix) { return 1L; }
+        @Override public int incrementMemberNoSequence(Long deptId, String prefix) { return 1; }
         @Override public String selectDeptNameById(Long deptId) { return "test"; }
         @Override public List<MemMember> selectMemMemberByMemberNo(String no) { return Collections.emptyList(); }
         @Override public MemMember selectMemMemberByNoAndDept(String no, Long deptId) { return null; }

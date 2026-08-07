@@ -148,7 +148,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="每积分消费" prop="pointsPerYuan">
-          <el-input-number v-model="form.pointsPerYuan" :min="0" :precision="2" :step="1" style="width: 100%;" />
+          <el-input-number v-model="form.pointsPerYuan" :min="0" :precision="2" :step="0.01" placeholder="0.00" style="width: 100%;" />
           <span style="color: #909399; margin-left: 10px;">元/积分（如：1000表示消费1000元积1分）</span>
         </el-form-item>
         <el-form-item label="积分有效期" prop="validityDays">

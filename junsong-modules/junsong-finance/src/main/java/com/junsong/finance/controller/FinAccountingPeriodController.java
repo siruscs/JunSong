@@ -110,7 +110,19 @@ public class FinAccountingPeriodController extends BaseController
     {
         if (!SecurityUtils.isAdmin())
         {
-            finAccountingPeriod.setDeptIds(loadAllowedDeptIds());
+            List<Long> allowed = loadAllowedDeptIds();
+            java.util.Set<Long> allowedSet = new java.util.HashSet<>(allowed);
+            java.util.List<Long> requested = new java.util.ArrayList<>();
+            if (finAccountingPeriod.getDeptId() != null) requested.add(finAccountingPeriod.getDeptId());
+            if (finAccountingPeriod.getDeptIds() != null && !finAccountingPeriod.getDeptIds().isEmpty()) requested.addAll(finAccountingPeriod.getDeptIds());
+            if (requested.isEmpty())
+            {
+                finAccountingPeriod.setDeptIds(allowed);
+            }
+            else
+            {
+                finAccountingPeriod.setDeptIds(requested.stream().filter(allowedSet::contains).distinct().collect(Collectors.toList()));
+            }
             finAccountingPeriod.setDeptId(null);
         }
         startPage();

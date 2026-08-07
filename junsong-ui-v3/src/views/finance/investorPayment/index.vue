@@ -153,7 +153,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="金额" prop="amount">
-          <el-input-number v-model="form.amount" :precision="2" :step="0.1" :min="0.01" style="width: 100%;" />
+          <el-input-number v-model="form.amount" :precision="2" :step="0.01" :min="0.01" placeholder="0.00" style="width: 100%;" />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" type="textarea" placeholder="请输入备注" :rows="2" />
@@ -316,7 +316,7 @@ export default {
         paymentDate: new Date().toISOString().split('T')[0],
         paymentType: 'return',
         investorName: undefined,
-        amount: 0.01,
+        amount: undefined,
         sourceType: '0',
         paymentStatus: '1',
         remark: undefined

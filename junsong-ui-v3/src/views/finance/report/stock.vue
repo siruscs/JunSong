@@ -336,7 +336,7 @@
             v-model="costAdjustForm.amount"
             :precision="2"
             :step="0.01"
-            placeholder="正数调增，负数调减"
+            placeholder="0.00，正数调增，负数调减"
             style="width: 220px"
           />
         </el-form-item>
@@ -638,7 +638,7 @@ const costAdjustForm = reactive({
   deptName: '',
   productId: 0,
   productName: '',
-  amount: 0,
+  amount: undefined,
   reason: '',
 })
 
@@ -647,7 +647,7 @@ function openCostAdjust(row: StockValueReportItemVO) {
   costAdjustForm.deptName = row.deptName
   costAdjustForm.productId = row.productId
   costAdjustForm.productName = row.productName
-  costAdjustForm.amount = 0
+  costAdjustForm.amount = undefined
   costAdjustForm.reason = ''
   costAdjustVisible.value = true
 }

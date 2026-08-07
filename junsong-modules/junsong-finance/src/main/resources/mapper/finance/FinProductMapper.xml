@@ -59,9 +59,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where p.product_id = #{productId} and p.dept_id = #{deptId} and p.del_flag = '0'
     </select>
 
-    <select id="checkProductCodeUnique" parameterType="String" resultMap="FinProductResult">
+    <select id="checkProductCodeUnique" resultMap="FinProductResult">
         <include refid="selectFinProductVo"/>
-        where p.product_code = #{productCode} and p.del_flag = '0'
+        where p.product_code = #{productCode}
+          and p.dept_id = #{deptId}
+          and p.del_flag = '0'
+          <if test="productId != null">and p.product_id != #{productId}</if>
         limit 1
     </select>
         

@@ -131,7 +131,7 @@
           <el-input v-model.lazy="form.expenseContent" type="textarea" placeholder="请输入花销内容" :rows="3" maxlength="500" show-word-limit />
         </el-form-item>
         <el-form-item label="费用金额" prop="expenseAmount">
-          <el-input v-model="form.expenseAmount" placeholder="请输入费用金额" style="width: 100%;" />
+          <el-input-number v-model="form.expenseAmount" :precision="2" :step="0.01" placeholder="0.00" controls-position="right" style="width: 100%;" />
         </el-form-item>
         <el-form-item label="付款方式" prop="paymentMethod">
           <el-select v-model="form.paymentMethod" placeholder="请选择付款方式" style="width: 100%;">
@@ -390,7 +390,7 @@ export default {
         expenseDate: new Date().toISOString().split('T')[0],
         expenseType: undefined,
         expenseContent: undefined,
-        expenseAmount: 0,
+        expenseAmount: undefined,
         paymentMethod: undefined,
         advanceId: undefined,
         advanceNo: undefined,

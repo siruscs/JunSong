@@ -31,6 +31,8 @@ public class MemLevelController extends BaseController
     @GetMapping("/list")
     public AjaxResult list(MemMemberCardType cardType)
     {
+        if (cardType.getDeptId() == null) cardType.setDeptId(SecurityUtils.getDeptId());
+        cardType.setTenantId(com.junsong.common.core.context.TenantContext.getTenantId());
         List<MemMemberCardType> list = levelService.selectLevelList(cardType);
         return AjaxResult.success(list);
     }
@@ -63,6 +65,8 @@ public class MemLevelController extends BaseController
             return error("升级成长值不能小于0");
         }
         cardType.setUpdateBy(SecurityUtils.getUsername());
+        cardType.setDeptId(SecurityUtils.getDeptId());
+        cardType.setTenantId(com.junsong.common.core.context.TenantContext.getTenantId());
         return toAjax(levelService.updateLevel(cardType));
     }
 
@@ -92,6 +96,8 @@ public class MemLevelController extends BaseController
             cardType.setMinGrowth(0L);
         }
         cardType.setCreateBy(SecurityUtils.getUsername());
+        cardType.setDeptId(SecurityUtils.getDeptId());
+        cardType.setTenantId(com.junsong.common.core.context.TenantContext.getTenantId());
         return toAjax(levelService.insertLevel(cardType));
     }
 }

@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 
 /**
  * 秒杀记录对象 mem_seckill_record
@@ -29,6 +30,9 @@ public class MemSeckillRecord extends BaseEntity
     /** 秒杀ID */
     @Excel(name = "秒杀ID", cellType = ColumnType.NUMERIC)
     private Long seckillId;
+
+    /** 批量统计查询的活动ID集合（非数据库字段） */
+    private List<Long> seckillIds;
 
     /** 会员ID */
     @Excel(name = "会员ID", cellType = ColumnType.NUMERIC)
@@ -129,6 +133,16 @@ public class MemSeckillRecord extends BaseEntity
     public void setSeckillId(Long seckillId)
     {
         this.seckillId = seckillId;
+    }
+
+    public List<Long> getSeckillIds()
+    {
+        return seckillIds;
+    }
+
+    public void setSeckillIds(List<Long> seckillIds)
+    {
+        this.seckillIds = seckillIds;
     }
 
     public Long getMemberId()

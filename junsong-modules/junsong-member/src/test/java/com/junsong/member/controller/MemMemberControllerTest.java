@@ -32,6 +32,18 @@ class MemMemberControllerTest
         return m;
     }
 
+    @Test
+    void detailWithoutPiiPermission_shouldMaskMember()
+    {
+        MemMember member = buildMember("13812341234", "110101199001015678", "北京市朝阳区建国路88号");
+
+        MemMemberController.prepareMemberForResponse(member, false);
+
+        assertEquals("138****1234", member.getPhone());
+        assertEquals("110101****5678", member.getIdCard());
+        assertEquals("北京市朝阳区***", member.getAddress());
+    }
+
     // ==================== 无 PII 权限 → 列表脱敏 ====================
 
     @Test

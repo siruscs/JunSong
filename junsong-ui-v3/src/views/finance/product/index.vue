@@ -76,6 +76,7 @@
           v-hasPermi="['finance:product:export']"
         >导出</el-button>
       </el-col>
+      <el-col :span="1.5"><el-button type="info" plain size="small" :disabled="single" @click="syncOpen = true" v-hasPermi="['finance:product:sync']">同步到其他机构</el-button></el-col>
       <right-toolbar v-model:showSearch="showSearch" @query="getList"></right-toolbar>
     </el-row>
 
@@ -130,6 +131,7 @@
         </template>
       </el-table-column>
     </el-table>
+    <ConfigSyncDialog v-model="syncOpen" sync-type="PRODUCT" :source-record-id="ids[0]" @completed="getList" />
 
     <pagination
       v-show="total>0"
@@ -171,24 +173,24 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="进货价格" prop="purchasePrice">
-              <el-input-number v-model="form.purchasePrice" :precision="2" :step="0.1" :min="0" style="width: 100%;" />
+              <el-input-number v-model="form.purchasePrice" :precision="2" :step="0.01" :min="0" placeholder="0.00" style="width: 100%;" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="销售价格" prop="salePrice">
-              <el-input-number v-model="form.salePrice" :precision="2" :step="0.1" :min="0" style="width: 100%;" />
+              <el-input-number v-model="form.salePrice" :precision="2" :step="0.01" :min="0" placeholder="0.00" style="width: 100%;" />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="库存数量" prop="stockNum">
-              <el-input-number v-model="form.stockNum" :min="0" style="width: 100%;" />
+              <el-input-number v-model="form.stockNum" :min="0" :precision="3" :step="0.001" placeholder="0.000" style="width: 100%;" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="最低库存预警" prop="minStock">
-              <el-input-number v-model="form.minStock" :min="0" style="width: 100%;" />
+              <el-input-number v-model="form.minStock" :min="0" :precision="3" :step="0.001" placeholder="0.000" style="width: 100%;" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -245,6 +247,7 @@
 
 <script>
 import { useDict } from '@/composables/useDict'
+import ConfigSyncDialog from '@/components/ConfigSyncDialog/index.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listProduct, getProduct, delProduct, addProduct, updateProduct } from '@/api/finance/product'
 import { useUserStore } from '@/stores/user'
@@ -253,6 +256,7 @@ const userStore = useUserStore()
 
 export default {
   name: "Product",
+  components: { ConfigSyncDialog },
   setup() {
     const dict = useDict('sys_normal_disable', 'finance_product_unit')
     return { dict, userStore }
@@ -279,6 +283,7 @@ export default {
       open: false,
       // 查看详情弹出层
       viewOpen: false,
+      syncOpen: false,
       // 查询参数
       queryParams: {
         pageNum: 1,
@@ -369,9 +374,15 @@ export default {
     /** 修改按钮操作 */
     handleUpdate(row) {
       this.reset()
-      const productId = row.productId || this.ids
+      const productId = row?.productId || this.ids[0]
       getProduct(productId).then(response => {
-        this.form = response.data
+        const data = response.data || response
+        this.form = {
+          ...data,
+          productId: data.productId || productId,
+          purchasePrice: data.purchasePrice ?? data.purchase_price,
+          salePrice: data.salePrice ?? data.sale_price
+        }
         this.open = true
         this.title = "修改商品"
       })
@@ -381,7 +392,10 @@ export default {
       this.$refs["form"].validate(valid => {
         if (valid) {
           if (this.form.productId != undefined) {
-            updateProduct(this.form).then(() => {
+            this.form.purchasePrice = this.form.purchasePrice == null ? null : Number(this.form.purchasePrice)
+            this.form.salePrice = this.form.salePrice == null ? null : Number(this.form.salePrice)
+            updateProduct(this.form).then(response => {
+              if (response.code !== 200) return
               ElMessage.success("修改成功")
               this.open = false
               this.getList()

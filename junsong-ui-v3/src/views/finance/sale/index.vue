@@ -40,7 +40,7 @@
           <span style="color: #67C23A; font-weight: bold;">{{ money(scope.row.paidAmount) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="欠缴金额" align="center">
+      <el-table-column label="待缴金额" align="center">
         <template #default="scope">
           <span style="color: #E6A23C; font-weight: bold;">¥{{ ((scope.row.saleAmount || 0) - (scope.row.paidAmount || 0)).toFixed(2) }}</span>
         </template>
@@ -68,7 +68,7 @@
     <pagination v-show="total>0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize" @pagination="getList" />
       </el-tab-pane>
 
-      <el-tab-pane label="历史欠款" name="receivable">
+      <el-tab-pane label="历史待缴" name="receivable">
         <el-form :model="receivableQuery" ref="receivableForm" :inline="true" v-show="showSearch" label-width="68px">
           <el-form-item label="销售单号" prop="saleNo">
             <el-input v-model="receivableQuery.saleNo" placeholder="请输入销售单号" clearable style="width: 180px;" />
@@ -89,7 +89,7 @@
         </el-form>
 
         <el-alert type="info" :closable="false" show-icon style="margin-bottom: 12px;"
-          title="历史欠款仅显示未缴清销售单，按账龄降序排列。对历史销售单缴款只新增缴款记录，销售业务仍归属原销售周期；本次缴款计入当前进行中核算周期。" />
+          title="历史待缴仅显示未缴清销售单，按账龄降序排列。对历史销售单缴款只新增缴款记录，销售业务仍归属原销售周期；本次缴款计入当前进行中核算周期。" />
 
         <el-table v-loading="receivableLoading" :data="receivableList" border>
           <el-table-column label="销售单号" align="center" prop="saleNo" width="170" />
@@ -142,13 +142,13 @@
           <el-date-picker v-model="form.saleDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 100%;" />
         </el-form-item>
         <el-form-item label="销售金额" prop="saleAmount">
-          <el-input-number v-model="form.saleAmount" :precision="2" :step="0.1" style="width: 100%;" @change="calculateUnitPrice" />
+          <el-input-number v-model="form.saleAmount" :precision="2" :step="0.01" placeholder="0.00" style="width: 100%;" @change="calculateUnitPrice" />
         </el-form-item>
         <el-form-item label="销售数量" prop="saleQuantity">
-          <el-input-number v-model="form.saleQuantity" :min="0.001" :step="0.1" :precision="3" style="width: 100%;" @change="calculateUnitPrice" />
+          <el-input-number v-model="form.saleQuantity" :min="0.001" :step="0.001" :precision="3" placeholder="0.000" style="width: 100%;" @change="calculateUnitPrice" />
         </el-form-item>
         <el-form-item label="赠品数量" prop="giftQuantity">
-          <el-input-number v-model="form.giftQuantity" :min="0" :step="0.1" :precision="3" style="width: 100%;" />
+          <el-input-number v-model="form.giftQuantity" :min="0" :step="0.001" :precision="3" placeholder="0.000" style="width: 100%;" />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" type="textarea" placeholder="请输入备注" :rows="3" />
@@ -183,7 +183,7 @@
           <el-date-picker v-model="paymentForm.paymentDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 100%;" />
         </el-form-item>
         <el-form-item label="缴款金额" prop="paymentAmount">
-          <el-input-number v-model="paymentForm.paymentAmount" :precision="2" :step="0.1" style="width: 100%;" />
+          <el-input-number v-model="paymentForm.paymentAmount" :precision="2" :step="0.01" placeholder="0.00" style="width: 100%;" />
         </el-form-item>
         <el-form-item label="付款方式" prop="paymentMethod">
           <el-select v-model="paymentForm.paymentMethod" placeholder="请选择付款方式" style="width: 100%;">
@@ -215,7 +215,7 @@
         <el-descriptions-item label="已缴金额">
           <span style="color: #67C23A; font-weight: bold;">{{ money(viewForm.paidAmount) }}</span>
         </el-descriptions-item>
-        <el-descriptions-item label="待缴金额">
+        <el-descriptions-item v-if="Number(viewForm.saleAmount || 0) - Number(viewForm.paidAmount || 0) > 0.001" label="待缴金额">
           <span style="color: #E6A23C; font-weight: bold;">{{ money(viewForm.saleAmount - viewForm.paidAmount) }}</span>
         </el-descriptions-item>
         <el-descriptions-item label="销售数量">{{ viewForm.saleQuantity }}</el-descriptions-item>
@@ -411,9 +411,9 @@ export default {
         productId: undefined,
         productName: undefined,
         saleDate: new Date().toISOString().split('T')[0],
-        saleAmount: 0,
-        saleQuantity: 0,
-        giftQuantity: 0,
+        saleAmount: undefined,
+        saleQuantity: undefined,
+        giftQuantity: undefined,
         totalQuantity: 0,
         unitPrice: 0,
         paidAmount: 0,

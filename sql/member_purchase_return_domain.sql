@@ -1,0 +1,53 @@
+SET NAMES utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `mem_purchase_return` (
+  `return_id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '退货单ID',
+  `tenant_id` BIGINT NOT NULL COMMENT '租户ID',
+  `dept_id` BIGINT NOT NULL COMMENT '办理机构ID',
+  `purchase_id` BIGINT NOT NULL COMMENT '原购买单ID',
+  `original_period_id` BIGINT DEFAULT NULL COMMENT '原购买核算周期',
+  `return_period_id` BIGINT NOT NULL COMMENT '退货办理核算周期',
+  `return_no` VARCHAR(64) NOT NULL COMMENT '退货单号',
+  `return_date` DATETIME NOT NULL COMMENT '退货业务日期',
+  `customer_type` VARCHAR(16) NOT NULL COMMENT '顾客类型快照',
+  `member_id` BIGINT DEFAULT NULL COMMENT '会员ID',
+  `customer_name` VARCHAR(100) DEFAULT NULL COMMENT '顾客姓名快照',
+  `customer_phone` VARCHAR(32) DEFAULT NULL COMMENT '顾客手机号快照',
+  `refund_amount` DECIMAL(12,2) NOT NULL DEFAULT 0 COMMENT '应退款金额',
+  `refunded_amount` DECIMAL(12,2) NOT NULL DEFAULT 0 COMMENT '已退款金额',
+  `status` VARCHAR(16) NOT NULL DEFAULT 'DRAFT' COMMENT 'DRAFT/COMPLETED/PENDING/APPROVED/REJECTED/REFUNDED/CANCELLED',
+  `reason` VARCHAR(500) DEFAULT NULL COMMENT '退货原因',
+  `remark` VARCHAR(500) DEFAULT NULL COMMENT '备注',
+  `idempotency_key` VARCHAR(128) DEFAULT NULL COMMENT '幂等键',
+  `version` BIGINT NOT NULL DEFAULT 0 COMMENT '并发版本',
+  `del_flag` CHAR(1) NOT NULL DEFAULT '0',
+  `create_by` VARCHAR(64) DEFAULT '',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `update_by` VARCHAR(64) DEFAULT '',
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`return_id`),
+  UNIQUE KEY `uk_mem_purchase_return_no` (`tenant_id`, `return_no`),
+  UNIQUE KEY `uk_mem_purchase_return_idempotency` (`tenant_id`, `idempotency_key`),
+  KEY `idx_mem_purchase_return_scope` (`tenant_id`, `dept_id`, `return_date`, `status`),
+  KEY `idx_mem_purchase_return_purchase` (`tenant_id`, `purchase_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='会员购买退货退款单';
+
+CREATE TABLE IF NOT EXISTS `mem_purchase_return_item` (
+  `return_item_id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '退货明细ID',
+  `return_id` BIGINT NOT NULL COMMENT '退货单ID',
+  `purchase_id` BIGINT NOT NULL COMMENT '原购买单ID',
+  `item_id` BIGINT NOT NULL COMMENT '原购买明细ID',
+  `tenant_id` BIGINT NOT NULL,
+  `dept_id` BIGINT NOT NULL,
+  `product_id` BIGINT NOT NULL,
+  `product_name_snapshot` VARCHAR(128) NOT NULL,
+  `return_sale_quantity` DECIMAL(12,3) NOT NULL DEFAULT 0 COMMENT '退正品数量',
+  `return_gift_quantity` DECIMAL(12,3) NOT NULL DEFAULT 0 COMMENT '退赠品数量',
+  `return_total_quantity` DECIMAL(12,3) NOT NULL DEFAULT 0 COMMENT '退货总量',
+  `refund_unit_price` DECIMAL(12,2) NOT NULL DEFAULT 0 COMMENT '退款核算单价',
+  `refund_amount` DECIMAL(12,2) NOT NULL DEFAULT 0,
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`return_item_id`),
+  KEY `idx_mem_purchase_return_item_scope` (`tenant_id`, `dept_id`, `return_id`),
+  KEY `idx_mem_purchase_return_item_origin` (`tenant_id`, `purchase_id`, `item_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='会员购买退货明细';

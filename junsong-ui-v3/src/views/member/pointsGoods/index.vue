@@ -168,19 +168,19 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="物品价值" prop="goodsValue">
-              <el-input-number v-model="form.goodsValue" :precision="2" :step="0.01" :min="0" style="width: 100%;" />
+              <el-input-number v-model="form.goodsValue" :precision="2" :step="0.01" :min="0" placeholder="0.00" style="width: 100%;" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="积分价格" prop="pointsPrice">
-              <el-input-number v-model="form.pointsPrice" :min="0" style="width: 100%;" />
+              <el-input-number v-model="form.pointsPrice" :min="0" :precision="0" placeholder="请输入积分" style="width: 100%;" />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="库存" prop="stock">
-              <el-input-number v-model="form.stock" :min="0" style="width: 100%;" />
+              <el-input-number v-model="form.stock" :min="0" :precision="3" :step="0.001" placeholder="0.000" style="width: 100%;" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -351,7 +351,7 @@ export default {
         goodsImage: undefined,
         goodsValue: undefined,
         pointsPrice: undefined,
-        stock: 0,
+        stock: undefined,
         exchangedNum: 0,
         status: "0",
         remark: undefined

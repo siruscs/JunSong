@@ -218,6 +218,23 @@ class MemMpDashboardControllerTest
         assertEquals("门店A", data.get("deptName"));
     }
 
+    // ── 小程序模块权限：ALL_MODULES 必须包含会员域4个核心模块 ──
+
+    @Test
+    void allModulesShouldIncludeMemberDomainModules()
+    {
+        setAdmin(true);
+        AjaxResult result = controller.getModules();
+        @SuppressWarnings("unchecked")
+        List<String> modules = (List<String>) result.get(AjaxResult.DATA_TAG);
+        assertNotNull(modules, "admin 模块列表不应为 null");
+        assertTrue(modules.contains("memberPurchase"), "ALL_MODULES 必须包含 memberPurchase");
+        assertTrue(modules.contains("memberPurchaseReturn"), "ALL_MODULES 必须包含 memberPurchaseReturn");
+        assertTrue(modules.contains("memberLevel"), "ALL_MODULES 必须包含 memberLevel");
+        assertTrue(modules.contains("campaignPolicy"), "ALL_MODULES 必须包含 campaignPolicy");
+        assertTrue(modules.contains("configSync"), "ALL_MODULES 必须包含 configSync");
+    }
+
     // ── 辅助方法 ──
 
     private void prepareBatchData()

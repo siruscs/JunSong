@@ -13,6 +13,14 @@
             @click="handleAdd"
             v-hasPermi="['member:level:add']"
           >新增等级</el-button>
+          <el-button
+            type="success"
+            plain
+            size="small"
+            :disabled="!levelList.length"
+            @click="openSync"
+            v-hasPermi="['member:level:sync']"
+          >同步全部等级到其他机构</el-button>
         </div>
       </template>
       <el-table v-loading="loading" :data="levelList">
@@ -48,7 +56,7 @@
             <dict-tag :options="dict.type.sys_normal_disable" :value="scope.row.status"/>
           </template>
         </el-table-column>
-        <el-table-column label="操作" align="center" class-name="small-padding fixed-width" width="120">
+        <el-table-column label="操作" align="center" class-name="small-padding fixed-width" width="90">
           <template #default="scope">
             <el-button
               size="small"
@@ -61,6 +69,8 @@
         </el-table-column>
       </el-table>
     </el-card>
+
+    <ConfigSyncDialog v-model="syncOpen" sync-type="LEVEL" :source-record-id="syncRecordId" @completed="getLevelList" />
 
     <!-- 成长规则配置 -->
     <el-card shadow="never">
@@ -155,9 +165,11 @@ import { ElMessage } from "element-plus"
 import { useDict, getDictDefaultValue } from "@/composables/useDict"
 import { listLevel, getLevel, addLevel, updateLevel } from "@/api/member/level"
 import { getGrowthRule, updateGrowthRule } from "@/api/member/growth"
+import ConfigSyncDialog from "@/components/ConfigSyncDialog/index.vue"
 
 export default {
   name: "Level",
+  components: { ConfigSyncDialog },
   setup() {
     const dict = useDict('sys_normal_disable')
     return { dict }
@@ -168,6 +180,8 @@ export default {
       levelList: [],
       title: "",
       open: false,
+      syncOpen: false,
+      syncRecordId: undefined,
       form: {},
       ruleForm: {
         signInGrowth: 0,
@@ -263,6 +277,10 @@ export default {
         this.open = true
         this.title = "修改等级配置"
       })
+    },
+    openSync() {
+      this.syncRecordId = this.levelList[0]?.typeId
+      this.syncOpen = true
     },
     reset() {
       this.form = {

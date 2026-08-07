@@ -66,7 +66,7 @@
           <el-date-picker v-model="form.advanceDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 100%;" />
         </el-form-item>
         <el-form-item label="借支金额" prop="advanceAmount">
-          <el-input-number v-model="form.advanceAmount" :precision="2" :step="0.1" :min="0" style="width: 100%;" />
+          <el-input-number v-model="form.advanceAmount" :precision="2" :step="0.01" :min="0" placeholder="0.00" style="width: 100%;" />
         </el-form-item>
         <el-form-item label="借款人" prop="borrower">
           <el-select v-model="form.borrower" placeholder="请选择借款人" filterable style="width: 100%;">
@@ -180,7 +180,7 @@ export default {
         advanceId: undefined,
         advanceNo: undefined,
         advanceDate: new Date().toISOString().split('T')[0],
-        advanceAmount: 0,
+        advanceAmount: undefined,
         borrower: undefined,
         advancePurpose: undefined,
         status: "0",

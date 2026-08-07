@@ -60,6 +60,13 @@ public class MemMemberController extends BaseController {
         m.setIdCard(maskIdCard(m.getIdCard()));
     }
 
+    static MemMember prepareMemberForResponse(MemMember member, boolean canViewPlaintextPii) {
+        if (!canViewPlaintextPii) {
+            maskMemberPii(member);
+        }
+        return member;
+    }
+
     /** 手机号：前三后四，如 138****1234；过短返回 *** */
     static String maskPhone(String phone) {
         if (phone == null) return null;
@@ -122,7 +129,7 @@ public class MemMemberController extends BaseController {
     @GetMapping(value = "/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id) {
         MemMember member = memMemberService.selectMemMemberById(id);
-        return success(member);
+        return success(prepareMemberForResponse(member, canViewPii()));
     }
 
     /**
@@ -133,19 +140,15 @@ public class MemMemberController extends BaseController {
     @Idempotent(scene = "member:member:add")
     @PostMapping
     public AjaxResult add(@RequestBody MemMember memMember) {
-        if (!StringUtils.hasText(memMember.getMemberNo())) {
-            Long deptId = memMember.getDeptId();
-            if (deptId == null) {
-                deptId = SecurityUtils.getDeptId();
-            }
-            memMember.setMemberNo(memMemberService.generateMemberNo(deptId));
-        } else if (!memMemberService.checkMemMemberNoUnique(memMember)) {
+        Long currentDeptId = SecurityUtils.getDeptId();
+        if (currentDeptId == null) {
+            return error("当前用户未关联部门，无法新增会员");
+        }
+        memMember.setDeptId(currentDeptId);
+        if (StringUtils.hasText(memMember.getMemberNo()) && !memMemberService.checkMemMemberNoUnique(memMember)) {
             return error("新增会员信息失败，编号已存在");
         }
         memMember.setCreateBy(SecurityUtils.getUsername());
-        if (memMember.getDeptId() == null) {
-            memMember.setDeptId(SecurityUtils.getDeptId());
-        }
         int rows = memMemberService.insertMemMember(memMember);
         if (rows > 0) {
             AjaxResult ajax = AjaxResult.success("新增成功");
@@ -153,18 +156,6 @@ public class MemMemberController extends BaseController {
             return ajax;
         }
         return error("新增失败");
-    }
-
-    /**
-     * 获取下一个会员编号
-     */
-    @RequiresPermissions("member:member:add")
-    @GetMapping("/nextNo")
-    public AjaxResult getNextMemberNo(@RequestParam(required = false) Long deptId) {
-        if (deptId == null) {
-            deptId = SecurityUtils.getDeptId();
-        }
-        return success(memMemberService.generateMemberNo(deptId));
     }
 
     /**
@@ -192,6 +183,11 @@ public class MemMemberController extends BaseController {
     @Idempotent(scene = "member:member:edit")
     @PutMapping
     public AjaxResult edit(@RequestBody MemMember memMember) {
+        if (memMember.getMemberId() == null || memMemberService.selectMemMemberById(memMember.getMemberId()) == null) {
+            return error("会员不存在或无权操作");
+        }
+        // 部门归属由服务端已有记录决定，不能由客户端借修改接口迁移会员。
+        memMember.setDeptId(null);
         if (!memMemberService.checkMemMemberNoUnique(memMember)) {
             return error("修改会员信息失败，编号已存在");
         }
@@ -206,6 +202,14 @@ public class MemMemberController extends BaseController {
     @Log(title = "会员信息", businessType = BusinessType.DELETE)
     @DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable Long[] ids) {
+        if (ids == null || ids.length == 0) {
+            return error("请选择要删除的会员");
+        }
+        for (Long id : ids) {
+            if (id == null || memMemberService.selectMemMemberById(id) == null) {
+                return error("会员不存在或无权操作");
+            }
+        }
         return toAjax(memMemberService.deleteMemMemberByIds(ids));
     }
 

@@ -76,6 +76,7 @@
           v-hasPermi="['finance:supplier:export']"
         >导出</el-button>
       </el-col>
+      <el-col :span="1.5"><el-button type="info" plain size="small" :disabled="single" @click="syncOpen = true" v-hasPermi="['finance:supplier:sync']">同步到其他机构</el-button></el-col>
       <right-toolbar v-model:showSearch="showSearch" @query="getList"></right-toolbar>
     </el-row>
 
@@ -121,6 +122,7 @@
         </template>
       </el-table-column>
     </el-table>
+    <ConfigSyncDialog v-model="syncOpen" sync-type="SUPPLIER" :source-record-id="ids[0]" @completed="getList" />
 
     <pagination
       v-show="total>0"
@@ -208,6 +210,7 @@
 
 <script>
 import { useDict } from '@/composables/useDict'
+import ConfigSyncDialog from '@/components/ConfigSyncDialog/index.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listSupplier, getSupplier, delSupplier, addSupplier, updateSupplier } from '@/api/finance/supplier'
 import { useUserStore } from '@/stores/user'
@@ -216,6 +219,7 @@ const userStore = useUserStore()
 
 export default {
   name: "Supplier",
+  components: { ConfigSyncDialog },
   setup() {
     const dict = useDict('sys_normal_disable')
     return { dict, userStore }
@@ -242,6 +246,7 @@ export default {
       open: false,
       // 查看详情弹出层
       viewOpen: false,
+      syncOpen: false,
       // 查询参数
       queryParams: {
         pageNum: 1,

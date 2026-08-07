@@ -38,7 +38,9 @@ export function updateProduct(data: any) {
   return request({
     url: '/finance/product',
     method: 'put',
-    data: data
+    data: data,
+    // 商品人工修改失败后允许用户重新提交，不能复用旧失败请求的幂等结果。
+    idempotencyNewKey: true
   })
 }
 

@@ -192,14 +192,25 @@ public class MemSeckillRecordServiceImpl implements IMemSeckillRecordService {
      * 统计秒杀记录
      */
     @Override
+    @DataScope(deptAlias = "r")
     public Map<String, Object> getRecordStatistics(MemSeckillRecord memSeckillRecord) {
         return memSeckillRecordMapper.selectRecordStatistics(memSeckillRecord);
+    }
+
+    @Override
+    @DataScope(deptAlias = "r")
+    public List<Map<String, Object>> getRecordStatisticsBatch(MemSeckillRecord memSeckillRecord) {
+        if (memSeckillRecord == null || memSeckillRecord.getSeckillIds() == null || memSeckillRecord.getSeckillIds().isEmpty()) {
+            return new ArrayList<>();
+        }
+        return memSeckillRecordMapper.selectRecordStatisticsBatch(memSeckillRecord);
     }
 
     /**
      * 按付款方式统计
      */
     @Override
+    @DataScope(deptAlias = "r")
     public List<Map<String, Object>> getPaymentMethodStats(MemSeckillRecord memSeckillRecord) {
         return memSeckillRecordMapper.selectPaymentMethodStats(memSeckillRecord);
     }

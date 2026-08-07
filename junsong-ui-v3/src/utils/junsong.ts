@@ -32,6 +32,11 @@ export function parseTime(time: any, cFormat?: string): string | null {
   return time_str
 }
 
+export function formatDateTime(time: any): string {
+  if (!time) return ''
+  return parseTime(time, '{y}-{m}-{d} {h}:{i}:{s}') || String(time).replace('T', ' ')
+}
+
 export function resetForm(formEl: any) {
   if (formEl) {
     formEl.resetFields()

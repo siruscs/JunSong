@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.member.mapper.MemCampaignPolicyMapper">
+    <resultMap id="PolicyResult" type="com.junsong.member.domain.MemCampaignPolicy">
+        <id property="policyId" column="policy_id"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="deptId" column="dept_id"/>
+        <result property="periodId" column="period_id"/>
+        <result property="productId" column="product_id"/>
+        <result property="policyNo" column="policy_no"/>
+        <result property="policyName" column="policy_name"/>
+        <result property="version" column="version"/>
+        <result property="customerScope" column="customer_scope"/>
+        <result property="effectiveStart" column="effective_start"/>
+        <result property="effectiveEnd" column="effective_end"/>
+        <result property="status" column="status"/>
+        <result property="delFlag" column="del_flag"/>
+        <collection property="packages" ofType="com.junsong.member.domain.MemCampaignPolicyPackage"
+                    column="{policyId=policy_id,tenantId=tenant_id,deptId=dept_id}" select="selectPackagesByPolicyId"/>
+    </resultMap>
+
+    <resultMap id="PackageResult" type="com.junsong.member.domain.MemCampaignPolicyPackage">
+        <id property="packageId" column="package_id"/>
+        <result property="policyId" column="policy_id"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="packageName" column="package_name"/>
+        <result property="purchaseQuantity" column="purchase_quantity"/>
+        <result property="giftQuantity" column="gift_quantity"/>
+        <result property="totalQuantity" column="total_quantity"/>
+        <result property="packagePrice" column="package_price"/>
+        <result property="sortNo" column="sort_no"/>
+        <result property="delFlag" column="del_flag"/>
+    </resultMap>
+
+    <sql id="policyColumns">
+        select policy_id, tenant_id, dept_id, period_id, product_id, policy_no,
+               policy_name, version, customer_scope, effective_start, effective_end,
+               status, del_flag, create_by, create_time, update_by, update_time, remark
+        from mem_campaign_policy
+    </sql>
+
+    <select id="selectPolicyById" resultMap="PolicyResult">
+        <include refid="policyColumns"/>
+        where policy_id = #{policyId} and tenant_id = #{tenantId} and dept_id = #{deptId} and del_flag = '0'
+    </select>
+
+    <select id="selectPolicyList" parameterType="com.junsong.member.domain.MemCampaignPolicy" resultMap="PolicyResult">
+        <include refid="policyColumns"/>
+        <where>
+            del_flag = '0'
+            <if test="tenantId != null">and tenant_id = #{tenantId}</if>
+            <if test="deptId != null">and dept_id = #{deptId}</if>
+            <if test="periodId != null">and period_id = #{periodId}</if>
+            <if test="productId != null">and product_id = #{productId}</if>
+            <if test="status != null and status != ''">and status = #{status}</if>
+        </where>
+        order by period_id desc, product_id, version desc
+    </select>
+
+    <select id="selectPackagesByPolicyId" resultMap="PackageResult">
+        select package_id, policy_id, tenant_id, dept_id, package_name, purchase_quantity,
+               gift_quantity, total_quantity, package_price, sort_no, del_flag
+        from mem_campaign_policy_package
+        where policy_id = #{policyId} and tenant_id = #{tenantId} and dept_id = #{deptId} and del_flag = '0'
+        order by purchase_quantity desc, sort_no
+    </select>
+
+    <insert id="insertPolicy" parameterType="com.junsong.member.domain.MemCampaignPolicy"
+            useGeneratedKeys="true" keyProperty="policyId">
+        insert into mem_campaign_policy
+        (tenant_id, dept_id, period_id, product_id, policy_no, policy_name, version,
+         customer_scope, effective_start, effective_end, status, del_flag, create_by, create_time, remark)
+        values
+        (#{tenantId}, #{deptId}, #{periodId}, #{productId}, #{policyNo}, #{policyName}, #{version},
+         #{customerScope}, #{effectiveStart}, #{effectiveEnd}, #{status}, '0', #{createBy}, sysdate(), #{remark})
+    </insert>
+
+    <insert id="insertPolicyPackage" parameterType="com.junsong.member.domain.MemCampaignPolicyPackage"
+            useGeneratedKeys="true" keyProperty="packageId">
+        insert into mem_campaign_policy_package
+        (policy_id, tenant_id, dept_id, package_name, purchase_quantity, gift_quantity,
+         total_quantity, package_price, sort_no, del_flag, create_by, create_time)
+        values
+        (#{policyId}, #{tenantId}, #{deptId}, #{packageName}, #{purchaseQuantity}, #{giftQuantity},
+         #{totalQuantity}, #{packagePrice}, #{sortNo}, '0', #{createBy}, sysdate())
+    </insert>
+
+    <update id="updatePolicy" parameterType="com.junsong.member.domain.MemCampaignPolicy">
+        update mem_campaign_policy
+        set period_id = #{periodId}, product_id = #{productId}, policy_name = #{policyName},
+            customer_scope = #{customerScope}, effective_start = #{effectiveStart}, effective_end = #{effectiveEnd},
+            status = #{status}, update_by = #{updateBy}, update_time = sysdate(), remark = #{remark}
+        where policy_id = #{policyId} and tenant_id = #{tenantId} and dept_id = #{deptId} and del_flag = '0'
+    </update>
+
+    <delete id="deletePolicyPackages">
+        delete from mem_campaign_policy_package
+        where policy_id = #{policyId} and tenant_id = #{tenantId} and dept_id = #{deptId}
+    </delete>
+
+    <update id="updatePolicyStatus">
+        update mem_campaign_policy
+        set status = #{status}, update_by = #{updateBy}, update_time = sysdate()
+        where policy_id = #{policyId} and tenant_id = #{tenantId} and dept_id = #{deptId} and del_flag = '0'
+    </update>
+
+    <update id="deletePolicy">
+        update mem_campaign_policy
+        set del_flag = '2', update_by = #{updateBy}, update_time = sysdate()
+        where policy_id = #{policyId} and tenant_id = #{tenantId} and dept_id = #{deptId} and del_flag = '0'
+    </update>
+</mapper>

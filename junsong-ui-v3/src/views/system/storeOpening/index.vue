@@ -214,7 +214,7 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="场地面积" prop="siteArea">
-              <el-input-number v-model="form.siteArea" :min="0" :precision="2" style="width: 100%" />
+            <el-input-number v-model="form.siteArea" :min="0" :precision="2" :step="0.01" placeholder="0.00" style="width: 100%" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
@@ -234,12 +234,12 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="首期投入(元)" prop="initialInvestmentAmount">
-              <el-input-number v-model="form.initialInvestmentAmount" :min="0" :precision="2" style="width: 100%" />
+            <el-input-number v-model="form.initialInvestmentAmount" :min="0" :precision="2" :step="0.01" placeholder="0.00" style="width: 100%" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="预计月营收" prop="estimatedMonthlyRevenue">
-              <el-input-number v-model="form.estimatedMonthlyRevenue" :min="0" :precision="2" style="width: 100%" />
+            <el-input-number v-model="form.estimatedMonthlyRevenue" :min="0" :precision="2" :step="0.01" placeholder="0.00" style="width: 100%" />
             </el-form-item>
           </el-col>
         </el-row>

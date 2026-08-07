@@ -6,6 +6,7 @@ import org.mybatis.spring.mapper.MapperFactoryBean;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.mybatis.spring.boot.autoconfigure.MybatisAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -48,6 +49,7 @@ public class IdempotencyAutoConfiguration {
      * Mapper XML（mapper/system/IdempotencyRecordMapper.xml）由 MyBatis 的
      * mapper-locations=classpath*:mapper/&#42;&#42;/&#42;.xml 配置自动加载。</p>
      */
+    @ConditionalOnBean(SqlSessionFactory.class)
     @Bean
     public MapperFactoryBean<IdempotencyRecordMapper> idempotencyRecordMapper(SqlSessionFactory sqlSessionFactory) {
         MapperFactoryBean<IdempotencyRecordMapper> factoryBean = new MapperFactoryBean<>(IdempotencyRecordMapper.class);

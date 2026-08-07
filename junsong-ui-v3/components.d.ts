@@ -13,6 +13,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     AccountingPeriodFilter: typeof import('./src/components/finance/AccountingPeriodFilter.vue')['default']
     Breadcrumb: typeof import('./src/components/Breadcrumb/index.vue')['default']
+    ConfigSyncDialog: typeof import('./src/components/ConfigSyncDialog/index.vue')['default']
     DictTag: typeof import('./src/components/DictTag/index.vue')['default']
     Editor: typeof import('./src/components/Editor/index.vue')['default']
     ElAlert: typeof import('element-plus/es')['ElAlert']

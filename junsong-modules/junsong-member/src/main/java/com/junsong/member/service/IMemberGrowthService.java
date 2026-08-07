@@ -29,6 +29,44 @@ public interface IMemberGrowthService
     public boolean awardSaleGrowth(Long memberId, String memberNo, String memberName, Long deptId,
                                    Long saleId, BigDecimal saleAmount, String operator);
 
+    /** 会员购买确认时按当前等级积分倍率和消费成长规则奖励，幂等键 PURCHASE_REWARD:{purchaseId}。 */
+    public boolean awardPurchaseReward(Long memberId, String memberNo, String memberName, Long deptId,
+                                       Long purchaseId, BigDecimal purchaseAmount, String operator);
+    public boolean reversePurchaseReward(Long memberId, Long purchaseId, String operator);
+
+    /**
+     * 退货完成时按退款金额比例核减会员积分和成长值。
+     * 幂等键: PURCHASE_RETURN_REVERSAL:{returnId}
+     *
+     * @param memberId 会员ID
+     * @param purchaseId 原购买单ID
+     * @param returnId 退货单ID（幂等来源）
+     * @param refundAmount 退款金额
+     * @param originalTotalAmount 原购买单总金额
+     * @param operator 操作人
+     * @return 是否核减成功（已处理返回false但不报错）
+     */
+    public boolean reversePurchaseRewardByReturn(Long memberId, Long purchaseId, Long returnId,
+                                                  BigDecimal refundAmount, BigDecimal originalTotalAmount,
+                                                  String operator);
+
+    /**
+     * 编辑购买单后按新金额重新发放奖励（先冲正原奖励再按新金额发放）。
+     * 幂等键: PURCHASE_REWARD_REAWARD:{purchaseId}
+     * 前置条件：原奖励已被 reversePurchaseReward 冲正。
+     *
+     * @param memberId 会员ID
+     * @param memberNo 会员编号
+     * @param memberName 会员姓名
+     * @param deptId 部门ID
+     * @param purchaseId 购买单ID
+     * @param purchaseAmount 新购买金额
+     * @param operator 操作人
+     * @return 是否发放成功（已处理返回false但不报错）
+     */
+    public boolean reawardPurchaseReward(Long memberId, String memberNo, String memberName, Long deptId,
+                                          Long purchaseId, BigDecimal purchaseAmount, String operator);
+
     /**
      * 签到奖励入账
      * 幂等键: SIGN_IN:{memberId}:{signDate}

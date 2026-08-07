@@ -121,7 +121,8 @@ public class FinProductServiceImpl implements IFinProductService
     public boolean checkProductCodeUnique(FinProduct finProduct)
     {
         Long productId = StringUtils.isNull(finProduct.getProductId()) ? -1L : finProduct.getProductId();
-        FinProduct info = finProductMapper.checkProductCodeUnique(finProduct.getProductCode());
+        FinProduct info = finProductMapper.checkProductCodeUnique(finProduct.getProductCode(),
+                finProduct.getDeptId(), finProduct.getProductId());
         if (StringUtils.isNotNull(info) && info.getProductId().longValue() != productId.longValue())
         {
             return false;

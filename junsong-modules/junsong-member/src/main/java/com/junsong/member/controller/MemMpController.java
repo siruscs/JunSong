@@ -4,31 +4,74 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import com.junsong.common.core.domain.R;
 import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.security.utils.SecurityUtils;
+import com.junsong.common.security.auth.AuthUtil;
 import com.junsong.member.service.IMemMpRoleModuleService;
 import com.junsong.member.service.IMemMpDashboardService;
 import com.junsong.member.mapper.MemMpDashboardMapper;
 import com.junsong.system.api.RemoteUserService;
 import com.junsong.system.api.domain.SysRole;
 import com.junsong.system.api.model.LoginUser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping({"/mp", "/member/mp"})
 public class MemMpController extends BaseController {
 
+    private static final Logger log = LoggerFactory.getLogger(MemMpController.class);
+
     private static final List<String> ALL_MODULES = Arrays.asList(
-            "member", "pointsGoods", "pointsRecord", "pointsExchange",
+            "member", "memberPurchase", "memberPurchaseReturn", "memberLevel", "campaignPolicy",
+            "pointsGoods", "pointsRecord", "pointsExchange", "configSync",
             "seckill", "seckillRecord",
             "expense", "advance", "product", "supplier", "purchase", "sale",
             "investorPayment", "investor", "investRecord", "deptProfitConfig",
             "accountingPeriod", "profitShare", "costAccounting", "stockCost", "stockAdjustment", "verificationRecord",
             "userManage", "deptManage"
     );
+
+    /** 模块 key → 查看（list）权限码映射，用于过滤无实际权限的模块 */
+    private static final Map<String, String[]> MODULE_VIEW_PERMISSIONS;
+    static {
+        Map<String, String[]> m = new LinkedHashMap<>();
+        m.put("member", new String[]{"member:member:list", "member:member:query"});
+        m.put("memberPurchase", new String[]{"member:purchase:list", "member:purchase:query"});
+        m.put("memberPurchaseReturn", new String[]{"member:purchaseReturn:list", "member:purchaseReturn:query"});
+        m.put("memberLevel", new String[]{"member:level:list", "member:level:query"});
+        m.put("campaignPolicy", new String[]{"member:campaignPolicy:list", "member:campaignPolicy:query"});
+        m.put("configSync", new String[]{"member:configSync:query"});
+        m.put("pointsGoods", new String[]{"member:pointsGoods:list", "member:pointsGoods:query"});
+        m.put("pointsRecord", new String[]{"member:pointsRecord:list", "member:pointsRecord:query"});
+        m.put("pointsExchange", new String[]{"member:pointsExchange:list", "member:pointsExchange:query"});
+        m.put("seckill", new String[]{"member:seckill:list", "member:seckill:query"});
+        m.put("seckillRecord", new String[]{"member:seckillRecord:list", "member:seckillRecord:query"});
+        m.put("expense", new String[]{"finance:expense:list", "finance:expense:query"});
+        m.put("advance", new String[]{"finance:advance:list", "finance:advance:query"});
+        m.put("product", new String[]{"finance:product:list", "finance:product:query"});
+        m.put("supplier", new String[]{"finance:supplier:list", "finance:supplier:query"});
+        m.put("purchase", new String[]{"finance:purchase:list", "finance:purchase:query"});
+        m.put("sale", new String[]{"finance:sale:list", "finance:sale:query"});
+        m.put("investorPayment", new String[]{"finance:investorPayment:list", "finance:investorPayment:query"});
+        m.put("investor", new String[]{"finance:investor:list", "finance:investor:query"});
+        m.put("investRecord", new String[]{"finance:investRecord:list", "finance:investRecord:query"});
+        m.put("deptProfitConfig", new String[]{"finance:deptProfitConfig:list", "finance:deptProfitConfig:query"});
+        m.put("accountingPeriod", new String[]{"finance:accountingPeriod:list", "finance:accountingPeriod:query"});
+        m.put("profitShare", new String[]{"finance:profitShare:list", "finance:profitShare:query"});
+        m.put("costAccounting", new String[]{"finance:costAccounting:list", "finance:costAccounting:query"});
+        m.put("stockCost", new String[]{"finance:report:stock", "finance:stock:list"});
+        m.put("stockAdjustment", new String[]{"finance:stockInit:list"});
+        m.put("verificationRecord", new String[]{"finance:expense:verificationRecord:list"});
+        m.put("userManage", new String[]{"system:user:list", "system:user:query"});
+        m.put("deptManage", new String[]{"system:dept:list", "system:dept:query"});
+        MODULE_VIEW_PERMISSIONS = Collections.unmodifiableMap(m);
+    }
 
     @Autowired
     private IMemMpRoleModuleService mpRoleModuleService;
@@ -88,7 +131,25 @@ public class MemMpController extends BaseController {
             return Collections.emptyList();
         }
         List<String> configured = mpRoleModuleService.getAccessibleModules(roleIds, deptId);
-        return configured;
+        // 二次过滤：仅保留用户拥有实际 view 权限的模块，
+        // 避免 mem_mp_role_module 配置与标准权限体系不一致导致无权限模块仍可见
+        return configured.stream()
+                .filter(this::hasModuleViewPermission)
+                .collect(Collectors.toList());
+    }
+
+    /** 检查当前登录用户是否拥有指定模块的查看权限 */
+    private boolean hasModuleViewPermission(String moduleKey) {
+        String[] requiredPerms = MODULE_VIEW_PERMISSIONS.get(moduleKey);
+        if (requiredPerms == null) {
+            return true;
+        }
+        for (String perm : requiredPerms) {
+            if (AuthUtil.hasPermi(perm)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private List<Long> getRoleIds(LoginUser loginUser) {
@@ -227,5 +288,24 @@ public class MemMpController extends BaseController {
         Map<String, Object> caps = new HashMap<>();
         caps.put("wechatLoginEnabled", wechatLoginEnabled);
         return AjaxResult.success(caps);
+    }
+
+    /** 接收小程序脱敏错误摘要；不落库，仅进入服务日志供统一检索。 */
+    @PostMapping("/error-report")
+    public AjaxResult reportError(@RequestBody(required = false) Map<String, Object> report) {
+        LoginUser loginUser = SecurityUtils.getLoginUser();
+        if (loginUser == null) {
+            return AjaxResult.error("未登录");
+        }
+        Map<String, Object> safe = report == null ? Collections.emptyMap() : report;
+        log.info("mini-program error report user={} requestId={} category={} message={}",
+                SecurityUtils.getUserId(), truncate(safe.get("requestId")),
+                truncate(safe.get("category")), truncate(safe.get("message")));
+        return AjaxResult.success();
+    }
+
+    private String truncate(Object value) {
+        String text = value == null ? "" : String.valueOf(value);
+        return text.length() > 500 ? text.substring(0, 500) : text;
     }
 }

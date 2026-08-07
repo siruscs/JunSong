@@ -100,12 +100,12 @@ public class FinProductController extends BaseController
     @PostMapping
     public AjaxResult add(@Validated @RequestBody FinProduct finProduct)
     {
+        finProduct.setDeptId(SecurityUtils.getDeptId());
         if (!finProductService.checkProductCodeUnique(finProduct))
         {
             return error("新增商品'" + finProduct.getProductName() + "'失败，商品编码已存在");
         }
         finProduct.setCreateBy(SecurityUtils.getUsername());
-        finProduct.setDeptId(SecurityUtils.getDeptId());
         return toAjax(finProductService.insertFinProduct(finProduct));
     }
 
@@ -118,15 +118,21 @@ public class FinProductController extends BaseController
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody FinProduct finProduct)
     {
+        if (finProduct.getProductId() == null)
+        {
+            return error("修改商品失败，商品ID不能为空，请重新打开编辑页面");
+        }
+        finProduct.setDeptId(SecurityUtils.getDeptId());
         if (!finProductService.checkProductCodeUnique(finProduct))
         {
             return error("修改商品'" + finProduct.getProductName() + "'失败，商品编码已存在");
         }
         finProduct.setUpdateBy(SecurityUtils.getUsername());
         Long deptId = SecurityUtils.getDeptId();
-        return toAjax(SecurityUtils.isAdmin()
+        int rows = SecurityUtils.isAdmin()
             ? finProductService.updateFinProduct(finProduct)
-            : finProductService.updateFinProductByDeptId(finProduct, deptId));
+            : finProductService.updateFinProductByDeptId(finProduct, deptId);
+        return rows == 1 ? success("商品修改成功") : error("商品不存在或不属于当前机构，商品未保存");
     }
 
     /**

@@ -18,7 +18,8 @@
   </resultMap>
   <select id="selectReturnList" parameterType="com.junsong.member.domain.MemPurchaseReturn" resultMap="ReturnResult">
     select r.return_id,r.tenant_id,r.dept_id,r.purchase_id,r.original_period_id,r.return_period_id,r.return_no,r.return_date,r.customer_type,r.member_id,r.customer_name,r.customer_phone,r.refund_amount,r.refunded_amount,r.status,r.reason,r.remark,r.version,
-           (select sum(pi.purchase_quantity) from mem_purchase_item pi where pi.purchase_id=r.purchase_id and pi.tenant_id=r.tenant_id and pi.dept_id=r.dept_id) as purchase_quantity,
+           coalesce((select sum(pi.purchase_quantity) from mem_purchase_item pi where pi.purchase_id=r.purchase_id and pi.tenant_id=r.tenant_id and pi.dept_id=r.dept_id),
+                     (select p.purchase_quantity from mem_purchase p where p.purchase_id=r.purchase_id and p.tenant_id=r.tenant_id and p.dept_id=r.dept_id), 0) as purchase_quantity,
            (select sum(ri.return_total_quantity) from mem_purchase_return_item ri where ri.return_id=r.return_id and ri.tenant_id=r.tenant_id and ri.dept_id=r.dept_id) as total_return_quantity
     from mem_purchase_return r
     where r.tenant_id=#{tenantId} and r.dept_id=#{deptId} and r.del_flag='0'

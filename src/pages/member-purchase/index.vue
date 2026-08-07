@@ -37,17 +37,15 @@
             <text class="compact-amount">¥{{ money(row.totalAmount) }}</text>
           </view>
           <view class="compact-row2">
+            <text class="compact-meta qty">购买 {{ quantity(row.purchaseQuantity) }}</text>
+            <text class="compact-meta qty">赠送 {{ quantity(row.giftQuantity) }}</text>
             <text class="compact-meta">{{ customerTypeText(row.customerType) }}</text>
-            <text class="compact-meta">购买 {{ quantity(row.purchaseQuantity) }}</text>
-            <text class="compact-meta">赠送 {{ quantity(row.giftQuantity) }}</text>
             <text class="compact-meta date">{{ dateText(row.purchaseDate) }}</text>
-            <text class="compact-id">NO.{{ row.purchaseNo || row.purchaseId }}</text>
           </view>
           <view class="compact-row3">
             <text class="compact-meta paid">已收 ¥{{ money(row.paidAmount) }}</text>
             <text class="compact-meta debt" v-if="Number(row.receivableAmount)>0">待缴 ¥{{ money(row.receivableAmount) }}</text>
             <text class="compact-status" :class="paymentStatusClass(row.paymentStatus)">{{ paymentStatusText(row.paymentStatus) }} · {{ deliveryStatusText(row.deliveryStatus) }}</text>
-            <text class="arrow-icon">›</text>
           </view>
         </view>
       </view>
@@ -94,7 +92,7 @@
             <view class="detail-row"><text class="detail-label">金额</text><text class="detail-value-text amount">¥{{ money(Number(item.purchaseQuantity || 0) * Number(item.unitPrice || 0)) }}</text></view>
           </view>
           <view class="detail-summary">
-            <view class="detail-summary-row"><text class="detail-summary-label">总数量</text><text class="detail-summary-value">{{ quantity(detail.purchaseQuantity) }}（赠 {{ quantity(detail.giftQuantity) }}）</text></view>
+            <view class="detail-summary-row"><text class="detail-summary-label">总数量</text><text class="detail-summary-value">{{ quantity(totalPurchaseQty) }}（赠 {{ quantity(totalGiftQty) }}）</text></view>
             <view class="detail-summary-row"><text class="detail-summary-label">总金额</text><text class="detail-summary-value">¥{{ money(detail.totalAmount) }}</text></view>
           </view>
         </view>
@@ -294,7 +292,7 @@ const newPurchaseForm = () => ({ purchaseDate: '', periodId: '', customerType: '
 export default {
   components: { MemberSearch },
   data() { return { authorized: false, currentDeptName: '', currentDeptId: '', rows: [], loading: false, keyword: '', showMoreFilters: false, panel: '', detail: {}, active: {}, form: newPurchaseForm(), products: [], periods: [], policies: [], filters: { customerType: '', paymentStatus: '', beginTime: '', endTime: '' }, summary: null, pageNum: 1, pageSize: 20, total: 0, bindTarget: {}, bindForm: { memberId: '' }, returnPurchaseIds: [], paymentMethods: [{ label: '现金', value: 'CASH' }, { label: '微信支付', value: 'WECHAT' }, { label: '支付宝', value: 'ALIPAY' }, { label: '银行转账', value: 'BANK' }, { label: '其他', value: 'OTHER' }], paymentIndex: 0, paymentForm: { paymentAmount: '' }, deliveryItems: [], deliveryIndex: 0, deliveryForm: { saleDeliveryQuantity: '', giftDeliveryQuantity: '', receiverName: '' }, remarkCollapsed: false, showCustomerTypePicker: false } },
-  computed: { panelTitle() { return ({ create: '新建购买单', detail: '购买单详情', edit: '编辑购买单', payment: '登记收款', delivery: '登记领取', bind: '绑定会员' })[this.panel] }, customerTypes() { return [{ label: '会员', value: 'MEMBER' }, { label: '非会员', value: 'CUSTOMER' }, { label: '散客', value: 'WALK_IN' }] }, customerTypeIndex() { const i = this.customerTypes.findIndex(x => x.value === this.form.customerType); return i < 0 ? 0 : i }, productIndex() { const i = this.products.findIndex(x => String(x.productId) === String(this.form.item.productId)); return i < 0 ? 0 : i }, periodIndex() { const i = this.periods.findIndex(x => String(x.periodId) === String(this.form.periodId)); return i < 0 ? 0 : i }, policyIndex() { const i = this.policies.findIndex(x => String(x.policyId) === String(this.form.item.policyId)); return i < 0 ? 0 : i }, packages() { return (this.policies[this.policyIndex]?.packages || []).map((x, i) => ({ ...x, label: `${x.packageName || `档位${i + 1}`}：买${this.quantity(x.purchaseQuantity)}送${this.quantity(x.giftQuantity)} · ¥${this.money(x.packagePrice)}` })) }, packageIndex() { const i = this.packages.findIndex(x => String(x.packageId) === String(this.form.item.packageId)); return i < 0 ? 0 : i }, selectedProduct() { return this.form.item.productId ? this.products[this.productIndex] : null }, selectedPolicy() { return this.form.item.policyId ? this.policies[this.policyIndex] : null }, selectedPackage() { return this.form.item.packageId ? this.packages[this.packageIndex] : null }, selectedPeriod() { return this.form.periodId ? this.periods[this.periodIndex] : null }, customerTypeFilters() { return [{ label: '全部', value: '' }, { label: '会员', value: 'MEMBER' }, { label: '非会员', value: 'CUSTOMER' }, { label: '散客', value: 'WALK_IN' }] }, paymentStatusFilters() { return [{ label: '全部', value: '' }, { label: '未收款', value: '0' }, { label: '部分收款', value: '1' }, { label: '已收清', value: '2' }] }, customerTypeFilterIndex() { const i = this.customerTypeFilters.findIndex(x => x.value === this.filters.customerType); return i < 0 ? 0 : i }, paymentStatusFilterIndex() { const i = this.paymentStatusFilters.findIndex(x => x.value === this.filters.paymentStatus); return i < 0 ? 0 : i }, totalPages() { return Math.max(1, Math.ceil(Number(this.total || 0) / Number(this.pageSize || 1))) } },
+  computed: { panelTitle() { return ({ create: '新建购买单', detail: '购买单详情', edit: '编辑购买单', payment: '登记收款', delivery: '登记领取', bind: '绑定会员' })[this.panel] }, customerTypes() { return [{ label: '会员', value: 'MEMBER' }, { label: '非会员', value: 'CUSTOMER' }, { label: '散客', value: 'WALK_IN' }] }, customerTypeIndex() { const i = this.customerTypes.findIndex(x => x.value === this.form.customerType); return i < 0 ? 0 : i }, productIndex() { const i = this.products.findIndex(x => String(x.productId) === String(this.form.item.productId)); return i < 0 ? 0 : i }, periodIndex() { const i = this.periods.findIndex(x => String(x.periodId) === String(this.form.periodId)); return i < 0 ? 0 : i }, policyIndex() { const i = this.policies.findIndex(x => String(x.policyId) === String(this.form.item.policyId)); return i < 0 ? 0 : i }, packages() { return (this.policies[this.policyIndex]?.packages || []).map((x, i) => ({ ...x, label: `${x.packageName || `档位${i + 1}`}：买${this.quantity(x.purchaseQuantity)}送${this.quantity(x.giftQuantity)} · ¥${this.money(x.packagePrice)}` })) }, packageIndex() { const i = this.packages.findIndex(x => String(x.packageId) === String(this.form.item.packageId)); return i < 0 ? 0 : i }, selectedProduct() { return this.form.item.productId ? this.products[this.productIndex] : null }, selectedPolicy() { return this.form.item.policyId ? this.policies[this.policyIndex] : null }, selectedPackage() { return this.form.item.packageId ? this.packages[this.packageIndex] : null }, selectedPeriod() { return this.form.periodId ? this.periods[this.periodIndex] : null }, customerTypeFilters() { return [{ label: '全部', value: '' }, { label: '会员', value: 'MEMBER' }, { label: '非会员', value: 'CUSTOMER' }, { label: '散客', value: 'WALK_IN' }] }, paymentStatusFilters() { return [{ label: '全部', value: '' }, { label: '未收款', value: '0' }, { label: '部分收款', value: '1' }, { label: '已收清', value: '2' }] }, customerTypeFilterIndex() { const i = this.customerTypeFilters.findIndex(x => x.value === this.filters.customerType); return i < 0 ? 0 : i }, paymentStatusFilterIndex() { const i = this.paymentStatusFilters.findIndex(x => x.value === this.filters.paymentStatus); return i < 0 ? 0 : i }, totalPages() { return Math.max(1, Math.ceil(Number(this.total || 0) / Number(this.pageSize || 1))) }, totalPurchaseQty() { return (this.detail.items || []).reduce((s, i) => s + Number(i.purchaseQuantity || 0), 0) }, totalGiftQty() { return (this.detail.items || []).reduce((s, i) => s + Number(i.giftQuantity || 0), 0) } },
   onLoad() { this.authorized = requireModulePermission('memberPurchase'); const scope = workContext.snapshot(); this.currentDeptId = scope.currentDeptId; this.currentDeptName = scope.currentDept?.name || scope.currentDept?.deptName || '未选择机构'; if (this.authorized) { this.loadOptions(); this.load() } },
   methods: {
     emptyForm() { return { ...newPurchaseForm(), purchaseDate: this.today() } },
@@ -410,6 +408,7 @@ export default {
 .compact-meta.date{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .compact-meta.paid{color:#059669;font-weight:600}
 .compact-meta.debt{color:#B45309;font-weight:600}
+.compact-meta.qty{font-size:28rpx;font-weight:700;color:#1A2332}
 .compact-id{flex-shrink:0;font-size:21rpx;color:#5A6B7F;background:#E8EEF5;padding:2rpx 12rpx;border-radius:999rpx}
 .compact-status{flex-shrink:0;padding:4rpx 14rpx;border-radius:999rpx;font-size:21rpx;line-height:30rpx;background:#E8EEF5;color:#5A6B7F}
 .compact-status.status-ok{background:#D1FAE5;color:#065F46}
@@ -540,7 +539,7 @@ export default {
 .detail-action-btn.danger-btn{background:#FECACA;color:#7F1D1D}
 
 /* ────────────────── 表单页 ────────────────── */
-.form-page{min-height:100vh;background:#E8EEF5;padding-bottom:calc(40rpx + env(safe-area-inset-bottom));box-sizing:border-box}
+.form-page{height:100vh;background:#E8EEF5;padding-bottom:calc(40rpx + env(safe-area-inset-bottom));box-sizing:border-box;overflow-y:auto;-webkit-overflow-scrolling:touch}
 
 /* 表单页 hero 区（参考 form hero-card） */
 .form-hero{display:flex;align-items:center;gap:24rpx;padding:36rpx 28rpx;background:linear-gradient(135deg,#C7DCF2 0%,#EAF3FC 100%);border-top:1rpx solid #B7D1EB;border-radius:0 0 24rpx 24rpx;position:relative}

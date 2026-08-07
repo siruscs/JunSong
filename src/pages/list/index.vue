@@ -175,7 +175,7 @@
               </view>
             </view>
 
-            <view class="card-footer" :class="moduleKey === 'sale' ? `sale-footer-${saleStatusClass(item)}` : ''">
+            <view class="card-footer" v-if="moduleKey === 'sale' || metaText(item)" :class="moduleKey === 'sale' ? `sale-footer-${saleStatusClass(item)}` : ''">
               <view v-if="moduleKey === 'sale'" class="sale-footer-meta">
                 <text class="sale-footer-date">{{ saleDateText(item) }}</text>
                 <text class="sale-footer-status">{{ saleStatusText(item) }}</text>

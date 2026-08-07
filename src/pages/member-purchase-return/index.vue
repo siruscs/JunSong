@@ -45,7 +45,25 @@
 
     <!-- ════════ 详情面板（参考 member-purchase detail-page） ════════ -->
     <view class="overlay-mask" v-if="panel === 'detail'" @tap="closePanel">
-      <view class="detail-page" @tap.stop>
+      <view
+        class="detail-page"
+        :class="{ 'swipe-closing': detailSwipeClosing }"
+        :style="detailSwipeStyle"
+        @tap.stop
+        @touchstart="onDetailTouchStart"
+        @touchmove="onDetailTouchMove"
+        @touchend="onDetailTouchEnd"
+      >
+        <!-- 顶部导航栏 → 返回 -->
+        <view class="detail-nav">
+          <view class="detail-nav-back" @tap="closePanel">
+            <text class="detail-nav-back-icon">‹</text>
+            <text class="detail-nav-back-text">返回</text>
+          </view>
+          <view class="detail-nav-title">退货详情</view>
+          <view class="detail-nav-spacer"></view>
+        </view>
+
         <view class="detail-hero">
           <view class="detail-hero-bg"></view>
           <view class="detail-hero-content">
@@ -180,13 +198,19 @@ export default {
       periods: [], purchaseOptions: [], purchaseIndex: 0, periodIndex: 0, returnItems: [],
       filters: { status: '' }, summary: null,
       pageNum: 1, pageSize: 20, total: 0,
-      remarkCollapsed: false, fixedPurchaseId: ''
+      remarkCollapsed: false, fixedPurchaseId: '',
+      detailSwipeStart: null, detailSwipeX: 0, detailSwipeClosing: false
     }
   },
   computed: {
     statusFilters() { return [{ label: '全部', value: '' }, { label: '草稿', value: 'DRAFT' }, { label: '已完成', value: 'COMPLETED' }, { label: '已作废', value: 'CANCELLED' }] },
     statusFilterIndex() { const i = this.statusFilters.findIndex(x => x.value === this.filters.status); return i < 0 ? 0 : i },
-    totalPages() { return Math.max(1, Math.ceil(Number(this.total || 0) / Number(this.pageSize || 1))) }
+    totalPages() { return Math.max(1, Math.ceil(Number(this.total || 0) / Number(this.pageSize || 1))) },
+    detailSwipeStyle() {
+      if (!this.detailSwipeStart) return {}
+      const x = Math.max(0, this.detailSwipeX)
+      return { transform: `translateX(${x}px)`, transition: this.detailSwipeClosing ? 'transform .24s ease' : 'none' }
+    }
   },
   onLoad(options) {
     this.authorized = requireModulePermission('memberPurchaseReturn')
@@ -297,6 +321,61 @@ export default {
       this.panel = 'detail'
     },
     closePanel() { this.panel = '' },
+
+    /* ── 右滑返回手势 ── */
+    onDetailTouchStart(e) {
+      const t = e.touches?.[0] || e.changedTouches?.[0]
+      if (!t) return
+      // 仅在页面左侧 1/8 或已有位移时允许触发右滑
+      this.detailSwipeStart = { x: t.clientX, y: t.clientY, startedAt: Date.now(), triggered: false, lockAxis: null }
+      this.detailSwipeX = 0
+      this.detailSwipeClosing = false
+    },
+    onDetailTouchMove(e) {
+      const s = this.detailSwipeStart
+      if (!s) return
+      const t = e.touches?.[0] || e.changedTouches?.[0]
+      if (!t) return
+      const dx = t.clientX - s.x
+      const dy = t.clientY - s.y
+      // 第一次大幅移动锁轴：竖直方向就放弃右滑
+      if (!s.lockAxis && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
+        s.lockAxis = Math.abs(dy) > Math.abs(dx) ? 'y' : 'x'
+        if (s.lockAxis === 'x') s.triggered = true
+      }
+      if (s.lockAxis !== 'x' || !s.triggered) return
+      // 只允许右滑( dx>=0 )，同时起点必须在左侧 40px 内或已经在滑动
+      if (dx > 0 && s.x < 40) {
+        this.detailSwipeX = Math.max(0, dx)
+      } else if (dx < 0) {
+        this.detailSwipeX = 0
+      }
+    },
+    onDetailTouchEnd() {
+      const s = this.detailSwipeStart
+      if (!s) return
+      const threshold = 100
+      const velocityThreshold = 300 // px/s
+      const dt = Math.max(1, Date.now() - s.startedAt)
+      const vx = (this.detailSwipeX * 1000) / dt
+      if (this.detailSwipeX > threshold || vx > velocityThreshold) {
+        this.detailSwipeClosing = true
+        this.detailSwipeX = Math.max(screen.width, 420)
+        setTimeout(() => {
+          this.closePanel()
+          this.detailSwipeStart = null
+          this.detailSwipeX = 0
+          this.detailSwipeClosing = false
+        }, 220)
+      } else {
+        this.detailSwipeClosing = true
+        this.detailSwipeX = 0
+        setTimeout(() => {
+          this.detailSwipeStart = null
+          this.detailSwipeClosing = false
+        }, 220)
+      }
+    },
 
     async submit() {
       const items = this.returnItems
@@ -445,8 +524,18 @@ export default {
 .overlay-mask{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:50;overflow:hidden}
 
 /* ────────────────── 详情页 ────────────────── */
-.detail-page{height:100vh;background:#E8EEF5;padding-bottom:calc(40rpx + env(safe-area-inset-bottom));box-sizing:border-box;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.detail-hero{position:relative;margin:24rpx 28rpx;border-radius:20rpx;overflow:hidden}
+.detail-page{height:100vh;background:#E8EEF5;padding-bottom:calc(40rpx + env(safe-area-inset-bottom));box-sizing:border-box;overflow-y:auto;-webkit-overflow-scrolling:touch;will-change:transform}
+.detail-page.swipe-closing{pointer-events:none}
+
+/* 顶部返回导航栏（仿原生导航，返回列表而非主界面） */
+.detail-nav{position:sticky;top:0;z-index:20;display:flex;align-items:center;height:calc(88rpx + env(safe-area-inset-top));padding-top:env(safe-area-inset-top);padding-left:12rpx;padding-right:24rpx;background:#E8EEF5}
+.detail-nav-back{display:inline-flex;align-items:center;height:64rpx;padding:0 20rpx;border-radius:999rpx;color:#1A2332;flex-shrink:0}
+.detail-nav-back-icon{font-size:48rpx;line-height:1;font-weight:500;color:#1A2332;margin-right:2rpx}
+.detail-nav-back-text{font-size:28rpx;color:#1A2332}
+.detail-nav-title{flex:1;text-align:center;font-size:30rpx;font-weight:600;color:#1A2332;margin-right:80rpx}
+.detail-nav-spacer{width:80rpx;flex-shrink:0}
+
+.detail-hero{position:relative;margin:8rpx 28rpx 24rpx;border-radius:20rpx;overflow:hidden}
 .detail-hero-bg{position:absolute;inset:0;background:linear-gradient(135deg,#087CF0,#5AA9E8,#A8C7E5);border-radius:20rpx}
 .detail-hero-content{position:relative;z-index:1;padding:40rpx 36rpx}
 .detail-hero-eyebrow{font-size:22rpx;color:rgba(255,255,255,.7);margin-bottom:12rpx;letter-spacing:2rpx}
@@ -462,12 +551,12 @@ export default {
 .detail-highlight-item{flex:1;min-width:45%;background:#F5F8FA;border-radius:12rpx;padding:18rpx 20rpx;box-sizing:border-box}
 .detail-highlight-label{font-size:22rpx;color:#94A3B8;margin-bottom:6rpx}
 .detail-highlight-value{font-size:28rpx;font-weight:600;color:#1A2332;overflow-wrap:anywhere;word-break:break-word}
-.detail-highlight-value.status-ok{display:inline-block;background:#D1FAE5;color:#065F46;font-size:24rpx;font-weight:500;padding:4rpx 16rpx;border-radius:20rpx}
+.detail-highlight-value.status-ok{display:inline-block;background:#E0F2FE;color:#075985;font-size:24rpx;font-weight:500;padding:4rpx 16rpx;border-radius:20rpx}
 .detail-highlight-value.status-warn{display:inline-block;background:#FEF3C7;color:#92400E;font-size:24rpx;font-weight:500;padding:4rpx 16rpx;border-radius:20rpx}
 .detail-highlight-value.status-danger{display:inline-block;background:#FEE2E2;color:#991B1B;font-size:24rpx;font-weight:500;padding:4rpx 16rpx;border-radius:20rpx}
 .detail-highlight-value.status-info{display:inline-block;background:#E0F2FE;color:#075985;font-size:24rpx;font-weight:500;padding:4rpx 16rpx;border-radius:20rpx}
-.detail-highlight-value.tone-success{color:#059669}
-.detail-highlight-value.tone-warning{color:#C26A1B}
+.detail-highlight-value.tone-success{color:#0F766E}
+.detail-highlight-value.tone-warning{color:#C65A4A}
 
 .detail-item{background:#F5F8FA;border-radius:16rpx;padding:24rpx;margin-bottom:20rpx;box-sizing:border-box}
 .detail-item:last-child{margin-bottom:0}
@@ -476,12 +565,12 @@ export default {
 .detail-row{display:flex;align-items:center;min-height:72rpx;padding:16rpx 0;box-sizing:border-box;line-height:34rpx}
 .detail-label{width:140rpx;font-size:26rpx;color:#64748B;flex-shrink:0}
 .detail-value-text{font-size:26rpx;color:#1A2332;flex:1;overflow-wrap:anywhere;word-break:break-word}
-.detail-value-text.amount{font-weight:700;color:#087CF0}
+.detail-value-text.amount{font-weight:700;color:#C65A4A}
 
 .detail-summary{margin-top:24rpx;padding-top:24rpx;border-top:2rpx solid #E2E8F0}
 .detail-summary-row{display:flex;align-items:center;padding:12rpx 0}
 .detail-summary-label{flex:1;font-size:28rpx;color:#1A2332;font-weight:500}
-.detail-summary-value{font-size:32rpx;color:#087CF0;font-weight:700}
+.detail-summary-value{font-size:32rpx;color:#C65A4A;font-weight:700}
 
 .detail-remark{font-size:26rpx;color:#475569;line-height:1.6;white-space:pre-wrap;word-break:break-word;background:#F5F8FA;border-radius:12rpx;padding:20rpx}
 

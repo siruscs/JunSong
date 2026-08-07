@@ -25,14 +25,13 @@
         <view class="card-body compact-body">
           <view class="compact-row1">
             <text class="compact-title">{{ row.customerName || '未登记顾客' }}</text>
-            <text class="compact-amount">¥{{ money(row.refundAmount) }}</text>
+            <view class="compact-qty-group">
+              <text class="compact-qty-label">原买</text><text class="compact-qty-value">{{ row.purchaseQuantity || 0 }}</text>
+              <text class="compact-qty-label">退</text><text class="compact-qty-value">{{ returnQuantity(row) }}</text>
+            </view>
           </view>
           <view class="compact-row2">
-            <text class="compact-meta qty">原购买 {{ row.purchaseQuantity || 0 }}</text>
-            <text class="compact-meta qty">退货 {{ returnQuantity(row) }}</text>
             <text class="compact-meta date">{{ dateText(row.returnDate) }}</text>
-          </view>
-          <view class="compact-row3">
             <text class="compact-meta paid">已退 ¥{{ money(row.refundedAmount) }}</text>
             <text class="compact-status" :class="statusClass(row.status)">{{ statusText(row.status) }}</text>
           </view>
@@ -414,8 +413,12 @@ export default {
 .compact-row1{display:flex;align-items:center;gap:18rpx}
 .compact-title{flex:1;min-width:0;font-size:29rpx;line-height:40rpx;font-weight:700;color:#1A2332;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .compact-amount{font-size:29rpx;line-height:40rpx;font-weight:800;color:#B45309;flex-shrink:0}
-.compact-row2{display:flex;align-items:center;gap:16rpx;margin-top:10rpx;flex-wrap:wrap}
-.compact-row3{display:flex;align-items:center;gap:14rpx;margin-top:10rpx}
+.compact-row2{display:flex;align-items:center;gap:14rpx;margin-top:10rpx}
+.compact-row2 .date{flex:0 0 auto}
+.compact-row2 .paid{flex:1;text-align:center}
+.compact-qty-group{display:flex;align-items:baseline;gap:4rpx;flex-shrink:0}
+.compact-qty-label{font-size:21rpx;color:#94A3B8;font-weight:400}
+.compact-qty-value{font-size:30rpx;color:#1A2332;font-weight:700;margin-right:10rpx}
 .compact-meta{flex-shrink:0;font-size:23rpx;line-height:32rpx;color:#94A3B8}
 .compact-meta.qty{font-size:28rpx;font-weight:700;color:#1A2332}
 .compact-meta.date{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

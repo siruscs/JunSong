@@ -1059,7 +1059,7 @@ export default {
 }
 
 .stat-value.ok {
-  color: #059669;
+  color: #0F766E;
 }
 
 .stat-label {
@@ -1811,15 +1811,15 @@ export default {
 .expense-status {
   flex-shrink: 0;
   padding: 4rpx 16rpx;
-  border-radius: 10rpx;
+  border-radius: 20rpx;
   font-size: 22rpx;
   line-height: 30rpx;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .expense-status.status-verified {
-  background: rgba(16, 185, 129, 0.1);
-  color: #10B981;
+  background: #E0F2FE;
+  color: #075985;
 }
 
 .expense-status.status-pending {

@@ -239,48 +239,51 @@ export default {
 
 <style scoped>
 .page {
-  min-height: 100vh;
+  height: 100vh;
   background: #E8EEF5;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .hero {
-  margin: 24rpx 28rpx 0;
-  padding: 32rpx 30rpx;
+  margin: 16rpx 24rpx 0;
+  padding: 20rpx 24rpx;
   background: linear-gradient(135deg, #92400E, #F59E0B);
-  border-radius: 24rpx;
-  box-shadow: 0 12rpx 32rpx rgba(245, 158, 11, 0.18);
+  border-radius: 20rpx;
+  box-shadow: 0 8rpx 24rpx rgba(245, 158, 11, 0.15);
 }
 
 .hero-title {
-  font-size: 38rpx;
+  font-size: 34rpx;
   font-weight: 800;
   color: #FFFFFF;
   display: block;
 }
 
 .hero-sub {
-  font-size: 24rpx;
+  font-size: 22rpx;
   color: rgba(255, 255, 255, 0.72);
-  margin-top: 8rpx;
+  margin-top: 4rpx;
   display: block;
 }
 
 .tab-bar {
   display: flex;
-  margin: 24rpx 28rpx 0;
+  margin: 14rpx 24rpx 0;
   background: #FFFFFF;
-  border-radius: 16rpx;
-  padding: 6rpx;
-  box-shadow: 0 2rpx 12rpx rgba(8, 124, 240, 0.06);
+  border-radius: 14rpx;
+  padding: 4rpx;
+  box-shadow: 0 2rpx 10rpx rgba(8, 124, 240, 0.06);
 }
 
 .tab-item {
   flex: 1;
-  padding: 16rpx 0;
+  padding: 10rpx 0;
   text-align: center;
-  font-size: 26rpx;
+  font-size: 25rpx;
   color: #5A6B7F;
-  border-radius: 12rpx;
+  border-radius: 10rpx;
   position: relative;
   transition: all 0.2s;
 }
@@ -293,41 +296,42 @@ export default {
 
 .tab-badge {
   position: absolute;
-  top: 6rpx;
-  right: 24rpx;
-  min-width: 32rpx;
-  height: 32rpx;
-  line-height: 32rpx;
-  padding: 0 8rpx;
+  top: 2rpx;
+  right: 20rpx;
+  min-width: 28rpx;
+  height: 28rpx;
+  line-height: 28rpx;
+  padding: 0 6rpx;
   border-radius: 999rpx;
   background: #EF4444;
   color: #FFFFFF;
-  font-size: 20rpx;
+  font-size: 18rpx;
   font-weight: 700;
   text-align: center;
 }
 
 .scroll {
-  height: calc(100vh - 320rpx);
-  padding: 24rpx 28rpx 46rpx;
+  flex: 1;
+  min-height: 0;
+  padding: 12rpx 24rpx 32rpx;
   box-sizing: border-box;
 }
 
 .list {
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
+  gap: 10rpx;
 }
 
 .record-card {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 22rpx 24rpx;
+  padding: 14rpx 18rpx;
   background: #FFFFFF;
-  border-radius: 16rpx;
-  box-shadow: 0 2rpx 12rpx rgba(8, 124, 240, 0.05);
-  gap: 16rpx;
+  border-radius: 14rpx;
+  box-shadow: 0 2rpx 10rpx rgba(8, 124, 240, 0.05);
+  gap: 12rpx;
 }
 
 .record-main {
@@ -336,23 +340,23 @@ export default {
 }
 
 .record-title {
-  font-size: 26rpx;
+  font-size: 25rpx;
   font-weight: 700;
   color: #1A2332;
   display: block;
 }
 
 .record-sub {
-  font-size: 22rpx;
+  font-size: 21rpx;
   color: #94A3B8;
-  margin-top: 4rpx;
+  margin-top: 2rpx;
   display: block;
 }
 
 .record-remark {
-  font-size: 22rpx;
+  font-size: 21rpx;
   color: #5A6B7F;
-  margin-top: 8rpx;
+  margin-top: 4rpx;
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -363,12 +367,12 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 4rpx;
+  gap: 2rpx;
   flex-shrink: 0;
 }
 
 .record-points {
-  font-size: 30rpx;
+  font-size: 28rpx;
   font-weight: 800;
 }
 
@@ -381,27 +385,27 @@ export default {
 }
 
 .record-balance {
-  font-size: 20rpx;
+  font-size: 19rpx;
   color: #94A3B8;
 }
 
 .exchange-card {
-  padding: 22rpx 24rpx;
+  padding: 14rpx 18rpx;
   background: #FFFFFF;
-  border-radius: 16rpx;
-  box-shadow: 0 2rpx 12rpx rgba(8, 124, 240, 0.05);
+  border-radius: 14rpx;
+  box-shadow: 0 2rpx 10rpx rgba(8, 124, 240, 0.05);
 }
 
 .exchange-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12rpx;
-  margin-bottom: 12rpx;
+  gap: 10rpx;
+  margin-bottom: 8rpx;
 }
 
 .exchange-title {
-  font-size: 26rpx;
+  font-size: 25rpx;
   font-weight: 700;
   color: #1A2332;
   flex: 1;
@@ -412,9 +416,9 @@ export default {
 }
 
 .exchange-status {
-  font-size: 20rpx;
+  font-size: 19rpx;
   font-weight: 600;
-  padding: 2rpx 12rpx;
+  padding: 2rpx 10rpx;
   border-radius: 8rpx;
   background: rgba(148, 163, 184, 0.12);
   color: #64748B;
@@ -439,16 +443,16 @@ export default {
 .exchange-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8rpx 16rpx;
-  margin-bottom: 12rpx;
+  gap: 6rpx 12rpx;
+  margin-bottom: 8rpx;
 }
 
 .exchange-member,
 .exchange-points,
 .exchange-qty {
-  font-size: 22rpx;
+  font-size: 21rpx;
   color: #5A6B7F;
-  padding: 2rpx 10rpx;
+  padding: 2rpx 8rpx;
   background: rgba(148, 163, 184, 0.08);
   border-radius: 8rpx;
 }
@@ -460,20 +464,20 @@ export default {
 }
 
 .exchange-time {
-  font-size: 20rpx;
+  font-size: 19rpx;
   color: #94A3B8;
 }
 
 .claim-btn {
-  font-size: 22rpx;
+  font-size: 21rpx;
   font-weight: 600;
   color: #FFFFFF;
   background: #F59E0B;
   border-radius: 999rpx;
-  padding: 4rpx 24rpx;
-  line-height: 40rpx;
-  height: 48rpx;
-  min-height: 48rpx;
+  padding: 2rpx 20rpx;
+  line-height: 36rpx;
+  height: 40rpx;
+  min-height: 40rpx;
   border: none;
 }
 
@@ -482,7 +486,7 @@ export default {
 }
 
 .empty-inline {
-  padding: 60rpx 0;
+  padding: 40rpx 0;
   text-align: center;
 }
 
@@ -492,7 +496,7 @@ export default {
 }
 
 .load-more {
-  padding: 24rpx 0;
+  padding: 16rpx 0;
   text-align: center;
 }
 

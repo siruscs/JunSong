@@ -11,6 +11,7 @@ public class MemPurchaseReturn extends BaseEntity
     private String returnNo, customerType, customerName, customerPhone, status, reason, remark, idempotencyKey, delFlag;
     private Date returnDate;
     private BigDecimal refundAmount, refundedAmount;
+    private Integer purchaseQuantity, totalReturnQuantity;
     private Long version;
     private List<MemPurchaseReturnItem> items;
     public Long getReturnId(){return returnId;} public void setReturnId(Long v){returnId=v;}
@@ -33,5 +34,7 @@ public class MemPurchaseReturn extends BaseEntity
     public BigDecimal getRefundAmount(){return refundAmount;} public void setRefundAmount(BigDecimal v){refundAmount=v;}
     public BigDecimal getRefundedAmount(){return refundedAmount;} public void setRefundedAmount(BigDecimal v){refundedAmount=v;}
     public Long getVersion(){return version;} public void setVersion(Long v){version=v;}
+    public Integer getPurchaseQuantity(){return purchaseQuantity;} public void setPurchaseQuantity(Integer v){purchaseQuantity=v;}
+    public Integer getTotalReturnQuantity(){return totalReturnQuantity;} public void setTotalReturnQuantity(Integer v){totalReturnQuantity=v;}
     public List<MemPurchaseReturnItem> getItems(){return items;} public void setItems(List<MemPurchaseReturnItem> v){items=v;}
 }

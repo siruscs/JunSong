@@ -8,6 +8,7 @@
     <result property="memberId" column="member_id"/><result property="customerName" column="customer_name"/><result property="customerPhone" column="customer_phone"/>
     <result property="refundAmount" column="refund_amount"/><result property="refundedAmount" column="refunded_amount"/><result property="status" column="status"/>
     <result property="reason" column="reason"/><result property="remark" column="remark"/><result property="version" column="version"/>
+    <result property="purchaseQuantity" column="purchase_quantity"/><result property="totalReturnQuantity" column="total_return_quantity"/>
     <collection property="items" ofType="com.junsong.member.domain.MemPurchaseReturnItem" column="{returnId=return_id,tenantId=tenant_id,deptId=dept_id}" select="selectReturnItems"/>
   </resultMap>
   <resultMap id="ItemResult" type="com.junsong.member.domain.MemPurchaseReturnItem">
@@ -16,10 +17,13 @@
     <result property="returnGiftQuantity" column="return_gift_quantity"/><result property="returnTotalQuantity" column="return_total_quantity"/><result property="refundUnitPrice" column="refund_unit_price"/><result property="refundAmount" column="refund_amount"/>
   </resultMap>
   <select id="selectReturnList" parameterType="com.junsong.member.domain.MemPurchaseReturn" resultMap="ReturnResult">
-    select return_id,tenant_id,dept_id,purchase_id,original_period_id,return_period_id,return_no,return_date,customer_type,member_id,customer_name,customer_phone,refund_amount,refunded_amount,status,reason,remark,version
-    from mem_purchase_return where tenant_id=#{tenantId} and dept_id=#{deptId} and del_flag='0'
-    <if test="purchaseId != null">and purchase_id=#{purchaseId}</if><if test="status != null and status != ''">and status=#{status}</if>
-    order by return_id desc
+    select r.return_id,r.tenant_id,r.dept_id,r.purchase_id,r.original_period_id,r.return_period_id,r.return_no,r.return_date,r.customer_type,r.member_id,r.customer_name,r.customer_phone,r.refund_amount,r.refunded_amount,r.status,r.reason,r.remark,r.version,
+           p.purchase_quantity,
+           (select sum(ri.return_total_quantity) from mem_purchase_return_item ri where ri.return_id=r.return_id and ri.tenant_id=r.tenant_id and ri.dept_id=r.dept_id) as total_return_quantity
+    from mem_purchase_return r left join mem_purchase p on r.purchase_id=p.purchase_id and r.tenant_id=p.tenant_id and r.dept_id=p.dept_id
+    where r.tenant_id=#{tenantId} and r.dept_id=#{deptId} and r.del_flag='0'
+    <if test="purchaseId != null">and r.purchase_id=#{purchaseId}</if><if test="status != null and status != ''">and r.status=#{status}</if>
+    order by r.return_id desc
   </select>
   <select id="selectReturnById" parameterType="com.junsong.member.domain.MemPurchaseReturn" resultMap="ReturnResult">
     select return_id,tenant_id,dept_id,purchase_id,original_period_id,return_period_id,return_no,return_date,customer_type,member_id,customer_name,customer_phone,refund_amount,refunded_amount,status,reason,remark,version

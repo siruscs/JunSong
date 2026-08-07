@@ -98,12 +98,10 @@
       <view class="empty-inline" v-if="!form.packages.length">请添加至少一个套餐档位；零散购买不在此处配置。</view>
     </view>
 
-    <!-- ════════ 底部操作栏（返回 / 保存政策） ════════ -->
+    <!-- ════════ 底部操作栏（取消 / 保存政策） ════════ -->
     <view class="footer-placeholder"></view>
     <view class="footer">
-      <button class="btn-secondary" @tap="back">
-        <text class="btn-icon">←</text> 返回
-      </button>
+      <button class="btn-secondary" @tap="back">取消</button>
       <button class="btn-primary" v-if="!readOnly" @tap="save">
         <text class="btn-icon">✓</text> 保存政策
       </button>

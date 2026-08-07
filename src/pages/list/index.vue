@@ -159,7 +159,41 @@
         </view>
       </view>
 
-      <view v-if="moduleKey !== 'member' && moduleKey !== 'expense' && moduleKey !== 'seckillRecord'">
+      <view v-if="moduleKey === 'advance'">
+        <view class="record-card" v-for="item in rows" :key="item[config.idKey]" @tap="openDetail(item)">
+          <view class="card-bar"></view>
+          <view class="card-body">
+            <view class="card-header">
+              <view class="record-title">{{ recordTitle(item) }}</view>
+              <view class="advance-amount">{{ displayField('advanceAmount', item.advanceAmount) }}</view>
+            </view>
+            <view class="advance-subrow">
+              <text class="advance-date">{{ displayField('advanceDate', item.advanceDate) || '-' }}</text>
+              <text class="advance-status" :class="displayField('status', item.status) === '已核销' ? 'tone-ok' : 'tone-warn'">{{ displayField('status', item.status) }}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view v-if="moduleKey === 'product'">
+        <view class="record-card" v-for="item in rows" :key="item[config.idKey]" @tap="openDetail(item)">
+          <view class="card-bar"></view>
+          <view class="card-body">
+            <view class="card-header">
+              <view class="record-title">{{ recordTitle(item) }}</view>
+              <view class="product-status" :class="displayField('status', item.status) === '正常' ? 'tone-ok' : 'tone-warn'">{{ displayField('status', item.status) }}</view>
+            </view>
+            <view class="summary-grid">
+              <view class="summary-item" v-for="entry in pillEntries(item)" :key="entry.key">
+                <text class="summary-label">{{ entry.label }}</text>
+                <text class="summary-value" :class="entry.tone">{{ entry.value }}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view v-if="moduleKey !== 'member' && moduleKey !== 'expense' && moduleKey !== 'seckillRecord' && moduleKey !== 'advance' && moduleKey !== 'product'">
         <view class="record-card" v-for="item in rows" :key="item[config.idKey]" @tap="openDetail(item)">
           <view class="card-bar"></view>
           <view class="card-body">
@@ -1870,6 +1904,58 @@ export default {
   font-size: 20rpx;
   border-radius: 999rpx;
   flex-shrink: 0;
+}
+
+.advance-amount {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #B86620;
+  flex-shrink: 0;
+  margin-left: 12rpx;
+}
+
+.advance-subrow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14rpx;
+}
+
+.advance-date {
+  font-size: 24rpx;
+  color: #5A6B7F;
+}
+
+.advance-status {
+  font-size: 24rpx;
+  font-weight: 500;
+}
+
+.advance-status.tone-ok {
+  color: #1F7F4C;
+}
+
+.advance-status.tone-warn {
+  color: #B86620;
+}
+
+.product-status {
+  font-size: 22rpx;
+  font-weight: 600;
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+  flex-shrink: 0;
+  margin-left: 12rpx;
+}
+
+.product-status.tone-ok {
+  color: #1F7F4C;
+  background: #E6F5EC;
+}
+
+.product-status.tone-warn {
+  color: #B86620;
+  background: #FCEFE0;
 }
 
 .summary-grid {

@@ -11,3 +11,7 @@ export function getMemberPurchaseReturn(returnId) {
 export function createMemberPurchaseReturn(data) {
   return request({ url: '/member/purchase-return', method: 'POST', data })
 }
+
+export function updateMemberPurchaseReturn(returnId, data) {
+  return request({ url: `/member/purchase-return/${returnId}`, method: 'PUT', data })
+}

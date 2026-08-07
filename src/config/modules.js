@@ -124,6 +124,7 @@ export const modules = {
     permissions: {
       view: ['member:purchaseReturn:list', 'member:purchaseReturn:query'],
       add: 'member:purchaseReturn:add',
+      edit: 'member:purchaseReturn:edit',
       complete: 'member:purchaseReturn:complete'
     }
   },
@@ -335,7 +336,7 @@ export const modules = {
     permissions: crudPermissions('product'),
     idKey: 'productId',
     searchKey: 'productName',
-    summary: ['productCode', 'unit', 'salePrice', 'stockNum'],
+    summary: ['productCode', 'unit', 'salePrice', 'purchasePrice'],
     fields: [
       { key: 'productCode', label: '商品编码', hidden: true },
       { key: 'productName', label: '商品名称', required: true },

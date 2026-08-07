@@ -1,12 +1,12 @@
 {
   "platform": "mp-weixin",
-  "version": "26.8.82",
-  "builtAt": "2026-08-07T12:07:11.292Z",
+  "version": "26.8.95",
+  "builtAt": "2026-08-07T15:52:58.821Z",
   "projectRoot": "/Users/sirius/Documents/TRAE/JunSong-Cloud/junsong-miniprogram",
   "miniprogramRoot": "dist/",
   "sourceHashes": {
     "src/pages/form/index.vue": "22ea9df42aba5cf4fc967381e40f0872bc6f328852456e16e0d980f18a142e40",
     "src/pages/form/form-modules/FormField.vue": "49e7da06b5affac62dc78aa2d7b123a5bbc91564c4ee0fbf662db8efa76b02bc",
-    "src/config/modules.js": "1e389af29b3e597968f2fab22bdcf2a0dbbd14cefd87fa05d21ba2ce065837a3"
+    "src/config/modules.js": "f8be4bf8593accb1dc498acbf46d103733f0b866104c905a5eb83ce954429e27"
   }
 }

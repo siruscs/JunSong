@@ -9,7 +9,7 @@
           <view class="detail-hero-eyebrow">会员购买 · {{ customerTypeText(detail.customerType) }}</view>
           <view class="detail-hero-title">{{ detail.purchaseNo || `购买单 #${detail.purchaseId}` }}</view>
           <view class="detail-hero-value">¥{{ money(detail.totalAmount) }}</view>
-          <view class="detail-hero-meta">购买日期 {{ dateText(detail.purchaseDate) }}</view>
+          <view class="detail-hero-meta">购买日期 {{ dateOnly(detail.purchaseDate) }}</view>
         </view>
       </view>
 
@@ -70,12 +70,12 @@
 
       <view class="detail-footer-placeholder"></view>
 
-      <view class="detail-footer-bar">
-        <button v-if="can('edit')" class="detail-action-btn primary-btn" @tap="switchToEdit">编辑</button>
+      <view class="detail-footer-bar" v-if="!panel">
+        <button v-if="can('edit') && String(detail.orderStatus) === '1' && String(detail.deliveryStatus) !== '2'" class="detail-action-btn primary-btn" @tap="switchToEdit">编辑</button>
         <button v-if="can('payment') && Number(detail.receivableAmount || 0) > 0" class="detail-action-btn payment-btn" @tap="openPayment">收款</button>
         <button v-if="can('delivery') && String(detail.deliveryStatus) !== '2'" class="detail-action-btn delivery-btn" @tap="openDelivery">领取</button>
         <button v-if="can('bind') && detail.customerType === 'WALK_IN' && !detail.memberId" class="detail-action-btn bind-btn" @tap="openBind">绑定</button>
-        <button v-if="can('cancel') && String(detail.orderStatus) !== 'CANCELLED' && String(detail.deliveryStatus) !== '2'" class="detail-action-btn danger-btn" @tap="cancelPurchase">作废</button>
+        <button v-if="can('cancel') && String(detail.orderStatus) !== '4' && String(detail.deliveryStatus) !== '2'" class="detail-action-btn danger-btn" @tap="cancelPurchase">作废</button>
       </view>
     </template>
 
@@ -256,6 +256,7 @@ export default {
     today() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` },
     isoDateTime(value) { if (!value) return new Date().toISOString(); const text = String(value); if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return new Date(`${text}T00:00:00`).toISOString(); return new Date(text.replace(' ', 'T')).toISOString() },
     dateText(v) { return v ? String(v).replace('T',' ').slice(0,19) : '-' },
+    dateOnly(v) { return v ? String(v).replace('T',' ').slice(0,10) : '-' },
     money(v) { return Number(v || 0).toFixed(2) },
     quantity(v) { return Number(v || 0).toFixed(3).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1') },
     customerTypeText(v) { return ({ MEMBER: '会员', CUSTOMER: '非会员', WALK_IN: '散客' })[v] || v || '-' },

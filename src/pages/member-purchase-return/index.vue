@@ -21,23 +21,23 @@
 
     <scroll-view scroll-y class="scroll" @scrolltolower="nextPage">
       <view class="record-card" v-for="row in rows" :key="row.returnId" @tap="openDetail(row)">
-        <view class="card-bar"></view>
-        <view class="card-body compact-body">
-          <view class="compact-row1">
-            <text class="compact-title">{{ row.customerName || '未登记顾客' }}</text>
-            <view class="compact-qty-group">
-              <text class="compact-qty-label">原买</text><text class="compact-qty-value">{{ displayPurchaseQty(row) }}</text>
-              <text class="compact-qty-label">退</text><text class="compact-qty-value">{{ displayReturnQty(row) }}</text>
+          <view class="card-bar"></view>
+          <view class="card-body compact-body">
+            <view class="compact-row1">
+              <text class="compact-title">{{ row.customerName || '未登记顾客' }}</text>
+              <view class="compact-qty-group">
+                <text class="compact-qty-label">原买</text><text class="compact-qty-value">{{ displayPurchaseQty(row) }}</text>
+                <text class="compact-qty-label">退</text><text class="compact-qty-value">{{ displayReturnQty(row) }}</text>
+              </view>
+              <text class="compact-amount">¥{{ money(row.refundAmount) }}</text>
             </view>
-            <text class="compact-amount">¥{{ money(row.refundAmount) }}</text>
-          </view>
-          <view class="compact-row2">
-            <text class="compact-meta date">{{ dateText(row.returnDate) }}</text>
-            <text class="compact-meta paid">已退 ¥{{ money(row.refundedAmount) }}</text>
-            <text class="compact-status" :class="statusClass(row.status)">{{ statusText(row.status) }}</text>
+            <view class="compact-row2">
+              <text class="compact-meta date">{{ dateText(row.returnDate) }}</text>
+              <text class="compact-meta paid">已退 ¥{{ money(row.refundedAmount) }}</text>
+              <text class="compact-status" :class="statusClass(row.status)">{{ statusText(row.status) }}</text>
+            </view>
           </view>
         </view>
-      </view>
       <view class="section-card list-card state-card" v-if="!rows.length">
         <view class="empty">暂无退货记录</view>
       </view>
@@ -134,10 +134,15 @@ export default {
     this.currentDeptId = scope.currentDeptId
     this.currentDeptName = scope.currentDept?.name || scope.currentDept?.deptName || '未选择机构'
     this.fixedPurchaseId = options?.purchaseId || ''
+    this._loaded = false
     if (this.authorized) {
       this.loadOptions(options?.purchaseId)
       this.load()
+      this._loaded = true
     }
+  },
+  onShow() {
+    if (this._loaded) this.load()
   },
   methods: {
     can(action) { return hasActionPermission('memberPurchaseReturn', action) },

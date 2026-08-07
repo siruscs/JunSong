@@ -17,20 +17,12 @@
 
     <!-- 筛选区卡片 -->
     <view class="section-card filters-card">
-      <view class="section-header">
-        <view class="section-dot" style="background:#087CF0"></view>
-        <text class="section-title">筛选政策</text>
-        <text class="section-link">共 {{ rows.length }} 条</text>
-      </view>
-      <!-- 状态筛选 -->
-      <view class="filter-row">
+      <!-- 筛选合并为一行：状态 + 关键字 + 查询/重置 -->
+      <view class="filter-row filter-row-inline">
         <picker class="filter-type-picker" :range="statusFilters" range-key="label" :value="statusFilterIndex" @change="selectStatusFilter">
           <view class="filter-picker">{{ statusFilters[statusFilterIndex]?.label || '全部状态' }}<text class="filter-chevron">⌄</text></view>
         </picker>
-      </view>
-      <!-- 关键字 + 查询/重置 -->
-      <view class="filter-row filter-row-tools">
-        <input class="filter-kw" v-model="keyword" placeholder="政策名称、政策编号或商品名称" confirm-type="search" @confirm="applyFilter" />
+        <input class="filter-kw" v-model="keyword" placeholder="政策名称、编号或商品" confirm-type="search" @confirm="applyFilter" />
         <button class="filter-button" @tap="applyFilter">查询</button>
         <button class="filter-button filter-button-ghost" @tap="resetFilters">重置</button>
       </view>
@@ -43,55 +35,48 @@
 
     <!-- 滚动列表区 -->
     <scroll-view scroll-y class="scroll">
-      <!-- 政策列表卡片 -->
-      <view class="section-card list-card" v-if="filteredRows.length">
-        <view class="section-header">
-          <view class="section-dot" style="background:#10B981"></view>
-          <text class="section-title">政策列表</text>
-          <text class="section-link">显示 {{ filteredRows.length }} / {{ rows.length }}</text>
-        </view>
-        <!-- 单条政策卡片（标准 record-card 结构） -->
-        <view class="record-card" v-for="row in filteredRows" :key="row.policyId" @tap="openDetail(row)">
-          <view class="card-bar"></view>
-          <view class="card-body">
-            <view class="card-header">
-              <view class="record-title">{{ row.policyName }}</view>
-              <view class="record-id">NO. {{ row.policyNo || '-' }}</view>
+      <!-- 政策列表 -->
+      <view class="record-card" v-for="row in filteredRows" :key="row.policyId" @tap="openDetail(row)">
+        <view class="card-bar"></view>
+        <view class="card-body">
+          <view class="card-header">
+            <view class="record-title">{{ row.policyName }}</view>
+            <view class="record-id">NO. {{ row.policyNo || '-' }}</view>
+          </view>
+          <!-- 套餐档位：单独一行显示 -->
+          <view class="packages-row">
+            <text class="packages-label">套餐档位</text>
+            <view class="packages-tags">
+              <text class="package-tag" v-for="(p, idx) in (row.packages || [])" :key="idx">
+                买{{ quantity(p.purchaseQuantity) }}送{{ quantity(p.giftQuantity) }} / {{ p.packagePrice ? money(p.packagePrice) : '按单价' }}
+              </text>
+              <text class="packages-empty" v-if="!(row.packages || []).length">无套餐</text>
             </view>
-            <view class="summary-grid">
-              <view class="summary-item">
-                <text class="summary-label">商品名</text>
-                <text class="summary-value">{{ row.productName || row.productId || '-' }}</text>
-              </view>
-              <view class="summary-item">
-                <text class="summary-label">套餐档数</text>
-                <text class="summary-value">{{ (row.packages || []).length }} 档</text>
-              </view>
-              <view class="summary-item">
-                <text class="summary-label">购买合计数</text>
-                <text class="summary-value">{{ totalPurchaseQuantity(row.packages) }}</text>
-              </view>
-              <view class="summary-item">
-                <text class="summary-label">状态</text>
-                <text class="summary-value" :class="row.status === '1' ? 'tone-ok' : 'tone-warn'">{{ row.status === '1' ? '已启用' : '已停用' }}</text>
-              </view>
+          </view>
+          <view class="summary-grid summary-grid-2col">
+            <view class="summary-item">
+              <text class="summary-label">商品名称</text>
+              <text class="summary-value">{{ productName(row.productId) }}</text>
             </view>
-            <view class="card-footer">
-              <text class="meta-text">政策编号：{{ row.policyNo || '-' }}</text>
-              <text class="arrow-icon">›</text>
+            <view class="summary-item">
+              <text class="summary-label">状态</text>
+              <text class="summary-value" :class="row.status === '1' ? 'tone-ok' : 'tone-warn'">{{ row.status === '1' ? '已启用' : '已停用' }}</text>
             </view>
           </view>
         </view>
       </view>
       <!-- 空状态 -->
-      <view class="section-card list-card state-card" v-else>
+      <view class="section-card list-card state-card" v-if="!filteredRows.length">
         <view class="empty">暂无销售政策</view>
       </view>
+      <view class="list-total" v-if="filteredRows.length">共 {{ filteredRows.length }} 条</view>
     </scroll-view>
 
-    <!-- ════════ 详情面板（参考 member-purchase-return detail-page） ════════ -->
-    <view class="overlay-mask" v-if="panel === 'detail'" @tap="closePanel">
-      <view class="detail-page" @tap.stop>
+    <!-- ════════ 详情面板（支持右滑返回） ════════ -->
+    <view class="overlay-mask" v-if="panel === 'detail'" @tap="closePanel"
+          @touchstart="onTouchStart" @touchmove="onTouchMove" @touchend="onTouchEnd" @touchcancel="onTouchEnd">
+      <view class="detail-page" :class="{ 'swipe-closing': swipeClosing }" @tap.stop
+            :style="{ transform: swipeOffset ? `translateX(${swipeOffset}px)` : 'none', transition: swiping ? 'none' : 'transform 0.3s ease' }">
         <!-- hero区 -->
         <view class="detail-hero">
           <view class="detail-hero-bg"></view>
@@ -99,7 +84,7 @@
             <view class="detail-hero-eyebrow">销售政策 · {{ detail.status === '1' ? '启用中' : '已停用' }}</view>
             <view class="detail-hero-title">{{ detail.policyName }}</view>
             <view class="detail-hero-value">{{ (detail.packages || []).length }} 档套餐</view>
-            <view class="detail-hero-meta">{{ detail.productName || '-' }}</view>
+            <view class="detail-hero-meta">{{ productName(detail.productId) }}</view>
           </view>
         </view>
         <!-- 概要信息 -->
@@ -107,7 +92,7 @@
           <view class="detail-section-title">概要信息</view>
           <view class="detail-highlight-grid">
             <view class="detail-highlight-item"><view class="detail-highlight-label">政策编号</view><view class="detail-highlight-value">{{ detail.policyNo || '-' }}</view></view>
-            <view class="detail-highlight-item"><view class="detail-highlight-label">商品名称</view><view class="detail-highlight-value">{{ detail.productName || '-' }}</view></view>
+            <view class="detail-highlight-item"><view class="detail-highlight-label">商品名称</view><view class="detail-highlight-value">{{ productName(detail.productId) }}</view></view>
             <view class="detail-highlight-item"><view class="detail-highlight-label">套餐档数</view><view class="detail-highlight-value">{{ (detail.packages || []).length }}</view></view>
             <view class="detail-highlight-item"><view class="detail-highlight-label">状态</view><view class="detail-highlight-value">{{ detail.status === '1' ? '启用中' : '已停用' }}</view></view>
           </view>
@@ -122,13 +107,13 @@
             <view class="detail-row"><text class="detail-label">套餐价格</text><text class="detail-value-text amount">¥{{ money(p.packagePrice) }}</text></view>
           </view>
         </view>
-        <!-- 底部操作按钮 -->
+        <!-- 底部占位（给固定按钮留空间） -->
         <view class="detail-footer-placeholder"></view>
-        <view class="detail-footer-bar">
-          <button v-if="can('edit')" class="detail-action-btn primary-btn" @tap="edit(detail)">编辑</button>
-          <button v-if="can('sync')" class="detail-action-btn edit-btn" @tap="sync(detail)">同步</button>
-          <button v-if="can('remove')" class="detail-action-btn danger-btn" @tap="deletePolicy(detail)">删除</button>
-        </view>
+      </view>
+      <!-- 底部操作按钮：固定在overlay-mask内，独立于滚动容器 -->
+      <view class="detail-footer-bar">
+        <button v-if="can('edit')" class="detail-action-btn primary-btn" @tap="edit(detail)">编辑</button>
+        <button v-if="can('remove')" class="detail-action-btn danger-btn" @tap="deletePolicy(detail)">删除</button>
       </view>
     </view>
   </view>
@@ -144,10 +129,19 @@ export default {
     return {
       authorized: false,
       rows: [],
+      products: [],
       deptName: '',
       deptId: '',
       keyword: '',
       statusFilter: '',
+      panel: '',
+      detail: {},
+      // 右滑返回相关
+      swiping: false,
+      swipeOffset: 0,
+      swipeClosing: false,
+      touchStartX: 0,
+      touchStartY: 0,
       statusFilters: [
         { label: '全部状态', value: '' },
         { label: '启用', value: '1' },
@@ -178,7 +172,7 @@ export default {
     const s = workContext.snapshot()
     this.deptId = s.currentDeptId
     this.deptName = s.currentDept?.name || s.currentDept?.deptName || '未选择机构'
-    if (this.authorized) this.load()
+    if (this.authorized) this.init()
   },
   onShow() {
     if (this.authorized) this.load()
@@ -187,24 +181,74 @@ export default {
     can(a) { return hasActionPermission('campaignPolicy', a) },
     quantity(v) { return Number(v || 0).toFixed(3).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1') },
     money(v) { return Number(v || 0).toFixed(2) },
+    productName(productId) {
+      if (!productId) return '-'
+      const p = this.products.find(x => String(x.productId) === String(productId))
+      return p?.productName || productId
+    },
     totalPurchaseQuantity(packages) {
       const list = packages || []
       const total = list.reduce((sum, p) => sum + Number(p.purchaseQuantity || 0), 0)
       return this.quantity(total)
+    },
+    unwrap(r) { return r?.rows || r?.data?.rows || r?.data || [] },
+    async init() {
+      try {
+        const r = await request({ url: '/finance/product/list', method: 'GET', data: { pageNum: 1, pageSize: 500, deptId: this.deptId } })
+        this.products = this.unwrap(r)
+      } catch (e) {
+        this.products = []
+      }
+      this.load()
     },
     async load() {
       const r = await request({ url: '/member/campaign/policy/list', method: 'GET', data: { pageNum: 1, pageSize: 200, deptId: this.deptId } })
       this.rows = r.rows || r.data || []
     },
     selectStatusFilter(e) { this.statusFilter = this.statusFilters[Number(e.detail.value)].value },
-    applyFilter() { /* 计算属性自动响应，confirm 触发用 */ },
+    applyFilter() { /* 计算属性自动响应 */ },
     resetFilters() { this.keyword = ''; this.statusFilter = '' },
     add() { uni.navigateTo({ url: '/pages/campaign-policy/form' }) },
-    view(r) { this.openDetail(r) },
     openDetail(row) { this.detail = row; this.panel = 'detail' },
-    closePanel() { this.panel = '' },
+    closePanel() {
+      this.swipeClosing = false
+      this.swipeOffset = 0
+      this.panel = ''
+    },
+    // 右滑返回相关方法
+    onTouchStart(e) {
+      const touch = e.touches[0]
+      this.touchStartX = touch.clientX
+      this.touchStartY = touch.clientY
+      this.swiping = false
+      this.swipeOffset = 0
+    },
+    onTouchMove(e) {
+      const touch = e.touches[0]
+      const dx = touch.clientX - this.touchStartX
+      const dy = touch.clientY - this.touchStartY
+      const screenWidth = uni.getSystemInfoSync().windowWidth || 375
+      // 从左边缘开始，或水平距离大于垂直距离且向右滑超过30px
+      if ((this.touchStartX < 50 || Math.abs(dx) > Math.abs(dy)) && dx > 30) {
+        this.swiping = true
+        this.swipeOffset = Math.min(dx, screenWidth * 0.8)
+      }
+    },
+    onTouchEnd() {
+      const screenWidth = uni.getSystemInfoSync().windowWidth || 375
+      // 右滑超过屏幕宽度的30%即关闭
+      if (this.swiping && this.swipeOffset > screenWidth * 0.3) {
+        this.swipeClosing = true
+        this.swipeOffset = screenWidth
+        setTimeout(() => {
+          this.closePanel()
+        }, 280)
+      } else {
+        this.swipeOffset = 0
+        this.swiping = false
+      }
+    },
     edit(r) { uni.navigateTo({ url: `/pages/campaign-policy/form?id=${r.policyId}` }) },
-    sync(r) { uni.navigateTo({ url: `/pages/config-sync/index?type=CAMPAIGN_POLICY&sourceRecordId=${r.policyId}` }) },
     async deletePolicy(r) {
       const confirmed = await new Promise((resolve) => {
         uni.showModal({
@@ -218,6 +262,7 @@ export default {
       try {
         await request({ url: `/member/campaign/policy/${r.policyId}`, method: 'DELETE' })
         uni.showToast({ title: '已删除', icon: 'success' })
+        this.closePanel()
         await this.load()
       } catch (e) {
         uni.showToast({ title: e?.message || '删除失败', icon: 'none' })
@@ -256,13 +301,14 @@ export default {
 .filters-card{margin:16rpx 30rpx 0!important;padding:22rpx 24rpx!important}
 .filter-row{display:flex;align-items:center;gap:10rpx;min-height:66rpx;width:100%;box-sizing:border-box}
 .filter-row+.filter-row{margin-top:10rpx}
+.filter-row-inline{flex-wrap:nowrap}
 .filter-row-tools{gap:12rpx;margin-top:14rpx}
 .filter-type-picker{flex:1;min-width:0}
-.filter-picker,.filter-kw{box-sizing:border-box!important;padding:16rpx 14rpx;height:64rpx;line-height:32rpx;border:1rpx solid #D5E0EC;border-radius:12rpx;background:#F8FBFD;color:#5A6B7F;font-size:22rpx;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%}
-.filter-picker{display:flex;align-items:center;justify-content:space-between}
+.filter-picker,.filter-kw{box-sizing:border-box!important;padding:16rpx 14rpx;height:64rpx;line-height:32rpx;border:1rpx solid #D5E0EC;border-radius:12rpx;background:#F8FBFD;color:#5A6B7F;font-size:22rpx;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.filter-picker{display:flex;align-items:center;justify-content:space-between;flex:1;min-width:0}
 .filter-chevron{color:#94a3b8;font-size:25rpx;margin-left:8rpx}
-.filter-kw{flex:2}
-.filter-button{flex:none;margin:0;padding:0 16rpx;height:64rpx;line-height:64rpx;border:0;border-radius:32rpx;background:#087CF0;color:#fff;font-size:22rpx;white-space:nowrap}
+.filter-kw{flex:2;min-width:0}
+.filter-button{flex:none;margin:0;padding:0 20rpx;height:64rpx;line-height:64rpx;border:0;border-radius:32rpx;background:#087CF0;color:#fff;font-size:22rpx;white-space:nowrap}
 .filter-button-ghost{background:#EEF3F8;color:#334155}
 
 /* ── 操作行 ── */
@@ -285,15 +331,24 @@ export default {
 .card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:20rpx}
 .record-title{flex:1;font-size:30rpx;line-height:42rpx;font-weight:700;color:#1A2332;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .record-id{padding:4rpx 14rpx;background:#E8EEF5;color:#5A6B7F;font-size:20rpx;border-radius:999rpx;flex-shrink:0}
-.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:12rpx;margin-top:16rpx}
+
+/* ── 套餐档位行 ── */
+.packages-row{display:flex;align-items:flex-start;gap:12rpx;margin-top:14rpx;padding-top:14rpx;border-top:1rpx solid #E8EEF5}
+.packages-label{font-size:22rpx;color:#94A3B8;flex-shrink:0;margin-top:4rpx}
+.packages-tags{display:flex;flex-wrap:wrap;gap:10rpx;flex:1}
+.package-tag{padding:6rpx 14rpx;background:#EFF6FF;color:#087CF0;font-size:22rpx;font-weight:500;border-radius:8rpx;border:1rpx solid #BFDBFE}
+.packages-empty{font-size:22rpx;color:#94A3B8}
+
+/* ── 商品名行（summary-grid） ── */
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:12rpx;margin-top:14rpx}
 .summary-item{display:flex;flex-direction:column;gap:6rpx}
 .summary-label{font-size:22rpx;color:#94A3B8}
 .summary-value{font-size:26rpx;color:#1A2332;font-weight:500}
 .summary-value.tone-ok{color:#047857;font-weight:700}
 .summary-value.tone-warn{color:#B45309;font-weight:700}
-.card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:16rpx;padding-top:14rpx;border-top:1rpx solid #E8EEF5}
-.meta-text{font-size:24rpx;color:#94A3B8}
-.arrow-icon{font-size:36rpx;color:#CBD5E1}
+
+/* ── 列表总数 ── */
+.list-total{text-align:center;padding:20rpx 0 40rpx;font-size:24rpx;color:#94A3B8}
 
 /* ── 空状态 / 分页 ── */
 .empty{text-align:center;color:#94a3b8;padding:56rpx 0;font-size:23rpx}
@@ -302,7 +357,8 @@ export default {
  * 详情面板样式（与 member-purchase-return 一致）
  * ════════════════════════════════════════════════ */
 .overlay-mask{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:50;overflow:hidden}
-.detail-page{height:100vh;background:#E8EEF5;padding-bottom:calc(40rpx + env(safe-area-inset-bottom));box-sizing:border-box;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.detail-page{position:absolute;inset:0;bottom:0;background:#E8EEF5;padding-bottom:calc(120rpx + env(safe-area-inset-bottom));box-sizing:border-box;overflow-y:auto;-webkit-overflow-scrolling:touch;will-change:transform}
+.detail-page.swipe-closing{pointer-events:none}
 .detail-hero{position:relative;margin:24rpx 28rpx;border-radius:20rpx;overflow:hidden}
 .detail-hero-bg{position:absolute;inset:0;background:linear-gradient(135deg,#087CF0,#5AA9E8,#A8C7E5);border-radius:20rpx}
 .detail-hero-content{position:relative;z-index:1;padding:40rpx 36rpx}
@@ -325,8 +381,8 @@ export default {
 .detail-value-text{font-size:26rpx;color:#1A2332;flex:1}
 .detail-value-text.amount{font-weight:700;color:#087CF0}
 .detail-footer-placeholder{height:140rpx}
-.detail-footer-bar{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;gap:16rpx;padding:16rpx 24rpx;padding-bottom:calc(16rpx + env(safe-area-inset-bottom));background:#fff;box-shadow:0 -2rpx 16rpx rgba(8,124,240,.06);z-index:100;flex-wrap:wrap}
-.detail-action-btn{flex:1;height:76rpx;line-height:76rpx;font-size:28rpx;font-weight:500;border-radius:16rpx;text-align:center;border:none;margin:0;padding:0;min-width:calc(33% - 12rpx)}
+.detail-footer-bar{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;gap:16rpx;padding:16rpx 24rpx;padding-bottom:calc(16rpx + env(safe-area-inset-bottom));background:#fff;box-shadow:0 -2rpx 16rpx rgba(8,124,240,.06);z-index:60}
+.detail-action-btn{flex:1;height:76rpx;line-height:76rpx;font-size:28rpx;font-weight:500;border-radius:16rpx;text-align:center;border:none;margin:0;padding:0;min-width:0}
 .detail-action-btn::after{border:none}
 .detail-action-btn.edit-btn{background:#E8EEF5;color:#087CF0}
 .detail-action-btn.primary-btn{background:#087CF0;color:#fff}

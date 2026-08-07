@@ -27,8 +27,9 @@
             <text class="compact-title">{{ row.customerName || '未登记顾客' }}</text>
             <view class="compact-qty-group">
               <text class="compact-qty-label">原买</text><text class="compact-qty-value">{{ row.purchaseQuantity || 0 }}</text>
-              <text class="compact-qty-label">退</text><text class="compact-qty-value">{{ returnQuantity(row) }}</text>
+              <text class="compact-qty-label">退</text><text class="compact-qty-value">{{ row.totalReturnQuantity || 0 }}</text>
             </view>
+            <text class="compact-amount">¥{{ money(row.refundAmount) }}</text>
           </view>
           <view class="compact-row2">
             <text class="compact-meta date">{{ dateText(row.returnDate) }}</text>
@@ -408,20 +409,20 @@ export default {
 .meta-text{font-size:24rpx;color:#94A3B8}
 .arrow-icon{font-size:36rpx;color:#CBD5E1;font-weight:300;line-height:1}
 
-/* ── 紧凑3行卡片样式 ── */
+/* ── 紧凑2行卡片样式 ── */
 .compact-body{flex:1;padding:20rpx 24rpx}
-.compact-row1{display:flex;align-items:center;gap:18rpx}
-.compact-title{flex:1;min-width:0;font-size:29rpx;line-height:40rpx;font-weight:700;color:#1A2332;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.compact-amount{font-size:29rpx;line-height:40rpx;font-weight:800;color:#B45309;flex-shrink:0}
-.compact-row2{display:flex;align-items:center;gap:14rpx;margin-top:10rpx}
-.compact-row2 .date{flex:0 0 auto}
-.compact-row2 .paid{flex:1;text-align:center}
-.compact-qty-group{display:flex;align-items:baseline;gap:4rpx;flex-shrink:0}
-.compact-qty-label{font-size:21rpx;color:#94A3B8;font-weight:400}
-.compact-qty-value{font-size:30rpx;color:#1A2332;font-weight:700;margin-right:10rpx}
+.compact-title{font-size:29rpx;line-height:40rpx;font-weight:700;color:#1A2332;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.compact-row1{display:grid;grid-template-columns:1fr auto 140rpx;align-items:center;gap:8rpx}
+.compact-row2{display:grid;grid-template-columns:1fr 1fr 140rpx;align-items:center;gap:8rpx;margin-top:8rpx}
+.compact-row2 .date{text-align:left}
+.compact-row2 .paid{text-align:center}
+.compact-row2 .compact-status{justify-self:end}
+.compact-qty-group{display:inline-flex;align-items:baseline;gap:2rpx;white-space:nowrap}
+.compact-qty-label{font-size:22rpx;color:#94A3B8;font-weight:400}
+.compact-qty-value{font-size:30rpx;color:#1A2332;font-weight:700;margin-right:8rpx}
+.compact-amount{font-size:26rpx;color:#DC2626;font-weight:700;text-align:right;white-space:nowrap}
 .compact-meta{flex-shrink:0;font-size:23rpx;line-height:32rpx;color:#94A3B8}
-.compact-meta.qty{font-size:28rpx;font-weight:700;color:#1A2332}
-.compact-meta.date{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.compact-meta.date{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .compact-meta.paid{color:#059669;font-weight:600}
 .compact-id{flex-shrink:0;font-size:21rpx;color:#5A6B7F;background:#E8EEF5;padding:2rpx 12rpx;border-radius:999rpx}
 .compact-status{flex-shrink:0;padding:4rpx 14rpx;border-radius:999rpx;font-size:21rpx;line-height:30rpx;background:#E8EEF5;color:#5A6B7F}

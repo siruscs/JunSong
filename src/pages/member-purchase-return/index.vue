@@ -373,8 +373,8 @@ export default {
 .summary-bar>view{flex:1;text-align:center;border-right:1rpx solid #edf1f5;min-width:0}
 .summary-bar>view:last-child{border-right:0}
 .summary-value{display:block;color:#1687f5;font-size:28rpx;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.summary-value.success{color:#10B981}
-.summary-value.warning{color:#F59E0B}
+.summary-value.success{color:#475569}
+.summary-value.warning{color:#7C3AED}
 .summary-label{display:block;margin-top:6rpx;color:#98a9ba;font-size:20rpx}
 
 /* ── 操作行 ── */
@@ -421,15 +421,15 @@ export default {
 .compact-qty-group{display:inline-flex;align-items:baseline;gap:2rpx;white-space:nowrap}
 .compact-qty-label{font-size:22rpx;color:#94A3B8;font-weight:400}
 .compact-qty-value{font-size:30rpx;color:#1A2332;font-weight:700;margin-right:8rpx}
-.compact-amount{font-size:33rpx;color:#DC2626;font-weight:700;text-align:right;white-space:nowrap}
+.compact-amount{font-size:33rpx;color:#7C3AED;font-weight:700;text-align:right;white-space:nowrap}
 .compact-meta{flex-shrink:0;font-size:23rpx;line-height:32rpx;color:#94A3B8}
 .compact-meta.date{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.compact-meta.paid{color:#059669;font-weight:600}
+.compact-meta.paid{color:#475569;font-weight:600}
 .compact-id{flex-shrink:0;font-size:21rpx;color:#5A6B7F;background:#E8EEF5;padding:2rpx 12rpx;border-radius:999rpx}
-.compact-status{flex-shrink:0;padding:4rpx 14rpx;border-radius:999rpx;font-size:21rpx;line-height:30rpx;background:#E8EEF5;color:#5A6B7F}
-.compact-status.status-ok{background:#D1FAE5;color:#065F46}
-.compact-status.status-warn{background:#FEF3C7;color:#92400E}
-.compact-status.status-danger{background:#FEE2E2;color:#991B1B}
+.compact-status{flex-shrink:0;padding:4rpx 14rpx;border-radius:999rpx;font-size:21rpx;line-height:30rpx;background:#EEF2F7;color:#475569;border:1rpx solid #E2E8F0}
+.compact-status.status-ok{background:#EEF2FF;color:#4F46E5;border:1rpx solid #E0E7FF}
+.compact-status.status-warn{background:#FFF7ED;color:#C2410C;border:1rpx solid #FFEDD5}
+.compact-status.status-danger{background:#F8FAFC;color:#475569;border:1rpx solid #CBD5E1;text-decoration:line-through}
 .pagination-card{margin-top:4rpx}
 
 /* ── 空状态 / 分页 ── */

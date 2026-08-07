@@ -193,7 +193,33 @@
         </view>
       </view>
 
-      <view v-if="moduleKey !== 'member' && moduleKey !== 'expense' && moduleKey !== 'seckillRecord' && moduleKey !== 'advance' && moduleKey !== 'product'">
+      <view v-if="moduleKey === 'purchase'">
+        <view class="record-card" v-for="item in rows" :key="item[config.idKey]" @tap="openDetail(item)">
+          <view class="card-bar"></view>
+          <view class="card-body">
+            <view class="card-header">
+              <view class="record-title">{{ displayField('purchaseDate', item.purchaseDate) || displayField('createTime', item.createTime) || '-' }}</view>
+              <view class="purchase-total-amount">{{ displayField('totalAmount', item.totalAmount) }}</view>
+            </view>
+            <view class="purchase-summary-grid">
+              <view class="summary-item">
+                <text class="summary-label">供应商名称</text>
+                <text class="summary-value">{{ displayField('supplierName', item.supplierName) }}</text>
+              </view>
+              <view class="summary-item">
+                <text class="summary-label">进货单号</text>
+                <text class="summary-value">{{ item.purchaseNo || '-' }}</text>
+              </view>
+            </view>
+            <view class="purchase-product-names" v-if="item.productNames">
+              <text>{{ item.productNames }}</text>
+              <text class="purchase-status-tag" :class="'purchase-status-' + (item.status || '')">{{ displayField('status', item.status) }}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view v-if="moduleKey !== 'member' && moduleKey !== 'expense' && moduleKey !== 'seckillRecord' && moduleKey !== 'advance' && moduleKey !== 'product' && moduleKey !== 'purchase'">
         <view class="record-card" v-for="item in rows" :key="item[config.idKey]" @tap="openDetail(item)">
           <view class="card-bar"></view>
           <view class="card-body">
@@ -1956,6 +1982,63 @@ export default {
 .product-status.tone-warn {
   color: #B86620;
   background: #FCEFE0;
+}
+
+.purchase-total-amount {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #B86620;
+  flex-shrink: 0;
+  margin-left: 12rpx;
+}
+
+.purchase-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.purchase-product-names {
+  margin-top: 18rpx;
+  padding-top: 18rpx;
+  border-top: 1rpx solid #EEF2F7;
+  color: #1A2332;
+  font-size: 28rpx;
+  font-weight: 600;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.purchase-product-names > text:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.purchase-status-tag {
+  flex-shrink: 0;
+  font-size: 22rpx;
+  font-weight: 600;
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+}
+
+.purchase-status-0 {
+  color: #5A6B7F;
+  background: #E8EEF5;
+}
+
+.purchase-status-1 {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.purchase-status-2 {
+  background: #E0F2FE;
+  color: #075985;
 }
 
 .summary-grid {

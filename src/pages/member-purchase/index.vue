@@ -2,28 +2,12 @@
   <view class="page" v-if="authorized">
     <view class="hero"><text class="eyebrow">会员服务</text><text class="hero-title">购买记录</text></view>
     <view class="work-scope"><view class="work-scope-mark"></view><view class="work-scope-copy"><text class="work-scope-label">当前部门 · </text><text class="work-scope-name">{{ currentDeptName || '当前部门' }}</text></view></view>
-    <view class="section-card filters-card">
-      <view class="section-header"><view class="section-dot" style="background:#087CF0"></view><text class="section-title">筛选购买</text><text class="section-link">共 {{ total }} 条</text></view>
-      <view class="filter-row filter-row-tools">
-        <input class="filter-kw" v-model="keyword" placeholder="顾客姓名" confirm-type="search" @confirm="load" />
-        <button class="filter-button" @tap="load">查询</button>
-        <button class="filter-button filter-button-ghost" @tap="toggleMoreFilters">{{ showMoreFilters ? '收起' : '更多' }}</button>
-      </view>
-      <block v-if="showMoreFilters">
-        <view class="filter-row">
-          <picker class="filter-type-picker" :range="customerTypeFilters" range-key="label" :value="customerTypeFilterIndex" @change="selectCustomerTypeFilter"><view class="filter-picker">{{ customerTypeFilters[customerTypeFilterIndex]?.label || '全部顾客类型' }}<text class="filter-chevron">⌄</text></view></picker>
-          <picker class="filter-type-picker" :range="paymentStatusFilters" range-key="label" :value="paymentStatusFilterIndex" @change="selectPaymentStatusFilter"><view class="filter-picker">{{ paymentStatusFilters[paymentStatusFilterIndex]?.label || '全部收款状态' }}<text class="filter-chevron">⌄</text></view></picker>
-        </view>
-        <view class="filter-row">
-          <view class="date-controls"><picker mode="date" :value="filters.beginTime" @change="filters.beginTime=$event.detail.value"><view class="filter-date">{{ filters.beginTime || '开始日期' }}</view></picker><text class="date-separator">至</text><picker mode="date" :value="filters.endTime" @change="filters.endTime=$event.detail.value"><view class="filter-date">{{ filters.endTime || '结束日期' }}</view></picker></view>
-        </view>
-        <view class="filter-row" style="justify-content:flex-end">
-          <button class="filter-button filter-button-ghost" @tap="resetFilters">重置</button>
-        </view>
-      </block>
-    </view>
     <view class="summary-bar" v-if="summary"><view><text class="summary-value">{{ summary.purchaseOrderCount || 0 }}</text><text class="summary-label">购买单数</text></view><view><text class="summary-value">{{ quantity(summary.purchaseQuantity) }}</text><text class="summary-label">购买数量</text></view><view><text class="summary-value">{{ quantity(summary.giftQuantity) }}</text><text class="summary-label">赠送数量</text></view></view>
     <view class="summary-bar summary-bar-secondary" v-if="summary"><view><text class="summary-value primary">¥{{ money(summary.totalAmount) }}</text><text class="summary-label">应收金额</text></view><view><text class="summary-value success">¥{{ money(summary.paidAmount) }}</text><text class="summary-label">已收金额</text></view><view><text class="summary-value warning">¥{{ money(summary.receivableAmount) }}</text><text class="summary-label">待缴金额</text></view></view>
+    <view class="list-header-bar">
+      <text class="list-header-count">共 {{ total }} 条</text>
+      <button class="filter-fab" @tap="openFilterSheet"><text class="filter-fab-icon">⌕</text>筛选<text v-if="activeFilterCount" class="filter-fab-badge">{{ activeFilterCount }}</text></button>
+    </view>
     <view class="scroll-pad"></view>
     <view class="bottom-bar">
       <button v-if="can('add')" class="add-button" @tap="openCreate">＋ 新增</button>
@@ -33,19 +17,24 @@
         <view class="card-bar"></view>
         <view class="card-body compact-body">
           <view class="compact-row1">
-            <text class="compact-title">{{ row.customerName || '未登记顾客' }}</text>
+            <view class="compact-title-wrap">
+              <text class="compact-title">{{ row.customerName || '未登记顾客' }}</text>
+              <text class="compact-type-tag" :class="customerTypeClass(row.customerType)">{{ customerTypeText(row.customerType) }}</text>
+            </view>
             <text class="compact-amount">¥{{ money(row.totalAmount) }}</text>
           </view>
           <view class="compact-row2">
             <text class="compact-meta qty">购买 {{ quantity(row.purchaseQuantity) }}</text>
             <text class="compact-meta qty">赠送 {{ quantity(row.giftQuantity) }}</text>
-            <text class="compact-meta">{{ customerTypeText(row.customerType) }}</text>
             <text class="compact-meta date">{{ dateText(row.purchaseDate) }}</text>
           </view>
           <view class="compact-row3">
             <text class="compact-meta paid">已收 ¥{{ money(row.paidAmount) }}</text>
             <text class="compact-meta debt" v-if="Number(row.receivableAmount)>0">待缴 ¥{{ money(row.receivableAmount) }}</text>
-            <text class="compact-status" :class="paymentStatusClass(row.paymentStatus)">{{ paymentStatusText(row.paymentStatus) }} · {{ deliveryStatusText(row.deliveryStatus) }}</text>
+            <text class="compact-status-group">
+              <text class="compact-status" :class="paymentStatusClass(row.paymentStatus)">{{ paymentStatusText(row.paymentStatus) }}</text>
+              <text class="compact-status" :class="deliveryStatusClass(row.deliveryStatus)">{{ deliveryStatusText(row.deliveryStatus) }}</text>
+            </text>
           </view>
         </view>
       </view>
@@ -53,6 +42,21 @@
         <view class="empty">暂无购买记录</view>
       </view>
     </scroll-view>
+
+    <!-- ════════ 筛选条件浮动面板 ════════ -->
+    <view class="sheet-mask" v-if="filterSheetOpen" @tap="closeFilterSheet">
+      <view class="sheet-panel" @tap.stop>
+        <view class="sheet-title">筛选购买</view>
+        <view class="sheet-row sheet-row-stack"><text class="sheet-label">顾客姓名</text><input class="sheet-input" v-model="keyword" placeholder="请输入顾客姓名" confirm-type="search" /></view>
+        <view class="sheet-row sheet-row-stack"><text class="sheet-label">顾客类型</text><picker :range="customerTypeFilters" range-key="label" :value="customerTypeFilterIndex" @change="selectCustomerTypeFilter"><view class="sheet-picker">{{ customerTypeFilters[customerTypeFilterIndex]?.label || '全部顾客类型' }}<text class="sheet-picker-arrow">▸</text></view></picker></view>
+        <view class="sheet-row sheet-row-stack"><text class="sheet-label">收款状态</text><picker :range="paymentStatusFilters" range-key="label" :value="paymentStatusFilterIndex" @change="selectPaymentStatusFilter"><view class="sheet-picker">{{ paymentStatusFilters[paymentStatusFilterIndex]?.label || '全部收款状态' }}<text class="sheet-picker-arrow">▸</text></view></picker></view>
+        <view class="sheet-row sheet-row-stack"><text class="sheet-label">购买日期</text><view class="sheet-date-row"><picker mode="date" :value="filters.beginTime" @change="filters.beginTime=$event.detail.value"><view class="sheet-picker sheet-picker-date">{{ filters.beginTime || '开始日期' }}</view></picker><text class="sheet-date-sep">至</text><picker mode="date" :value="filters.endTime" @change="filters.endTime=$event.detail.value"><view class="sheet-picker sheet-picker-date">{{ filters.endTime || '结束日期' }}</view></picker></view></view>
+        <view class="sheet-actions">
+          <button class="sheet-cancel" @tap="resetFilters">重置</button>
+          <button class="sheet-confirm" @tap="applyFilterSheet">查询</button>
+        </view>
+      </view>
+    </view>
 
     <!-- ════════ 详情面板（参考销售记录 detail/index.vue） ════════ -->
     <view class="overlay-mask" v-if="panel === 'detail'" @tap="closePanel">
@@ -126,7 +130,7 @@
         <view class="detail-footer-bar" v-if="detail && detail.purchaseId">
           <button v-if="can('edit')" class="detail-action-btn primary-btn" @tap="switchToEdit">编辑</button>
           <button v-if="can('payment') && Number(detail.receivableAmount || 0) > 0" class="detail-action-btn payment-btn" @tap="openPayment(detail)">收款</button>
-          <button v-if="can('delivery')" class="detail-action-btn delivery-btn" @tap="openDelivery(detail)">领取</button>
+          <button v-if="can('delivery') && String(detail.deliveryStatus) !== '2'" class="detail-action-btn delivery-btn" @tap="openDelivery(detail)">领取</button>
           <button v-if="can('return')" class="detail-action-btn return-btn" @tap="openReturn(detail)">退货</button>
           <button v-if="hasReturn(detail)" class="detail-action-btn" @tap="openReturnDetail(detail)">退货详情</button>
           <button v-if="can('bind') && detail.customerType === 'WALK_IN' && !detail.memberId" class="detail-action-btn" @tap="openBind(detail)">绑定</button>
@@ -291,14 +295,14 @@ const newPurchaseForm = () => ({ purchaseDate: '', periodId: '', customerType: '
 
 export default {
   components: { MemberSearch },
-  data() { return { authorized: false, currentDeptName: '', currentDeptId: '', rows: [], loading: false, keyword: '', showMoreFilters: false, panel: '', detail: {}, active: {}, form: newPurchaseForm(), products: [], periods: [], policies: [], filters: { customerType: '', paymentStatus: '', beginTime: '', endTime: '' }, summary: null, pageNum: 1, pageSize: 20, total: 0, bindTarget: {}, bindForm: { memberId: '' }, returnPurchaseIds: [], paymentMethods: [{ label: '现金', value: 'CASH' }, { label: '微信支付', value: 'WECHAT' }, { label: '支付宝', value: 'ALIPAY' }, { label: '银行转账', value: 'BANK' }, { label: '其他', value: 'OTHER' }], paymentIndex: 0, paymentForm: { paymentAmount: '' }, deliveryItems: [], deliveryIndex: 0, deliveryForm: { saleDeliveryQuantity: '', giftDeliveryQuantity: '', receiverName: '' }, remarkCollapsed: false, showCustomerTypePicker: false } },
-  computed: { panelTitle() { return ({ create: '新建购买单', detail: '购买单详情', edit: '编辑购买单', payment: '登记收款', delivery: '登记领取', bind: '绑定会员' })[this.panel] }, customerTypes() { return [{ label: '会员', value: 'MEMBER' }, { label: '非会员', value: 'CUSTOMER' }, { label: '散客', value: 'WALK_IN' }] }, customerTypeIndex() { const i = this.customerTypes.findIndex(x => x.value === this.form.customerType); return i < 0 ? 0 : i }, productIndex() { const i = this.products.findIndex(x => String(x.productId) === String(this.form.item.productId)); return i < 0 ? 0 : i }, periodIndex() { const i = this.periods.findIndex(x => String(x.periodId) === String(this.form.periodId)); return i < 0 ? 0 : i }, policyIndex() { const i = this.policies.findIndex(x => String(x.policyId) === String(this.form.item.policyId)); return i < 0 ? 0 : i }, packages() { return (this.policies[this.policyIndex]?.packages || []).map((x, i) => ({ ...x, label: `${x.packageName || `档位${i + 1}`}：买${this.quantity(x.purchaseQuantity)}送${this.quantity(x.giftQuantity)} · ¥${this.money(x.packagePrice)}` })) }, packageIndex() { const i = this.packages.findIndex(x => String(x.packageId) === String(this.form.item.packageId)); return i < 0 ? 0 : i }, selectedProduct() { return this.form.item.productId ? this.products[this.productIndex] : null }, selectedPolicy() { return this.form.item.policyId ? this.policies[this.policyIndex] : null }, selectedPackage() { return this.form.item.packageId ? this.packages[this.packageIndex] : null }, selectedPeriod() { return this.form.periodId ? this.periods[this.periodIndex] : null }, customerTypeFilters() { return [{ label: '全部', value: '' }, { label: '会员', value: 'MEMBER' }, { label: '非会员', value: 'CUSTOMER' }, { label: '散客', value: 'WALK_IN' }] }, paymentStatusFilters() { return [{ label: '全部', value: '' }, { label: '未收款', value: '0' }, { label: '部分收款', value: '1' }, { label: '已收清', value: '2' }] }, customerTypeFilterIndex() { const i = this.customerTypeFilters.findIndex(x => x.value === this.filters.customerType); return i < 0 ? 0 : i }, paymentStatusFilterIndex() { const i = this.paymentStatusFilters.findIndex(x => x.value === this.filters.paymentStatus); return i < 0 ? 0 : i }, totalPages() { return Math.max(1, Math.ceil(Number(this.total || 0) / Number(this.pageSize || 1))) }, totalPurchaseQty() { return (this.detail.items || []).reduce((s, i) => s + Number(i.purchaseQuantity || 0), 0) }, totalGiftQty() { return (this.detail.items || []).reduce((s, i) => s + Number(i.giftQuantity || 0), 0) } },
+  data() { return { authorized: false, currentDeptName: '', currentDeptId: '', rows: [], loading: false, keyword: '', filterSheetOpen: false, panel: '', detail: {}, active: {}, form: newPurchaseForm(), products: [], periods: [], policies: [], filters: { customerType: '', paymentStatus: '', beginTime: '', endTime: '' }, summary: null, pageNum: 1, pageSize: 20, total: 0, bindTarget: {}, bindForm: { memberId: '' }, returnPurchaseIds: [], paymentMethods: [{ label: '现金', value: 'CASH' }, { label: '微信支付', value: 'WECHAT' }, { label: '支付宝', value: 'ALIPAY' }, { label: '银行转账', value: 'BANK' }, { label: '其他', value: 'OTHER' }], paymentIndex: 0, paymentForm: { paymentAmount: '' }, deliveryItems: [], deliveryIndex: 0, deliveryForm: { saleDeliveryQuantity: '', giftDeliveryQuantity: '', receiverName: '' }, remarkCollapsed: false, showCustomerTypePicker: false } },
+  computed: { panelTitle() { return ({ create: '新建购买单', detail: '购买单详情', edit: '编辑购买单', payment: '登记收款', delivery: '登记领取', bind: '绑定会员' })[this.panel] }, customerTypes() { return [{ label: '会员', value: 'MEMBER' }, { label: '非会员', value: 'CUSTOMER' }, { label: '散客', value: 'WALK_IN' }] }, customerTypeIndex() { const i = this.customerTypes.findIndex(x => x.value === this.form.customerType); return i < 0 ? 0 : i }, productIndex() { const i = this.products.findIndex(x => String(x.productId) === String(this.form.item.productId)); return i < 0 ? 0 : i }, periodIndex() { const i = this.periods.findIndex(x => String(x.periodId) === String(this.form.periodId)); return i < 0 ? 0 : i }, policyIndex() { const i = this.policies.findIndex(x => String(x.policyId) === String(this.form.item.policyId)); return i < 0 ? 0 : i }, packages() { return (this.policies[this.policyIndex]?.packages || []).map((x, i) => ({ ...x, label: `${x.packageName || `档位${i + 1}`}：买${this.quantity(x.purchaseQuantity)}送${this.quantity(x.giftQuantity)} · ¥${this.money(x.packagePrice)}` })) }, packageIndex() { const i = this.packages.findIndex(x => String(x.packageId) === String(this.form.item.packageId)); return i < 0 ? 0 : i }, selectedProduct() { return this.form.item.productId ? this.products[this.productIndex] : null }, selectedPolicy() { return this.form.item.policyId ? this.policies[this.policyIndex] : null }, selectedPackage() { return this.form.item.packageId ? this.packages[this.packageIndex] : null }, selectedPeriod() { return this.form.periodId ? this.periods[this.periodIndex] : null }, customerTypeFilters() { return [{ label: '全部', value: '' }, { label: '会员', value: 'MEMBER' }, { label: '非会员', value: 'CUSTOMER' }, { label: '散客', value: 'WALK_IN' }] }, paymentStatusFilters() { return [{ label: '全部', value: '' }, { label: '未收款', value: '0' }, { label: '部分收款', value: '1' }, { label: '已收清', value: '2' }] }, customerTypeFilterIndex() { const i = this.customerTypeFilters.findIndex(x => x.value === this.filters.customerType); return i < 0 ? 0 : i }, paymentStatusFilterIndex() { const i = this.paymentStatusFilters.findIndex(x => x.value === this.filters.paymentStatus); return i < 0 ? 0 : i }, totalPages() { return Math.max(1, Math.ceil(Number(this.total || 0) / Number(this.pageSize || 1))) }, totalPurchaseQty() { return (this.detail.items || []).reduce((s, i) => s + Number(i.purchaseQuantity || 0), 0) }, totalGiftQty() { return (this.detail.items || []).reduce((s, i) => s + Number(i.giftQuantity || 0), 0) }, activeFilterCount() { let n = 0; if (this.keyword) n++; if (this.filters.customerType) n++; if (this.filters.paymentStatus) n++; if (this.filters.beginTime) n++; if (this.filters.endTime) n++; return n } },
   onLoad() { this.authorized = requireModulePermission('memberPurchase'); const scope = workContext.snapshot(); this.currentDeptId = scope.currentDeptId; this.currentDeptName = scope.currentDept?.name || scope.currentDept?.deptName || '未选择机构'; if (this.authorized) { this.loadOptions(); this.load() } },
   methods: {
     emptyForm() { return { ...newPurchaseForm(), purchaseDate: this.today() } },
-    can(action) { return hasActionPermission('memberPurchase', action) }, today() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }, isoDateTime(value) { if (!value) return new Date().toISOString(); const text = String(value); if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return new Date(`${text}T00:00:00`).toISOString(); return new Date(text.replace(' ', 'T')).toISOString() }, dateText(v) { return v ? String(v).replace('T',' ').slice(0,19) : '-' }, money(v) { return Number(v || 0).toFixed(2) }, quantity(v) { return Number(v || 0).toFixed(3).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1') }, customerTypeText(v) { return ({ MEMBER: '会员', CUSTOMER: '非会员', WALK_IN: '散客' })[v] || v || '-' }, paymentStatusText(v) { return ({ '0':'未收款','1':'部分收款','2':'已收清','3':'已退款' })[String(v)] || '未知' }, deliveryStatusText(v) { return ({ '0':'未领取','1':'部分领取','2':'全部领取' })[String(v)] || '未知' }, paymentMethodText(v) { return this.paymentMethods.find(x => x.value === v)?.label || ({ WECHAT:'微信支付', ALIPAY:'支付宝', CASH:'现金', BANK:'银行转账' })[v] || v || '-' }, paymentStatusClass(v) { const s = String(v ?? ''); return s === '2' ? 'status-ok' : s === '1' ? 'status-info' : 'status-warn' }, deliveryStatusClass(v) { const s = String(v ?? ''); return s === '2' ? 'status-ok' : s === '1' ? 'status-info' : 'status-warn' },
+    can(action) { return hasActionPermission('memberPurchase', action) }, today() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }, isoDateTime(value) { if (!value) return new Date().toISOString(); const text = String(value); if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return new Date(`${text}T00:00:00`).toISOString(); return new Date(text.replace(' ', 'T')).toISOString() }, dateText(v) { return v ? String(v).replace('T',' ').slice(0,19) : '-' }, money(v) { return Number(v || 0).toFixed(2) }, quantity(v) { return Number(v || 0).toFixed(3).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1') }, customerTypeText(v) { return ({ MEMBER: '会员', CUSTOMER: '非会员', WALK_IN: '散客' })[v] || v || '-' }, customerTypeClass(v) { return ({ MEMBER: 'type-member', CUSTOMER: 'type-customer', WALK_IN: 'type-walkin' })[v] || 'type-customer' }, paymentStatusText(v) { return ({ '0':'未收款','1':'部分收款','2':'已收清','3':'已退款' })[String(v)] || '未知' }, deliveryStatusText(v) { return ({ '0':'未领取','1':'部分领取','2':'全部领取' })[String(v)] || '未知' }, paymentMethodText(v) { return this.paymentMethods.find(x => x.value === v)?.label || ({ WECHAT:'微信支付', ALIPAY:'支付宝', CASH:'现金', BANK:'银行转账' })[v] || v || '-' }, paymentStatusClass(v) { const s = String(v ?? ''); return s === '2' ? 'status-ok' : s === '1' ? 'status-info' : 'status-warn' }, deliveryStatusClass(v) { const s = String(v ?? ''); return s === '2' ? 'status-ok' : s === '1' ? 'status-info' : 'status-warn' },
     unwrap(res) { return res?.rows || res?.data?.rows || res?.data || [] }, async loadOptions() { try { const [p, a] = await Promise.all([request({ url:'/finance/product/list', method:'GET', data:{ pageNum:1, pageSize:200, deptId:this.currentDeptId }, silent:true }), request({ url:'/finance/accountingPeriod/list', method:'GET', data:{ pageNum:1, pageSize:200, deptId:this.currentDeptId }, silent:true })]); this.products = this.unwrap(p); this.periods = this.unwrap(a).filter(x => String(x.deptId) === String(this.currentDeptId)).map(x => ({ ...x, label: `${x.periodNo || x.periodId}（${this.dateText(x.startTime)} 至 ${x.endTime ? this.dateText(x.endTime) : '当前'}）` })); if (this.periods.length && !this.form.periodId) { this.form.periodId = this.periods[0].periodId } } catch (e) { this.products = []; this.periods = [] } }, async loadPolicies() { if (!this.form.item.productId || !this.form.periodId) { this.policies = []; return }; const res = await request({ url:'/member/campaign/policy/list', method:'GET', data:{ pageNum:1, pageSize:200, deptId:this.currentDeptId, productId:this.form.item.productId, periodId:this.form.periodId, status:'1' } }); const rows = this.unwrap(res).filter(x => String(x.productId) === String(this.form.item.productId) && String(x.periodId) === String(this.form.periodId)); const detailed = await Promise.all(rows.map(async (policy) => { if (Array.isArray(policy.packages) && policy.packages.length) return policy; try { const detail = await request({ url:`/member/campaign/policy/${policy.policyId}`, method:'GET' }); return detail?.data || detail || policy } catch (e) { return policy } })); this.policies = [{ policyId:'', policyName:'不参加活动，按单价购买', packages:[] }, ...detailed] }, async load() { this.loading = true; try { const res = await request({ url:'/member/purchase/list', method:'GET', data:this.listParams() }); this.rows = this.unwrap(res); this.total = Number(res?.total ?? 0) || 0 } finally { this.loading = false } this.loadStatistics(); if (this.pageNum === 1) this.loadReturns() }, listParams() { const p = { pageNum:this.pageNum, pageSize:this.pageSize, deptId:this.currentDeptId, customerName:this.keyword || undefined, customerType:this.filters.customerType || undefined, paymentStatus:this.filters.paymentStatus || undefined, beginTime:this.filters.beginTime || undefined, endTime:this.filters.endTime || undefined }; Object.keys(p).forEach(k => p[k] === undefined && delete p[k]); return p }, async loadStatistics() { try { const res = await request({ url:'/member/purchase/statistics', method:'GET', data:this.listParams() }); this.summary = res?.data || res || {} } catch (e) {} }, async loadReturns() { try { const res = await request({ url:'/member/purchase-return/list', method:'GET', data:{ pageNum:1, pageSize:200, deptId:this.currentDeptId }, silent:true }); this.returnPurchaseIds = Array.from(new Set(this.unwrap(res).map(x => String(x.purchaseId)))) } catch (e) { this.returnPurchaseIds = [] } }, hasReturn(row) { return this.returnPurchaseIds.includes(String(row?.purchaseId)) },
-    selectCustomerType(e) { this.form.customerType = this.customerTypes[Number(e.detail.value)].value; if (this.form.customerType !== 'MEMBER') { this.form.memberId = ''; this.form.memberNo = ''; this.form.memberName = '' } }, selectMember(member) { this.form.memberId = member?.memberId || ''; this.form.memberNo = member?.memberNo || ''; this.form.memberName = member?.memberName || ''; this.form.customerName = member?.memberName || ''; this.form.customerPhone = member?.phone || '' }, clearMember() { this.form.memberId = ''; this.form.memberNo = ''; this.form.memberName = '' }, selectCustomerTypeFilter(e) { this.filters.customerType = this.customerTypeFilters[Number(e.detail.value)].value; this.pageNum = 1; this.load() }, selectPaymentStatusFilter(e) { this.filters.paymentStatus = this.paymentStatusFilters[Number(e.detail.value)].value; this.pageNum = 1; this.load() }, resetFilters() { this.keyword = ''; this.filters = { customerType: '', paymentStatus: '', beginTime: '', endTime: '' }; this.pageNum = 1; this.load() }, toggleMoreFilters() { this.showMoreFilters = !this.showMoreFilters }, prevPage() { if (this.pageNum <= 1) return; this.pageNum--; this.load() }, nextPage() { if (this.pageNum >= this.totalPages) return; this.pageNum++; this.load() }, selectProduct(e) { const p = this.products[Number(e.detail.value)]; this.form.item.productId = p?.productId || ''; this.form.item.policyId = ''; this.form.item.packageId = ''; this.form.item.giftQuantity = ''; if (p && (p.salePrice != null || p.defaultSalePrice != null || p.price != null)) { this.form.item.unitPrice = this.money(p.salePrice ?? p.defaultSalePrice ?? p.price) } this.loadPolicies() }, selectPolicy(e) { const policy = this.policies[Number(e.detail.value)]; this.form.item.policyId = policy?.policyId || ''; this.form.item.packageId = ''; if (policy?.packages?.length === 1) this.selectPackage({ detail: { value: 0 } }) }, selectPackage(e) { const pkg = this.packages[Number(e.detail.value)]; this.form.item.packageId = pkg?.packageId || ''; if (pkg) { this.form.item.purchaseQuantity = this.quantity(pkg.purchaseQuantity); this.form.item.giftQuantity = this.quantity(pkg.giftQuantity); this.form.item.unitPrice = this.money(Number(pkg.packagePrice || 0) / Number(pkg.purchaseQuantity || 1)) } }, selectPeriod(e) { this.form.periodId = this.periods[Number(e.detail.value)]?.periodId || ''; this.loadPolicies() }, limit(key, value, precision) { const s = String(value || '').replace(/[^\d.]/g,'').replace(/\.(?=.*\.)/g,''); this.form.item[key] = s.includes('.') ? s.split('.')[0] + '.' + s.split('.')[1].slice(0, precision) : s }, limitPayment(e) { this.paymentForm.paymentAmount = String(e.detail.value || '').replace(/[^\d.]/g,'').replace(/\.(?=.*\.)/g,'').replace(/(\.\d{2}).*/,'$1') },
+    selectCustomerType(e) { this.form.customerType = this.customerTypes[Number(e.detail.value)].value; if (this.form.customerType !== 'MEMBER') { this.form.memberId = ''; this.form.memberNo = ''; this.form.memberName = '' } }, selectMember(member) { this.form.memberId = member?.memberId || ''; this.form.memberNo = member?.memberNo || ''; this.form.memberName = member?.memberName || ''; this.form.customerName = member?.memberName || ''; this.form.customerPhone = member?.phone || '' }, clearMember() { this.form.memberId = ''; this.form.memberNo = ''; this.form.memberName = '' }, selectCustomerTypeFilter(e) { this.filters.customerType = this.customerTypeFilters[Number(e.detail.value)].value }, selectPaymentStatusFilter(e) { this.filters.paymentStatus = this.paymentStatusFilters[Number(e.detail.value)].value }, openFilterSheet() { this.filterSheetOpen = true }, closeFilterSheet() { this.filterSheetOpen = false }, applyFilterSheet() { this.pageNum = 1; this.filterSheetOpen = false; this.load() }, resetFilters() { this.keyword = ''; this.filters = { customerType: '', paymentStatus: '', beginTime: '', endTime: '' }; this.pageNum = 1; this.load() }, prevPage() { if (this.pageNum <= 1) return; this.pageNum--; this.load() }, nextPage() { if (this.pageNum >= this.totalPages) return; this.pageNum++; this.load() }, selectProduct(e) { const p = this.products[Number(e.detail.value)]; this.form.item.productId = p?.productId || ''; this.form.item.policyId = ''; this.form.item.packageId = ''; this.form.item.giftQuantity = ''; if (p && (p.salePrice != null || p.defaultSalePrice != null || p.price != null)) { this.form.item.unitPrice = this.money(p.salePrice ?? p.defaultSalePrice ?? p.price) } this.loadPolicies() }, selectPolicy(e) { const policy = this.policies[Number(e.detail.value)]; this.form.item.policyId = policy?.policyId || ''; this.form.item.packageId = ''; if (policy?.packages?.length === 1) this.selectPackage({ detail: { value: 0 } }) }, selectPackage(e) { const pkg = this.packages[Number(e.detail.value)]; this.form.item.packageId = pkg?.packageId || ''; if (pkg) { this.form.item.purchaseQuantity = this.quantity(pkg.purchaseQuantity); this.form.item.giftQuantity = this.quantity(pkg.giftQuantity); this.form.item.unitPrice = this.money(Number(pkg.packagePrice || 0) / Number(pkg.purchaseQuantity || 1)) } }, selectPeriod(e) { this.form.periodId = this.periods[Number(e.detail.value)]?.periodId || ''; this.loadPolicies() }, limit(key, value, precision) { const s = String(value || '').replace(/[^\d.]/g,'').replace(/\.(?=.*\.)/g,''); this.form.item[key] = s.includes('.') ? s.split('.')[0] + '.' + s.split('.')[1].slice(0, precision) : s }, limitPayment(e) { this.paymentForm.paymentAmount = String(e.detail.value || '').replace(/[^\d.]/g,'').replace(/\.(?=.*\.)/g,'').replace(/(\.\d{2}).*/,'$1') },
     openCreate() { this.showCustomerTypePicker = true }, pickCustomerType(e) { const idx = Number(e.detail.value); this.form = this.emptyForm(); this.form.customerType = this.customerTypes[idx].value; if (this.periods.length) { this.form.periodId = this.periods[0].periodId } this.showCustomerTypePicker = false; this.panel = 'create' }, openReturn(row) { uni.navigateTo({ url:`/pages/member-purchase-return/index?purchaseId=${row.purchaseId}` }) }, openReturnDetail(row) { uni.navigateTo({ url:`/pages/member-purchase-return/index?purchaseId=${row.purchaseId}` }) }, openBind(row) { this.bindTarget = row; this.bindForm = { memberId: '' }; this.panel = 'bind' }, selectBindMember(member) { this.bindForm = { memberId: member?.memberId || '', memberName: member?.memberName || '' } }, clearBindMember() { this.bindForm = { memberId: '' } }, async confirmBind() { if (!this.bindForm.memberId) return uni.showToast({ title:'请选择要绑定的会员', icon:'none' }); await request({ url:`/member/purchase/${this.bindTarget.purchaseId}/bind-member/${this.bindForm.memberId}`, method:'PUT' }); uni.showToast({ title:'绑定成功', icon:'success' }); this.closePanel(); this.load() }, async openDetail(row) { const res = await request({ url:`/member/purchase/${row.purchaseId}`, method:'GET' }); this.detail = res.data || res; this.form = { ...this.emptyForm(), ...this.detail, item: { ...(this.detail.items?.[0] || {}) } }; this.active = row; this.panel = 'detail' }, async openEdit(row) { await this.openDetail(row); this.panel = 'edit' }, switchToEdit() { this.panel = 'edit' }, closePanel() { this.panel = '' },
     async saveCreate() { const f = this.form; if (!f.periodId || !f.item.productId || Number(f.item.purchaseQuantity) <= 0 || Number(f.item.unitPrice) <= 0) return uni.showToast({ title:'请完整填写周期、商品、数量和单价', icon:'none' }); if (f.customerType === 'MEMBER' && !f.memberId) return uni.showToast({ title:'请选择会员', icon:'none' }); await request({ url:'/member/purchase', method:'POST', data:{ ...f, identityConfirmed:false, purchaseDate:f.purchaseDate, items:[{ ...f.item, giftQuantity:Number(f.item.giftQuantity || 0) }], idempotencyKey:`mp-purchase-${Date.now()}` } }); uni.showToast({ title:'购买单已保存', icon:'success' }); this.closePanel(); this.load() },
     async saveEdit() { await request({ url:`/member/purchase/${this.detail.purchaseId}`, method:'PUT', data:{ customerName:this.form.customerName, customerPhone:this.form.customerPhone, purchaseDate:this.form.purchaseDate, remark:this.form.remark, items:[this.form.item] } }); uni.showToast({ title:'购买单已保存', icon:'success' }); this.closePanel(); this.load() },
@@ -334,31 +338,22 @@ export default {
 .section-title{font-size:28rpx;font-weight:700;color:#1A2332;flex:1}
 .section-link{font-size:22rpx;color:#94A3B8}
 
-/* ── 筛选区卡片 ── */
-.filters-card{margin:16rpx 30rpx 0!important;padding:22rpx 24rpx!important}
-.filter-row{display:flex;align-items:center;gap:10rpx;min-height:66rpx;width:100%;box-sizing:border-box}
-.filter-row+.filter-row{margin-top:10rpx}
-.filter-row-tools{gap:12rpx;margin-top:14rpx}
-.filter-type-picker{flex:1;min-width:0}
-.filter-picker,.filter-date,.filter-kw{box-sizing:border-box!important;padding:16rpx 14rpx;height:64rpx;line-height:32rpx;border:1rpx solid #D5E0EC;border-radius:12rpx;background:#F8FBFD;color:#5A6B7F;font-size:22rpx;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%}
-.filter-picker{display:flex;align-items:center;justify-content:space-between}
-.filter-chevron{color:#94a3b8;font-size:25rpx;margin-left:8rpx}
-.date-controls{display:flex;align-items:center;flex:1;min-width:0;gap:8rpx;width:100%}
-.date-controls picker{flex:1;min-width:0}
-.filter-date{padding:16rpx 8rpx;height:64rpx;line-height:32rpx;text-align:center;font-size:21rpx;min-width:0}
-.date-separator{flex:none;color:#94a3b8;font-size:19rpx}
-.filter-kw{flex:1;min-width:0}
-.filter-kw-member{flex:1;min-width:0}
-.filter-button{flex:none;margin:0;padding:0 16rpx;height:64rpx;line-height:64rpx;border:0;border-radius:32rpx;background:#087CF0;color:#fff;font-size:22rpx;white-space:nowrap}
-.filter-button-ghost{background:#EEF3F8;color:#334155}
+/* ── 列表顶部条（计数 + 筛选浮动按钮） ── */
+.list-header-bar{display:flex;align-items:center;justify-content:space-between;margin:16rpx 30rpx 0;gap:16rpx}
+.list-header-count{font-size:24rpx;color:#708196;font-weight:600}
+.filter-fab{display:flex;align-items:center;gap:8rpx;height:64rpx;line-height:64rpx;padding:0 24rpx;border:0;border-radius:999rpx;background:linear-gradient(135deg,#C65A4A,#F2A88D);color:#fff;font-size:24rpx;font-weight:700;box-shadow:0 4rpx 14rpx rgba(198,90,74,.25);position:relative}
+.filter-fab::after{border:none}
+.filter-fab-icon{font-size:28rpx;font-weight:800}
+.filter-fab-badge{min-width:32rpx;height:32rpx;line-height:32rpx;text-align:center;padding:0 8rpx;border-radius:999rpx;background:#fff;color:#C65A4A;font-size:20rpx;font-weight:800}
 
 /* ── 汇总条（两行三栏分栏） ── */
 .summary-bar{display:flex;margin:16rpx 30rpx 0;padding:18rpx 8rpx;background:#fff;border-radius:18rpx;border:1rpx solid #dbe6f1;box-sizing:border-box}
 .summary-bar>view{flex:1;text-align:center;border-right:1rpx solid #edf1f5;min-width:0}
 .summary-bar>view:last-child{border-right:0}
-.summary-value{display:block;color:#1687f5;font-size:28rpx;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.summary-value.success{color:#10B981}
-.summary-value.warning{color:#F59E0B}
+.summary-value{display:block;color:#C65A4A;font-size:28rpx;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.summary-value.primary{color:#C65A4A}
+.summary-value.success{color:#0F766E}
+.summary-value.warning{color:#B45309}
 .summary-label{display:block;margin-top:6rpx;color:#98a9ba;font-size:20rpx}
 .summary-bar-secondary{margin-top:10rpx}
 
@@ -380,9 +375,9 @@ export default {
 .list-card{margin-top:16rpx!important;padding:20rpx 28rpx!important}
 .state-card{padding:20rpx 28rpx 28rpx!important}
 
-/* ── 记录卡片标准样式（record-card） ── */
-.record-card{display:flex;margin-bottom:16rpx;background:#FFFFFF;border-radius:20rpx;box-shadow:0 2rpx 16rpx rgba(8,124,240,.06);overflow:hidden}
-.card-bar{width:4rpx;background:linear-gradient(180deg,#087CF0,#A8C7E5);flex-shrink:0}
+/* ── 记录卡片标准样式（record-card，参考费用记录配色） ── */
+.record-card{display:flex;margin-bottom:18rpx;background:#FFFFFF;border-radius:22rpx;border:1rpx solid rgba(226,232,240,.9);box-shadow:0 8rpx 26rpx rgba(8,124,240,.06);overflow:hidden}
+.card-bar{width:6rpx;background:linear-gradient(180deg,#C65A4A,#F2A88D);flex-shrink:0}
 .card-body{flex:1;padding:24rpx 28rpx}
 .card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:20rpx}
 .record-title{flex:1;font-size:30rpx;line-height:42rpx;font-weight:700;color:#1A2332}
@@ -397,22 +392,29 @@ export default {
 .meta-text{font-size:24rpx;color:#94A3B8}
 .arrow-icon{font-size:36rpx;color:#CBD5E1;font-weight:300}
 
-/* ── 紧凑3行卡片样式 ── */
-.compact-body{flex:1;padding:20rpx 24rpx}
+/* ── 紧凑3行卡片样式（参考费用记录两行模式配色） ── */
+.compact-body{flex:1;padding:22rpx 24rpx}
 .compact-row1{display:flex;align-items:center;gap:18rpx}
-.compact-title{flex:1;min-width:0;font-size:29rpx;line-height:40rpx;font-weight:700;color:#1A2332;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.compact-amount{font-size:29rpx;line-height:40rpx;font-weight:800;color:#B45309;flex-shrink:0}
-.compact-row2{display:flex;align-items:center;gap:16rpx;margin-top:10rpx;flex-wrap:wrap}
-.compact-row3{display:flex;align-items:center;gap:14rpx;margin-top:10rpx}
-.compact-meta{flex-shrink:0;font-size:23rpx;line-height:32rpx;color:#94A3B8}
-.compact-meta.date{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.compact-meta.paid{color:#059669;font-weight:600}
-.compact-meta.debt{color:#B45309;font-weight:600}
-.compact-meta.qty{font-size:28rpx;font-weight:700;color:#1A2332}
+.compact-title-wrap{flex:1;min-width:0;display:flex;align-items:center;gap:12rpx}
+.compact-title{flex:1;min-width:0;font-size:29rpx;line-height:40rpx;font-weight:800;color:#102A3A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.compact-type-tag{flex-shrink:0;padding:2rpx 12rpx;border-radius:999rpx;font-size:20rpx;line-height:30rpx;font-weight:700}
+.compact-type-tag.type-member{background:#E0F2FE;color:#075985}
+.compact-type-tag.type-customer{background:#F1F5F9;color:#475569}
+.compact-type-tag.type-walkin{background:#FFEDD5;color:#C2410C}
+.compact-amount{font-size:29rpx;line-height:40rpx;font-weight:800;color:#C65A4A;flex-shrink:0}
+.compact-row2{display:flex;align-items:center;gap:18rpx;margin-top:12rpx}
+.compact-row3{display:flex;align-items:center;gap:14rpx;margin-top:12rpx}
+.compact-meta{flex-shrink:0;font-size:23rpx;line-height:32rpx;color:#708196;font-weight:600}
+.compact-meta.date{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
+.compact-meta.paid{color:#0F766E;font-weight:700}
+.compact-meta.debt{color:#B45309;font-weight:700}
+.compact-meta.qty{font-size:28rpx;font-weight:700;color:#102A3A}
 .compact-id{flex-shrink:0;font-size:21rpx;color:#5A6B7F;background:#E8EEF5;padding:2rpx 12rpx;border-radius:999rpx}
-.compact-status{flex-shrink:0;padding:4rpx 14rpx;border-radius:999rpx;font-size:21rpx;line-height:30rpx;background:#E8EEF5;color:#5A6B7F}
-.compact-status.status-ok{background:#D1FAE5;color:#065F46}
+.compact-status-group{display:flex;align-items:center;gap:8rpx;flex-shrink:0;margin-left:auto}
+.compact-status{flex-shrink:0;padding:4rpx 16rpx;border-radius:20rpx;font-size:22rpx;line-height:30rpx;font-weight:500}
+.compact-status.status-ok{background:#E0F2FE;color:#075985}
 .compact-status.status-warn{background:#FEF3C7;color:#92400E}
+.compact-status.status-info{background:#E0F2FE;color:#075985}
 .compact-status.status-danger{background:#FEE2E2;color:#991B1B}
 
 /* ── 空状态 / 分页 ── */
@@ -612,6 +614,10 @@ export default {
 .sheet-input{width:100%;box-sizing:border-box!important;text-align:left;padding:16rpx 20rpx;border:1rpx solid #E2E8F0;border-radius:12rpx;background:#F8FAFC;font-size:30rpx;min-height:72rpx;line-height:40rpx;color:#1A2332}
 .sheet-picker{text-align:left;justify-content:space-between;padding:16rpx 20rpx;border:1rpx solid #E2E8F0;border-radius:12rpx;background:#F8FAFC;font-size:30rpx;min-height:72rpx;display:flex;align-items:center;color:#1A2332}
 .sheet-picker-arrow{margin-left:8rpx;color:#CBD5E1;font-size:22rpx;flex-shrink:0}
+.sheet-date-row{display:flex;align-items:center;gap:12rpx}
+.sheet-date-row picker{flex:1;min-width:0}
+.sheet-picker-date{text-align:center;justify-content:center;padding:16rpx 8rpx;font-size:26rpx;min-height:72rpx}
+.sheet-date-sep{flex-shrink:0;color:#94A3B8;font-size:22rpx}
 .sheet-grid-2col{display:grid;grid-template-columns:1fr 1fr;gap:14rpx;box-sizing:border-box}
 
 /* 弹出面板 底部按钮（参考 claim-panel-actions） */

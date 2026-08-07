@@ -1823,8 +1823,8 @@ export default {
 }
 
 .expense-status.status-pending {
-  background: rgba(245, 158, 11, 0.1);
-  color: #F59E0B;
+  background: #FEF3C7;
+  color: #92400E;
 }
 
 /* ====== 其他模块卡片模式 ====== */

@@ -426,10 +426,10 @@ export default {
 .compact-meta.date{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .compact-meta.paid{color:#475569;font-weight:600}
 .compact-id{flex-shrink:0;font-size:21rpx;color:#5A6B7F;background:#E8EEF5;padding:2rpx 12rpx;border-radius:999rpx}
-.compact-status{flex-shrink:0;padding:4rpx 14rpx;border-radius:999rpx;font-size:21rpx;line-height:30rpx;background:#EEF2F7;color:#475569;border:1rpx solid #E2E8F0}
-.compact-status.status-ok{background:#EEF2FF;color:#4F46E5;border:1rpx solid #E0E7FF}
+.compact-status{flex-shrink:0;padding:4rpx 14rpx;border-radius:999rpx;font-size:21rpx;line-height:30rpx;background:#EEF3FB;color:#475569;border:1rpx solid #DCE7F5}
+.compact-status.status-ok{background:#DBEAFE;color:#1D4ED8;border:1rpx solid #BFDBFE}
 .compact-status.status-warn{background:#FFF7ED;color:#C2410C;border:1rpx solid #FFEDD5}
-.compact-status.status-danger{background:#F8FAFC;color:#475569;border:1rpx solid #CBD5E1;text-decoration:line-through}
+.compact-status.status-danger{background:#F1F5F9;color:#64748B;border:1rpx solid #CBD5E1;text-decoration:line-through}
 .pagination-card{margin-top:4rpx}
 
 /* ── 空状态 / 分页 ── */

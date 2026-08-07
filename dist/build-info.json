@@ -1,7 +1,7 @@
 {
   "platform": "mp-weixin",
-  "version": "26.8.64",
-  "builtAt": "2026-08-07T02:35:53.079Z",
+  "version": "26.8.65",
+  "builtAt": "2026-08-07T02:38:40.885Z",
   "projectRoot": "/Users/sirius/Documents/TRAE/JunSong-Cloud/junsong-miniprogram",
   "miniprogramRoot": "dist/",
   "sourceHashes": {

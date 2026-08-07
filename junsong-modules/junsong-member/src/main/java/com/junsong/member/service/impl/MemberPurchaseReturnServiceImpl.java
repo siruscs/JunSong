@@ -191,8 +191,9 @@ public class MemberPurchaseReturnServiceImpl implements IMemberPurchaseReturnSer
             growthService.reversePurchaseRewardByReturn(current.getMemberId(), current.getPurchaseId(),
                     current.getReturnId(), refundAmount, originalTotalAmount, value.getUpdateBy());
         }
-        // 6. 更新退货单状态（乐观锁）
+        // 6. 更新退货单状态（乐观锁），同步写入已退金额
         value.setVersion(current.getVersion());
+        value.setRefundAmount(refundAmount);
         return returnMapper.completeReturn(value);
     }
 

@@ -55,7 +55,7 @@
   </insert>
   <update id="completeReturn" parameterType="com.junsong.member.domain.MemPurchaseReturn">
     update mem_purchase_return
-    set status='COMPLETED', update_by=#{updateBy}, update_time=sysdate(), version=version+1
+    set status='COMPLETED', refunded_amount=#{refundAmount}, update_by=#{updateBy}, update_time=sysdate(), version=version+1
     where return_id=#{returnId} and tenant_id=#{tenantId} and dept_id=#{deptId}
       and del_flag='0' and status='DRAFT' and version=#{version}
   </update>

@@ -26,8 +26,8 @@
           <view class="compact-row1">
             <text class="compact-title">{{ row.customerName || '未登记顾客' }}</text>
             <view class="compact-qty-group">
-              <text class="compact-qty-label">原买</text><text class="compact-qty-value">{{ row.purchaseQuantity || 0 }}</text>
-              <text class="compact-qty-label">退</text><text class="compact-qty-value">{{ row.totalReturnQuantity || 0 }}</text>
+              <text class="compact-qty-label">原买</text><text class="compact-qty-value">{{ displayPurchaseQty(row) }}</text>
+              <text class="compact-qty-label">退</text><text class="compact-qty-value">{{ displayReturnQty(row) }}</text>
             </view>
             <text class="compact-amount">¥{{ money(row.refundAmount) }}</text>
           </view>
@@ -146,6 +146,24 @@ export default {
     dateText(v) { return v ? String(v).replace('T',' ').slice(0,19) : '-' },
     money(v) { return Number(v || 0).toFixed(2) },
     quantity(v) { return Number(v || 0).toFixed(3).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1') },
+    displayPurchaseQty(row) {
+      const q = Number(row?.purchaseQuantity || 0)
+      if (q > 0) return this.quantity(q)
+      if (Array.isArray(row?.items) && row.items.length) {
+        const s = row.items.reduce((acc, it) => acc + Number(it.purchaseQuantity || 0) + Number(it.returnSaleQuantity || 0) + Number(it.returnGiftQuantity || 0), 0)
+        return s ? this.quantity(s) : '0'
+      }
+      return '0'
+    },
+    displayReturnQty(row) {
+      const q = Number(row?.totalReturnQuantity || 0)
+      if (q > 0) return this.quantity(q)
+      if (Array.isArray(row?.items) && row.items.length) {
+        const s = row.items.reduce((acc, it) => acc + Number(it.returnTotalQuantity || it.returnSaleQuantity || 0) + Number(it.returnGiftQuantity || 0), 0)
+        return s ? this.quantity(s) : '0'
+      }
+      return '0'
+    },
     returnQuantity(row) {
       if (!row) return '-'
       if (row.returnTotalQuantity != null && Number(row.returnTotalQuantity) !== 0) return this.quantity(row.returnTotalQuantity)
@@ -292,9 +310,9 @@ export default {
 .summary-bar{display:flex;margin:16rpx 30rpx 0;padding:18rpx 8rpx;background:#fff;border-radius:18rpx;border:1rpx solid #dbe6f1;box-sizing:border-box}
 .summary-bar>view{flex:1;text-align:center;border-right:1rpx solid #edf1f5;min-width:0}
 .summary-bar>view:last-child{border-right:0}
-.summary-value{display:block;color:#1687f5;font-size:28rpx;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.summary-value.success{color:#0F766E}
-.summary-value.warning{color:#C65A4A}
+.summary-bar .summary-value{display:block;color:#1687f5;font-size:28rpx;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.summary-bar .summary-value.success{color:#0F766E}
+.summary-bar .summary-value.warning{color:#C65A4A}
 .summary-label{display:block;margin-top:6rpx;color:#98a9ba;font-size:20rpx}
 
 /* ── 操作行 ── */

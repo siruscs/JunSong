@@ -114,7 +114,7 @@
           </view>
         </view>
         <view class="form-section-card">
-          <view class="form-section-header"><view class="form-section-dot required"></view><text class="form-section-title">购买明细</text></view>
+          <view class="form-section-header"><view class="form-section-dot required"></view><text class="form-section-title">购买明细</text><text class="form-section-count" v-if="form._allItems && form._allItems.length > 1">共{{form._allItems.length}}项 · 仅编辑首项</text></view>
           <view class="form-item">
             <view class="form-label-row"><text class="form-label">商品</text><text class="form-required-tag">*</text></view>
             <picker :range="products" range-key="productName" :value="productIndex" @change="selectProduct"><view class="form-control picker" :class="{ 'has-value': form.item.productId }"><text class="form-picker-text">{{ selectedProduct?.productName || '请选择商品' }}</text><text class="form-picker-arrow">›</text></view></picker>
@@ -273,7 +273,8 @@ export default {
     async loadDetail() {
       const res = await request({ url: `/member/purchase/${this.purchaseId}`, method: 'GET' })
       this.detail = res.data || res
-      this.form = { ...newPurchaseForm(), ...this.detail, item: { ...(this.detail.items?.[0] || {}) } }
+      const allItems = (this.detail.items || []).map(x => ({ ...x }))
+      this.form = { ...newPurchaseForm(), ...this.detail, item: allItems[0] || {}, _allItems: allItems }
     },
     async loadOptions() {
       try {
@@ -311,7 +312,9 @@ export default {
     closePanel() { this.panel = '' },
 
     async saveEdit() {
-      await request({ url: `/member/purchase/${this.detail.purchaseId}`, method: 'PUT', data: { customerName: this.form.customerName, customerPhone: this.form.customerPhone, purchaseDate: this.form.purchaseDate, remark: this.form.remark, items: [this.form.item] } })
+      const allItems = (this.form._allItems || []).map(x => ({ ...x }))
+      if (allItems.length) allItems[0] = { ...allItems[0], ...this.form.item }
+      await request({ url: `/member/purchase/${this.detail.purchaseId}`, method: 'PUT', data: { customerName: this.form.customerName, customerPhone: this.form.customerPhone, purchaseDate: this.form.purchaseDate, remark: this.form.remark, items: allItems } })
       uni.showToast({ title: '购买单已保存', icon: 'success' })
       this.panel = ''
       await this.loadDetail()

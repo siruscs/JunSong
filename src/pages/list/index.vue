@@ -1781,7 +1781,7 @@ export default {
 }
 
 .expense-amount.income {
-  color: #059669;
+  color: #0F766E;
 }
 
 .expense-row2 {
@@ -1810,21 +1810,21 @@ export default {
 
 .expense-status {
   flex-shrink: 0;
-  padding: 4rpx 14rpx;
-  border-radius: 999rpx;
-  font-size: 20rpx;
-  line-height: 28rpx;
-  font-weight: 700;
+  padding: 4rpx 16rpx;
+  border-radius: 10rpx;
+  font-size: 22rpx;
+  line-height: 30rpx;
+  font-weight: 600;
 }
 
 .expense-status.status-verified {
-  background: #D1FAE5;
-  color: #065F46;
+  background: rgba(16, 185, 129, 0.1);
+  color: #10B981;
 }
 
 .expense-status.status-pending {
-  background: #FEF3C7;
-  color: #92400E;
+  background: rgba(245, 158, 11, 0.1);
+  color: #F59E0B;
 }
 
 /* ====== 其他模块卡片模式 ====== */

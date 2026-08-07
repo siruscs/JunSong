@@ -53,6 +53,10 @@
       "style": { "navigationBarTitleText": "购买记录" }
     },
     {
+      "path": "pages/member-purchase/detail",
+      "style": { "navigationBarTitleText": "购买单详情" }
+    },
+    {
       "path": "pages/member-level/index",
       "style": { "navigationBarTitleText": "等级配置" }
     },

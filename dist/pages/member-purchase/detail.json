@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "购买单详情",
+  "usingComponents": {
+    "member-search": "../../components/MemberSearch/index"
+  }
+}

@@ -361,8 +361,8 @@ export default {
 .filter-row-merged .filter-type-picker{flex:0 0 180rpx}
 .filter-row-merged .filter-kw{flex:1}
 .filter-type-picker{flex:1;min-width:0}
-.filter-picker,.filter-kw{box-sizing:border-box!important;padding:16rpx 14rpx;height:64rpx;line-height:32rpx;border:1rpx solid #D5E0EC;border-radius:12rpx;background:#F8FBFD;color:#5A6B7F;font-size:22rpx;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%}
-.filter-picker{display:flex;align-items:center;justify-content:space-between}
+.filter-picker{box-sizing:border-box!important;padding:16rpx 14rpx;height:64rpx;line-height:32rpx;border:1rpx solid #D5E0EC;border-radius:12rpx;background:#F8FBFD;color:#5A6B7F;font-size:23rpx;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;display:flex;align-items:center;justify-content:space-between}
+.filter-kw{box-sizing:border-box!important;height:64rpx;line-height:64rpx;padding:0 14rpx;border:1rpx solid #D5E0EC;border-radius:12rpx;background:#F8FBFD;color:#1A2332;font-size:23rpx;width:100%}
 .filter-chevron{color:#94a3b8;font-size:25rpx;margin-left:8rpx}
 .filter-kw{flex:2}
 .filter-button{flex:none;margin:0;padding:0 16rpx;height:64rpx;line-height:64rpx;border:0;border-radius:32rpx;background:#087CF0;color:#fff;font-size:22rpx;white-space:nowrap}
@@ -411,7 +411,7 @@ export default {
 
 /* ── 紧凑2行卡片样式 ── */
 .compact-body{flex:1;padding:20rpx 24rpx}
-.compact-title{font-size:29rpx;line-height:40rpx;font-weight:700;color:#1A2332;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.compact-title{font-size:33rpx;line-height:44rpx;font-weight:700;color:#1A2332;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .compact-row1{display:grid;grid-template-columns:1fr 180rpx 140rpx;align-items:center;gap:8rpx}
 .compact-row2{display:grid;grid-template-columns:1fr 180rpx 140rpx;align-items:center;gap:8rpx;margin-top:8rpx}
 .compact-row2 .date{text-align:left}
@@ -421,7 +421,7 @@ export default {
 .compact-qty-group{display:inline-flex;align-items:baseline;gap:2rpx;white-space:nowrap}
 .compact-qty-label{font-size:22rpx;color:#94A3B8;font-weight:400}
 .compact-qty-value{font-size:30rpx;color:#1A2332;font-weight:700;margin-right:8rpx}
-.compact-amount{font-size:26rpx;color:#DC2626;font-weight:700;text-align:right;white-space:nowrap}
+.compact-amount{font-size:33rpx;color:#DC2626;font-weight:700;text-align:right;white-space:nowrap}
 .compact-meta{flex-shrink:0;font-size:23rpx;line-height:32rpx;color:#94A3B8}
 .compact-meta.date{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .compact-meta.paid{color:#059669;font-weight:600}

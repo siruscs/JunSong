@@ -1043,47 +1043,47 @@ export default {
 .work-scope {
   display: flex;
   align-items: center;
-  gap: 16rpx;
-  margin: 0 28rpx;
-  padding: 18rpx 4rpx 4rpx;
-  border-radius: 12rpx;
+  margin: 0 30rpx;
+  padding: 6rpx 0;
+  min-height: 44rpx;
 }
 .work-scope-hover {
   background: #eaf3ff;
-  border-radius: 12rpx;
+  border-radius: 8rpx;
 }
 .work-scope-disabled {
-  opacity: 1;
-  background: #F1F5F9;
+  /* 单部门或无权限：不做灰底，视觉与正常态一致；
+     通过 scopeLabel 文案（"当前数据范围" vs "当前部门·共N个部门"）区分即可 */
 }
-.work-scope-disabled .work-scope-label { color: #475569; }
-.work-scope-disabled .work-scope-name { color: #1E293B; font-weight: 600; }
 
 .work-scope-mark {
   width: 14rpx;
   height: 14rpx;
   border-radius: 50%;
   background: #087CF0;
+  margin-right: 14rpx;
   flex-shrink: 0;
 }
-.work-scope-mark-disabled { background: #475569; }
+.work-scope-mark-disabled {
+  background: #087CF0;
+}
 
 .work-scope-copy {
   display: flex;
   align-items: baseline;
-  gap: 12rpx;
+  gap: 8rpx;
   min-width: 0;
 }
 
 .work-scope-label {
   color: #708196;
-  font-size: 22rpx;
+  font-size: 24rpx;
   flex-shrink: 0;
 }
 
 .work-scope-name {
-  color: #1F2D3D;
-  font-size: 25rpx;
+  color: #1F2937;
+  font-size: 28rpx;
   font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;

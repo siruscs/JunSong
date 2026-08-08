@@ -97,9 +97,6 @@ export function applyWorkScopeToPage(vm) {
  *   2) 设置 vm.showDeptSwitcher = true 交给组件渲染。
  */
 export function openDeptSwitcher(vm, reloadFn, requestFn) {
-  // switchable 兜底：页面层通过 :class="{ 'work-scope-disabled': !switchable }" 禁用视觉态，
-  // 这里同步拦截点击，避免 disabled 态仍然弹窗（depts.length 与 switchable 来源一致，双保险）。
-  if (vm && vm.switchable === false) return
   const snapshot = workContext.snapshot()
   const rawDepts = Array.isArray(snapshot.depts) ? snapshot.depts : []
   const depts = rawDepts
@@ -120,7 +117,13 @@ export function openDeptSwitcher(vm, reloadFn, requestFn) {
   // 让用户从视觉上就知道不能切换，避免"点了弹一下又关掉"的怪异体验。
   if (depts.length === 1) return
   if (!vm) { shortToast('页面实例缺失'); return }
-  vm.showDeptSwitcher = true
+  // 使用 $set 保证 showDeptSwitcher 一定触发响应式（Vue2 + uni-app 下某些场景直接赋值会被吞）
+  try {
+    if (vm.$set) vm.$set(vm, 'showDeptSwitcher', true)
+    else vm.showDeptSwitcher = true
+  } catch (_) {
+    vm.showDeptSwitcher = true
+  }
 }
 
 /**

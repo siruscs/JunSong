@@ -292,15 +292,12 @@ export default {
 .hero-title{display:block;margin-top:10rpx;color:#1e293b;font-size:38rpx;font-weight:700}
 
 /* ── 部门范围条 ── */
-.work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx;padding:4rpx 12rpx;border-radius:12rpx;box-sizing:border-box}
-.work-scope-hover{background:#eaf3ff;border-radius:12rpx}
-.work-scope-disabled{opacity:1;background:#F1F5F9}
-.work-scope-disabled .work-scope-copy{color:#475569}
-.work-scope-disabled .work-scope-name{color:#1E293B;font-weight:600}
-.work-scope-mark{width:14rpx;height:14rpx;margin-right:16rpx;border-radius:50%;background:#1687f5}
-.work-scope-mark-disabled{background:#475569}
-.work-scope-copy{display:flex;align-items:baseline;color:#8192a6;font-size:24rpx}
-.work-scope-name{margin-left:4rpx;color:#26384d;font-size:27rpx;font-weight:700}
+.work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx;padding:6rpx 0}
+.work-scope-hover{background:#eaf3ff;border-radius:8rpx}
+.work-scope-mark{width:14rpx;height:14rpx;margin-right:14rpx;border-radius:50%;background:#087CF0}
+.work-scope-mark-disabled{background:#087CF0}
+.work-scope-copy{display:flex;align-items:baseline;gap:8rpx;color:#708196;font-size:24rpx}
+.work-scope-name{color:#1F2937;font-size:28rpx;font-weight:700}
 
 /* ── 通用卡片容器 ── */
 .section-card{background:#fff;border-radius:20rpx;padding:28rpx;margin-top:24rpx;border:1rpx solid #D5E0EC;box-shadow:0 5rpx 18rpx rgba(45,72,98,.07);box-sizing:border-box;overflow:hidden}

@@ -212,7 +212,11 @@
               </view>
             </view>
             <view class="purchase-product-names" v-if="item.productNames">
-              <text>{{ item.productNames }}</text>
+              <text v-for="(p, i) in parseProductNames(item.productNames)" :key="i">
+                <text v-if="i > 0"> | </text>
+                <text>{{ p.name }}:</text>
+                <text style="color: #409eff; font-weight: bold;">{{ p.qtyUnit }}</text>
+              </text>
               <text class="purchase-status-tag" :class="'purchase-status-' + (item.status || '')">{{ displayField('status', item.status) }}</text>
             </view>
           </view>
@@ -457,6 +461,22 @@ export default {
     }
   },
   methods: {
+    // 解析进货单商品名称字符串，格式："石斛:80.000斤|枸杞:50.500斤"
+    // 返回 [{ name: '石斛', qtyUnit: '80斤' }, { name: '枸杞', qtyUnit: '50.5斤' }]
+    parseProductNames(str) {
+      if (!str) return []
+      return str.split('|').map(item => {
+        const idx = item.indexOf(':')
+        if (idx >= 0) {
+          const name = item.substring(0, idx)
+          let qtyUnit = item.substring(idx + 1)
+          // 去除多余小数零：80.000斤→80斤，80.500斤→80.5斤，80.120斤→80.12斤
+          qtyUnit = qtyUnit.replace(/(\d)\.0+(\D|$)/, '$1$2').replace(/(\d\.\d*?)0+(\D|$)/, '$1$2')
+          return { name, qtyUnit }
+        }
+        return { name: item, qtyUnit: '' }
+      })
+    },
     syncWorkScope() {
       const scope = resolveListWorkScope(workContext.snapshot(), this.currentDeptId)
       if (scope.departmentChanged) {

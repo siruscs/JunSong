@@ -106,13 +106,34 @@ public class MemberConfigSyncServiceImpl implements IMemberConfigSyncService
                     sourceForTarget.put("targetPeriodId", targetPeriodId);
                     sourceForTarget.put("period_id", targetPeriodId);
                 }
+                // 检查目标机构是否缺少政策关联的商品
+                boolean productMissing = false;
+                String missingProductName = null;
+                if ("CAMPAIGN_POLICY".equals(type)) {
+                    String productCode = String.valueOf(sourceItem.get("productCode"));
+                    List<Map<String, Object>> sourceProductRows = jdbcTemplate.queryForList(
+                            "select product_id, product_code, product_name, category_id, unit, purchase_price, sale_price, min_stock, status, remark from fin_product where product_code=? and dept_id=? and del_flag='0' limit 1",
+                            productCode, sourceDeptId);
+                    if (!sourceProductRows.isEmpty()) {
+                        Map<String, Object> sourceProduct = new LinkedHashMap<>(sourceProductRows.get(0));
+                        sourceProduct.put("businessKey", sourceProduct.remove("product_code"));
+                        sourceProduct.put("displayName", sourceProduct.remove("product_name"));
+                        sourceForTarget.put("sourceProduct", sourceProduct);
+                        missingProductName = String.valueOf(sourceProduct.get("displayName"));
+                        Integer productCount = jdbcTemplate.queryForObject(
+                                "select count(1) from fin_product where product_code=? and dept_id=? and del_flag='0'",
+                                Integer.class, productCode, targetDeptId);
+                        productMissing = productCount == null || productCount == 0;
+                    }
+                }
                 boolean scopeConflict = target != null && Boolean.TRUE.equals(target.get("scopeConflict"));
                 boolean levelInUse = "LEVEL".equals(type) && target != null
                         && ((Number) target.getOrDefault("memberUsageCount", 0)).longValue() > 0;
                 Map<String, Object> targetComparable = target == null ? null : new LinkedHashMap<>(target);
                 if (targetComparable != null) targetComparable.remove("memberUsageCount");
                 ConfigSyncDiff diff = ConfigSyncDiff.compare(type, businessKey, sourceForTarget, targetComparable);
-                String operation = scopeConflict ? "CONFLICT"
+                String operation = productMissing ? "PRODUCT_MISSING"
+                        : scopeConflict ? "CONFLICT"
                         : levelInUse && !diff.fields().isEmpty() ? "IMPACT_BLOCKED" : diff.operation();
                 MemConfigSyncDetail detail = new MemConfigSyncDetail();
                 detail.setBatchId(batch.getBatchId());
@@ -127,7 +148,7 @@ public class MemberConfigSyncServiceImpl implements IMemberConfigSyncService
                 detail.setSourceRecordId(((Number) sourceItem.get("recordId")).longValue());
                 if (target != null) detail.setTargetRecordId(((Number) target.get("recordId")).longValue());
                 detail.setOperation(operation);
-                detail.setDecision("CREATE".equals(operation) ? "CREATE"
+                detail.setDecision("CREATE".equals(operation) || "PRODUCT_MISSING".equals(operation) ? "CREATE"
                         : "CONFLICT".equals(operation) || "IMPACT_BLOCKED".equals(operation) || "NOOP".equals(operation) ? "SKIP" : null);
                 Map<String, Object> detailSource = sourceForTarget;
                 if (detail.getTargetPeriodId() != null) detailSource.put("targetPeriodId", detail.getTargetPeriodId());
@@ -135,6 +156,11 @@ public class MemberConfigSyncServiceImpl implements IMemberConfigSyncService
                 detail.setTargetSnapshot(target == null ? null : json(target));
                 if (scopeConflict) {
                     detail.setDiffSnapshot(json(Map.of("reason", "业务编码已存在于其他机构", "conflictDeptId", target.get("conflictDeptId"))));
+                } else if (productMissing) {
+                    Map<String, Object> productMissingInfo = new LinkedHashMap<>();
+                    productMissingInfo.put("reason", "目标机构缺少「" + missingProductName + "」商品，将同时同步该商品");
+                    productMissingInfo.put("productName", missingProductName);
+                    detail.setDiffSnapshot(json(productMissingInfo));
                 } else if (levelInUse) {
                     Map<String, Object> impact = new LinkedHashMap<>();
                     impact.put("reason", "目标机构已有会员正在使用该等级，禁止自动覆盖");
@@ -216,6 +242,15 @@ public class MemberConfigSyncServiceImpl implements IMemberConfigSyncService
         Map<String, Object> source = readSnapshot(detail.getSourceSnapshot());
         Map<String, Object> expectedTarget = detail.getTargetSnapshot() == null ? null : readSnapshot(detail.getTargetSnapshot());
         Map<String, Object> currentTarget = loadTarget(batch.getSyncType(), detail.getBusinessKey(), detail.getTargetDeptId(), batch.getTenantId());
+        if ("CREATE".equals(decision) && "PRODUCT_MISSING".equals(detail.getOperation()))
+        {
+            // 目标机构缺少商品，先同步商品再创建政策
+            Map<String, Object> sourceProduct = (Map<String, Object>) source.get("sourceProduct");
+            if (sourceProduct != null)
+            {
+                productAdapter.create(sourceProduct, detail.getTargetDeptId(), operator);
+            }
+        }
         if ("CREATE".equals(decision) && currentTarget != null)
         {
             markConflict(detail, Boolean.TRUE.equals(currentTarget.get("scopeConflict"))

@@ -15,12 +15,15 @@ public final class ConfigSyncExecutionDecisions
         if (normalizedDecision == null)
         {
             if ("CREATE".equals(normalizedOperation)) return "CREATE";
+            if ("PRODUCT_MISSING".equals(normalizedOperation)) return "CREATE";
             if ("NOOP".equals(normalizedOperation) || "CONFLICT".equals(normalizedOperation)
                     || "IMPACT_BLOCKED".equals(normalizedOperation)) return "SKIP";
             throw new IllegalArgumentException("每个差异明细都必须选择覆盖或跳过");
         }
         if ("CREATE".equals(normalizedOperation) && !"CREATE".equals(normalizedDecision))
             throw new IllegalArgumentException("新增明细只能选择新增");
+        if ("PRODUCT_MISSING".equals(normalizedOperation) && !"CREATE".equals(normalizedDecision) && !"SKIP".equals(normalizedDecision))
+            throw new IllegalArgumentException("缺少商品的明细只能选择同步或跳过");
         if ("NOOP".equals(normalizedOperation) && !"SKIP".equals(normalizedDecision))
             throw new IllegalArgumentException("无差异明细只能选择跳过");
         if ("CONFLICT".equals(normalizedOperation) && !"SKIP".equals(normalizedDecision))

@@ -78,9 +78,6 @@ public class MemMpController extends BaseController {
     }
 
     private List<String> getAccessibleModules(LoginUser loginUser) {
-        if (SecurityUtils.isAdmin()) {
-            return ALL_MODULES;
-        }
         Long deptId = SecurityUtils.getDeptId();
         if (deptId == null) {
             return Collections.emptyList();
@@ -90,9 +87,12 @@ public class MemMpController extends BaseController {
             return Collections.emptyList();
         }
 
-        // 合并两套来源，避免 mem_mp_role_module 漏配（很多历史数据配置不全）导致有权限却看不到：
+        // 小程序模块权限只认 PC 端“小程序权限”配置（mem_mp_role_module 表），
+        // 系统管理员（SecurityUtils.isAdmin）不再拥有默认 bypass，
+        // 确保在 PC 端清空某角色的小程序权限后，小程序端会真实收敛为空列表。
+        // 同时保留两条防线合并：
         // 1) mem_mp_role_module 明确给当前 (role, dept) 配置过的模块
-        // 2) MpModuleCatalog 中按 view 权限标准能匹配到的模块
+        // 2) MpModuleCatalog 中按 view 权限标准能匹配到的模块（兜底漏配场景）
         Set<String> merged = new LinkedHashSet<>();
         List<String> configured = mpRoleModuleService.getAccessibleModules(roleIds, deptId);
         if (configured != null) merged.addAll(configured);

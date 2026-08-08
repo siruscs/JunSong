@@ -15,6 +15,7 @@ import com.junsong.common.security.auth.AuthUtil;
 import com.junsong.member.service.IMemMpRoleModuleService;
 import com.junsong.member.service.IMemMpDashboardService;
 import com.junsong.member.mapper.MemMpDashboardMapper;
+import com.junsong.member.util.MpModuleCatalog;
 import com.junsong.system.api.RemoteUserService;
 import com.junsong.system.api.domain.SysRole;
 import com.junsong.system.api.model.LoginUser;
@@ -27,51 +28,9 @@ public class MemMpController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(MemMpController.class);
 
-    private static final List<String> ALL_MODULES = Arrays.asList(
-            "member", "memberPurchase", "memberPurchaseReturn", "memberLevel", "campaignPolicy",
-            "pointsGoods", "pointsRecord", "pointsExchange", "configSync",
-            "seckill", "seckillRecord",
-            "expense", "advance", "product", "supplier", "purchase", "sale",
-            "investorPayment", "investor", "investRecord", "deptProfitConfig",
-            "accountingPeriod", "profitShare", "costAccounting", "stockCost", "stockAdjustment", "verificationRecord",
-            "userManage", "deptManage"
-    );
-
-    /** 模块 key → 查看（list）权限码映射，用于过滤无实际权限的模块 */
-    private static final Map<String, String[]> MODULE_VIEW_PERMISSIONS;
-    static {
-        Map<String, String[]> m = new LinkedHashMap<>();
-        m.put("member", new String[]{"member:member:list", "member:member:query"});
-        m.put("memberPurchase", new String[]{"member:purchase:list", "member:purchase:query"});
-        m.put("memberPurchaseReturn", new String[]{"member:purchaseReturn:list", "member:purchaseReturn:query"});
-        m.put("memberLevel", new String[]{"member:level:list", "member:level:query"});
-        m.put("campaignPolicy", new String[]{"member:campaignPolicy:list", "member:campaignPolicy:query"});
-        m.put("configSync", new String[]{"member:configSync:query"});
-        m.put("pointsGoods", new String[]{"member:pointsGoods:list", "member:pointsGoods:query"});
-        m.put("pointsRecord", new String[]{"member:pointsRecord:list", "member:pointsRecord:query"});
-        m.put("pointsExchange", new String[]{"member:pointsExchange:list", "member:pointsExchange:query"});
-        m.put("seckill", new String[]{"member:seckill:list", "member:seckill:query"});
-        m.put("seckillRecord", new String[]{"member:seckillRecord:list", "member:seckillRecord:query"});
-        m.put("expense", new String[]{"finance:expense:list", "finance:expense:query"});
-        m.put("advance", new String[]{"finance:advance:list", "finance:advance:query"});
-        m.put("product", new String[]{"finance:product:list", "finance:product:query"});
-        m.put("supplier", new String[]{"finance:supplier:list", "finance:supplier:query"});
-        m.put("purchase", new String[]{"finance:purchase:list", "finance:purchase:query"});
-        m.put("sale", new String[]{"finance:sale:list", "finance:sale:query"});
-        m.put("investorPayment", new String[]{"finance:investorPayment:list", "finance:investorPayment:query"});
-        m.put("investor", new String[]{"finance:investor:list", "finance:investor:query"});
-        m.put("investRecord", new String[]{"finance:investRecord:list", "finance:investRecord:query"});
-        m.put("deptProfitConfig", new String[]{"finance:deptProfitConfig:list", "finance:deptProfitConfig:query"});
-        m.put("accountingPeriod", new String[]{"finance:accountingPeriod:list", "finance:accountingPeriod:query"});
-        m.put("profitShare", new String[]{"finance:profitShare:list", "finance:profitShare:query"});
-        m.put("costAccounting", new String[]{"finance:costAccounting:list", "finance:costAccounting:query"});
-        m.put("stockCost", new String[]{"finance:report:stock", "finance:stock:list"});
-        m.put("stockAdjustment", new String[]{"finance:stockInit:list"});
-        m.put("verificationRecord", new String[]{"finance:expense:verificationRecord:list"});
-        m.put("userManage", new String[]{"system:user:list", "system:user:query"});
-        m.put("deptManage", new String[]{"system:dept:list", "system:dept:query"});
-        MODULE_VIEW_PERMISSIONS = Collections.unmodifiableMap(m);
-    }
+    // 权威模块字典统一维护在 MpModuleCatalog，避免与 MemMpPermController / mpPerm/index.vue /
+    // 小程序端 modules.js 四处各写一份导致名称/分组/漏项不一致。
+    private static final List<String> ALL_MODULES = MpModuleCatalog.frontendModuleKeys();
 
     @Autowired
     private IMemMpRoleModuleService mpRoleModuleService;
@@ -130,18 +89,27 @@ public class MemMpController extends BaseController {
         if (roleIds.isEmpty()) {
             return Collections.emptyList();
         }
+
+        // 合并两套来源，避免 mem_mp_role_module 漏配（很多历史数据配置不全）导致有权限却看不到：
+        // 1) mem_mp_role_module 明确给当前 (role, dept) 配置过的模块
+        // 2) MpModuleCatalog 中按 view 权限标准能匹配到的模块
+        Set<String> merged = new LinkedHashSet<>();
         List<String> configured = mpRoleModuleService.getAccessibleModules(roleIds, deptId);
-        // 二次过滤：仅保留用户拥有实际 view 权限的模块，
-        // 避免 mem_mp_role_module 配置与标准权限体系不一致导致无权限模块仍可见
-        return configured.stream()
+        if (configured != null) merged.addAll(configured);
+        for (String moduleKey : ALL_MODULES) {
+            if (hasModuleViewPermission(moduleKey)) merged.add(moduleKey);
+        }
+        // 二次过滤：任何模块最终都必须实际拥有 view 权限；
+        // 避免 mem_mp_role_module 配置了模块，但用户在 RBAC 里已经被撤销对应 list/query 权限时仍然漏出。
+        return merged.stream()
                 .filter(this::hasModuleViewPermission)
                 .collect(Collectors.toList());
     }
 
-    /** 检查当前登录用户是否拥有指定模块的查看权限 */
+    /** 检查当前登录用户是否拥有指定模块的查看权限（任一命中即可视为可见） */
     private boolean hasModuleViewPermission(String moduleKey) {
-        String[] requiredPerms = MODULE_VIEW_PERMISSIONS.get(moduleKey);
-        if (requiredPerms == null) {
+        String[] requiredPerms = MpModuleCatalog.viewPermissions(moduleKey);
+        if (requiredPerms == null || requiredPerms.length == 0) {
             return true;
         }
         for (String perm : requiredPerms) {

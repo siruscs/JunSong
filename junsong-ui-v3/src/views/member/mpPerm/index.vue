@@ -172,21 +172,22 @@ import { Delete, Setting } from "@element-plus/icons-vue"
 import RightToolbar from "@/components/RightToolbar/index.vue"
 import { listMpPerm, getMpPermRoles, getMpPermModules, saveMpPerm, deleteMpPerm, deleteMpPermByRole } from "@/api/member/mpPerm"
 
+// 与后端 MpModuleCatalog#definitions() 保持一致；仅在接口无法返回时兜底
 const DEFAULT_MODULES = [
+  // 会员服务
   { key: "member", name: "会员管理", group: "会员服务" },
   { key: "memberPurchase", name: "购买记录", group: "会员服务" },
   { key: "memberPurchaseReturn", name: "退货/退款", group: "会员服务" },
   { key: "memberLevel", name: "等级配置", group: "会员服务" },
   { key: "campaignPolicy", name: "销售政策", group: "会员服务" },
-  { key: "dashboard", name: "会员运营看板", group: "会员服务" },
-  { key: "growth", name: "成长体系", group: "会员服务" },
-  { key: "actions", name: "增长动作", group: "会员服务" },
-  { key: "points", name: "积分运营", group: "会员服务" },
   { key: "pointsGoods", name: "积分商品", group: "会员服务" },
+  { key: "pointsRule", name: "积分规则", group: "会员服务" },
   { key: "pointsRecord", name: "积分记录", group: "会员服务" },
   { key: "pointsExchange", name: "积分兑换", group: "会员服务" },
   { key: "seckill", name: "秒杀活动", group: "会员服务" },
   { key: "seckillRecord", name: "秒杀记录", group: "会员服务" },
+  { key: "configSync", name: "配置同步", group: "会员服务" },
+  // 财务管理
   { key: "expense", name: "费用管理", group: "财务管理" },
   { key: "advance", name: "借支管理", group: "财务管理" },
   { key: "product", name: "商品管理", group: "财务管理" },
@@ -199,16 +200,19 @@ const DEFAULT_MODULES = [
   { key: "deptProfitConfig", name: "店面分润配置", group: "财务管理" },
   { key: "accountingPeriod", name: "核算周期", group: "财务管理" },
   { key: "profitShare", name: "分润结转", group: "财务管理" },
+  { key: "costAccounting", name: "成本核算", group: "财务管理" },
   { key: "stockCost", name: "库存与成本", group: "财务管理" },
+  { key: "stockLedger", name: "库存流水", group: "财务管理" },
   { key: "stockAdjustment", name: "库存调整", group: "财务管理" },
+  { key: "stocktake", name: "库存盘点", group: "财务管理" },
   { key: "verificationRecord", name: "核销记录", group: "财务管理" },
+  // 系统管理
+  { key: "userManage", name: "用户管理", group: "系统管理" },
+  { key: "deptManage", name: "部门管理", group: "系统管理" },
+  // 移动办公
   { key: "wfTodo", name: "待办任务", group: "移动办公" },
   { key: "wfDone", name: "已办任务", group: "移动办公" },
-  { key: "wfNotify", name: "消息通知", group: "移动办公" },
-  { key: "wfStart", name: "发起流程", group: "移动办公" },
-  { key: "wfMonitor", name: "流程监控", group: "移动办公" },
-  { key: "userManage", name: "用户管理", group: "系统管理" },
-  { key: "deptManage", name: "部门管理", group: "系统管理" }
+  { key: "wfNotify", name: "消息通知", group: "移动办公" }
 ]
 
 export default {

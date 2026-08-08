@@ -10,6 +10,7 @@ import com.junsong.common.security.annotation.RequiresPermissions;
 import com.junsong.common.security.utils.SecurityUtils;
 import com.junsong.member.domain.MemMpRoleModule;
 import com.junsong.member.service.IMemMpRoleModuleService;
+import com.junsong.member.util.MpModuleCatalog;
 
 @RestController
 @RequestMapping({"/mpPerm", "/member/mpPerm"})
@@ -18,58 +19,8 @@ public class MemMpPermController extends BaseController {
     @Autowired
     private IMemMpRoleModuleService mpRoleModuleService;
 
-    private static final List<Map<String, String>> MODULE_DEFINITIONS;
-    static {
-        String[][] defs = {
-                {"member", "会员管理", "会员服务"},
-                {"memberPurchase", "购买记录", "会员服务"},
-                {"memberPurchaseReturn", "退货/退款", "会员服务"},
-                {"memberLevel", "等级配置", "会员服务"},
-                {"campaignPolicy", "销售政策", "会员服务"},
-                {"memberPurchasePayment", "会员购买收款", "会员服务"},
-                {"memberPurchaseDelivery", "会员购买领取", "会员服务"},
-                {"configSync", "配置同步", "系统管理"},
-                {"dashboard", "会员运营看板", "会员服务"},
-                {"growth", "成长体系", "会员服务"},
-                {"actions", "增长动作", "会员服务"},
-                {"points", "积分运营", "会员服务"},
-                {"pointsGoods", "积分商品", "会员服务"},
-                {"pointsRecord", "积分记录", "会员服务"},
-                {"pointsExchange", "积分兑换", "会员服务"},
-                {"seckill", "秒杀活动", "会员服务"},
-                {"seckillRecord", "秒杀记录", "会员服务"},
-                {"expense", "费用管理", "财务管理"},
-                {"advance", "借支管理", "财务管理"},
-                {"product", "商品管理", "财务管理"},
-                {"supplier", "供应商管理", "财务管理"},
-                {"purchase", "进货管理", "财务管理"},
-                {"sale", "销售管理", "财务管理"},
-                {"investorPayment", "投资人返款", "财务管理"},
-                {"investor", "投资人管理", "财务管理"},
-                {"investRecord", "投资款记录", "财务管理"},
-                {"deptProfitConfig", "店面分润配置", "财务管理"},
-                {"accountingPeriod", "核算周期", "财务管理"},
-                {"profitShare", "分润结转", "财务管理"},
-                {"costAccounting", "成本核算", "财务管理"},
-                {"stockCost", "库存与成本", "财务管理"},
-                {"stockAdjustment", "库存调整", "财务管理"},
-                {"verificationRecord", "核销记录", "财务管理"},
-                {"wfTodo", "待办任务", "移动办公"},
-                {"wfDone", "已办任务", "移动办公"},
-                {"wfNotify", "消息通知", "移动办公"},
-                {"wfStart", "发起流程", "移动办公"},
-                {"wfMonitor", "流程监控", "移动办公"}
-        };
-        List<Map<String, String>> list = new ArrayList<>();
-        for (String[] arr : defs) {
-            Map<String, String> m = new LinkedHashMap<>();
-            m.put("key", arr[0]);
-            m.put("name", arr[1]);
-            m.put("group", arr[2]);
-            list.add(m);
-        }
-        MODULE_DEFINITIONS = list;
-    }
+    // 模块权威字典由 MpModuleCatalog 统一维护（与 MemMpController / mpPerm/index.vue 共用），
+    // 避免三处各写一份导致名称/分组/漏项不一致。
 
     @RequiresPermissions("member:mpPerm:list")
     @GetMapping("/list")
@@ -91,7 +42,7 @@ public class MemMpPermController extends BaseController {
     @RequiresPermissions("member:mpPerm:list")
     @GetMapping("/modules")
     public AjaxResult modules() {
-        return AjaxResult.success(MODULE_DEFINITIONS);
+        return AjaxResult.success(MpModuleCatalog.definitions());
     }
 
     @RequiresPermissions("member:mpPerm:add")

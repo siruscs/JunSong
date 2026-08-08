@@ -59,11 +59,17 @@
         <view class="section-title">同步预检结果（{{ details.length }}项）</view>
         <view class="detail-row" v-for="item in details" :key="item.detailId">
           <view class="detail-main"><text>{{ deptName(item.targetDeptId) }}</text><text class="detail-message">{{ operationLabel(item.operation) }}</text></view>
+          <view v-if="item.operation === 'PRODUCT_MISSING' && item.diffSnapshot" class="product-missing-hint">
+            <text>{{ item.diffSnapshot.reason || item.diffSnapshot.productName ? '目标机构缺少「' + item.diffSnapshot.productName + '」商品，将同时同步该商品' : '' }}</text>
+          </view>
           <view v-if="item.sourceSnapshot?.packages?.length" class="package-preview">
             <text v-for="pkg in item.sourceSnapshot.packages" :key="`${item.detailId}-${pkg.sortNo || pkg.packageName}`">买{{ quantity(pkg.purchaseQuantity) }}送{{ quantity(pkg.giftQuantity) }} · {{ money(pkg.packagePrice) }}</text>
           </view>
           <picker v-if="item.operation === 'DIFF'" :range="decisionOptions" :value="decisionIndex(item)" @change="changeDecision(item, $event.detail.value)">
             <view class="decision-picker">{{ decisionLabel(item.decision) }} ›</view>
+          </picker>
+          <picker v-else-if="item.operation === 'PRODUCT_MISSING'" :range="['同步商品并创建政策', '跳过']" :value="item.decision === 'SKIP' ? 1 : 0" @change="changeProductMissingDecision(item, $event.detail.value)">
+            <view class="decision-picker">{{ item.decision === 'SKIP' ? '跳过' : '同步商品并创建政策' }} ›</view>
           </picker>
           <text v-else class="decision-text">{{ decisionLabel(item.decision) }}</text>
         </view>
@@ -109,7 +115,7 @@ const sourceLabel = computed(() => sourceRows.value[sourceIndex.value]?.[activeT
 
 function unwrap(response) { return response?.rows || response?.data?.rows || response?.data || [] }
 function deptName(id) { return targetDepts.value.find((dept) => String(dept.id) === String(id))?.name || String(id) }
-function operationLabel(operation) { return ({ CREATE: '目标机构无此配置，将新增', DIFF: '目标机构已有差异配置', NOOP: '配置相同，无需处理', CONFLICT: '编码冲突，无法新增', IMPACT_BLOCKED: '存在会员引用，已阻止覆盖' })[operation] || '需要人工处理' }
+function operationLabel(operation) { return ({ CREATE: '目标机构无此配置，将新增', DIFF: '目标机构已有差异配置', NOOP: '配置相同，无需处理', CONFLICT: '编码冲突，无法新增', IMPACT_BLOCKED: '存在会员引用，已阻止覆盖', PRODUCT_MISSING: '目标机构缺少商品，将同时同步' })[operation] || '需要人工处理' }
 function decisionLabel(value) { return ({ CREATE: '自动新增', OVERWRITE: '覆盖', SKIP: '跳过' })[value] || '跳过' }
 function quantity(value) { return Number(value || 0).toFixed(3).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1') }
 function money(value) { return `¥${Number(value || 0).toFixed(2)}` }
@@ -127,8 +133,9 @@ function clearAllDepts() { selectedDeptIds.value = []; resetPreview() }
 async function loadPeriods(deptId) { const response = await request({ url: '/finance/accountingPeriod/list', method: 'GET', data: { pageNum: 1, pageSize: 200, deptId }, silent: true }); periods[deptId] = unwrap(response).filter((period) => String(period.deptId) === String(deptId)) }
 function changePeriod(deptId, index) { targetPeriodIds[deptId] = periods[deptId]?.[Number(index)]?.periodId; resetPreview() }
 function resetPreview() { details.value = []; batch.value = null }
-async function preview() { const hasSource = activeType.value?.key === 'LEVEL' ? sourceRows.value.length > 0 : !!sourceRecordId.value; if (!hasSource || !selectedDeptIds.value.length) return uni.showToast({ title: activeType.value?.key === 'LEVEL' ? '请加载会员等级并选择目标机构' : '请选择源配置和目标机构', icon: 'none' }); if (activeType.value.key === 'CAMPAIGN_POLICY' && selectedDeptIds.value.some((id) => !targetPeriodIds[id])) return uni.showToast({ title: '请选择每个目标机构的核算周期', icon: 'none' }); loading.value = true; try { const response = await request({ url: '/member/config-sync/preview', method: 'POST', data: { syncType: activeType.value.key, sourceRecordId: activeType.value?.key === 'LEVEL' ? null : sourceRecordId.value, targetDeptIds: selectedDeptIds.value, targetPeriodIds: activeType.value.key === 'CAMPAIGN_POLICY' ? targetPeriodIds : undefined, idempotencyKey: `${activeType.value.key}-${Date.now()}` } }); const data = response?.data || response; batch.value = data.batch; details.value = (data.details || []).map((item) => ({ ...item, decision: item.operation === 'CREATE' ? 'CREATE' : item.operation === 'DIFF' ? 'OVERWRITE' : 'SKIP' })) } catch (error) { uni.showToast({ title: error?.msg || '预检失败', icon: 'none' }) } finally { loading.value = false } }
+async function preview() { const hasSource = activeType.value?.key === 'LEVEL' ? sourceRows.value.length > 0 : !!sourceRecordId.value; if (!hasSource || !selectedDeptIds.value.length) return uni.showToast({ title: activeType.value?.key === 'LEVEL' ? '请加载会员等级并选择目标机构' : '请选择源配置和目标机构', icon: 'none' }); if (activeType.value.key === 'CAMPAIGN_POLICY' && selectedDeptIds.value.some((id) => !targetPeriodIds[id])) return uni.showToast({ title: '请选择每个目标机构的核算周期', icon: 'none' }); loading.value = true; try { const response = await request({ url: '/member/config-sync/preview', method: 'POST', data: { syncType: activeType.value.key, sourceRecordId: activeType.value?.key === 'LEVEL' ? null : sourceRecordId.value, targetDeptIds: selectedDeptIds.value, targetPeriodIds: activeType.value.key === 'CAMPAIGN_POLICY' ? targetPeriodIds : undefined, idempotencyKey: `${activeType.value.key}-${Date.now()}` } }); const data = response?.data || response; batch.value = data.batch; details.value = (data.details || []).map((item) => { let parsedDiff = item.diffSnapshot; if (typeof parsedDiff === 'string') { try { parsedDiff = JSON.parse(parsedDiff) } catch (_) { parsedDiff = null } } return { ...item, diffSnapshot: parsedDiff, decision: item.operation === 'CREATE' || item.operation === 'PRODUCT_MISSING' ? 'CREATE' : item.operation === 'DIFF' ? 'OVERWRITE' : 'SKIP' } }) } catch (error) { uni.showToast({ title: error?.msg || '预检失败', icon: 'none' }) } finally { loading.value = false } }
 function changeDecision(item, event) { item.decision = decisionValues[Number(event.detail.value)] || 'SKIP' }
+function changeProductMissingDecision(item, event) { item.decision = Number(event.detail.value) === 1 ? 'SKIP' : 'CREATE' }
 async function execute() { if (!batch.value) return; if (details.value.some((item) => item.operation === 'IMPACT_BLOCKED')) return uni.showToast({ title: '存在影响会员的等级配置，不能直接覆盖，请先处理', icon: 'none' }); loading.value = true; try { await request({ url: '/member/config-sync/execute', method: 'POST', data: { batchId: batch.value.batchId, previewVersion: batch.value.previewVersion, decisions: details.value.map((item) => ({ detailId: item.detailId, decision: item.decision })) } }); uni.showToast({ title: '配置同步完成', icon: 'success' }); resetPreview() } catch (error) { uni.showToast({ title: error?.msg || '同步失败，可以重试', icon: 'none' }) } finally { loading.value = false } }
 onLoad((options = {}) => { requestedType.value = options.type || ''; requestedSourceRecordId.value = options.sourceRecordId || '' })
 onMounted(async () => { if (!requireModulePermission('configSync')) return; const index = availableTypes.value.findIndex((item) => item.key === requestedType.value); if (index >= 0) typeIndex.value = index; await loadSources() })
@@ -175,6 +182,7 @@ onMounted(async () => { if (!requireModulePermission('configSync')) return; cons
 .package-preview{display:flex;flex-wrap:wrap;gap:8rpx;margin-top:12rpx}
 .package-preview text{padding:6rpx 10rpx;border-radius:8rpx;background:#f1f6ff;color:#2866bd;font-size:21rpx}
 .decision-picker,.decision-text{margin-top:12rpx;color:#087cf0;font-size:24rpx;text-align:right}
+.product-missing-hint{margin-top:12rpx;padding:16rpx 20rpx;border-radius:12rpx;background:linear-gradient(135deg,#FFF7ED,#FFFBF5);border:1rpx solid #FED7AA;color:#92400E;font-size:23rpx;line-height:32rpx}
 
 /* ── 空状态 ── */
 .empty{margin:40rpx 30rpx;padding:30rpx;color:#64748b;text-align:center;font-size:25rpx;line-height:38rpx}

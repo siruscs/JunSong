@@ -1956,6 +1956,9 @@ export default {
 
 .sale-status-badge {
   font-weight: 500;
+  font-size: 24rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
 }
 .sale-status-badge.sale-status-status-ok {
   background: #D1FAE5;

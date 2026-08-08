@@ -43,7 +43,7 @@
         </view>
         <view class="dept-list">
           <label class="dept-option" v-for="dept in targetDepts" :key="dept.id">
-            <checkbox :value="String(dept.id)" :checked="selectedDeptIds.includes(dept.id)" @tap="toggleDept(dept.id)" />
+            <checkbox :value="String(dept.id)" :checked="selectedDeptIds.includes(String(dept.id))" @tap="toggleDept(String(dept.id))" />
             <text>{{ dept.name }}</text>
           </label>
         </view>
@@ -118,7 +118,7 @@ function periodIndex(deptId) { return Math.max(0, (periods[deptId] || []).findIn
 function periodLabel(period) { return `${period.periodNo || `周期${period.periodId}`}（${formatDateTime(period.startTime)} 至 ${period.endTime ? formatDateTime(period.endTime) : '当前'}）` }
 function periodOptions(deptId) { return (periods[deptId] || []).map((period) => ({ ...period, label: periodLabel(period) })) }
 function selectedPeriodLabel(deptId) { const item = (periods[deptId] || []).find((row) => String(row.periodId) === String(targetPeriodIds[deptId])); return item ? periodLabel(item) : '请选择核算周期' }
-async function loadSources() { if (!activeType.value) return; loading.value = true; try { const params = { pageNum: 1, pageSize: 200, deptId: currentDeptId }; if (activeType.value.key === 'CAMPAIGN_POLICY') params.status = '1'; sourceRows.value = unwrap(await request({ url: activeType.value.url, method: 'GET', data: params, silent: true })); const targetIndex = sourceRows.value.findIndex((row) => String(row[activeType.value.idKey]) === String(requestedSourceRecordId.value)); sourceIndex.value = targetIndex >= 0 ? targetIndex : 0; if (activeType.value.key === 'LEVEL') { selectedDeptIds.value = targetDepts.value.map((d) => String(d.id)) } } finally { loading.value = false } }
+async function loadSources() { if (!activeType.value) return; loading.value = true; try { const params = { pageNum: 1, pageSize: 200, deptId: currentDeptId }; if (activeType.value.key === 'CAMPAIGN_POLICY') params.status = '1'; sourceRows.value = unwrap(await request({ url: activeType.value.url, method: 'GET', data: params, silent: true })); const targetIndex = sourceRows.value.findIndex((row) => String(row[activeType.value.idKey]) === String(requestedSourceRecordId.value)); sourceIndex.value = targetIndex >= 0 ? targetIndex : 0 } finally { loading.value = false } }
 async function changeType(event) { typeIndex.value = Number(event.detail.value); sourceIndex.value = 0; sourceRows.value = []; resetPreview(); await loadSources() }
 function changeSource(event) { sourceIndex.value = Number(event.detail.value); resetPreview() }
 function toggleDept(id) { const next = selectedDeptIds.value.includes(id) ? selectedDeptIds.value.filter((item) => item !== id) : [...selectedDeptIds.value, id]; selectedDeptIds.value = next; if (activeType.value.key === 'CAMPAIGN_POLICY') next.filter((deptId) => !periods[deptId]).forEach(loadPeriods); resetPreview() }

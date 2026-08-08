@@ -1083,7 +1083,10 @@ export default {
         if (res.contextMeta?.staleContext) return
         const modules = res.data || res || []
         const moduleList = Array.isArray(modules) ? modules : []
-        this.modules = moduleList.length || !this.adminUser ? moduleList : ['member', 'seckillRecord', 'expense', 'userManage']
+        // 小程序模块权限只以后端 /member/mp/modules 下发为准，
+        // 即使是系统管理员也不再本地 bypass，
+        // 保证 PC 端“小程序权限”清空后小程序端真实看不到对应模块。
+        this.modules = moduleList
         uni.setStorageSync('modules', this.modules)
       } catch (e) {
         this.logRequestFailure('modules refresh failed', e)
@@ -1109,10 +1112,8 @@ export default {
           currentDeptId: res.currentDeptId ?? user.currentDeptId ?? user.deptId ?? this.currentDeptId
         })
         this.applyWorkContext(workContext.snapshot())
-        if (this.adminUser && (!this.modules || this.modules.length === 0)) {
-          this.modules = ['member', 'seckillRecord', 'expense', 'userManage']
-          uni.setStorageSync('modules', this.modules)
-        }
+        // 注意：即使是系统管理员，这里也不再用硬编码 ['member','seckillRecord','expense','userManage'] 做本地 bypass
+        // 小程序模块列表完全以后端下发的 modules 为准，保持与 PC 端“小程序权限”配置一致。
         if (this.adminUser) {
           await this.loadAllDepts()
         }

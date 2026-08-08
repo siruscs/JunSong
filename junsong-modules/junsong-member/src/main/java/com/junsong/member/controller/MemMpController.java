@@ -87,22 +87,21 @@ public class MemMpController extends BaseController {
             return Collections.emptyList();
         }
 
-        // 小程序模块权限只认 PC 端“小程序权限”配置（mem_mp_role_module 表），
-        // 系统管理员（SecurityUtils.isAdmin）不再拥有默认 bypass，
-        // 确保在 PC 端清空某角色的小程序权限后，小程序端会真实收敛为空列表。
-        // 同时保留两条防线合并：
-        // 1) mem_mp_role_module 明确给当前 (role, dept) 配置过的模块
-        // 2) MpModuleCatalog 中按 view 权限标准能匹配到的模块（兜底漏配场景）
-        Set<String> merged = new LinkedHashSet<>();
+        // 小程序模块权限以 PC 端“小程序权限”配置（mem_mp_role_module 表）为**唯一权威来源**，
+        // 禁止再按标准 RBAC 业务权限（finance:expense:list 等）做“viewPermissions 兜底合并”，
+        // 否则即使用户在 PC 端把某角色的所有小程序模块权限全部清空，
+        // 只要系统管理员/记账员/店长仍持有对应业务权限，模块入口还是会被重新加回来。
+        // 约定：
+        //  1) 只读取 mem_mp_role_module 中显式给 (roleIds, deptId) 配置的 moduleKeys
+        //  2) 二次过滤保留（hasModuleViewPermission）：若某模块在 RBAC 里已被撤销对应
+        //     list/query 权限，仍阻止入口展示（这不会让权限变大，仅做 fail-safe）
         List<String> configured = mpRoleModuleService.getAccessibleModules(roleIds, deptId);
-        if (configured != null) merged.addAll(configured);
-        for (String moduleKey : ALL_MODULES) {
-            if (hasModuleViewPermission(moduleKey)) merged.add(moduleKey);
+        if (configured == null || configured.isEmpty()) {
+            return Collections.emptyList();
         }
-        // 二次过滤：任何模块最终都必须实际拥有 view 权限；
-        // 避免 mem_mp_role_module 配置了模块，但用户在 RBAC 里已经被撤销对应 list/query 权限时仍然漏出。
-        return merged.stream()
+        return configured.stream()
                 .filter(this::hasModuleViewPermission)
+                .distinct()
                 .collect(Collectors.toList());
     }
 

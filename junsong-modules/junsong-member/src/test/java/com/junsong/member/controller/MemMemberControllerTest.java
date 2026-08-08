@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * 会员 Controller 层 PII 脱敏验收测试
  *
  * 验收场景：
- * 1. 无 PII 权限时，列表、详情、按编号查询的手机号/身份证/地址必须脱敏
+ * 1. 无 PII 权限时，列表、导出、按编号查询的手机号/身份证/地址必须脱敏；详情接口手机号不脱敏（前端需拨打）
  * 2. 有 PII 权限时，数据保持明文
  * 3. 短字段（手机号≤7位、身份证≤10位、地址≤6字符）必须返回 "***" 而非原文
  * 4. 导出时，无 piiExport 权限的数据必须脱敏
@@ -39,7 +39,8 @@ class MemMemberControllerTest
 
         MemMemberController.prepareMemberForResponse(member, false);
 
-        assertEquals("138****1234", member.getPhone());
+        // 详情接口手机号不脱敏（前端需拨打），仅身份证和地址脱敏
+        assertEquals("13812341234", member.getPhone());
         assertEquals("110101****5678", member.getIdCard());
         assertEquals("北京市朝阳区***", member.getAddress());
     }

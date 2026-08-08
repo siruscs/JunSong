@@ -61,8 +61,10 @@ public class MemMemberController extends BaseController {
     }
 
     static MemMember prepareMemberForResponse(MemMember member, boolean canViewPlaintextPii) {
-        if (!canViewPlaintextPii) {
-            maskMemberPii(member);
+        if (!canViewPlaintextPii && member != null) {
+            // 详情接口手机号不脱敏（前端需拨打），仅脱敏身份证和地址
+            member.setAddress(maskAddress(member.getAddress()));
+            member.setIdCard(maskIdCard(member.getIdCard()));
         }
         return member;
     }

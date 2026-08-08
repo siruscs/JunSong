@@ -510,7 +510,13 @@ public class SysUserController extends BaseController
         loginUser.setDeptId(deptId);
         user.setDeptId(deptId);
         tokenService.refreshToken(loginUser);
-        
+
+        // 持久化到 sys_user.dept_id，确保下次登录使用上次选择的店面
+        SysUser update = new SysUser();
+        update.setUserId(user.getUserId());
+        update.setDeptId(deptId);
+        userService.updateUserProfile(update);
+
         return success("切换成功");
     }
 

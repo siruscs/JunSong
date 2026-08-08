@@ -125,7 +125,8 @@
 
     <select id="selectPurchaseById" resultMap="PurchaseDetailResult">
         <include refid="purchaseColumns"/>
-        where purchase_id = #{purchaseId} and tenant_id = #{tenantId} and dept_id = #{deptId} and del_flag = '0'
+        where purchase_id = #{purchaseId} and tenant_id = #{tenantId} and del_flag = '0'
+        <if test="deptId != null">and dept_id = #{deptId}</if>
     </select>
 
     <select id="selectPurchaseForUpdate" resultMap="PurchaseResult">

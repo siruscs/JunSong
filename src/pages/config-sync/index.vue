@@ -110,8 +110,11 @@ const currentDeptName = snapshot.currentDept?.name || snapshot.currentDept?.dept
 const targetDepts = computed(() => (snapshot.depts || []).filter((dept) => String(dept.id) !== String(currentDeptId)))
 const availableTypes = computed(() => allTypes.filter((item) => hasExactPermission(item.permission)))
 const activeType = computed(() => availableTypes.value[typeIndex.value] || availableTypes.value[0])
-const sourceRecordId = computed(() => sourceRows.value[sourceIndex.value]?.[activeType.value?.idKey])
-const sourceLabel = computed(() => sourceRows.value[sourceIndex.value]?.[activeType.value?.labelKey] || '')
+function toSnake(camelKey) { return String(camelKey || '').replace(/[A-Z]/g, (m, i) => (i ? '_' : '') + m.toLowerCase()) }
+function normalizeKeys(row, camelKeys) { if (!row || typeof row !== 'object') return row; (camelKeys || []).forEach((camelKey) => { if ((row[camelKey] == null || row[camelKey] === '')) { const snake = toSnake(camelKey); if (snake !== camelKey && row[snake] != null && row[snake] !== '') row[camelKey] = row[snake] } }); return row }
+function pick(row, camelKey) { if (row == null) return undefined; if (row[camelKey] != null && row[camelKey] !== '') return row[camelKey]; const snake = toSnake(camelKey); if (snake !== camelKey && row[snake] != null && row[snake] !== '') return row[snake]; return row[camelKey] }
+const sourceRecordId = computed(() => pick(sourceRows.value[sourceIndex.value], activeType.value?.idKey))
+const sourceLabel = computed(() => pick(sourceRows.value[sourceIndex.value], activeType.value?.labelKey) || '')
 
 function unwrap(response) { return response?.rows || response?.data?.rows || response?.data || [] }
 function deptName(id) { return targetDepts.value.find((dept) => String(dept.id) === String(id))?.name || String(id) }
@@ -124,7 +127,7 @@ function periodIndex(deptId) { return Math.max(0, (periods[deptId] || []).findIn
 function periodLabel(period) { return `${period.periodNo || `周期${period.periodId}`}（${formatDateTime(period.startTime)} 至 ${period.endTime ? formatDateTime(period.endTime) : '当前'}）` }
 function periodOptions(deptId) { return (periods[deptId] || []).map((period) => ({ ...period, label: periodLabel(period) })) }
 function selectedPeriodLabel(deptId) { const item = (periods[deptId] || []).find((row) => String(row.periodId) === String(targetPeriodIds[deptId])); return item ? periodLabel(item) : '请选择核算周期' }
-async function loadSources() { if (!activeType.value) return; loading.value = true; try { const params = { pageNum: 1, pageSize: 200, deptId: currentDeptId }; if (activeType.value.key === 'CAMPAIGN_POLICY') params.status = '1'; sourceRows.value = unwrap(await request({ url: activeType.value.url, method: 'GET', data: params, silent: true })); const targetIndex = sourceRows.value.findIndex((row) => String(row[activeType.value.idKey]) === String(requestedSourceRecordId.value)); sourceIndex.value = targetIndex >= 0 ? targetIndex : 0 } finally { loading.value = false } }
+async function loadSources() { if (!activeType.value) return; loading.value = true; try { const params = { pageNum: 1, pageSize: 200, deptId: currentDeptId }; if (activeType.value.key === 'CAMPAIGN_POLICY') params.status = '1'; const rows = unwrap(await request({ url: activeType.value.url, method: 'GET', data: params, silent: true })); sourceRows.value = rows.map((row) => normalizeKeys({ ...row }, [activeType.value.idKey, activeType.value.labelKey, 'productCode', 'productName', 'policyNo', 'policyId', 'policyName', 'supplierId', 'supplierName', 'productId'])); const targetId = String(requestedSourceRecordId.value); const targetIndex = sourceRows.value.findIndex((row) => String(pick(row, activeType.value.idKey)) === targetId); sourceIndex.value = targetIndex >= 0 ? targetIndex : 0 } finally { loading.value = false } }
 async function changeType(event) { typeIndex.value = Number(event.detail.value); sourceIndex.value = 0; sourceRows.value = []; resetPreview(); await loadSources() }
 function changeSource(event) { sourceIndex.value = Number(event.detail.value); resetPreview() }
 function toggleDept(id) { const next = selectedDeptIds.value.includes(id) ? selectedDeptIds.value.filter((item) => item !== id) : [...selectedDeptIds.value, id]; selectedDeptIds.value = next; if (activeType.value.key === 'CAMPAIGN_POLICY') next.filter((deptId) => !periods[deptId]).forEach(loadPeriods); resetPreview() }

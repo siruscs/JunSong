@@ -685,25 +685,26 @@ export default {
     showMemberSection() {
       return hasModulePermission('member', this.modules)
     },
-    // 是否展示成长体系分组（需要 member 模块权限 + overview 数据）
+    // 是否展示成长体系分组（同时满足：① modules 有 growth 权限 ② overviewGrowth 有数据）
+    // — 不再被 member 模块权限间接旁路；严格按 PC 端小程序权限配置的 growth key。
     showGrowthSection() {
-      return this.showMemberSection && this.overviewGrowth
+      return hasModulePermission('growth', this.modules) && this.overviewGrowth
     },
-    // 是否展示增长动作分组（需要 member 模块权限 + overview 数据）
+    // 是否展示增长动作分组（需要 modules 含 actions + overviewGrowthActions 数据）
     showGrowthActionsSection() {
-      return this.showMemberSection && this.overviewGrowthActions
+      return hasModulePermission('actions', this.modules) && this.overviewGrowthActions
     },
-    // 是否展示积分运营分组（需要 pointsRecord 或 pointsExchange 权限）
+    // 是否展示积分运营分组（需要 modules 含 points + overviewPoints 数据）
     showPointsSection() {
-      return (hasModulePermission('pointsRecord', this.modules) || hasModulePermission('pointsExchange', this.modules)) && this.overviewPoints
+      return hasModulePermission('points', this.modules) && this.overviewPoints
     },
-    // 是否展示分层洞察分组（需要 member 模块权限 + 分层数据）
+    // 是否展示分层洞察分组（会员运营看板 dashboard 模块 + 数据）
     showSegmentSection() {
-      return this.showMemberSection && this.overviewSegmentDistribution.length > 0
+      return hasModulePermission('dashboard', this.modules) && this.overviewSegmentDistribution.length > 0
     },
-    // 是否展示等级分布（需要 member 模块权限 + 等级数据）
+    // 是否展示等级分布（会员运营看板 dashboard 模块 + 数据）
     showLevelDistribution() {
-      return this.showMemberSection && this.overviewLevelDistribution.length > 0
+      return hasModulePermission('dashboard', this.modules) && this.overviewLevelDistribution.length > 0
     }
   },
   async onShow() {

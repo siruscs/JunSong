@@ -269,18 +269,28 @@ export default {
     totalAuthorized() {
       return this.authorizedGroups.reduce((total, group) => total + group.items.length, 0)
     },
-    // 会员运营快捷入口分组（R1-R25 同步）
+    // 会员运营快捷入口分组（严格以 modules 里每个子模块的独立 key 为唯一来源，
+    // 禁止被 member 模块、积分记录/兑换权限间接旁路，保证 PC 端小程序权限清空后真实消失）
     showMemberGrowthSection() {
-      return hasModulePermission('member', this.modules)
+      return (
+        hasModulePermission('dashboard', this.modules) ||
+        hasModulePermission('growth', this.modules) ||
+        hasModulePermission('actions', this.modules) ||
+        hasModulePermission('points', this.modules)
+      )
     },
     memberGrowthEntries() {
-      const entries = [
-        { key: 'dashboard', title: '会员运营看板', desc: '会员增长与分层洞察', bg: 'rgba(8, 124, 240,0.08)', color: '#087CF0', letter: '📊' },
-        { key: 'growth', title: '成长体系', desc: '等级、成长值与签到', bg: 'rgba(139,92,246,0.08)', color: '#8B5CF6', letter: '🌟' },
-        { key: 'actions', title: '增长动作', desc: '待执行与已完成动作', bg: 'rgba(14,165,233,0.08)', color: '#0EA5E9', letter: '🎯' }
-      ]
-      // 有积分记录或积分兑换权限时加入积分运营入口
-      if (hasModulePermission('pointsRecord', this.modules) || hasModulePermission('pointsExchange', this.modules)) {
+      const entries = []
+      if (hasModulePermission('dashboard', this.modules)) {
+        entries.push({ key: 'dashboard', title: '会员运营看板', desc: '会员增长与分层洞察', bg: 'rgba(8, 124, 240,0.08)', color: '#087CF0', letter: '📊' })
+      }
+      if (hasModulePermission('growth', this.modules)) {
+        entries.push({ key: 'growth', title: '成长体系', desc: '等级、成长值与签到', bg: 'rgba(139,92,246,0.08)', color: '#8B5CF6', letter: '🌟' })
+      }
+      if (hasModulePermission('actions', this.modules)) {
+        entries.push({ key: 'actions', title: '增长动作', desc: '待执行与已完成动作', bg: 'rgba(14,165,233,0.08)', color: '#0EA5E9', letter: '🎯' })
+      }
+      if (hasModulePermission('points', this.modules)) {
         entries.push({ key: 'points', title: '积分运营', desc: '积分流水与待领取兑换', bg: 'rgba(245,158,11,0.08)', color: '#F59E0B', letter: '🎯' })
       }
       return entries

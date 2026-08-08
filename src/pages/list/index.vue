@@ -1955,7 +1955,7 @@ export default {
 }
 
 .sale-status-badge {
-  font-weight: 600;
+  font-weight: 500;
 }
 .sale-status-badge.sale-status-status-ok {
   background: #D1FAE5;
@@ -1966,8 +1966,8 @@ export default {
   color: #92400E;
 }
 .sale-status-badge.sale-status-status-info {
-  background: #DBEAFE;
-  color: #1E40AF;
+  background: #E0F2FE;
+  color: #075985;
 }
 
 .advance-amount {

@@ -194,7 +194,8 @@ export default {
 .bottom-bar .add-button::after{border:none}
 
 /* ── 滚动列表区 ── */
-.scroll{flex:1;width:100%;min-height:0;padding:8rpx 30rpx 160rpx!important;box-sizing:border-box;overflow-x:hidden}
+.scroll{flex:1;width:100%;min-height:0;padding:0 30rpx 160rpx!important;box-sizing:border-box;overflow-x:hidden}
+.scroll>.section-card:first-child,.scroll>.list-card:first-child,.scroll>view:first-child>.section-card:first-child,.scroll>view:first-child>.list-card:first-child{margin-top:0!important}
 .list-card{margin-top:16rpx!important;padding:20rpx 28rpx!important}
 .state-card{padding:28rpx 28rpx!important}
 

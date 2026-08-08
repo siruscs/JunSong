@@ -248,6 +248,7 @@ export default {
         uni.showToast({ title: '保存成功', icon: 'success' })
         this.mode = 'view'
         await this.loadDetail()
+        uni.$emit('memberPurchase:updated', [this.detail.purchaseId])
       } catch (e) {}
     },
     async complete() {
@@ -258,8 +259,10 @@ export default {
       }))
       if (!ok) return
       try {
+        const purchaseId = this.detail.purchaseId
         await request({ url: `/member/purchase-return/${this.detail.returnId}/complete`, method: 'PUT', data: { refundAmount: this.detail.refundAmount } })
         uni.showToast({ title: '退货单已完成', icon: 'success' })
+        uni.$emit('memberPurchase:updated', [purchaseId])
         setTimeout(() => uni.navigateBack(), 300)
       } catch (e) {}
     }

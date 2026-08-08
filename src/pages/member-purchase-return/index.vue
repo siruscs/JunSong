@@ -258,10 +258,12 @@ export default {
       if (!this.form.purchaseId || !this.form.returnPeriodId || !items.length) {
         return uni.showToast({ title: '请选择原购买单、办理周期并填写退货数量', icon: 'none' })
       }
+      const affectedPurchaseId = this.form.purchaseId
       await createMemberPurchaseReturn({ ...this.form, items, idempotencyKey: `mp-return-${Date.now()}` })
       uni.showToast({ title: '退货单已保存', icon: 'success' })
       this.closePanel()
       this.load()
+      uni.$emit('memberPurchase:updated', [affectedPurchaseId])
     }
   }
 }

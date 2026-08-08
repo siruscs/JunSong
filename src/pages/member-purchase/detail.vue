@@ -351,6 +351,7 @@ export default {
       uni.showToast({ title: '购买单已保存', icon: 'success' })
       this.panel = ''
       await this.loadDetail()
+      uni.$emit('memberPurchase:updated', [this.detail.purchaseId])
     },
 
     openPayment() { this.paymentForm = { paymentAmount: this.money(this.detail.receivableAmount) }; this.paymentIndex = 0; this.panel = 'payment' },
@@ -361,6 +362,7 @@ export default {
       uni.showToast({ title: '收款成功', icon: 'success' })
       this.panel = ''
       await this.loadDetail()
+      uni.$emit('memberPurchase:updated', [this.detail.purchaseId])
     },
 
     async openDelivery() {
@@ -391,6 +393,7 @@ export default {
       uni.showToast({ title: '领取成功', icon: 'success' })
       this.panel = ''
       await this.loadDetail()
+      uni.$emit('memberPurchase:updated', [this.detail.purchaseId])
     },
 
     openBind() { this.bindForm = { memberId: '' }; this.panel = 'bind' },
@@ -402,6 +405,7 @@ export default {
       uni.showToast({ title: '绑定成功', icon: 'success' })
       this.panel = ''
       await this.loadDetail()
+      uni.$emit('memberPurchase:updated', [this.detail.purchaseId])
     },
 
     async cancelPurchase() {
@@ -409,6 +413,7 @@ export default {
       if (!ok) return
       await request({ url: `/member/purchase/${this.detail.purchaseId}/cancel`, method: 'PUT' })
       uni.showToast({ title: '购买单已作废', icon: 'success' })
+      uni.$emit('memberPurchase:updated', [this.detail.purchaseId])
       setTimeout(() => uni.navigateBack(), 300)
     },
     openReturnDetail(r) {

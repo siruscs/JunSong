@@ -142,10 +142,10 @@
           <el-date-picker v-model="form.saleDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width: 100%;" />
         </el-form-item>
         <el-form-item label="销售金额" prop="saleAmount">
-          <el-input-number v-model="form.saleAmount" :precision="2" :step="0.01" placeholder="0.00" style="width: 100%;" @change="calculateUnitPrice" />
+          <el-input-number v-model="form.saleAmount" :precision="2" :step="0.01" placeholder="0.00（负数值表示退单）" style="width: 100%;" @change="calculateUnitPrice" />
         </el-form-item>
         <el-form-item label="销售数量" prop="saleQuantity">
-          <el-input-number v-model="form.saleQuantity" :min="0.001" :step="0.001" :precision="3" placeholder="0.000" style="width: 100%;" @change="calculateUnitPrice" />
+          <el-input-number v-model="form.saleQuantity" :step="0.001" :precision="3" placeholder="0.000（负数值表示退单）" style="width: 100%;" @change="calculateUnitPrice" />
         </el-form-item>
         <el-form-item label="赠品数量" prop="giftQuantity">
           <el-input-number v-model="form.giftQuantity" :min="0" :step="0.001" :precision="3" placeholder="0.000" style="width: 100%;" />

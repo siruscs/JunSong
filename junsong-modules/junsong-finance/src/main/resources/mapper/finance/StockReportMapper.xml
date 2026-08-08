@@ -260,6 +260,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             change_quantity AS changeQuantity,
             before_quantity AS beforeQuantity,
             after_quantity AS afterQuantity,
+            unit_cost AS unitCost,
             reference_type AS referenceType,
             reference_id AS referenceId,
             reference_no AS referenceNo,

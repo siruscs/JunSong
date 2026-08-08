@@ -27,6 +27,9 @@ public class StockLedgerRowVO {
     /** 变动后数量 */
     private java.math.BigDecimal afterQuantity;
 
+    /** 单位成本（计价） */
+    private java.math.BigDecimal unitCost;
+
     /** 关联单据类型 */
     private String referenceType;
 
@@ -115,6 +118,14 @@ public class StockLedgerRowVO {
 
     public void setAfterQuantity(java.math.BigDecimal afterQuantity) {
         this.afterQuantity = afterQuantity;
+    }
+
+    public java.math.BigDecimal getUnitCost() {
+        return unitCost;
+    }
+
+    public void setUnitCost(java.math.BigDecimal unitCost) {
+        this.unitCost = unitCost;
     }
 
     public String getReferenceType() {

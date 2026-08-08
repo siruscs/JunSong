@@ -73,6 +73,36 @@
         </view>
       </view>
 
+      <!-- 账号锁定状态 -->
+      <view class="section-card" v-if="lockStatus">
+        <view class="section-title">账号安全状态</view>
+        <view class="field-row">
+          <text class="field-label">密码错误次数</text>
+          <text class="field-value">{{ lockStatus.errorCount || 0 }} / {{ lockStatus.maxRetryCount || 5 }}</text>
+        </view>
+        <view class="field-row">
+          <text class="field-label">账号锁定</text>
+          <view class="status-pill" :class="lockStatus.locked ? 'status-disabled' : 'status-ok'">
+            <block v-if="lockStatus.locked">
+              已锁定
+              <text v-if="lockStatus.lockTimeRemainingMinutes > 0">（剩余{{ lockStatus.lockTimeRemainingMinutes }}分钟）</text>
+            </block>
+            <block v-else>未锁定</block>
+          </view>
+        </view>
+      </view>
+      <view class="section-card" v-else>
+        <view class="section-title">账号安全状态</view>
+        <view class="field-row">
+          <text class="field-label">密码错误次数</text>
+          <text class="field-value">查询中...</text>
+        </view>
+        <view class="field-row">
+          <text class="field-label">账号锁定</text>
+          <view class="status-pill status-ok">未锁定</view>
+        </view>
+      </view>
+
       <!-- 角色信息 -->
       <view class="section-card" v-if="user.roles && user.roles.length">
         <view class="section-title">角色信息</view>
@@ -95,6 +125,12 @@
     <!-- 固定底部操作栏 -->
     <view v-if="user" class="footer-bar">
       <button class="action-btn edit-btn" @tap="handleEdit">编辑</button>
+      <button class="action-btn reset-btn" @tap="handleResetPassword">重置密码</button>
+      <button
+        class="action-btn unlock-btn"
+        @tap="handleUnlock">
+        {{ lockStatus && lockStatus.locked ? '解锁账号' : '账号正常' }}
+      </button>
       <button class="action-btn delete-btn" @tap="handleDelete">删除</button>
     </view>
   </view>
@@ -110,7 +146,8 @@ export default {
       userId: '',
       loading: true,
       user: null,
-      mpBindings: []
+      mpBindings: [],
+      lockStatus: null
     }
   },
   computed: {
@@ -215,6 +252,7 @@ export default {
           deptName: data.deptName || res.deptName || (data.dept && data.dept.deptName) || ''
         }
         await this.loadMpBindingStatus()
+        await this.loadLockStatus()
       } catch (e) {
         console.error('加载用户详情失败', e)
         uni.showToast({ title: '加载失败', icon: 'none' })
@@ -224,6 +262,78 @@ export default {
     },
     handleEdit() {
       uni.navigateTo({ url: `/pages/user/form?id=${this.userId}` })
+    },
+    handleResetPassword() {
+      const defaultPwd = (this.lockStatus && this.lockStatus.initPassword) || ''
+      uni.showModal({
+        title: '重置密码',
+        content: defaultPwd ? `将重置为初始密码 ${defaultPwd}，是否继续？` : '将重置为系统设置的初始密码，是否继续？',
+        success: async (res) => {
+          if (!res.confirm) return
+          try {
+            const resp = await request({
+              url: '/system/user/resetPwd',
+              method: 'PUT',
+              data: { userId: this.userId }
+            })
+            const realPwd = (resp && (resp.defaultPassword || resp.data && resp.data.defaultPassword)) || defaultPwd || '初始密码'
+            uni.showToast({ title: `密码已重置为${realPwd}`, icon: 'success' })
+            await this.loadLockStatus()
+          } catch (e) {
+            console.error('重置密码失败', e)
+            uni.showToast({ title: '重置密码失败', icon: 'none' })
+          }
+        }
+      })
+    },
+    async loadLockStatus() {
+      try {
+        const res = await request({
+          url: `/system/user/${this.userId}/pwd-lock-status`,
+          method: 'GET'
+        })
+        const payload = (res && (res.data || res)) || {}
+        this.lockStatus = Object.assign({
+          userName: '',
+          errorCount: 0,
+          maxRetryCount: 5,
+          locked: false,
+          lockTimeRemainingMinutes: 0,
+          initPassword: '123456'
+        }, payload || {})
+      } catch (e) {
+        console.error('loadLockStatus error', e)
+        this.lockStatus = {
+          userName: '',
+          errorCount: 0,
+          maxRetryCount: 5,
+          locked: false,
+          lockTimeRemainingMinutes: 0,
+          initPassword: '123456'
+        }
+      }
+    },
+    handleUnlock() {
+      uni.showModal({
+        title: '解锁账号',
+        content: this.lockStatus && this.lockStatus.locked
+          ? `当前账号已锁定，将清除密码错误计数（${this.lockStatus.errorCount}/${this.lockStatus.maxRetryCount || 5}），解除锁定状态，是否继续？`
+          : '将清除该账号的密码错误计数，是否继续？',
+        success: async (res) => {
+          if (!res.confirm) return
+          try {
+            await request({
+              url: `/system/user/${this.userId}/unlock`,
+              method: 'PUT'
+            })
+            uni.showToast({ title: '账号已解锁', icon: 'success' })
+            await this.loadLockStatus()
+          } catch (e) {
+            console.error('解锁账号失败', e)
+            uni.showToast({ title: '解锁失败', icon: 'none' })
+          }
+        }
+      })
     },
     handleDelete() {
       uni.showModal({
@@ -489,8 +599,28 @@ export default {
   color: #087CF0;
 }
 
+.reset-btn {
+  background: #FEF3C7;
+  color: #B45309;
+}
+
+.unlock-btn {
+  background: #D1FAE5;
+  color: #065F46;
+}
+
+.unlock-btn.disabled {
+  background: #E8EEF5;
+  color: #94A3B8;
+  opacity: 0.75;
+}
+
 .delete-btn {
   background: #FEF2F2;
   color: #EF4444;
+}
+
+.action-btn {
+  font-size: 26rpx;
 }
 </style>

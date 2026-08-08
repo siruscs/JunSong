@@ -47,7 +47,9 @@
               {{ item.userName || '-' }}
               <text class="nick-name" v-if="item.nickName">（{{ item.nickName }}）</text>
             </view>
-            <view class="record-id">NO. {{ item.userId }}</view>
+            <view class="user-status-badge" :class="item.status === '0' ? 'status-ok' : 'status-danger'">
+              {{ item.status === '0' ? '正常' : '停用' }}
+            </view>
           </view>
 
           <view class="summary-grid">
@@ -57,13 +59,11 @@
             </view>
             <view class="summary-item">
               <text class="summary-label">所属部门</text>
-              <text class="summary-value">{{ item.deptName || '-' }}</text>
+              <text class="summary-value">{{ getDeptName(item) }}</text>
             </view>
             <view class="summary-item">
-              <text class="summary-label">账号状态</text>
-              <text class="summary-value" :class="item.status === '0' ? 'status-ok' : 'status-danger'">
-                {{ item.status === '0' ? '正常' : '停用' }}
-              </text>
+              <text class="summary-label">角色</text>
+              <text class="summary-value">{{ getRolesText(item) }}</text>
             </view>
             <view class="summary-item">
               <text class="summary-label">微信绑定</text>
@@ -71,11 +71,6 @@
                 {{ wechatBindingText(item) }}
               </text>
             </view>
-          </view>
-
-          <view class="card-footer">
-            <text class="meta-text">{{ item.createTime ? '创建时间：' + item.createTime : '创建时间：-' }}</text>
-            <text class="arrow-icon">›</text>
           </view>
         </view>
       </view>
@@ -196,6 +191,17 @@ export default {
       }
       if (item.mpBindingStatus === 'UNBOUND') return '微信未绑定'
       return '微信状态未知'
+    },
+    getDeptName(item) {
+      if (item.dept && item.dept.deptName) return item.dept.deptName
+      if (item.deptName) return item.deptName
+      return '-'
+    },
+    getRolesText(item) {
+      if (item.roleNames) return item.roleNames
+      const roles = item.roles || []
+      if (!roles.length) return '-'
+      return roles.map(r => r.roleName || r.roleKey).filter(Boolean).join('、') || '-'
     },
     wechatBindingClass(item) {
       return item.mpBindingStatus === 'BOUND' ? 'wechat-bound' : 'wechat-unbound'
@@ -412,6 +418,24 @@ export default {
   font-size: 20rpx;
   border-radius: 999rpx;
   flex-shrink: 0;
+}
+
+.user-status-badge {
+  font-size: 24rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.user-status-badge.status-ok {
+  background: #D1FAE5;
+  color: #065F46;
+}
+
+.user-status-badge.status-danger {
+  background: #FEE2E2;
+  color: #991B1B;
 }
 
 .summary-grid {

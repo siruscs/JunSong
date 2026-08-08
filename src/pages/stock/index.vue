@@ -6,7 +6,7 @@
         <text class="hero-title">库存查询</text>
       </view>
     </view>
-    <view class="work-scope" hover-class="work-scope-hover" hover-stay-time="80" hover-start-time="30" @tap="openDeptSwitcher"><view class="work-scope-mark"></view><view class="work-scope-copy"><text class="work-scope-label">{{ scopeLabel }}</text><text class="work-scope-name">{{ currentDeptName || '未选择部门' }}</text></view></view>
+    <view class="work-scope" :class="{ 'work-scope-disabled': !switchable }" :hover-class="switchable ? 'work-scope-hover' : ''" hover-stay-time="80" hover-start-time="30" @tap="switchable && openDeptSwitcher"><view class="work-scope-mark" :class="{ 'work-scope-mark-disabled': !switchable }"></view><view class="work-scope-copy"><text class="work-scope-label">{{ scopeLabel }}</text><text class="work-scope-name">{{ currentDeptName || '未选择部门' }}</text></view></view>
     <view class="summary-bar" v-if="items.length"><view><text class="summary-value">¥{{ money(totalClosingAmount) }}</text><text class="summary-label">库存金额</text></view><view><text class="summary-value">{{ totalClosingQuantity }}</text><text class="summary-label">库存数量</text></view><view><text class="summary-value">{{ items.length }}</text><text class="summary-label">商品数</text></view></view>
     <scroll-view scroll-y class="scroll" refresher-enabled :refresher-triggered="refreshing" @refresherrefresh="refresh">
       <view v-if="stateStatus === 'normal'" class="record-list">
@@ -47,7 +47,7 @@ import { getStatusBarHeight } from '@/utils/systemInfo.js'
 
 export default {
   components: { StateView, DeptSwitcher },
-  data() { return { report: null, items: [], loading: false, refreshing: false, loadError: '', showDeptSwitcher: false, scopeLabel: '暂无可用数据范围', contextVersion: 0, currentDeptId: null, currentDeptName: '未选择部门', statusBarH: 0, menuButton: null } },
+  data() { return { report: null, items: [], loading: false, refreshing: false, loadError: '', showDeptSwitcher: false, scopeLabel: '暂无可用数据范围', contextVersion: 0, currentDeptId: null, currentDeptName: '未选择部门', switchable: false, deptCount: 0, statusBarH: 0, menuButton: null } },
   computed: {
     stateStatus() { if (this.loading && !this.items.length) return 'loading'; if (this.loadError && !this.items.length) return 'error'; if (!this.items.length) return 'empty'; return 'normal' },
     headerContentStyle() { const top = this.menuButton?.bottom ? this.menuButton.bottom + 8 : this.statusBarH + 48; return { paddingTop: top + 'px' } },
@@ -81,7 +81,11 @@ export default {
 .hero-title{display:block;margin-top:10rpx;color:#1e293b;font-size:38rpx;font-weight:700}
 .work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx;padding:4rpx 12rpx;border-radius:12rpx;box-sizing:border-box}
 .work-scope-hover{background:#eaf3ff;border-radius:12rpx}
+.work-scope-disabled{opacity:1;background:#F1F5F9}
+.work-scope-disabled .work-scope-copy{color:#475569}
+.work-scope-disabled .work-scope-name{color:#1E293B;font-weight:600}
 .work-scope-mark{width:14rpx;height:14rpx;margin-right:16rpx;border-radius:50%;background:#1687f5}
+.work-scope-mark-disabled{background:#475569}
 .work-scope-copy{display:flex;align-items:baseline;color:#8192a6;font-size:24rpx}
 .work-scope-name{margin-left:4rpx;color:#26384d;font-size:27rpx;font-weight:700}
 .summary-bar{display:flex;margin:16rpx 30rpx 0;padding:18rpx 8rpx;background:#fff;border-radius:18rpx;border:1rpx solid #dbe6f1}

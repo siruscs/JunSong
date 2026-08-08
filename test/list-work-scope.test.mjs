@@ -14,6 +14,8 @@ test('projects the current department and a multiple-department scope label', ()
     currentDeptId: 20,
     currentDeptName: '盛和里',
     scopeLabel: '当前部门 · 共 2 个部门',
+    deptCount: 2,
+    switchable: true,
     contextVersion: 4,
     departmentChanged: true
   })
@@ -30,6 +32,8 @@ test('uses a single-department label and compares ids by normalized value', () =
   assert.equal(scope.currentDeptName, '东城店')
   assert.equal(scope.scopeLabel, '当前数据范围')
   assert.equal(scope.departmentChanged, false)
+  assert.equal(scope.deptCount, 1)
+  assert.equal(scope.switchable, false)
 })
 
 test('fails closed when the context has no authorized current department', () => {
@@ -38,6 +42,8 @@ test('fails closed when the context has no authorized current department', () =>
   assert.equal(scope.currentDeptName, '未选择部门')
   assert.equal(scope.scopeLabel, '暂无可用数据范围')
   assert.equal(scope.departmentChanged, true)
+  assert.equal(scope.deptCount, 0)
+  assert.equal(scope.switchable, false)
 })
 
 test('rejects an isolated current department outside the authorized collection', () => {

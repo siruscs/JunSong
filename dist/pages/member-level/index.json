@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "等级配置",
-  "usingComponents": {}
+  "usingComponents": {
+    "dept-switcher": "../../components/DeptSwitcher"
+  }
 }

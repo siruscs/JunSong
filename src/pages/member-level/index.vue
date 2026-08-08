@@ -8,8 +8,8 @@
     </view>
 
     <!-- 部门范围条 -->
-    <view class="work-scope" hover-class="work-scope-hover" hover-stay-time="80" hover-start-time="30" @tap="openDeptSwitcher">
-      <view class="work-scope-mark"></view>
+    <view class="work-scope" :class="{ 'work-scope-disabled': !switchable }" :hover-class="switchable ? 'work-scope-hover' : ''" hover-stay-time="80" hover-start-time="30" @tap="switchable && openDeptSwitcher">
+      <view class="work-scope-mark" :class="{ 'work-scope-mark-disabled': !switchable }"></view>
       <view class="work-scope-copy">
         <text class="work-scope-label">{{ scopeLabel }}</text>
         <text class="work-scope-name">{{ currentDeptName || '未选择部门' }}</text>
@@ -142,7 +142,7 @@ const blank = () => ({ typeId: '', typeName: '', typeCode: '', cardFee: '', disc
 
 export default {
   components: { DeptSwitcher },
-  data() { return { authorized: false, showDeptSwitcher: false, scopeLabel: '暂无可用数据范围', contextVersion: 0, currentDeptId: null, currentDeptName: '未选择部门', deptName: '', rows: [], loading: false, error: '', panel: false, editing: false, viewOnly: false, form: blank(), statuses: [{ label: '正常', value: '0' }, { label: '停用', value: '1' }] } },
+  data() { return { authorized: false, showDeptSwitcher: false, scopeLabel: '暂无可用数据范围', contextVersion: 0, currentDeptId: null, currentDeptName: '未选择部门', switchable: false, deptCount: 0, deptName: '', rows: [], loading: false, error: '', panel: false, editing: false, viewOnly: false, form: blank(), statuses: [{ label: '正常', value: '0' }, { label: '停用', value: '1' }] } },
   computed: { statusIndex() { const i = this.statuses.findIndex(x => String(x.value) === String(this.form.status)); return i < 0 ? 0 : i } },
   onLoad() { this.authorized = requireModulePermission('memberLevel'); applyWorkScopeToPage(this); if (this.authorized) this.load() },
   onShow() { const { departmentChanged } = applyWorkScopeToPage(this); if (departmentChanged && this.authorized) this.load() },
@@ -177,7 +177,11 @@ export default {
 /* ── 部门范围条 ── */
 .work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx;padding:4rpx 12rpx;border-radius:12rpx;box-sizing:border-box}
 .work-scope-hover{background:#eaf3ff;border-radius:12rpx}
+.work-scope-disabled{opacity:1;background:#F1F5F9}
+.work-scope-disabled .work-scope-copy{color:#475569}
+.work-scope-disabled .work-scope-name{color:#1E293B;font-weight:600}
 .work-scope-mark{width:14rpx;height:14rpx;margin-right:16rpx;border-radius:50%;background:#1687f5}
+.work-scope-mark-disabled{background:#475569}
 .work-scope-copy{display:flex;align-items:baseline;color:#8192a6;font-size:24rpx}
 .work-scope-name{margin-left:4rpx;color:#26384d;font-size:27rpx;font-weight:700}
 

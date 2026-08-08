@@ -7,8 +7,8 @@
       </view>
     </view>
 
-    <view class="work-scope" hover-class="work-scope-hover" hover-stay-time="80" hover-start-time="30" @tap="openDeptSwitcher">
-      <view class="work-scope-mark"></view>
+    <view class="work-scope" :class="{ 'work-scope-disabled': !switchable }" :hover-class="switchable ? 'work-scope-hover' : ''" hover-stay-time="80" hover-start-time="30" @tap="switchable && openDeptSwitcher">
+      <view class="work-scope-mark" :class="{ 'work-scope-mark-disabled': !switchable }"></view>
       <view class="work-scope-copy">
         <text class="work-scope-label">{{ scopeLabel }}</text>
         <text class="work-scope-name">{{ currentDeptName }}</text>
@@ -348,6 +348,13 @@ export default {
     return {
       moduleKey: '',
       showDeptSwitcher: false,
+      // 预先声明：workScope 注入字段（applyWorkScopeToPage 会赋值，但未预声明 → Vue 响应式不创建 → switchable 永真/永假）
+      currentDeptId: null,
+      currentDeptName: '未选择部门',
+      scopeLabel: '暂无可用数据范围',
+      contextVersion: 0,
+      switchable: false,
+      deptCount: 0,
       config: null,
       queryValue: '',
       pageNum: 1,
@@ -1045,6 +1052,12 @@ export default {
   background: #eaf3ff;
   border-radius: 12rpx;
 }
+.work-scope-disabled {
+  opacity: 1;
+  background: #F1F5F9;
+}
+.work-scope-disabled .work-scope-label { color: #475569; }
+.work-scope-disabled .work-scope-name { color: #1E293B; font-weight: 600; }
 
 .work-scope-mark {
   width: 14rpx;
@@ -1053,6 +1066,7 @@ export default {
   background: #087CF0;
   flex-shrink: 0;
 }
+.work-scope-mark-disabled { background: #475569; }
 
 .work-scope-copy {
   display: flex;

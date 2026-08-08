@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "退货/退款",
-  "usingComponents": {}
+  "usingComponents": {
+    "dept-switcher": "../../components/DeptSwitcher"
+  }
 }

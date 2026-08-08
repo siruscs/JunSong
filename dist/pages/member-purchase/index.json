@@ -1,6 +1,8 @@
 {
   "navigationBarTitleText": "购买记录",
   "usingComponents": {
-    "member-search": "../../components/MemberSearch/index"
+    "member-search": "../../components/MemberSearch/index",
+    "dept-switcher": "../../components/DeptSwitcher",
+    "form-field": "../../components/FormField"
   }
 }

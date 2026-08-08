@@ -127,6 +127,10 @@ export function installNavigationGuard() {
 }
 
 export function filterAuthorizedGroups(groups, grants) {
+  // 入口展示只以“后端 /mp/userinfo -> storage.modules 下发的模块授权”为准。
+  // 不再用 action 权限做兜底，保证契约（permission.test.mjs 里 'action permission cannot grant access to a module entry'）成立。
+  // 如果 BY 用户需要看到更多模块，修复点在 MemMpController#getAccessibleModules：
+  // 当 mem_mp_role_module 漏配时，会按 MpModuleCatalog 的 view 权限做兜底再合并返回。
   return groups.map((group) => ({
     ...group,
     items: group.items.filter((item) => hasModulePermission(item.key, grants))

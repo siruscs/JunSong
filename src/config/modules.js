@@ -31,7 +31,7 @@ export const modules = {
   // ===== 会员服务 =====
   member: {
     group: '会员服务',
-    title: '会员信息',
+    title: '会员管理',
     path: '/member/member',
     permissions: memberCrudPermissions('member'),
     idKey: 'memberId',
@@ -104,18 +104,6 @@ export const modules = {
       { key: 'remark', label: '备注', type: 'textarea' }
     ]
   },
-  memberLevel: {
-    group: '会员服务',
-    title: '等级配置',
-    path: '/member/level',
-    customPage: '/pages/member-level/index',
-    permissions: {
-      view: ['member:level:list', 'member:level:query'],
-      add: 'member:level:add',
-      edit: 'member:level:edit',
-      sync: 'member:level:sync'
-    }
-  },
   memberPurchaseReturn: {
     group: '会员服务',
     title: '退货/退款',
@@ -126,6 +114,18 @@ export const modules = {
       add: 'member:purchaseReturn:add',
       edit: 'member:purchaseReturn:edit',
       complete: 'member:purchaseReturn:complete'
+    }
+  },
+  memberLevel: {
+    group: '会员服务',
+    title: '等级配置',
+    path: '/member/level',
+    customPage: '/pages/member-level/index',
+    permissions: {
+      view: ['member:level:list', 'member:level:query'],
+      add: 'member:level:add',
+      edit: 'member:level:edit',
+      sync: 'member:level:sync'
     }
   },
   campaignPolicy: {
@@ -143,7 +143,7 @@ export const modules = {
   },
   pointsGoods: {
     group: '会员服务',
-    title: '积分物品',
+    title: '积分商品',
     path: '/member/pointsGoods',
     permissions: memberCrudPermissions('pointsGoods'),
     idKey: 'goodsId',
@@ -290,7 +290,7 @@ export const modules = {
   // ===== 财务管理 =====
   expense: {
     group: '财务管理',
-    title: '费用记录',
+    title: '费用管理',
     path: '/finance/expense',
     permissions: {
       ...crudPermissions('expense'),
@@ -313,7 +313,7 @@ export const modules = {
   },
   advance: {
     group: '财务管理',
-    title: '借支记录',
+    title: '借支管理',
     path: '/finance/advance',
     permissions: crudPermissions('advance'),
     idKey: 'advanceId',
@@ -352,7 +352,7 @@ export const modules = {
   },
   supplier: {
     group: '财务管理',
-    title: '供应商',
+    title: '供应商管理',
     path: '/finance/supplier',
     permissions: crudPermissions('supplier'),
     idKey: 'supplierId',
@@ -369,14 +369,14 @@ export const modules = {
     ]
   },
   configSync: {
-    group: '系统管理',
+    group: '会员服务',
     title: '配置同步',
     customPage: '/pages/config-sync/index',
     permissions: { view: ['member:configSync:query'] }
   },
   purchase: {
     group: '财务管理',
-    title: '进货单',
+    title: '进货管理',
     path: '/finance/purchase',
     permissions: crudPermissions('purchase'),
     idKey: 'purchaseId',
@@ -400,7 +400,7 @@ export const modules = {
   },
   sale: {
     group: '财务管理',
-    title: '销售记录',
+    title: '销售管理',
     path: '/finance/sale',
     permissions: { ...crudPermissions('sale'), payment: 'finance:sale:edit', paymentEdit: 'finance:sale:payment' },
     idKey: 'saleId',
@@ -571,6 +571,12 @@ export const modules = {
     customPage: '/pages/stock/index',
     permissions: { view: ['finance:report:stock', 'finance:stock:list'] }
   },
+  stockLedger: {
+    group: '财务管理',
+    title: '库存流水',
+    customPage: '/pages/stock-ledger/index',
+    permissions: { view: ['finance:stockLedger:list', 'finance:stock:ledger:query', 'finance:stock:ledger:list'] }
+  },
   stockAdjustment: {
     group: '财务管理',
     title: '库存调整',
@@ -582,6 +588,15 @@ export const modules = {
       approve: 'finance:stockInit:approve',
       post: 'finance:stockInit:post'
     }
+  },
+  stocktake: {
+    group: '财务管理',
+    title: '库存盘点',
+    path: '/finance/stocktake',
+    permissions: { view: ['finance:stocktake:list', 'finance:stocktake:query'], add: 'finance:stocktake:add', edit: 'finance:stocktake:edit', remove: 'finance:stocktake:remove' },
+    idKey: 'takeId',
+    searchKey: 'takeNo',
+    summary: ['takeNo', 'takeDate', 'status']
   },
   verificationRecord: {
     group: '财务管理',
@@ -648,7 +663,7 @@ export const modules = {
   // ===== 移动办公 =====
   wfTodo: {
     group: '移动办公',
-    title: '任务中心',
+    title: '待办任务',
     customPage: '/pages/workflow/todo',
     permissions: { view: ['workflow:mobile:todo'] }
   },
@@ -668,8 +683,12 @@ export const modules = {
 
 export const moduleList = Object.keys(modules).map((key) => ({ key, ...modules[key] }))
 
-const memberServiceOrder = ['member', 'memberPurchase', 'memberPurchaseReturn', 'campaignPolicy', 'memberLevel', 'seckillRecord', 'pointsRecord', 'seckill', 'pointsExchange', 'pointsGoods']
-const orderedMemberServices = memberServiceOrder.map((key) => ({ key, ...modules[key] })).filter((item) => item.group === '会员服务')
+// 会员服务分组内顺序与 PC 端 mpPerm 页面、后端 MpModuleCatalog 完全一致
+const memberServiceOrder = ['member', 'memberPurchase', 'memberPurchaseReturn', 'memberLevel', 'campaignPolicy',
+  'pointsGoods', 'pointsRule', 'pointsRecord', 'pointsExchange',
+  'seckill', 'seckillRecord', 'configSync'
+]
+const orderedMemberServices = memberServiceOrder.map((key) => ({ key, ...modules[key] })).filter((item) => item && item.group === '会员服务')
 
 export const groups = [
   { name: '会员服务', items: orderedMemberServices },

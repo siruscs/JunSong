@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "销售政策",
-  "usingComponents": {}
+  "usingComponents": {
+    "dept-switcher": "../../components/DeptSwitcher"
+  }
 }

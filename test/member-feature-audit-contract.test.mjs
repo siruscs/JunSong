@@ -11,7 +11,7 @@ test('会员购买和销售政策入口必须是独立真实页面并纳入会�
   assert.match(modules, /memberPurchase: \{[\s\S]*?customPage: '\/pages\/member-purchase\/index'/)
   assert.match(modules, /campaignPolicy: \{[\s\S]*?customPage: '\/pages\/campaign-policy\/index'/)
   assert.match(modules, /memberPurchaseReturn: \{[\s\S]*?customPage: '\/pages\/member-purchase-return\/index'/)
-  assert.match(modules, /\['member', 'memberPurchase', 'memberPurchaseReturn', 'campaignPolicy'/)
+  assert.match(modules, /\['member', 'memberPurchase', 'memberPurchaseReturn', 'memberLevel', 'campaignPolicy'/)
   assert.match(modules, /member:purchase:payment/)
   assert.match(modules, /member:purchase:delivery/)
 })

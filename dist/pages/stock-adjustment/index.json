@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "库存调整",
   "usingComponents": {
-    "state-view": "../../components/StateView"
+    "state-view": "../../components/StateView",
+    "dept-switcher": "../../components/DeptSwitcher"
   }
 }

@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <view class="hero"><view><text class="eyebrow">库存管理</text><text class="hero-title">库存调整</text></view></view>
-    <view class="work-scope" hover-class="work-scope-hover" hover-stay-time="80" hover-start-time="30" @tap="openDeptSwitcher"><view class="work-scope-mark"></view><view class="work-scope-copy"><text class="work-scope-label">{{ scopeLabel }}</text><text class="work-scope-name">{{ currentDeptName || '未选择部门' }}</text></view></view>
+    <view class="work-scope" :class="{ 'work-scope-disabled': !switchable }" :hover-class="switchable ? 'work-scope-hover' : ''" hover-stay-time="80" hover-start-time="30" @tap="switchable && openDeptSwitcher"><view class="work-scope-mark" :class="{ 'work-scope-mark-disabled': !switchable }"></view><view class="work-scope-copy"><text class="work-scope-label">{{ scopeLabel }}</text><text class="work-scope-name">{{ currentDeptName || '未选择部门' }}</text></view></view>
     <view class="permission-note"><text>调整单 {{ rows.length }} 笔</text><text :class="capabilities.add ? 'can-edit' : 'read-only'">{{ capabilities.add ? '可编辑' : '只读' }}</text></view>
 
     <scroll-view scroll-y class="scroll adjustment-scroll" refresher-enabled :refresher-triggered="refreshing" @refresherrefresh="refresh">
@@ -99,7 +99,7 @@ function createEmptyItem(item = {}) {
 
 export default {
   components: { StateView, DeptSwitcher },
-  data() { return { rows: [], loading: false, loadError: '', refreshing: false, showDeptSwitcher: false, scopeLabel: '暂无可用数据范围', contextVersion: 0, currentDeptId: null, currentDeptName: '未选择部门', statusBarH: 0, menuButton: null, editorVisible: false, detailVisible: false, editorLoading: false, detailLoading: false, submitting: false, editingId: null, detail: null, products: [], typeOptions: [], typeIndex: 0, capabilities: {}, form: createEmptyForm() } },
+  data() { return { rows: [], loading: false, loadError: '', refreshing: false, showDeptSwitcher: false, scopeLabel: '暂无可用数据范围', contextVersion: 0, currentDeptId: null, currentDeptName: '未选择部门', switchable: false, deptCount: 0, statusBarH: 0, menuButton: null, editorVisible: false, detailVisible: false, editorLoading: false, detailLoading: false, submitting: false, editingId: null, detail: null, products: [], typeOptions: [], typeIndex: 0, capabilities: {}, form: createEmptyForm() } },
   computed: {
     selectedType() { return this.typeOptions[this.typeIndex] || {} },
     canCreateAdjustment() { return this.capabilities.add === true },
@@ -156,7 +156,11 @@ export default {
 .hero-title{display:block;margin-top:10rpx;color:#1e293b;font-size:38rpx;font-weight:700}
 .work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx;padding:4rpx 12rpx;border-radius:12rpx;box-sizing:border-box}
 .work-scope-hover{background:#eaf3ff;border-radius:12rpx}
+.work-scope-disabled{opacity:1;background:#F1F5F9}
+.work-scope-disabled .work-scope-copy{color:#475569}
+.work-scope-disabled .work-scope-name{color:#1E293B;font-weight:600}
 .work-scope-mark{width:14rpx;height:14rpx;margin-right:16rpx;border-radius:50%;background:#1687f5}
+.work-scope-mark-disabled{background:#475569}
 .work-scope-copy{display:flex;align-items:baseline;color:#8192a6;font-size:24rpx}
 .work-scope-name{margin-left:4rpx;color:#26384d;font-size:27rpx;font-weight:700}
 .permission-note{display:flex;justify-content:space-between;align-items:center;margin:14rpx 30rpx 0;padding:16rpx 20rpx;background:#fff;border:1rpx solid #dbe6f1;border-radius:14rpx;color:#8192a6;font-size:22rpx}

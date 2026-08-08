@@ -1,8 +1,9 @@
 <template>
   <view class="page" v-if="authorized">
     <view class="hero"><text class="eyebrow">会员服务</text><text class="hero-title">购买记录</text></view>
-    <view class="work-scope" hover-class="work-scope-hover" hover-stay-time="80" hover-start-time="30" @tap="openDeptSwitcher"><view class="work-scope-mark"></view><view class="work-scope-copy"><text class="work-scope-label">{{ scopeLabel }}</text><text class="work-scope-name">{{ currentDeptName || '未选择部门' }}</text></view></view>
+    <view class="work-scope" :class="{ 'work-scope-disabled': !switchable }" :hover-class="switchable ? 'work-scope-hover' : ''" hover-stay-time="80" hover-start-time="30" @tap="switchable && openDeptSwitcher"><view class="work-scope-mark" :class="{ 'work-scope-mark-disabled': !switchable }"></view><view class="work-scope-copy"><text class="work-scope-label">{{ scopeLabel }}</text><text class="work-scope-name">{{ currentDeptName || '未选择部门' }}</text></view></view>
     <view class="summary-bar" v-if="summary">
+      <view><text class="summary-value">{{ Number(summary.purchaseOrderCount || 0) }}</text><text class="summary-label">购买单数</text></view>
       <view><text class="summary-value">{{ quantity(summary.purchaseQuantity) }}<text class="summary-gift">赠</text><text class="summary-gift-num">{{ quantity(summary.giftQuantity) }}</text></text><text class="summary-label">数量</text></view>
       <view><text class="summary-value primary"><text class="summary-currency">¥</text>{{ money(summary.totalAmount) }}</text><text class="summary-label">应收金额</text></view>
       <view><text class="summary-value success"><text class="summary-currency">¥</text>{{ money(summary.paidAmount) }}</text><text class="summary-label">已收金额</text></view>
@@ -36,10 +37,13 @@
             <text class="compact-meta paid">已收 {{ row._paidAmountText }}</text>
             <text class="compact-meta debt" v-if="row._showDebt">待缴 {{ row._receivableAmountText }}</text>
             <text class="compact-status-group">
-              <text v-if="row._returnTagText" class="compact-status" :class="row._returnTagClass">{{ row._returnTagText }}</text>
+              <text v-if="row._returnTagText" class="compact-status" :class="row._returnTagClass" @tap.stop="hasReturn(row) && openReturnDetail(row)">退货详情 · {{ row._returnTagText }}</text>
               <text class="compact-status" :class="row._paymentStatusClass">{{ row._paymentStatusText }}</text>
               <text class="compact-status" :class="row._deliveryStatusClass">{{ row._deliveryStatusText }}</text>
             </text>
+          </view>
+          <view class="compact-row4" v-if="can('bind') && row._customerType === 'WALK_IN' && !row.memberId">
+            <text class="bind-entry" @tap.stop="openBind(row)">绑定会员</text>
           </view>
         </view>
       </view>
@@ -134,6 +138,9 @@
           </view>
         </view>
 
+        <!-- 预留：统一表单字段组件（供将来替换 form-item 时复用） -->
+        <FormField v-if="false" field="{ key: 'placeholder', label: '占位符', type: 'text' }" :model-value="{}" />
+
         <view class="form-section-card">
           <view class="form-section-header collapsible" @tap="remarkCollapsed = !remarkCollapsed"><view class="form-section-dot"></view><text class="form-section-title">其他信息</text><text class="form-section-count">1项</text><text class="form-collapse-arrow" :class="{ collapsed: remarkCollapsed }">›</text></view>
           <view class="form-item" v-if="!remarkCollapsed">
@@ -219,6 +226,7 @@
 import { request } from '@/api/index.js'
 import MemberSearch from '@/components/MemberSearch/index.vue'
 import DeptSwitcher from '@/components/DeptSwitcher.vue'
+import FormField from '@/components/FormField.vue'
 import { hasActionPermission, requireModulePermission } from '@/utils/permission.js'
 import { workContext } from '@/utils/workContext.js'
 import { applyWorkScopeToPage, openDeptSwitcher, handleDeptChanged } from '@/utils/listWorkScope.js'
@@ -226,8 +234,8 @@ import { applyWorkScopeToPage, openDeptSwitcher, handleDeptChanged } from '@/uti
 const newPurchaseForm = () => ({ purchaseDate: '', periodId: '', customerType: 'MEMBER', customerName: '', customerPhone: '', remark: '', item: { productId: '', purchaseQuantity: '', unitPrice: '', giftQuantity: '' } })
 
 export default {
-  components: { MemberSearch, DeptSwitcher },
-  data() { return { authorized: false, showDeptSwitcher: false, scopeLabel: '暂无可用数据范围', contextVersion: 0, currentDeptName: '', currentDeptId: '', rows: [], loading: false, keyword: '', filterSheetOpen: false, panel: '', active: {}, form: newPurchaseForm(), products: [], periods: [], policies: [], filters: { customerType: '', paymentStatus: '', beginTime: '', endTime: '' }, summary: null, pageNum: 1, pageSize: 20, total: 0, bindTarget: {}, bindForm: { memberId: '' }, returnMap: {}, lastLoadKey: '', purchaseIdSet: new Set(), paymentMethods: [{ label: '现金', value: 'CASH' }, { label: '微信支付', value: 'WECHAT' }, { label: '支付宝', value: 'ALIPAY' }, { label: '银行转账', value: 'BANK' }, { label: '其他', value: 'OTHER' }], paymentIndex: 0, paymentForm: { paymentAmount: '' }, deliveryItems: [], deliveryIndex: 0, deliveryForm: { saleDeliveryQuantity: '', giftDeliveryQuantity: '', receiverName: '' }, remarkCollapsed: false, showCustomerTypePicker: false } },
+  components: { MemberSearch, DeptSwitcher, FormField },
+  data() { return { authorized: false, showDeptSwitcher: false, scopeLabel: '暂无可用数据范围', contextVersion: 0, currentDeptName: '', currentDeptId: '', switchable: false, deptCount: 0, rows: [], loading: false, keyword: '', filterSheetOpen: false, panel: '', active: {}, form: newPurchaseForm(), products: [], periods: [], policies: [], filters: { customerType: '', paymentStatus: '', beginTime: '', endTime: '' }, summary: null, pageNum: 1, pageSize: 20, total: 0, bindTarget: {}, bindForm: { memberId: '' }, returnMap: {}, lastLoadKey: '', purchaseIdSet: new Set(), paymentMethods: [{ label: '现金', value: 'CASH' }, { label: '微信支付', value: 'WECHAT' }, { label: '支付宝', value: 'ALIPAY' }, { label: '银行转账', value: 'BANK' }, { label: '其他', value: 'OTHER' }], paymentIndex: 0, paymentForm: { paymentAmount: '' }, deliveryItems: [], deliveryIndex: 0, deliveryForm: { saleDeliveryQuantity: '', giftDeliveryQuantity: '', receiverName: '' }, remarkCollapsed: false, showCustomerTypePicker: false } },
   computed: { panelTitle() { return ({ create: '新建购买单', edit: '编辑购买单', payment: '登记收款', delivery: '登记领取', bind: '绑定会员' })[this.panel] }, customerTypes() { return [{ label: '会员', value: 'MEMBER' }, { label: '非会员', value: 'CUSTOMER' }, { label: '散客', value: 'WALK_IN' }] }, customerTypeIndex() { const i = this.customerTypes.findIndex(x => x.value === this.form.customerType); return i < 0 ? 0 : i }, productIndex() { const i = this.products.findIndex(x => String(x.productId) === String(this.form.item.productId)); return i < 0 ? 0 : i }, periodIndex() { const i = this.periods.findIndex(x => String(x.periodId) === String(this.form.periodId)); return i < 0 ? 0 : i }, policyIndex() { const i = this.policies.findIndex(x => String(x.policyId) === String(this.form.item.policyId)); return i < 0 ? 0 : i }, packages() { return (this.policies[this.policyIndex]?.packages || []).map((x, i) => ({ ...x, label: `${x.packageName || `档位${i + 1}`}：买${this.quantity(x.purchaseQuantity)}送${this.quantity(x.giftQuantity)} · ¥${this.money(x.packagePrice)}` })) }, packageIndex() { const i = this.packages.findIndex(x => String(x.packageId) === String(this.form.item.packageId)); return i < 0 ? 0 : i }, selectedProduct() { return this.form.item.productId ? this.products[this.productIndex] : null }, selectedPolicy() { return this.form.item.policyId ? this.policies[this.policyIndex] : null }, selectedPackage() { return this.form.item.packageId ? this.packages[this.packageIndex] : null }, selectedPeriod() { return this.form.periodId ? this.periods[this.periodIndex] : null }, customerTypeFilters() { return [{ label: '全部', value: '' }, { label: '会员', value: 'MEMBER' }, { label: '非会员', value: 'CUSTOMER' }, { label: '散客', value: 'WALK_IN' }] }, paymentStatusFilters() { return [{ label: '全部', value: '' }, { label: '未收款', value: '0' }, { label: '部分收款', value: '1' }, { label: '已收清', value: '2' }] }, customerTypeFilterIndex() { const i = this.customerTypeFilters.findIndex(x => x.value === this.filters.customerType); return i < 0 ? 0 : i }, paymentStatusFilterIndex() { const i = this.paymentStatusFilters.findIndex(x => x.value === this.filters.paymentStatus); return i < 0 ? 0 : i }, totalPages() { return Math.max(1, Math.ceil(Number(this.total || 0) / Number(this.pageSize || 1))) }, activeFilterCount() { let n = 0; if (this.keyword) n++; if (this.filters.customerType) n++; if (this.filters.paymentStatus) n++; if (this.filters.beginTime) n++; if (this.filters.endTime) n++; return n } },
   onLoad() {
     this.authorized = requireModulePermission('memberPurchase');
@@ -258,6 +266,7 @@ export default {
       const r = { ...(row || {}) };
       const rt = this._resolveReturnTag(r.purchaseId, r.totalAmount);
       r._customerName = r.customerName || '未登记顾客';
+      r._customerType = r.customerType;
       r._customerTypeText = this.customerTypeText(r.customerType);
       r._customerTypeClass = this.customerTypeClass(r.customerType);
       r._totalAmountText = '¥' + this.money(r.totalAmount);
@@ -317,7 +326,11 @@ export default {
 /* ── 部门范围条 ── */
 .work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx;padding:4rpx 12rpx;border-radius:12rpx;box-sizing:border-box}
 .work-scope-hover{background:#eaf3ff;border-radius:12rpx}
+.work-scope-disabled{opacity:1;background:#F1F5F9}
+.work-scope-disabled .work-scope-copy{color:#475569}
+.work-scope-disabled .work-scope-name{color:#1E293B;font-weight:600}
 .work-scope-mark{width:14rpx;height:14rpx;margin-right:16rpx;border-radius:50%;background:#1687f5}
+.work-scope-mark-disabled{background:#475569}
 .work-scope-copy{display:flex;align-items:baseline;color:#8192a6;font-size:24rpx}
 .work-scope-name{margin-left:4rpx;color:#26384d;font-size:27rpx;font-weight:700}
 

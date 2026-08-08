@@ -142,6 +142,12 @@ public class SysConfigServiceImpl implements ISysConfigService
         {
             redisService.deleteObject(getCacheKey(temp.getConfigKey()));
         }
+        // 敏感配置前端返回的是脱敏占位符 "******"，此时保留 DB 里的原值，避免被误覆盖为占位符
+        String effectiveKey = temp != null ? temp.getConfigKey() : config.getConfigKey();
+        if (isSensitiveKey(effectiveKey) && MASKED_VALUE.equals(config.getConfigValue()) && temp != null)
+        {
+            config.setConfigValue(temp.getConfigValue());
+        }
 
         int row = configMapper.updateConfig(config);
         if (row > 0)

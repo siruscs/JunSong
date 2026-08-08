@@ -34,6 +34,7 @@ import com.junsong.common.core.web.controller.BaseController;
 import com.junsong.common.core.web.domain.AjaxResult;
 import com.junsong.common.core.web.page.TableDataInfo;
 import com.junsong.common.core.idempotency.Idempotent;
+import com.junsong.common.core.constant.CacheConstants;
 import com.junsong.common.log.annotation.Log;
 import com.junsong.common.log.enums.BusinessType;
 import com.junsong.common.redis.service.RedisService;
@@ -670,9 +671,24 @@ public class SysUserController extends BaseController
     {
         userService.checkUserAllowed(user);
         userService.checkUserDataScope(user.getUserId());
-        user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));
+        String newPwd = user.getPassword();
+        if (StringUtils.isEmpty(newPwd))
+        {
+            newPwd = getSafeInitPassword();
+        }
+        if (StringUtils.isEmpty(newPwd))
+        {
+            return error("未设置初始密码，请联系管理员");
+        }
+        user.setPassword(SecurityUtils.encryptPassword(newPwd));
         user.setUpdateBy(SecurityUtils.getUsername());
-        return toAjax(userService.resetPwd(user));
+        int rows = userService.resetPwd(user);
+        AjaxResult ajax = toAjax(rows);
+        if (rows > 0)
+        {
+            ajax.put("defaultPassword", newPwd);
+        }
+        return ajax;
     }
 
     /**
@@ -881,5 +897,75 @@ public class SysUserController extends BaseController
             }
         }
         return AjaxResult.success("解绑成功，共撤销 " + revokedCount + " 条绑定");
+    }
+
+    /**
+     * 查询用户密码错误次数及锁定状态（附带系统初始密码配置）
+     */
+    @RequiresPermissions("system:user:edit")
+    @GetMapping("/{userId}/pwd-lock-status")
+    public AjaxResult getPwdLockStatus(@PathVariable("userId") Long userId)
+    {
+        userService.checkUserDataScope(userId);
+        SysUser user = userService.selectUserById(userId);
+        if (StringUtils.isNull(user))
+        {
+            return AjaxResult.error("用户不存在");
+        }
+        String key = CacheConstants.PWD_ERR_CNT_KEY + user.getUserName();
+        Integer errCnt = redisService.getCacheObject(key);
+        long ttl = redisService.getExpire(key);
+        String initPassword = getSafeInitPassword();
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("userName", user.getUserName());
+        result.put("errorCount", errCnt != null ? errCnt : 0);
+        result.put("maxRetryCount", CacheConstants.PASSWORD_MAX_RETRY_COUNT);
+        result.put("locked", errCnt != null && errCnt >= CacheConstants.PASSWORD_MAX_RETRY_COUNT);
+        result.put("lockTimeRemainingMinutes", ttl > 0 ? (ttl / 60) : 0);
+        result.put("initPassword", StringUtils.isEmpty(initPassword) ? "123456" : initPassword);
+        return AjaxResult.success(result);
+    }
+
+    /**
+     * 解锁用户账号（清除密码错误次数）
+     */
+    @RequiresPermissions("system:user:edit")
+    @Log(title = "用户管理-解锁账号", businessType = BusinessType.OTHER)
+    @Idempotent(scene = "system:user:unlock", highRisk = true)
+    @PutMapping("/{userId}/unlock")
+    public AjaxResult unlockUser(@PathVariable("userId") Long userId)
+    {
+        userService.checkUserDataScope(userId);
+        SysUser user = userService.selectUserById(userId);
+        if (StringUtils.isNull(user))
+        {
+            return AjaxResult.error("用户不存在");
+        }
+        String key = CacheConstants.PWD_ERR_CNT_KEY + user.getUserName();
+        redisService.deleteObject(key);
+        return AjaxResult.success("账号已解锁");
+    }
+
+    /**
+     * 安全读取初始密码配置：避免读到被前端误写回的脱敏占位符 "******" 或脏缓存。
+     */
+    private String getSafeInitPassword()
+    {
+        final String defaultPwd = "123456";
+        final String configKey = "sys.user.initPassword";
+        final String masked = "******";
+        String value = configService.selectConfigByKey(configKey);
+        if (!masked.equals(value) && StringUtils.isNotEmpty(value))
+        {
+            return value;
+        }
+        // 缓存可能被污染：清缓存再查一次
+        configService.clearConfigCache();
+        value = configService.selectConfigByKey(configKey);
+        if (!masked.equals(value) && StringUtils.isNotEmpty(value))
+        {
+            return value;
+        }
+        return defaultPwd;
     }
 }

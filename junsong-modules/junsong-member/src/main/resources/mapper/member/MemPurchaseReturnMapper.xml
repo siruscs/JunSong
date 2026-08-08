@@ -22,8 +22,17 @@
            (select sum(ri.return_total_quantity) from mem_purchase_return_item ri where ri.return_id=r.return_id and ri.tenant_id=r.tenant_id and ri.dept_id=r.dept_id) as total_return_quantity
     from mem_purchase_return r
     left join mem_purchase_order po on po.purchase_id=r.purchase_id and po.tenant_id=r.tenant_id and po.dept_id=r.dept_id
+    left join mem_member m on m.member_id=r.member_id and m.tenant_id=r.tenant_id and m.dept_id=r.dept_id and m.del_flag='0'
     where r.tenant_id=#{tenantId} and r.dept_id=#{deptId} and r.del_flag='0'
-    <if test="purchaseId != null">and r.purchase_id=#{purchaseId}</if><if test="status != null and status != ''">and r.status=#{status}</if>
+    <if test="purchaseId != null">and r.purchase_id=#{purchaseId}</if>
+    <if test="status != null and status != ''">and r.status=#{status}</if>
+    <if test="memberKeyword != null and memberKeyword != ''">and (
+      r.customer_name like concat('%', #{memberKeyword}, '%')
+      or r.customer_phone like concat('%', #{memberKeyword}, '%')
+      or m.member_name like concat('%', #{memberKeyword}, '%')
+      or m.member_no like concat('%', #{memberKeyword}, '%')
+      or m.phone like concat('%', #{memberKeyword}, '%')
+    )</if>
     order by r.return_id desc
   </select>
   <select id="selectReturnById" parameterType="com.junsong.member.domain.MemPurchaseReturn" resultMap="ReturnResult">

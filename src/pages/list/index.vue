@@ -1043,7 +1043,7 @@ export default {
 .work-scope {
   display: flex;
   align-items: center;
-  margin: 0 30rpx;
+  margin: 24rpx 30rpx;
   padding: 6rpx 0;
   min-height: 44rpx;
 }

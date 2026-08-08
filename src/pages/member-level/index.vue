@@ -175,7 +175,7 @@ export default {
 .hero-title{display:block;margin-top:10rpx;color:#1e293b;font-size:38rpx;font-weight:700}
 
 /* ── 部门范围条 ── */
-.work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx;padding:6rpx 0}
+.work-scope{display:flex;align-items:center;margin:24rpx 30rpx;min-height:44rpx;padding:6rpx 0}
 .work-scope-hover{background:#eaf3ff;border-radius:8rpx}
 .work-scope-mark{width:14rpx;height:14rpx;margin-right:14rpx;border-radius:50%;background:#087CF0}
 .work-scope-mark-disabled{background:#087CF0}

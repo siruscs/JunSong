@@ -157,7 +157,7 @@ onMounted(async () => { if (!requireModulePermission('configSync')) return; cons
 .hero-subtitle{display:block;margin-top:12rpx;color:#5A6B7F;font-size:24rpx}
 
 /* ── 部门范围条 ── */
-.work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx}
+.work-scope{display:flex;align-items:center;margin:24rpx 30rpx;min-height:44rpx}
 .work-scope-mark{width:14rpx;height:14rpx;margin-right:16rpx;border-radius:50%;background:#1687f5}
 .work-scope-copy{display:flex;align-items:baseline;color:#8192a6;font-size:24rpx}
 .work-scope-label{color:#5A6B7F}

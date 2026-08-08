@@ -33,7 +33,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     
     <sql id="selectFinPurchaseVo">
         select p.purchase_id, p.period_id, p.purchase_no, p.supplier_id, s.supplier_name, p.purchase_date, p.total_amount, p.paid_amount, p.payment_method, p.total_quantity, p.status, p.receiver_name, p.receiver_phone, p.receiver_address, p.del_flag, p.idempotency_key, p.dept_id, p.create_by, p.create_time, p.update_by, p.update_time, p.remark,
-               (select group_concat(concat(d2.product_name, CAST(d2.total_qty AS CHAR), d2.unit) order by d2.product_name separator '，')
+               (select group_concat(concat(d2.product_name, ':', CAST(d2.total_qty AS CHAR), d2.unit) order by d2.product_name separator '|')
                   from (
                     select product_name, unit, sum(quantity) as total_qty
                     from fin_purchase_detail

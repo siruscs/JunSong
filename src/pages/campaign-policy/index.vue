@@ -7,7 +7,7 @@
     </view>
 
     <!-- 部门范围条 -->
-    <view class="work-scope" :class="{ 'work-scope-disabled': !switchable }" :hover-class="switchable ? 'work-scope-hover' : ''" hover-stay-time="80" hover-start-time="30" @tap="switchable && openDeptSwitcher">
+    <view class="work-scope" :class="{ 'work-scope-disabled': !switchable }" :hover-class="switchable ? 'work-scope-hover' : ''" hover-stay-time="80" hover-start-time="30" @tap="openDeptSwitcher">
       <view class="work-scope-mark" :class="{ 'work-scope-mark-disabled': !switchable }"></view>
       <view class="work-scope-copy">
         <text class="work-scope-label">{{ scopeLabel }}</text>

@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <view class="hero"><view><text class="eyebrow">库存管理</text><text class="hero-title">库存调整</text></view></view>
-    <view class="work-scope" :class="{ 'work-scope-disabled': !switchable }" :hover-class="switchable ? 'work-scope-hover' : ''" hover-stay-time="80" hover-start-time="30" @tap="switchable && openDeptSwitcher"><view class="work-scope-mark" :class="{ 'work-scope-mark-disabled': !switchable }"></view><view class="work-scope-copy"><text class="work-scope-label">{{ scopeLabel }}</text><text class="work-scope-name">{{ currentDeptName || '未选择部门' }}</text></view></view>
+    <view class="work-scope" :class="{ 'work-scope-disabled': !switchable }" :hover-class="switchable ? 'work-scope-hover' : ''" hover-stay-time="80" hover-start-time="30" @tap="openDeptSwitcher"><view class="work-scope-mark" :class="{ 'work-scope-mark-disabled': !switchable }"></view><view class="work-scope-copy"><text class="work-scope-label">{{ scopeLabel }}</text><text class="work-scope-name">{{ currentDeptName || '未选择部门' }}</text></view></view>
     <view class="permission-note"><text>调整单 {{ rows.length }} 笔</text><text :class="capabilities.add ? 'can-edit' : 'read-only'">{{ capabilities.add ? '可编辑' : '只读' }}</text></view>
 
     <scroll-view scroll-y class="scroll adjustment-scroll" refresher-enabled :refresher-triggered="refreshing" @refresherrefresh="refresh">

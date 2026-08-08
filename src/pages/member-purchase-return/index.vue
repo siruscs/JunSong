@@ -1,7 +1,7 @@
 <template>
   <view class="page" v-if="authorized">
     <view class="hero"><text class="eyebrow">会员服务</text><text class="hero-title">退货/退款</text></view>
-    <view class="work-scope" :class="{ 'work-scope-disabled': !switchable }" :hover-class="switchable ? 'work-scope-hover' : ''" hover-stay-time="80" hover-start-time="30" @tap="switchable && openDeptSwitcher"><view class="work-scope-mark" :class="{ 'work-scope-mark-disabled': !switchable }"></view><view class="work-scope-copy"><text class="work-scope-label">{{ scopeLabel }}</text><text class="work-scope-name">{{ currentDeptName || '未选择部门' }}</text></view></view>
+    <view class="work-scope" :class="{ 'work-scope-disabled': !switchable }" :hover-class="switchable ? 'work-scope-hover' : ''" hover-stay-time="80" hover-start-time="30" @tap="openDeptSwitcher"><view class="work-scope-mark" :class="{ 'work-scope-mark-disabled': !switchable }"></view><view class="work-scope-copy"><text class="work-scope-label">{{ scopeLabel }}</text><text class="work-scope-name">{{ currentDeptName || '未选择部门' }}</text></view></view>
 
     <view class="section-card filters-card">
       <view class="filter-row filter-row-merged">

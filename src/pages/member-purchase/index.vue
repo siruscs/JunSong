@@ -1,7 +1,7 @@
 <template>
   <view class="page" v-if="authorized">
     <view class="hero"><text class="eyebrow">会员服务</text><text class="hero-title">购买记录</text></view>
-    <view class="work-scope" :class="{ 'work-scope-disabled': !switchable }" :hover-class="switchable ? 'work-scope-hover' : ''" hover-stay-time="80" hover-start-time="30" @tap="switchable && openDeptSwitcher"><view class="work-scope-mark" :class="{ 'work-scope-mark-disabled': !switchable }"></view><view class="work-scope-copy"><text class="work-scope-label">{{ scopeLabel }}</text><text class="work-scope-name">{{ currentDeptName || '未选择部门' }}</text></view></view>
+    <view class="work-scope" :class="{ 'work-scope-disabled': !switchable }" :hover-class="switchable ? 'work-scope-hover' : ''" hover-stay-time="80" hover-start-time="30" @tap="openDeptSwitcher"><view class="work-scope-mark" :class="{ 'work-scope-mark-disabled': !switchable }"></view><view class="work-scope-copy"><text class="work-scope-label">{{ scopeLabel }}</text><text class="work-scope-name">{{ currentDeptName || '未选择部门' }}</text></view></view>
     <view class="summary-bar" v-if="summary">
       <view><text class="summary-value">{{ Number(summary.purchaseOrderCount || 0) }}</text><text class="summary-label">购买单数</text></view>
       <view><text class="summary-value">{{ quantity(summary.purchaseQuantity) }}<text class="summary-gift">赠</text><text class="summary-gift-num">{{ quantity(summary.giftQuantity) }}</text></text><text class="summary-label">数量</text></view>

@@ -6,7 +6,7 @@
         <text class="hero-title">库存查询</text>
       </view>
     </view>
-    <view class="work-scope" :class="{ 'work-scope-disabled': !switchable }" :hover-class="switchable ? 'work-scope-hover' : ''" hover-stay-time="80" hover-start-time="30" @tap="switchable && openDeptSwitcher"><view class="work-scope-mark" :class="{ 'work-scope-mark-disabled': !switchable }"></view><view class="work-scope-copy"><text class="work-scope-label">{{ scopeLabel }}</text><text class="work-scope-name">{{ currentDeptName || '未选择部门' }}</text></view></view>
+    <view class="work-scope" :class="{ 'work-scope-disabled': !switchable }" :hover-class="switchable ? 'work-scope-hover' : ''" hover-stay-time="80" hover-start-time="30" @tap="openDeptSwitcher"><view class="work-scope-mark" :class="{ 'work-scope-mark-disabled': !switchable }"></view><view class="work-scope-copy"><text class="work-scope-label">{{ scopeLabel }}</text><text class="work-scope-name">{{ currentDeptName || '未选择部门' }}</text></view></view>
     <view class="summary-bar" v-if="items.length"><view><text class="summary-value">¥{{ money(totalClosingAmount) }}</text><text class="summary-label">库存金额</text></view><view><text class="summary-value">{{ totalClosingQuantity }}</text><text class="summary-label">库存数量</text></view><view><text class="summary-value">{{ items.length }}</text><text class="summary-label">商品数</text></view></view>
     <scroll-view scroll-y class="scroll" refresher-enabled :refresher-triggered="refreshing" @refresherrefresh="refresh">
       <view v-if="stateStatus === 'normal'" class="record-list">

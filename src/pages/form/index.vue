@@ -826,7 +826,7 @@ export default {
       }
       if (this.moduleKey === 'member' && !this.id) delete data.memberNo
       // 所有数量类字段统一收敛成合法小数值（3位小数内）—— 发送给后端前最后一层兜底
-      if (typeof data.saleQuantity !== 'undefined') data.saleQuantity = this.toNum3(data.saleQuantity)
+      if (typeof data.saleQuantity !== 'undefined') data.saleQuantity = this.toNum3(data.saleQuantity, true)
       if (typeof data.giftQuantity !== 'undefined') data.giftQuantity = this.toNum3(data.giftQuantity)
       if (typeof data.totalQuantity !== 'undefined') data.totalQuantity = this.toNum3(data.totalQuantity, true)
       if (Array.isArray(data.details)) {

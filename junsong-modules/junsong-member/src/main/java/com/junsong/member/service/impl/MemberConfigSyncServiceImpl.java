@@ -118,6 +118,9 @@ public class MemberConfigSyncServiceImpl implements IMemberConfigSyncService
                         Map<String, Object> sourceProduct = new LinkedHashMap<>(sourceProductRows.get(0));
                         sourceProduct.put("businessKey", sourceProduct.remove("product_code"));
                         sourceProduct.put("displayName", sourceProduct.remove("product_name"));
+                        sourceProduct.put("tenantId", tenantId);
+                        sourceProduct.put("product_id", null);
+                        sourceProduct.put("dept_id", targetDeptId);
                         sourceForTarget.put("sourceProduct", sourceProduct);
                         missingProductName = String.valueOf(sourceProduct.get("displayName"));
                         Integer productCount = jdbcTemplate.queryForObject(

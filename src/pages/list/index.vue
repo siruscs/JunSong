@@ -1043,7 +1043,7 @@ export default {
 .work-scope {
   display: flex;
   align-items: center;
-  margin: 24rpx 30rpx;
+  margin: 8rpx 30rpx;
   padding: 6rpx 0;
   min-height: 44rpx;
 }
@@ -1091,7 +1091,7 @@ export default {
 }
 
 .filter-wrap {
-  margin: 16rpx 28rpx 0;
+  margin: 8rpx 28rpx 0;
   display: flex;
   gap: 14rpx;
   align-items: stretch;
@@ -1153,7 +1153,7 @@ export default {
 }
 
 .stats-bar {
-  margin: 16rpx 28rpx 0;
+  margin: 8rpx 28rpx 0;
   padding: 24rpx;
   background: #FFFFFF;
   border-radius: 20rpx;
@@ -1195,7 +1195,7 @@ export default {
 .search-wrap {
   display: flex;
   gap: 12rpx;
-  margin: 16rpx 28rpx 0;
+  margin: 8rpx 28rpx 0;
   padding: 0;
 }
 
@@ -1237,7 +1237,7 @@ export default {
 .page-actions {
   display: flex;
   gap: 14rpx;
-  margin: 16rpx 28rpx 0;
+  margin: 8rpx 28rpx 0;
 }
 
 .chip-button {
@@ -1271,7 +1271,7 @@ export default {
 }
 
 .member-overview {
-  margin: 16rpx 28rpx 0;
+  margin: 8rpx 28rpx 0;
   padding: 24rpx 28rpx;
   border-radius: 24rpx;
   background: linear-gradient(135deg, #123F73, #087CF0);

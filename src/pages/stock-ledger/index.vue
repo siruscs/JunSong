@@ -132,7 +132,7 @@ export default {
 .hero{margin:22rpx 30rpx 0;padding:28rpx 30rpx 30rpx;border-left:5rpx solid #1687f5;border-radius:20rpx;background:linear-gradient(110deg,#d9eaff,#f7faff);box-shadow:0 8rpx 22rpx rgba(46,82,120,.08);color:#1e293b}
 .eyebrow{display:block;color:#1687f5;font-size:24rpx;font-weight:600}
 .hero-title{display:block;margin-top:10rpx;color:#1e293b;font-size:38rpx;font-weight:700}
-.work-scope{display:flex;align-items:center;margin:24rpx 30rpx;min-height:44rpx;padding:6rpx 0}
+.work-scope{display:flex;align-items:center;margin:8rpx 30rpx;min-height:44rpx;padding:6rpx 0}
 .work-scope-hover{background:#eaf3ff;border-radius:8rpx}
 .work-scope-mark{width:14rpx;height:14rpx;margin-right:14rpx;border-radius:50%;background:#087CF0}
 .work-scope-mark-disabled{background:#087CF0}

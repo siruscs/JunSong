@@ -16,7 +16,6 @@
       </view>
     </view>
 
-    <view class="scroll-pad"></view>
     <view class="bottom-bar">
       <button v-if="can('add')" class="add-button" @tap="openCreate">＋ 新增</button>
     </view>
@@ -175,7 +174,7 @@ export default {
 .hero-title{display:block;margin-top:10rpx;color:#1e293b;font-size:38rpx;font-weight:700}
 
 /* ── 部门范围条 ── */
-.work-scope{display:flex;align-items:center;margin:24rpx 30rpx;min-height:44rpx;padding:6rpx 0}
+.work-scope{display:flex;align-items:center;margin:8rpx 30rpx;min-height:44rpx;padding:6rpx 0}
 .work-scope-hover{background:#eaf3ff;border-radius:8rpx}
 .work-scope-mark{width:14rpx;height:14rpx;margin-right:14rpx;border-radius:50%;background:#087CF0}
 .work-scope-mark-disabled{background:#087CF0}
@@ -190,11 +189,9 @@ export default {
 .section-link{font-size:22rpx;color:#94A3B8}
 
 /* ── 浮动底部操作栏 ── */
-.scroll-pad{height:16rpx;margin:16rpx 0 0}
 .bottom-bar{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;gap:16rpx;padding:20rpx 24rpx;padding-bottom:calc(20rpx + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1rpx solid #E2E8F0;z-index:10}
 .bottom-bar .add-button{width:320rpx;height:84rpx;line-height:84rpx;background:linear-gradient(135deg,#087CF0,#5AA9E8);color:#FFF;font-size:28rpx;border-radius:999rpx;text-align:center;box-shadow:0 6rpx 20rpx rgba(8,124,240,.25);border:0;padding:0}
 .bottom-bar .add-button::after{border:none}
-.scroll{padding-bottom:160rpx!important}
 
 /* ── 滚动列表区 ── */
 .scroll{flex:1;width:100%;min-height:0;padding:0 30rpx 160rpx!important;box-sizing:border-box;overflow-x:hidden}

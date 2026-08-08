@@ -6,7 +6,7 @@
     <view class="section-card filters-card">
       <view class="filter-row filter-row-merged">
         <picker class="filter-type-picker" :range="statusFilters" range-key="label" :value="statusFilterIndex" @change="selectStatusFilter"><view class="filter-picker">{{ statusFilters[statusFilterIndex]?.label || '全部状态' }}<text class="filter-chevron">⌄</text></view></picker>
-        <input class="filter-kw" v-model="keyword" placeholder="顾客姓名或手机号" confirm-type="search" @confirm="load" />
+        <input class="filter-kw" v-model="keyword" placeholder="会员姓名/编号/手机号" confirm-type="search" @confirm="load" />
         <button class="filter-button" @tap="load">查询</button>
         <button class="filter-button filter-button-ghost" @tap="resetFilters">重置</button>
       </view>
@@ -197,7 +197,7 @@ export default {
         deptId: this.currentDeptId
       }
       if (this.filters.status) params.status = this.filters.status
-      if (this.keyword) params.customerName = this.keyword
+      if (this.keyword) params.memberKeyword = this.keyword
       return params
     },
     async loadStatistics() {

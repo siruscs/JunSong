@@ -68,6 +68,23 @@
         <view class="detail-empty" v-if="!(detail.deliveries || []).length">暂无领取记录</view>
       </view>
 
+      <view class="detail-section payment-history-section">
+        <view class="detail-section-title">退费记录</view>
+        <view class="payment-history-item" v-for="r in returns" :key="r.returnId" @tap="openReturnDetail(r)">
+          <view class="payment-history-main">
+            <text class="payment-history-no">{{ r.returnNo || `退货 #${r.returnId}` }}</text>
+            <text class="payment-history-amount refund-amount">-¥{{ money(r.refundedAmount || r.refundAmount) }}</text>
+          </view>
+          <view class="payment-history-meta">
+            <text>{{ dateText(r.returnDate) }}</text>
+            <text>退 {{ quantity(r.totalReturnQuantity) }} · 原购 {{ quantity(r.purchaseQuantity) }}</text>
+          </view>
+          <view class="payment-history-meta" v-if="r.reason"><text>原因：{{ r.reason }}</text></view>
+          <view class="return-status-line"><text class="compact-status" :class="returnStatusClass(r.status)">{{ returnStatusText(r.status) }}</text></view>
+        </view>
+        <view class="detail-empty" v-if="!returns.length">暂无退费记录</view>
+      </view>
+
       <view class="detail-footer-placeholder"></view>
 
       <view class="detail-footer-bar" v-if="!panel">
@@ -224,7 +241,8 @@ export default {
     deliveryItems: [],
     deliveryIndex: 0,
     deliveryForm: { saleDeliveryQuantity: '', giftDeliveryQuantity: '', receiverName: '' },
-    remarkCollapsed: false
+    remarkCollapsed: false,
+    returns: []
   } },
   computed: {
     panelTitle() { return ({ edit: '编辑购买单', payment: '登记收款', delivery: '登记领取', bind: '绑定会员' })[this.panel] },
@@ -251,6 +269,12 @@ export default {
       if (options.autoEdit === '1') this.panel = 'edit'
     })
   },
+  onShow() {
+    if (this.purchaseId) {
+      this.loadDetail()
+      this.loadReturns()
+    }
+  },
   methods: {
     can(action) { return hasActionPermission('memberPurchase', action) },
     today() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` },
@@ -268,7 +292,7 @@ export default {
     unwrap(res) { return res?.rows || res?.data?.rows || res?.data || [] },
 
     async loadAll() {
-      await Promise.all([this.loadDetail(), this.loadOptions()])
+      await Promise.all([this.loadDetail(), this.loadOptions(), this.loadReturns()])
       this.loading = false
     },
     async loadDetail() {
@@ -277,6 +301,14 @@ export default {
       const allItems = (this.detail.items || []).map(x => ({ ...x }))
       this.form = { ...newPurchaseForm(), ...this.detail, item: allItems[0] || {}, _allItems: allItems }
     },
+    async loadReturns() {
+      try {
+        const res = await request({ url: '/member/purchase-return/list', method: 'GET', data: { pageNum: 1, pageSize: 200, purchaseId: this.purchaseId, deptId: this.currentDeptId }, silent: true })
+        this.returns = this.unwrap(res) || []
+      } catch (e) { this.returns = [] }
+    },
+    returnStatusText(s) { return ({ DRAFT: '草稿', CONFIRMED: '已确认', COMPLETED: '已完成', CANCELLED: '已作废' })[String(s || '')] || (String(s) || '-') },
+    returnStatusClass(s) { const t = String(s || ''); return t === 'COMPLETED' ? 'status-danger' : t === 'CONFIRMED' ? 'status-warn' : t === 'CANCELLED' ? 'status-muted' : 'status-warn' },
     async loadOptions() {
       try {
         const [p, a] = await Promise.all([
@@ -378,6 +410,9 @@ export default {
       await request({ url: `/member/purchase/${this.detail.purchaseId}/cancel`, method: 'PUT' })
       uni.showToast({ title: '购买单已作废', icon: 'success' })
       setTimeout(() => uni.navigateBack(), 300)
+    },
+    openReturnDetail(r) {
+      uni.navigateTo({ url: `/pages/member-purchase-return/index?returnId=${r.returnId}&purchaseId=${this.purchaseId}` })
     }
   }
 }
@@ -432,6 +467,13 @@ export default {
 .payment-history-no{color:#1A2332;font-size:27rpx;font-weight:600}
 .payment-history-amount{color:#087CF0;font-size:30rpx;font-weight:700;flex-shrink:0}
 .payment-history-meta{margin-top:10rpx;color:#64748B;font-size:24rpx}
+.refund-amount{color:#DC2626}
+.return-status-line{margin-top:10rpx;text-align:right}
+.compact-status{display:inline-block;padding:4rpx 16rpx;border-radius:999rpx;font-size:22rpx;font-weight:600}
+.compact-status.status-warn{background:#FEF3C7;color:#92400E}
+.compact-status.status-info{background:#E0F2FE;color:#075985}
+.compact-status.status-danger{background:#FEE2E2;color:#991B1B}
+.compact-status.status-muted{background:#F1F5F9;color:#475569}
 .detail-empty{text-align:center;color:#94A3B8;padding:32rpx 0;font-size:24rpx}
 
 .detail-footer-placeholder{height:140rpx}

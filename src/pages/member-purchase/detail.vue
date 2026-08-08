@@ -49,7 +49,7 @@
       </view>
 
       <view class="detail-section payment-history-section">
-        <view class="detail-section-title">收款记录</view>
+        <view class="detail-section-title is-payment-title">收款记录</view>
         <view class="payment-history-item" v-for="p in detail.payments || []" :key="p.paymentId">
           <view class="payment-history-main"><text class="payment-history-no">{{ p.paymentNo || `缴款 #${p.paymentId}` }}</text><text class="payment-history-amount">¥{{ money(p.paymentAmount) }}</text></view>
           <view class="payment-history-meta"><text>{{ dateText(p.paymentDate) }}</text><text>{{ paymentMethodText(p.paymentMethod) }}</text></view>
@@ -59,7 +59,7 @@
       </view>
 
       <view class="detail-section payment-history-section">
-        <view class="detail-section-title">领取记录</view>
+        <view class="detail-section-title is-delivery-title">领取记录</view>
         <view class="payment-history-item" v-for="d in detail.deliveries || []" :key="d.deliveryId">
           <view class="payment-history-main"><text class="payment-history-no">{{ d.deliveryNo || `领取 #${d.deliveryId}` }}</text><text class="payment-history-amount">{{ quantity(d.totalDeliveryQuantity) }}</text></view>
           <view class="payment-history-meta"><text>{{ dateText(d.deliveryDate) }}</text><text>领取人 {{ d.receiverName || '-' }}</text></view>
@@ -69,7 +69,7 @@
       </view>
 
       <view class="detail-section payment-history-section">
-        <view class="detail-section-title">退费记录</view>
+        <view class="detail-section-title is-return-title">退费记录</view>
         <view class="payment-history-item" v-for="r in returns" :key="r.returnId" @tap="openReturnDetail(r)">
           <view class="payment-history-main">
             <text class="payment-history-no">{{ r.returnNo || `退货 #${r.returnId}` }}</text>
@@ -433,6 +433,9 @@ export default {
 
 .detail-section{margin:20rpx 28rpx 0;background:#fff;border-radius:20rpx;padding:28rpx 32rpx;box-shadow:0 2rpx 16rpx rgba(8,124,240,.06);box-sizing:border-box}
 .detail-section-title{font-size:28rpx;font-weight:600;color:#1A2332;margin-bottom:20rpx;padding-left:16rpx;border-left:4rpx solid #087CF0}
+.detail-section-title.is-payment-title{border-left-color:#0084FF;color:#075985;border-left-width:6rpx}
+.detail-section-title.is-delivery-title{border-left-color:#10B981;color:#065F46;border-left-width:6rpx}
+.detail-section-title.is-return-title{border-left-color:#EF4444;color:#991B1B;border-left-width:6rpx}
 
 .detail-highlight-grid{display:flex;flex-wrap:wrap;gap:12rpx}
 .detail-highlight-item{flex:1;min-width:45%;background:#F5F8FA;border-radius:12rpx;padding:18rpx 20rpx;box-sizing:border-box}

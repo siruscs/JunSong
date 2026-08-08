@@ -215,7 +215,7 @@
               <text v-for="(p, i) in parseProductNames(item.productNames)" :key="i">
                 <text v-if="i > 0"> | </text>
                 <text>{{ p.name }}:</text>
-                <text style="color: #409eff; font-weight: bold;">{{ p.qtyUnit }}</text>
+                <text style="color: #087CF0; font-weight: bold;">{{ p.qtyUnit }}</text>
               </text>
               <text class="purchase-status-tag" :class="'purchase-status-' + (item.status || '')">{{ displayField('status', item.status) }}</text>
             </view>

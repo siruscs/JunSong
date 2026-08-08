@@ -1,6 +1,6 @@
 <template>
   <view class="page">
-    <view class="hero"><view><text class="eyebrow">库存管理</text><text class="hero-title">库存流水</text></view></view>
+    <view class="hero"><view><text class="eyebrow">库存管理</text><text class="hero-title">库存流水：{{ productName || '-' }}</text></view></view>
     <view class="work-scope"><view class="work-scope-mark"></view><view class="work-scope-copy"><text class="work-scope-label">当前部门 · </text><text class="work-scope-name">{{ currentDeptName || '当前部门' }}</text></view></view>
     <view class="section-card filters-card">
       <view class="section-header"><view class="section-dot" style="background:#087CF0"></view><text class="section-title">筛选流水</text><text class="section-link">共 {{ total }} 条</text></view>

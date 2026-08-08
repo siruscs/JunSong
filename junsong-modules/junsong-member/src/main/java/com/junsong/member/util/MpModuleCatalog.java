@@ -32,6 +32,7 @@ import java.util.*;
 public final class MpModuleCatalog {
 
     public static final String GROUP_MEMBER = "会员服务";
+    public static final String GROUP_OPERATION = "会员运营";
     public static final String GROUP_FINANCE = "财务管理";
     public static final String GROUP_SYSTEM = "系统管理";
     public static final String GROUP_OFFICE = "移动办公";
@@ -77,8 +78,6 @@ public final class MpModuleCatalog {
             v("member:level:list", "member:level:query")),
         m("campaignPolicy", "销售政策", GROUP_MEMBER, true,
             v("member:campaignPolicy:list", "member:campaignPolicy:query")),
-        // dashboard / growth / actions / points：小程序端已存在页面（pages/member/*），但不是独立 CRUD 模块，
-        // 不在九宫格与 MP 权限页以 checkbox 形式出现，仅以“功能入口卡片”展示；hasFrontendPage=false。
         m("pointsGoods", "积分商品", GROUP_MEMBER, true,
             v("member:pointsGoods:list", "member:pointsGoods:query")),
         m("pointsRule", "积分规则", GROUP_MEMBER, true,
@@ -93,6 +92,19 @@ public final class MpModuleCatalog {
             v("member:seckillRecord:list", "member:seckillRecord:query")),
         m("configSync", "配置同步", GROUP_MEMBER, true,
             v("member:configSync:query")),
+
+        // ===== 会员运营（小程序端 pages/member/{dashboard,growth,actions,points}.vue）=====
+        // 这4个功能不是独立 CRUD 模块（不在九宫格以 module schema 渲染），
+        // 但有独立页面，且需要出现在 PC「小程序权限」配置页以便按角色单独授权。
+        m("dashboard", "会员运营看板", GROUP_OPERATION, true,
+            v("member:member:list", "member:member:query")),
+        m("growth", "成长体系", GROUP_OPERATION, true,
+            v("member:member:list", "member:member:query")),
+        m("actions", "增长动作", GROUP_OPERATION, true,
+            v("member:member:list", "member:member:query")),
+        m("points", "积分运营", GROUP_OPERATION, true,
+            v("member:pointsRecord:list", "member:pointsRecord:query",
+              "member:pointsExchange:list", "member:pointsExchange:query")),
 
         // ===== 财务管理 =====
         m("expense", "费用管理", GROUP_FINANCE, true,

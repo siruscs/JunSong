@@ -47,6 +47,28 @@
           </template>
         </template>
       </el-table-column>
+      <el-table-column label="会员运营模块" align="left" min-width="180">
+        <template #default="scope">
+          <template v-for="m in operationModules">
+            <el-tag
+              :key="m.key + '-enabled'"
+              v-if="getModulesForRole(scope.row.roleId).includes(m.key)"
+              size="small"
+              effect="dark"
+              type="success"
+              style="margin: 2px 4px 2px 0;"
+            >{{ m.name }}</el-tag>
+            <el-tag
+              :key="m.key + '-disabled'"
+              v-else
+              size="small"
+              effect="plain"
+              type="info"
+              style="margin: 2px 4px 2px 0; opacity: 0.45;"
+            >{{ m.name }}</el-tag>
+          </template>
+        </template>
+      </el-table-column>
       <el-table-column label="财务管理模块" align="left" min-width="260">
         <template #default="scope">
           <template v-for="m in financeModules">
@@ -142,6 +164,10 @@
           <el-checkbox-group v-model="configForm.moduleKeys">
             <el-checkbox v-for="m in memberModules" :key="m.key" :label="m.key">{{ m.name }}</el-checkbox>
           </el-checkbox-group>
+          <el-divider content-position="left">会员运营</el-divider>
+          <el-checkbox-group v-model="configForm.moduleKeys">
+            <el-checkbox v-for="m in operationModules" :key="m.key" :label="m.key">{{ m.name }}</el-checkbox>
+          </el-checkbox-group>
           <el-divider content-position="left">财务管理</el-divider>
           <el-checkbox-group v-model="configForm.moduleKeys">
             <el-checkbox v-for="m in financeModules" :key="m.key" :label="m.key">{{ m.name }}</el-checkbox>
@@ -187,6 +213,11 @@ const DEFAULT_MODULES = [
   { key: "seckill", name: "秒杀活动", group: "会员服务" },
   { key: "seckillRecord", name: "秒杀记录", group: "会员服务" },
   { key: "configSync", name: "配置同步", group: "会员服务" },
+  // 会员运营
+  { key: "dashboard", name: "会员运营看板", group: "会员运营" },
+  { key: "growth", name: "成长体系", group: "会员运营" },
+  { key: "actions", name: "增长动作", group: "会员运营" },
+  { key: "points", name: "积分运营", group: "会员运营" },
   // 财务管理
   { key: "expense", name: "费用管理", group: "财务管理" },
   { key: "advance", name: "借支管理", group: "财务管理" },
@@ -231,6 +262,7 @@ export default {
       rawPermRows: [],
       allModules: [],
       memberModules: [],
+      operationModules: [],
       financeModules: [],
       systemModules: [],
       officeModules: [],
@@ -271,6 +303,7 @@ export default {
       })
       this.allModules = Object.values(moduleMap)
       this.memberModules = this.allModules.filter(m => m.group === "会员服务")
+      this.operationModules = this.allModules.filter(m => m.group === "会员运营")
       this.financeModules = this.allModules.filter(m => m.group === "财务管理")
       this.systemModules = this.allModules.filter(m => m.group === "系统管理")
       this.officeModules = this.allModules.filter(m => m.group === "移动办公")

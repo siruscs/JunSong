@@ -229,7 +229,8 @@
           <view class="card-body">
             <view class="card-header">
               <view class="record-title">{{ recordTitle(item) }}</view>
-              <view class="record-id">NO. {{ item[config.idKey] }}</view>
+              <view v-if="moduleKey === 'sale'" class="record-id sale-status-badge" :class="`sale-status-${saleStatusClass(item)}`">{{ saleStatusText(item) }}</view>
+              <view v-else class="record-id">NO. {{ item[config.idKey] }}</view>
             </view>
 
             <view class="summary-grid">
@@ -239,12 +240,8 @@
               </view>
             </view>
 
-            <view class="card-footer" v-if="moduleKey === 'sale' || metaText(item)" :class="moduleKey === 'sale' ? `sale-footer-${saleStatusClass(item)}` : ''">
-              <view v-if="moduleKey === 'sale'" class="sale-footer-meta">
-                <text class="sale-footer-date">{{ saleDateText(item) }}</text>
-                <text class="sale-footer-status">{{ saleStatusText(item) }}</text>
-              </view>
-              <text v-else class="meta-text">{{ metaText(item) }}</text>
+            <view class="card-footer" v-if="moduleKey !== 'sale' && metaText(item)">
+              <text class="meta-text">{{ metaText(item) }}</text>
               <text class="arrow-icon">›</text>
             </view>
           </view>
@@ -737,7 +734,12 @@ export default {
       return query
     },
     pillEntries(item) {
-      return this.config.summary.slice(0, 4).map((key) => ({
+      let keys = this.config.summary.slice(0, 4)
+      // 销售记录列表：销售单号替换为销售时间
+      if (this.moduleKey === 'sale') {
+        keys = keys.map(k => k === 'saleNo' ? 'saleDate' : k)
+      }
+      return keys.map((key) => ({
         key,
         label: this.fieldOf(key).label,
         value: this.displayField(key, item[key], item),
@@ -1950,6 +1952,22 @@ export default {
   font-size: 20rpx;
   border-radius: 999rpx;
   flex-shrink: 0;
+}
+
+.sale-status-badge {
+  font-weight: 600;
+}
+.sale-status-badge.sale-status-status-ok {
+  background: #D1FAE5;
+  color: #065F46;
+}
+.sale-status-badge.sale-status-status-warn {
+  background: #FEF3C7;
+  color: #92400E;
+}
+.sale-status-badge.sale-status-status-info {
+  background: #DBEAFE;
+  color: #1E40AF;
 }
 
 .advance-amount {

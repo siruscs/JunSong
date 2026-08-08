@@ -7,7 +7,7 @@
       </view>
     </view>
     <view class="work-scope"><view class="work-scope-mark"></view><view class="work-scope-copy"><text class="work-scope-label">当前部门 · </text><text class="work-scope-name">{{ currentDeptName || '当前部门' }}</text></view></view>
-    <view class="summary-bar" v-if="report"><view><text class="summary-value">¥{{ money(report.closingAmount) }}</text><text class="summary-label">库存金额</text></view><view><text class="summary-value">{{ report.closingQuantity || 0 }}</text><text class="summary-label">库存数量</text></view><view><text class="summary-value">{{ items.length }}</text><text class="summary-label">商品数</text></view></view>
+    <view class="summary-bar" v-if="items.length"><view><text class="summary-value">¥{{ money(totalClosingAmount) }}</text><text class="summary-label">库存金额</text></view><view><text class="summary-value">{{ totalClosingQuantity }}</text><text class="summary-label">库存数量</text></view><view><text class="summary-value">{{ items.length }}</text><text class="summary-label">商品数</text></view></view>
     <scroll-view scroll-y class="scroll" refresher-enabled :refresher-triggered="refreshing" @refresherrefresh="refresh">
       <view v-if="stateStatus === 'normal'" class="record-list">
         <view class="record-card" v-for="item in items" :key="`${item.deptId}-${item.productId}`" @tap="openLedger(item)">
@@ -15,17 +15,11 @@
           <view class="card-body">
             <view class="card-header">
               <text class="record-title">{{ item.productName || '-' }}</text>
-              <text class="record-id">{{ item.deptName || item.deptId || '-' }}</text>
+              <text class="record-quantity">{{ item.closingQuantity || 0 }}</text>
             </view>
             <view class="summary-grid">
-              <view class="summary-item"><text class="summary-label">库存数量</text><text class="summary-value">{{ item.closingQuantity || 0 }}</text></view>
-              <view class="summary-item"><text class="summary-label">平均成本</text><text class="summary-value">¥{{ money(item.avgUnitCost, 6) }}</text></view>
+              <view class="summary-item"><text class="summary-label">平均成本</text><text class="summary-value">¥{{ money(item.avgUnitCost) }}</text></view>
               <view class="summary-item"><text class="summary-label">库存金额</text><text class="summary-value tone-money">¥{{ money(item.closingAmount) }}</text></view>
-              <view class="summary-item"><text class="summary-value tone-warn">查看明细 ›</text></view>
-            </view>
-            <view class="card-footer">
-              <text class="meta-text">商品编号 {{ item.productId || '-' }}</text>
-              <text class="arrow-icon">›</text>
             </view>
           </view>
         </view>
@@ -45,7 +39,12 @@ import { getStatusBarHeight } from '@/utils/systemInfo.js'
 export default {
   components: { StateView },
   data() { return { report: null, items: [], loading: false, refreshing: false, loadError: '', currentDeptName: '', statusBarH: 0, menuButton: null } },
-  computed: { stateStatus() { if (this.loading && !this.items.length) return 'loading'; if (this.loadError && !this.items.length) return 'error'; if (!this.items.length) return 'empty'; return 'normal' }, headerContentStyle() { const top = this.menuButton?.bottom ? this.menuButton.bottom + 8 : this.statusBarH + 48; return { paddingTop: top + 'px' } } },
+  computed: {
+    stateStatus() { if (this.loading && !this.items.length) return 'loading'; if (this.loadError && !this.items.length) return 'error'; if (!this.items.length) return 'empty'; return 'normal' },
+    headerContentStyle() { const top = this.menuButton?.bottom ? this.menuButton.bottom + 8 : this.statusBarH + 48; return { paddingTop: top + 'px' } },
+    totalClosingAmount() { return this.items.reduce((sum, item) => sum + Number(item.closingAmount || 0), 0) },
+    totalClosingQuantity() { return this.items.reduce((sum, item) => sum + Number(item.closingQuantity || 0), 0) }
+  },
   onLoad() { this.statusBarH = getStatusBarHeight(); try { this.menuButton = uni.getMenuButtonBoundingClientRect() } catch (_) { this.menuButton = null }; this.currentDeptName = workContext.snapshot().currentDept?.name || ''; if (requireModulePermission('stockCost')) this.load() },
   methods: {
     money(value, digits = 2) { return Number(value || 0).toFixed(digits) },
@@ -87,14 +86,11 @@ export default {
 .card-body{flex:1;min-width:0;padding:24rpx 26rpx 22rpx 22rpx;display:flex;flex-direction:column;gap:18rpx}
 .card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16rpx}
 .record-title{flex:1;min-width:0;color:#1A2332;font-size:29rpx;font-weight:700;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.record-id{flex-shrink:0;padding:6rpx 14rpx;border-radius:100rpx;background:#F1F6FF;color:#1687f5;font-size:20rpx;font-weight:600;white-space:nowrap;max-width:200rpx;overflow:hidden;text-overflow:ellipsis}
+.record-quantity{flex-shrink:0;color:#1687f5;font-size:30rpx;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;padding-left:16rpx}
 .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:14rpx 24rpx}
 .summary-item{display:flex;flex-direction:column;gap:6rpx;min-width:0}
 .summary-grid .summary-label{color:#8A9BB0;font-size:20rpx;line-height:1}
 .summary-grid .summary-value{color:#1A2332;font-size:26rpx;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tone-money{color:#1687f5!important}
 .tone-warn{color:#F59E0B!important;font-size:22rpx!important;font-weight:600!important}
-.card-footer{display:flex;justify-content:space-between;align-items:center;padding-top:4rpx;border-top:1rpx solid #F0F4F8}
-.meta-text{color:#98A9BA;font-size:21rpx;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.arrow-icon{color:#C0CCDA;font-size:30rpx;font-weight:700;line-height:1;margin-left:10rpx}
 </style>

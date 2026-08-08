@@ -6,7 +6,7 @@
         <text class="hero-title">库存查询</text>
       </view>
     </view>
-    <view class="work-scope"><view class="work-scope-mark"></view><view class="work-scope-copy"><text class="work-scope-label">当前部门 · </text><text class="work-scope-name">{{ currentDeptName || '当前部门' }}</text></view></view>
+    <view class="work-scope" hover-class="work-scope-hover" hover-stay-time="80" hover-start-time="30" @tap="openDeptSwitcher"><view class="work-scope-mark"></view><view class="work-scope-copy"><text class="work-scope-label">{{ scopeLabel }}</text><text class="work-scope-name">{{ currentDeptName || '未选择部门' }}</text></view></view>
     <view class="summary-bar" v-if="items.length"><view><text class="summary-value">¥{{ money(totalClosingAmount) }}</text><text class="summary-label">库存金额</text></view><view><text class="summary-value">{{ totalClosingQuantity }}</text><text class="summary-label">库存数量</text></view><view><text class="summary-value">{{ items.length }}</text><text class="summary-label">商品数</text></view></view>
     <scroll-view scroll-y class="scroll" refresher-enabled :refresher-triggered="refreshing" @refresherrefresh="refresh">
       <view v-if="stateStatus === 'normal'" class="record-list">
@@ -26,6 +26,12 @@
       </view>
       <view v-else class="section-card state-card"><StateView :status="stateStatus" :message="loadError" @retry="load" /></view>
     </scroll-view>
+    <dept-switcher
+      v-model:visible="showDeptSwitcher"
+      :current-dept-id="currentDeptId"
+      :request-fn="request"
+      @change="onDeptSwitcherChanged"
+    />
   </view>
 </template>
 
@@ -33,20 +39,26 @@
 import { getStockValueReport } from '@/api/stock.js'
 import { requireModulePermission } from '@/utils/permission.js'
 import { workContext } from '@/utils/workContext.js'
+import { applyWorkScopeToPage, openDeptSwitcher, handleDeptChanged } from '@/utils/listWorkScope.js'
+import { request } from '@/api/index.js'
 import StateView from '@/components/StateView.vue'
+import DeptSwitcher from '@/components/DeptSwitcher.vue'
 import { getStatusBarHeight } from '@/utils/systemInfo.js'
 
 export default {
-  components: { StateView },
-  data() { return { report: null, items: [], loading: false, refreshing: false, loadError: '', currentDeptName: '', statusBarH: 0, menuButton: null } },
+  components: { StateView, DeptSwitcher },
+  data() { return { report: null, items: [], loading: false, refreshing: false, loadError: '', showDeptSwitcher: false, scopeLabel: '暂无可用数据范围', contextVersion: 0, currentDeptId: null, currentDeptName: '未选择部门', statusBarH: 0, menuButton: null } },
   computed: {
     stateStatus() { if (this.loading && !this.items.length) return 'loading'; if (this.loadError && !this.items.length) return 'error'; if (!this.items.length) return 'empty'; return 'normal' },
     headerContentStyle() { const top = this.menuButton?.bottom ? this.menuButton.bottom + 8 : this.statusBarH + 48; return { paddingTop: top + 'px' } },
     totalClosingAmount() { return this.items.reduce((sum, item) => sum + Number(item.closingAmount || 0), 0) },
     totalClosingQuantity() { return this.items.reduce((sum, item) => sum + Number(item.closingQuantity || 0), 0) }
   },
-  onLoad() { this.statusBarH = getStatusBarHeight(); try { this.menuButton = uni.getMenuButtonBoundingClientRect() } catch (_) { this.menuButton = null }; this.currentDeptName = workContext.snapshot().currentDept?.name || ''; if (requireModulePermission('stockCost')) this.load() },
+  onLoad() { this.statusBarH = getStatusBarHeight(); try { this.menuButton = uni.getMenuButtonBoundingClientRect() } catch (_) { this.menuButton = null }; applyWorkScopeToPage(this); if (requireModulePermission('stockCost')) this.load() },
+  onShow() { const { departmentChanged } = applyWorkScopeToPage(this); if (departmentChanged) this.refresh() },
   methods: {
+    openDeptSwitcher() { return openDeptSwitcher(this) },
+    onDeptSwitcherChanged() { return handleDeptChanged(this, () => this.refresh()) },
     money(value, digits = 2) { return Number(value || 0).toFixed(digits) },
     load() {
       this.loading = true
@@ -67,7 +79,8 @@ export default {
 .hero{margin:22rpx 30rpx 0;padding:28rpx 30rpx 30rpx;border-left:5rpx solid #1687f5;border-radius:20rpx;background:linear-gradient(110deg,#d9eaff,#f7faff);box-shadow:0 8rpx 22rpx rgba(46,82,120,.08);color:#1e293b}
 .eyebrow{display:block;color:#1687f5;font-size:24rpx;font-weight:600}
 .hero-title{display:block;margin-top:10rpx;color:#1e293b;font-size:38rpx;font-weight:700}
-.work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx}
+.work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx;padding:4rpx 12rpx;border-radius:12rpx;box-sizing:border-box}
+.work-scope-hover{background:#eaf3ff;border-radius:12rpx}
 .work-scope-mark{width:14rpx;height:14rpx;margin-right:16rpx;border-radius:50%;background:#1687f5}
 .work-scope-copy{display:flex;align-items:baseline;color:#8192a6;font-size:24rpx}
 .work-scope-name{margin-left:4rpx;color:#26384d;font-size:27rpx;font-weight:700}

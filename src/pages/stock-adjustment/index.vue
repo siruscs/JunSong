@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <view class="hero"><view><text class="eyebrow">库存管理</text><text class="hero-title">库存调整</text></view></view>
-    <view class="work-scope"><view class="work-scope-mark"></view><view class="work-scope-copy"><text class="work-scope-label">当前部门 · </text><text class="work-scope-name">{{ currentDeptName || '当前部门' }}</text></view></view>
+    <view class="work-scope" hover-class="work-scope-hover" hover-stay-time="80" hover-start-time="30" @tap="openDeptSwitcher"><view class="work-scope-mark"></view><view class="work-scope-copy"><text class="work-scope-label">{{ scopeLabel }}</text><text class="work-scope-name">{{ currentDeptName || '未选择部门' }}</text></view></view>
     <view class="permission-note"><text>调整单 {{ rows.length }} 笔</text><text :class="capabilities.add ? 'can-edit' : 'read-only'">{{ capabilities.add ? '可编辑' : '只读' }}</text></view>
 
     <scroll-view scroll-y class="scroll adjustment-scroll" refresher-enabled :refresher-triggered="refreshing" @refresherrefresh="refresh">
@@ -68,6 +68,12 @@
         <scroll-view v-else scroll-y class="form-scroll detail-form-scroll"><view class="detail-summary"><view class="detail-line"><text>批次号</text><strong>{{ detailBatch.batchNo || '-' }}</strong></view><view class="detail-line"><text>调整类型</text><strong>{{ adjustmentTypeLabel(detailBatch.adjustmentType) }}</strong></view><view class="detail-line"><text>调整日历</text><strong>{{ detailBatch.adjustmentDate || detailBatch.initDate || '-' }}</strong></view><view class="detail-line"><text>状态</text><strong>{{ statusLabel(detailBatch.status) }}</strong></view></view><view class="detail-section-title">商品明细</view><view v-for="row in detailItems" :key="row.itemId || row.productId" class="detail-item-card"><view class="detail-item-head"><strong>{{ row.productName || '-' }}</strong><text>{{ row.quantity || 0 }}</text></view><view class="detail-item-meta"><text>单位成本 ¥{{ Number(row.unitCost || 0).toFixed(2) }}</text><text>金额 ¥{{ (Number(row.quantity || 0) * Number(row.unitCost || 0)).toFixed(2) }}</text></view></view></scroll-view><view v-if="!detailLoading && hasDetailActions" class="detail-bottom-actions"><button v-if="detailBatch.status === 'DRAFT' && canUpdateAdjustment" class="detail-btn" @tap="editFromDetail">编辑</button><button v-if="detailBatch.status === 'DRAFT' && canRemoveAdjustment" class="detail-btn danger" @tap="remove(detailBatch)">删除</button><button v-if="detailBatch.status === 'DRAFT' && canUpdateAdjustment" class="detail-btn" @tap="validate(detailBatch)">校验</button><button v-if="detailBatch.status === 'VALIDATED' && canUpdateAdjustment" class="detail-btn" @tap="submit(detailBatch)">提交</button><button v-if="detailBatch.status === 'SUBMITTED' && canApproveAdjustment" class="detail-btn" @tap="approve(detailBatch)">审批</button><button v-if="detailBatch.status === 'APPROVED' && canPostAdjustment" class="detail-btn" @tap="post(detailBatch)">过账</button></view>
       </view>
     </view>
+    <dept-switcher
+      v-model:visible="showDeptSwitcher"
+      :current-dept-id="currentDeptId"
+      :request-fn="request"
+      @change="onDeptSwitcherChanged"
+    />
   </view>
 </template>
 
@@ -79,7 +85,9 @@ import { dictCache } from '@/utils/dictCache.js'
 import { getStockValueReport } from '@/api/stock.js'
 import { listStockInit, getStockInitDetail, createStockInit, updateStockInit, deleteStockInit, validateStockInit, submitStockInit, approveStockInit, postStockInit } from '@/api/stockInit.js'
 import StateView from '@/components/StateView.vue'
+import DeptSwitcher from '@/components/DeptSwitcher.vue'
 import { getStatusBarHeight } from '@/utils/systemInfo.js'
+import { applyWorkScopeToPage, openDeptSwitcher, handleDeptChanged } from '@/utils/listWorkScope.js'
 
 function createEmptyForm() {
   return { deptId: null, adjustmentDate: new Date().toISOString().slice(0, 10), adjustmentType: '', adjustmentDirection: 'INCREASE', remark: '', items: [createEmptyItem()] }
@@ -90,8 +98,8 @@ function createEmptyItem(item = {}) {
 }
 
 export default {
-  components: { StateView },
-  data() { return { rows: [], loading: false, loadError: '', refreshing: false, currentDeptId: null, currentDeptName: '', statusBarH: 0, menuButton: null, editorVisible: false, detailVisible: false, editorLoading: false, detailLoading: false, submitting: false, editingId: null, detail: null, products: [], typeOptions: [], typeIndex: 0, capabilities: {}, form: createEmptyForm() } },
+  components: { StateView, DeptSwitcher },
+  data() { return { rows: [], loading: false, loadError: '', refreshing: false, showDeptSwitcher: false, scopeLabel: '暂无可用数据范围', contextVersion: 0, currentDeptId: null, currentDeptName: '未选择部门', statusBarH: 0, menuButton: null, editorVisible: false, detailVisible: false, editorLoading: false, detailLoading: false, submitting: false, editingId: null, detail: null, products: [], typeOptions: [], typeIndex: 0, capabilities: {}, form: createEmptyForm() } },
   computed: {
     selectedType() { return this.typeOptions[this.typeIndex] || {} },
     canCreateAdjustment() { return this.capabilities.add === true },
@@ -104,11 +112,13 @@ export default {
     headerContentStyle() { const top = this.menuButton?.bottom ? this.menuButton.bottom + 8 : this.statusBarH + 48; return { paddingTop: top + 'px' } },
     stateStatus() { if (this.loading && !this.rows.length) return 'loading'; if (this.loadError && !this.rows.length) return 'error'; if (!this.rows.length) return 'empty'; return 'normal' },
   },
-  onLoad() { this.statusBarH = getStatusBarHeight(); try { this.menuButton = uni.getMenuButtonBoundingClientRect() } catch (_) { this.menuButton = null }; this.syncContext(); this.capabilities = getActionCapabilities('stockAdjustment', ['add', 'remove', 'approve', 'post']); if (requireModulePermission('stockAdjustment')) this.load() },
-  onShow() { if (this.currentDeptId) this.syncContext() },
+  onLoad() { this.statusBarH = getStatusBarHeight(); try { this.menuButton = uni.getMenuButtonBoundingClientRect() } catch (_) { this.menuButton = null }; applyWorkScopeToPage(this); this.capabilities = getActionCapabilities('stockAdjustment', ['add', 'remove', 'approve', 'post']); if (requireModulePermission('stockAdjustment')) this.load() },
+  onShow() { const { departmentChanged } = applyWorkScopeToPage(this); if (departmentChanged && this.currentDeptId) this.load() },
   methods: {
+    openDeptSwitcher() { return openDeptSwitcher(this) },
+    onDeptSwitcherChanged() { return handleDeptChanged(this, () => this.load()) },
     emptyForm() { return createEmptyForm() },
-    syncContext() { const s = workContext.snapshot(); this.currentDeptId = s.currentDeptId; this.currentDeptName = s.currentDept?.name || ''; if (this.currentDeptId && this.editorVisible === false) this.load() },
+    syncContext() { applyWorkScopeToPage(this); if (this.currentDeptId && this.editorVisible === false) this.load() },
     async load() { if (!this.currentDeptId) { this.rows = []; return } this.loading = true; this.loadError = ''; try { const res = await listStockInit({ deptId: this.currentDeptId, pageNum: 1, pageSize: 50 }); const rows = res.rows || res.data?.rows || []; this.rows = rows.filter(item => String(item.deptId) === String(this.currentDeptId)) } catch (e) { this.loadError = e.msg || '调整单加载失败'; uni.showToast({ title: this.loadError, icon: 'none' }) } finally { this.loading = false; this.refreshing = false } },
     refresh() { this.refreshing = true; this.syncContext() },
     async loadOptions() { const [dict, productRes] = await Promise.all([dictCache.get('finance_stock_adjustment_type', async () => { const dictRes = await request({ url: '/system/dict/data/type/finance_stock_adjustment_type', method: 'GET' }); return dictRes.data || dictRes.rows || [] }), request({ url: '/finance/product/selector', method: 'GET' })]); this.typeOptions = dict.map(x => ({ label: x.dictLabel, value: x.dictValue, direction: x.dictValue === 'OTHER' || x.remark?.includes('选择方向') || x.remark?.includes('增减') ? 'BOTH' : x.remark?.includes('减少') ? 'DECREASE' : 'INCREASE', remark: x.remark || '' })); this.products = productRes.data || productRes.rows || [] },
@@ -144,7 +154,8 @@ export default {
 .hero{margin:22rpx 30rpx 0;padding:28rpx 30rpx 30rpx;border-left:5rpx solid #1687f5;border-radius:20rpx;background:linear-gradient(110deg,#d9eaff,#f7faff);box-shadow:0 8rpx 22rpx rgba(46,82,120,.08);color:#1e293b}
 .eyebrow{display:block;color:#1687f5;font-size:24rpx;font-weight:600}
 .hero-title{display:block;margin-top:10rpx;color:#1e293b;font-size:38rpx;font-weight:700}
-.work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx}
+.work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx;padding:4rpx 12rpx;border-radius:12rpx;box-sizing:border-box}
+.work-scope-hover{background:#eaf3ff;border-radius:12rpx}
 .work-scope-mark{width:14rpx;height:14rpx;margin-right:16rpx;border-radius:50%;background:#1687f5}
 .work-scope-copy{display:flex;align-items:baseline;color:#8192a6;font-size:24rpx}
 .work-scope-name{margin-left:4rpx;color:#26384d;font-size:27rpx;font-weight:700}

@@ -1,7 +1,7 @@
 <template>
   <view class="page" v-if="authorized">
     <view class="hero"><text class="eyebrow">会员服务</text><text class="hero-title">退货/退款</text></view>
-    <view class="work-scope"><view class="work-scope-mark"></view><view class="work-scope-copy"><text class="work-scope-label">当前部门 · </text><text class="work-scope-name">{{ currentDeptName || '当前部门' }}</text></view></view>
+    <view class="work-scope" hover-class="work-scope-hover" hover-stay-time="80" hover-start-time="30" @tap="openDeptSwitcher"><view class="work-scope-mark"></view><view class="work-scope-copy"><text class="work-scope-label">{{ scopeLabel }}</text><text class="work-scope-name">{{ currentDeptName || '未选择部门' }}</text></view></view>
 
     <view class="section-card filters-card">
       <view class="filter-row filter-row-merged">
@@ -101,20 +101,29 @@
       </view>
     </view>
   </view>
+  <dept-switcher
+    v-model:visible="showDeptSwitcher"
+    :current-dept-id="currentDeptId"
+    :request-fn="request"
+    @change="onDeptSwitcherChanged"
+  />
 </template>
 
 <script>
 import { request } from '@/api/index.js'
 import { createMemberPurchaseReturn, listMemberPurchaseReturns } from '@/api/memberPurchaseReturn.js'
+import DeptSwitcher from '@/components/DeptSwitcher.vue'
 import { hasActionPermission, requireModulePermission } from '@/utils/permission.js'
 import { workContext } from '@/utils/workContext.js'
+import { applyWorkScopeToPage, openDeptSwitcher, handleDeptChanged } from '@/utils/listWorkScope.js'
 
 const newReturnForm = () => ({ purchaseId: '', returnPeriodId: '', reason: '' })
 
 export default {
+  components: { DeptSwitcher },
   data() {
     return {
-      authorized: false, currentDeptId: '', currentDeptName: '',
+      authorized: false, showDeptSwitcher: false, scopeLabel: '暂无可用数据范围', contextVersion: 0, currentDeptId: null, currentDeptName: '未选择部门',
       rows: [], loading: false, keyword: '', panel: '',
       form: newReturnForm(),
       periods: [], purchaseOptions: [], purchaseIndex: 0, periodIndex: 0, returnItems: [],
@@ -130,9 +139,7 @@ export default {
   },
   onLoad(options) {
     this.authorized = requireModulePermission('memberPurchaseReturn')
-    const scope = workContext.snapshot()
-    this.currentDeptId = scope.currentDeptId
-    this.currentDeptName = scope.currentDept?.name || scope.currentDept?.deptName || '未选择机构'
+    applyWorkScopeToPage(this)
     this.fixedPurchaseId = options?.purchaseId || ''
     this._loaded = false
     if (this.authorized) {
@@ -142,9 +149,13 @@ export default {
     }
   },
   onShow() {
-    if (this._loaded) this.load()
+    if (!this.authorized) return
+    const { departmentChanged } = applyWorkScopeToPage(this)
+    if (departmentChanged || this._loaded) { this.pageNum = 1; this.loadOptions(this.fixedPurchaseId || undefined); this.load() }
   },
   methods: {
+    openDeptSwitcher() { return openDeptSwitcher(this) },
+    onDeptSwitcherChanged() { return handleDeptChanged(this, () => { this.pageNum = 1; this.loadOptions(this.fixedPurchaseId || undefined); this.load() }) },
     can(action) { return hasActionPermission('memberPurchaseReturn', action) },
     unwrap(res) { return res?.rows || res?.data?.rows || res?.data || [] },
     today() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` },
@@ -281,7 +292,8 @@ export default {
 .hero-title{display:block;margin-top:10rpx;color:#1e293b;font-size:38rpx;font-weight:700}
 
 /* ── 部门范围条 ── */
-.work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx}
+.work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx;padding:4rpx 12rpx;border-radius:12rpx;box-sizing:border-box}
+.work-scope-hover{background:#eaf3ff;border-radius:12rpx}
 .work-scope-mark{width:14rpx;height:14rpx;margin-right:16rpx;border-radius:50%;background:#1687f5}
 .work-scope-copy{display:flex;align-items:baseline;color:#8192a6;font-size:24rpx}
 .work-scope-name{margin-left:4rpx;color:#26384d;font-size:27rpx;font-weight:700}

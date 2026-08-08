@@ -1,7 +1,7 @@
 <template>
   <view class="page">
     <view class="hero"><view><text class="eyebrow">库存管理</text><text class="hero-title">库存流水：{{ productName || '-' }}</text></view></view>
-    <view class="work-scope"><view class="work-scope-mark"></view><view class="work-scope-copy"><text class="work-scope-label">当前部门 · </text><text class="work-scope-name">{{ currentDeptName || '当前部门' }}</text></view></view>
+    <view class="work-scope" hover-class="work-scope-hover" hover-stay-time="80" hover-start-time="30" @tap="openDeptSwitcher"><view class="work-scope-mark"></view><view class="work-scope-copy"><text class="work-scope-label">{{ scopeLabel }}</text><text class="work-scope-name">{{ currentDeptName || '未选择部门' }}</text></view></view>
     <view class="section-card filters-card">
       <view class="section-header"><view class="section-dot" style="background:#087CF0"></view><text class="section-title">筛选流水</text><text class="section-link">共 {{ total }} 条</text></view>
       <view class="filter-inline"><picker class="filter-type-picker" :range="typeOptions" range-key="label" @change="changeType"><view class="filter-picker">{{ selectedTypeLabel }}<text class="filter-chevron">⌄</text></view></picker><view class="date-controls"><picker mode="date" :value="startDate" @change="e => changeDate('startDate', e.detail.value)"><view class="filter-date">{{ startDate }}</view></picker><text class="date-separator">至</text><picker mode="date" :value="endDate" @change="e => changeDate('endDate', e.detail.value)"><view class="filter-date">{{ endDate }}</view></picker><button class="filter-button" @tap="reload">查询</button></view></view>
@@ -32,6 +32,12 @@
       <view v-else-if="finished" class="finished">已加载全部流水（{{ total }} 条）</view>
       </view>
     </scroll-view>
+    <dept-switcher
+      v-model:visible="showDeptSwitcher"
+      :current-dept-id="currentDeptId"
+      :request-fn="request"
+      @change="onDeptSwitcherChanged"
+    />
   </view>
 </template>
 
@@ -39,40 +45,38 @@
 import { queryStockLedger } from '@/api/stocktake.js'
 import { request } from '@/api/index.js'
 import { workContext } from '@/utils/workContext.js'
+import { applyWorkScopeToPage, openDeptSwitcher, handleDeptChanged } from '@/utils/listWorkScope.js'
 import { dictCache } from '@/utils/dictCache.js'
 import StateView from '@/components/StateView.vue'
+import DeptSwitcher from '@/components/DeptSwitcher.vue'
 import { getStatusBarHeight } from '@/utils/systemInfo.js'
 
 const FALLBACK_TYPES = { PURCHASE_IN: '采购入库', PURCHASE_REVERSE: '采购冲销', SALE_OUT: '销售出库', SALE_REVERSE: '销售冲销', STOCK_INIT: '期初库存', OPENING_STOCK: '期初库存', HISTORY_REPLENISH: '历史数据补录', TRIAL_CONSUMPTION: '试用消耗', STORE_USE: '店面自用', DAMAGE_LOSS: '报损', OTHER: '其他', STOCK_ADJUSTMENT: '库存调整', ADJUSTMENT_IN: '库存调整入库', ADJUSTMENT_OUT: '库存调整出库', STOCK_TAKE_GAIN: '盘点盘盈', STOCK_TAKE_LOSS: '盘点盘亏', STOCK_TAKE_REVERSE: '盘点冲销' }
 
 export default {
-  components: { StateView },
+  components: { StateView, DeptSwitcher },
   data() {
     const today = new Date().toISOString().slice(0, 10)
-    return { productId: null, productName: '', rows: [], loading: false, loadingMore: false, loadError: '', finished: false, total: 0, currentDeptId: null, currentDeptName: '', statusBarH: 0, menuButton: null, pageNum: 1, pageSize: 30, startDate: '2000-01-01', endDate: today, selectedChangeType: '', typeOptions: [{ label: '全部变动类型', value: '' }], adjustmentDict: [] }
+    return { productId: null, productName: '', rows: [], loading: false, loadingMore: false, loadError: '', finished: false, total: 0, showDeptSwitcher: false, scopeLabel: '暂无可用数据范围', contextVersion: 0, currentDeptId: null, currentDeptName: '未选择部门', statusBarH: 0, menuButton: null, pageNum: 1, pageSize: 30, startDate: '2000-01-01', endDate: today, selectedChangeType: '', typeOptions: [{ label: '全部变动类型', value: '' }], adjustmentDict: [] }
   },
   computed: { selectedTypeLabel() { return this.typeOptions.find(x => x.value === this.selectedChangeType)?.label || '全部变动类型' }, stateStatus() { if (this.loading && !this.rows.length) return 'loading'; if (this.loadError && !this.rows.length) return 'error'; if (!this.rows.length) return 'empty'; return 'normal' }, headerContentStyle() { const top = this.menuButton?.bottom ? this.menuButton.bottom + 8 : this.statusBarH + 48; return { paddingTop: top + 'px' } } },
   onLoad(options = {}) {
     this.statusBarH = getStatusBarHeight()
     try { this.menuButton = uni.getMenuButtonBoundingClientRect() } catch (_) { this.menuButton = null }
-    const s = workContext.snapshot()
+    applyWorkScopeToPage(this)
     this.productId = options.productId || ''
     this.productName = decodeURIComponent(options.productName || '')
-    this.currentDeptId = s.currentDeptId
-    this.currentDeptName = s.currentDept?.name || ''
     if (!this.productId || !this.currentDeptId) return uni.showToast({ title: '缺少商品或部门信息', icon: 'none' })
     if (options.deptId && String(options.deptId) !== String(this.currentDeptId)) return uni.showToast({ title: '部门范围已变化', icon: 'none' })
     this.load()
   },
   onShow() {
-    const s = workContext.snapshot()
-    if (this.currentDeptId && String(this.currentDeptId) !== String(s.currentDeptId)) {
-      this.currentDeptId = s.currentDeptId
-      this.currentDeptName = s.currentDept?.name || ''
-      this.reload()
-    }
+    const { departmentChanged } = applyWorkScopeToPage(this)
+    if (departmentChanged) this.reload()
   },
   methods: {
+    openDeptSwitcher() { return openDeptSwitcher(this) },
+    onDeptSwitcherChanged() { return handleDeptChanged(this, () => this.reload()) },
     async loadDict() {
       try {
         this.adjustmentDict = await dictCache.get('finance_stock_adjustment_type', async () => { const res = await request({ url: '/system/dict/data/type/finance_stock_adjustment_type', method: 'GET' }); return res.data || res.rows || [] })
@@ -128,7 +132,8 @@ export default {
 .hero{margin:22rpx 30rpx 0;padding:28rpx 30rpx 30rpx;border-left:5rpx solid #1687f5;border-radius:20rpx;background:linear-gradient(110deg,#d9eaff,#f7faff);box-shadow:0 8rpx 22rpx rgba(46,82,120,.08);color:#1e293b}
 .eyebrow{display:block;color:#1687f5;font-size:24rpx;font-weight:600}
 .hero-title{display:block;margin-top:10rpx;color:#1e293b;font-size:38rpx;font-weight:700}
-.work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx}
+.work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx;padding:4rpx 12rpx;border-radius:12rpx;box-sizing:border-box}
+.work-scope-hover{background:#eaf3ff;border-radius:12rpx}
 .work-scope-mark{width:14rpx;height:14rpx;margin-right:16rpx;border-radius:50%;background:#1687f5}
 .work-scope-copy{display:flex;align-items:baseline;color:#8192a6;font-size:24rpx}
 .work-scope-name{margin-left:4rpx;color:#26384d;font-size:27rpx;font-weight:700}

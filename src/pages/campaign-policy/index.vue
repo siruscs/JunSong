@@ -7,11 +7,11 @@
     </view>
 
     <!-- 部门范围条 -->
-    <view class="work-scope">
+    <view class="work-scope" hover-class="work-scope-hover" hover-stay-time="80" hover-start-time="30" @tap="openDeptSwitcher">
       <view class="work-scope-mark"></view>
       <view class="work-scope-copy">
-        <text class="work-scope-label">当前部门 · </text>
-        <text class="work-scope-name">{{ deptName }}</text>
+        <text class="work-scope-label">{{ scopeLabel }}</text>
+        <text class="work-scope-name">{{ currentDeptName || '未选择部门' }}</text>
       </view>
     </view>
 
@@ -116,6 +116,12 @@
         <button v-if="can('remove')" class="detail-action-btn danger-btn" @tap="deletePolicy(detail)">删除</button>
       </view>
     </view>
+    <dept-switcher
+      v-model:visible="showDeptSwitcher"
+      :current-dept-id="currentDeptId"
+      :request-fn="request"
+      @change="onDeptSwitcherChanged"
+    />
   </view>
 </template>
 
@@ -123,15 +129,23 @@
 import { request } from '@/api/index.js'
 import { hasActionPermission, requireModulePermission } from '@/utils/permission.js'
 import { workContext } from '@/utils/workContext.js'
+import DeptSwitcher from '@/components/DeptSwitcher.vue'
+import { applyWorkScopeToPage, openDeptSwitcher, handleDeptChanged } from '@/utils/listWorkScope.js'
 
 export default {
+  components: { DeptSwitcher },
   data() {
     return {
       authorized: false,
+      showDeptSwitcher: false,
       rows: [],
       products: [],
       deptName: '',
       deptId: '',
+      scopeLabel: '暂无可用数据范围',
+      contextVersion: 0,
+      currentDeptId: null,
+      currentDeptName: '未选择部门',
       keyword: '',
       statusFilter: '',
       panel: '',
@@ -169,15 +183,20 @@ export default {
   },
   onLoad() {
     this.authorized = requireModulePermission('campaignPolicy')
-    const s = workContext.snapshot()
-    this.deptId = s.currentDeptId
-    this.deptName = s.currentDept?.name || s.currentDept?.deptName || '未选择机构'
+    applyWorkScopeToPage(this)
+    this.deptId = this.currentDeptId
+    this.deptName = this.currentDeptName
     if (this.authorized) this.init()
   },
   onShow() {
-    if (this.authorized) this.load()
+    if (!this.authorized) return
+    const { departmentChanged } = applyWorkScopeToPage(this)
+    if (departmentChanged) { this.deptId = this.currentDeptId; this.deptName = this.currentDeptName; this.init() }
+    else this.load()
   },
   methods: {
+    openDeptSwitcher() { return openDeptSwitcher(this) },
+    onDeptSwitcherChanged() { return handleDeptChanged(this, () => { this.deptId = this.currentDeptId; this.deptName = this.currentDeptName; this.init() }) },
     can(a) { return hasActionPermission('campaignPolicy', a) },
     quantity(v) { return Number(v || 0).toFixed(3).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1') },
     money(v) { return Number(v || 0).toFixed(2) },
@@ -285,7 +304,8 @@ export default {
 .hero-title{display:block;margin-top:10rpx;color:#1e293b;font-size:38rpx;font-weight:700}
 
 /* ── 部门范围条 ── */
-.work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx}
+.work-scope{display:flex;align-items:center;margin:20rpx 30rpx 0;min-height:44rpx;padding:4rpx 12rpx;border-radius:12rpx;box-sizing:border-box}
+.work-scope-hover{background:#eaf3ff;border-radius:12rpx}
 .work-scope-mark{width:14rpx;height:14rpx;margin-right:16rpx;border-radius:50%;background:#1687f5}
 .work-scope-copy{display:flex;align-items:baseline;color:#8192a6;font-size:24rpx}
 .work-scope-name{margin-left:4rpx;color:#26384d;font-size:27rpx;font-weight:700}

@@ -7,7 +7,7 @@
       </view>
     </view>
 
-    <view class="work-scope">
+    <view class="work-scope" hover-class="work-scope-hover" hover-stay-time="80" hover-start-time="30" @tap="openDeptSwitcher">
       <view class="work-scope-mark"></view>
       <view class="work-scope-copy">
         <text class="work-scope-label">{{ scopeLabel }}</text>
@@ -321,6 +321,12 @@
         </view>
       </view>
     </view>
+    <dept-switcher
+      v-model:visible="showDeptSwitcher"
+      :current-dept-id="currentDeptId"
+      :request-fn="request"
+      @change="onDeptSwitcherChanged"
+    />
   </view>
 </template>
 
@@ -328,17 +334,20 @@
 import miniProgramShare from '@/mixins/miniProgramShare.js'
 import { getModule, formatDisplayValue, getValueTone } from '@/config/modules.js'
 import { listData, request } from '@/api/index.js'
+import DeptSwitcher from '@/components/DeptSwitcher.vue'
 import { hasActionPermission, requireModulePermission } from '@/utils/permission.js'
 import { resolveListState } from '@/utils/operationState.js'
 import { resolveMemberSearchField } from '@/utils/memberWorkflow.js'
 import { workContext } from '@/utils/workContext.js'
-import { canRequestListScope, resolveListWorkScope, shouldRestoreListPage } from '@/utils/listWorkScope.js'
+import { canRequestListScope, resolveListWorkScope, shouldRestoreListPage, openDeptSwitcher as openWorkScopeDeptSwitcher, handleDeptChanged } from '@/utils/listWorkScope.js'
 
 export default {
   mixins: [miniProgramShare],
+  components: { DeptSwitcher },
   data() {
     return {
       moduleKey: '',
+      showDeptSwitcher: false,
       config: null,
       queryValue: '',
       pageNum: 1,
@@ -488,6 +497,21 @@ export default {
       this.scopeLabel = scope.scopeLabel
       this.contextVersion = scope.contextVersion
       return scope
+    },
+    openDeptSwitcher() {
+      return openWorkScopeDeptSwitcher(this)
+    },
+    onDeptSwitcherChanged() {
+      const reload = async () => {
+        this.pageNum = 1
+        this.rows = []
+        this.totalRecords = 0
+        this.finished = false
+        this.syncWorkScope()
+        await this.refresh()
+        if (this.moduleKey === 'expense') await this.loadExpenseSummary()
+      }
+      return handleDeptChanged(this, reload)
     },
     resetBatchSelection() {
       this.batchSelecting = false
@@ -1015,6 +1039,11 @@ export default {
   gap: 16rpx;
   margin: 0 28rpx;
   padding: 18rpx 4rpx 4rpx;
+  border-radius: 12rpx;
+}
+.work-scope-hover {
+  background: #eaf3ff;
+  border-radius: 12rpx;
 }
 
 .work-scope-mark {

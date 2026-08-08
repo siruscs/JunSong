@@ -1,6 +1,6 @@
 <template>
   <view class="page">
-    <view class="hero"><view><text class="eyebrow">库存管理</text><text class="hero-title">库存流水：{{ productName || '商品' }}</text></view></view>
+    <view class="hero"><view><text class="eyebrow">库存管理</text><text class="hero-title">库存流水</text></view></view>
     <view class="work-scope"><view class="work-scope-mark"></view><view class="work-scope-copy"><text class="work-scope-label">当前部门 · </text><text class="work-scope-name">{{ currentDeptName || '当前部门' }}</text></view></view>
     <view class="section-card filters-card">
       <view class="section-header"><view class="section-dot" style="background:#087CF0"></view><text class="section-title">筛选流水</text><text class="section-link">共 {{ total }} 条</text></view>
@@ -9,7 +9,7 @@
     <scroll-view scroll-y class="scroll" @scrolltolower="loadMore">
       <view class="section-card ledger-list-card"><view class="section-header"><view class="section-dot" style="background:#10B981"></view><text class="section-title">流水明细</text></view>
       <view class="record-card" v-for="row in rows" :key="row.ledgerId || row.id">
-        <view class="card-bar" :style="{ background: changeDirection(row) === '入库' ? 'linear-gradient(180deg,#10B981,#6EE7B7)' : 'linear-gradient(180deg,#F59E0B,#FCD34D)' }"></view>
+        <view class="card-bar" :style="{ background: changeDirection(row) === '入库' ? 'linear-gradient(180deg,#1687F5,#5AA9E8)' : 'linear-gradient(180deg,#F59E0B,#FCD34D)' }"></view>
         <view class="card-body">
           <view class="card-header">
             <text class="record-title">
@@ -18,15 +18,13 @@
             </text>
             <text class="record-id" :class="changeDirection(row) === '入库' ? 'is-in' : 'is-out'">{{ changeQuantity(row) }}</text>
           </view>
-          <view class="summary-grid">
+          <view class="summary-grid summary-grid-3">
             <view class="summary-item"><text class="summary-label">变动后余额</text><text class="summary-value">{{ row.afterQuantity ?? row.after_quantity ?? 0 }}</text></view>
-            <view class="summary-item"><text class="summary-label">单位成本</text><text class="summary-value">¥{{ Number(row.unitCost ?? row.unit_cost ?? 0).toFixed(2) }}</text></view>
-            <view class="summary-item"><text class="summary-label">变动金额</text><text class="summary-value tone-money">¥{{ Number(row.changeAmount ?? row.change_amount ?? 0).toFixed(2) }}</text></view>
-            <view class="summary-item"><text class="summary-label">来源单据</text><text class="summary-value">{{ row.referenceNo || row.reference_no || row.referenceType || row.reference_type || '-' }}</text></view>
+            <view class="summary-item"><text class="summary-label">单位成本</text><text class="summary-value">¥{{ rowUnitCost(row) }}</text></view>
+            <view class="summary-item"><text class="summary-label">变动金额</text><text class="summary-value tone-money">¥{{ rowChangeAmount(row) }}</text></view>
           </view>
           <view class="card-footer">
-            <text class="meta-text">{{ row.createTime || row.create_time || '-' }} · {{ row.remark || '系统记录' }}</text>
-            <text class="arrow-icon">›</text>
+            <text class="meta-text">{{ formatDateTime(row.createTime || row.create_time) }} · {{ row.remark || '系统记录' }}</text>
           </view>
         </view>
       </view>
@@ -104,7 +102,17 @@ export default {
     loadMore() { if (!this.finished && !this.loading && !this.loadingMore) { this.pageNum += 1; this.load() } },
     changeDirection(row) { const quantity = Number(row.changeQuantity ?? row.change_quantity ?? 0); return quantity >= 0 ? '入库' : '出库' },
     changeQuantity(row) { const quantity = Number(row.changeQuantity ?? row.change_quantity ?? 0); return (quantity >= 0 ? '+' : '') + (row.changeQuantity ?? row.change_quantity ?? 0) },
-    changeTypeText(type) { const item = this.adjustmentDict.find(x => String(x.dictValue ?? x.value) === String(type)); return item?.dictLabel || item?.label || FALLBACK_TYPES[type] || type || '库存变动' }
+    changeTypeText(type) { const item = this.adjustmentDict.find(x => String(x.dictValue ?? x.value) === String(type)); return item?.dictLabel || item?.label || FALLBACK_TYPES[type] || type || '库存变动' },
+    rowUnitCost(row) { return Number(row.unitCost ?? row.unit_cost ?? 0).toFixed(2) },
+    rowChangeAmount(row) { const q = Number(row.changeQuantity ?? row.change_quantity ?? 0); const c = Number(row.unitCost ?? row.unit_cost ?? 0); return Math.abs(q * c).toFixed(2) },
+    formatDateTime(val) {
+      if (!val) return '-'
+      let s = String(val)
+      if (s.includes('T')) s = s.replace('T', ' ')
+      s = s.replace(/\.\d+Z?$/, '').replace(/Z$/, '')
+      if (s.length > 19) s = s.slice(0, 19)
+      return s
+    }
   }
 }
 </script>
@@ -141,18 +149,18 @@ export default {
 .card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:20rpx}
 .record-title{flex:1;font-size:30rpx;line-height:42rpx;font-weight:700;color:#1A2332;display:flex;align-items:center;gap:14rpx}
 .direction-tag{display:inline-flex;align-items:center;justify-content:center;width:48rpx;height:48rpx;border-radius:14rpx;font-size:24rpx;font-weight:700;flex-shrink:0}
-.direction-tag.is-in{background:#D1FAE5;color:#065F46}
+.direction-tag.is-in{background:#E0F2FE;color:#075985}
 .direction-tag.is-out{background:#FEF3C7;color:#92400E}
 .record-id{padding:6rpx 18rpx;font-size:24rpx;border-radius:999rpx;flex-shrink:0;font-weight:700;font-variant-numeric:tabular-nums}
-.record-id.is-in{background:#D1FAE5;color:#065F46}
+.record-id.is-in{background:#E0F2FE;color:#075985}
 .record-id.is-out{background:#FEF3C7;color:#92400E}
 .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:12rpx;margin-top:16rpx}
+.summary-grid.summary-grid-3{grid-template-columns:1fr 1fr 1fr;gap:12rpx 10rpx}
 .summary-item{display:flex;flex-direction:column;gap:6rpx}
 .summary-label{font-size:22rpx;color:#94A3B8}
 .summary-value{font-size:26rpx;color:#1A2332;font-weight:500}
-.summary-value.tone-money{color:#B45309;font-weight:700}
-.card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:16rpx;padding-top:14rpx;border-top:1rpx solid #E8EEF5}
+.summary-value.tone-money{color:#1687f5;font-weight:700}
+.card-footer{display:flex;justify-content:flex-start;align-items:center;margin-top:16rpx;padding-top:14rpx;border-top:1rpx solid #E8EEF5}
 .meta-text{font-size:24rpx;color:#94A3B8;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.arrow-icon{font-size:36rpx;color:#CBD5E1;font-weight:300;line-height:1;flex-shrink:0;margin-left:12rpx}
 .finished{text-align:center;padding:24rpx 0 0;color:#94a3b8;font-size:23rpx}
 </style>

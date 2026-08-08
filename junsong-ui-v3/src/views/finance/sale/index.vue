@@ -235,7 +235,12 @@
         <h4 style="margin-bottom: 10px;">缴款记录</h4>
         <el-table :data="viewForm.payments" border>
           <el-table-column label="缴款单号" prop="paymentNo" width="180" />
-          <el-table-column label="缴款时间" prop="createTime" width="160" align="center">
+          <el-table-column label="缴款日期" width="130" align="center">
+            <template #default="scope">
+              <span>{{ parseTime(scope.row.paymentDate, '{y}-{m}-{d}') }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="创建时间" width="160" align="center">
             <template #default="scope">
               <span>{{ parseTime(scope.row.createTime, '{y}-{m}-{d} {h}:{i}') }}</span>
             </template>

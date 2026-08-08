@@ -132,7 +132,7 @@ export default {
 .hero{margin:22rpx 30rpx 0;padding:28rpx 30rpx 30rpx;border-left:5rpx solid #1687f5;border-radius:20rpx;background:linear-gradient(110deg,#d9eaff,#f7faff);box-shadow:0 8rpx 22rpx rgba(46,82,120,.08);color:#1e293b}
 .eyebrow{display:block;color:#1687f5;font-size:24rpx;font-weight:600}
 .hero-title{display:block;margin-top:10rpx;color:#1e293b;font-size:38rpx;font-weight:700}
-.work-scope{display:flex;align-items:center;margin:8rpx 30rpx;min-height:44rpx;padding:6rpx 0}
+.work-scope{display:flex;align-items:center;margin:8rpx 30rpx 0;min-height:44rpx;padding:6rpx 0}
 .work-scope-hover{background:#eaf3ff;border-radius:8rpx}
 .work-scope-mark{width:14rpx;height:14rpx;margin-right:14rpx;border-radius:50%;background:#087CF0}
 .work-scope-mark-disabled{background:#087CF0}
@@ -140,7 +140,7 @@ export default {
 .work-scope-name{color:#1F2937;font-size:28rpx;font-weight:700}
 .scroll{flex:1;width:100%;min-height:0;padding:0 30rpx 34rpx!important;box-sizing:border-box}
 .section-card{background:#fff;border-radius:20rpx;padding:28rpx;margin-top:24rpx;border:1rpx solid #D5E0EC;box-shadow:0 5rpx 18rpx rgba(45,72,98,.07);box-sizing:border-box;overflow:hidden}
-.filters-card{margin:16rpx 30rpx 0!important;padding:22rpx 24rpx!important;position:relative;z-index:2}
+.filters-card{margin:8rpx 30rpx 0!important;padding:22rpx 24rpx!important;position:relative;z-index:2}
 .ledger-list-card{margin-top:16rpx!important;padding:20rpx 28rpx!important}
 .section-header{display:flex;align-items:center;gap:12rpx;margin-bottom:18rpx}
 .section-dot{width:12rpx;height:12rpx;border-radius:50%;flex-shrink:0}

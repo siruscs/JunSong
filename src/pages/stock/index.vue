@@ -79,13 +79,13 @@ export default {
 .hero{margin:22rpx 30rpx 0;padding:28rpx 30rpx 30rpx;border-left:5rpx solid #1687f5;border-radius:20rpx;background:linear-gradient(110deg,#d9eaff,#f7faff);box-shadow:0 8rpx 22rpx rgba(46,82,120,.08);color:#1e293b}
 .eyebrow{display:block;color:#1687f5;font-size:24rpx;font-weight:600}
 .hero-title{display:block;margin-top:10rpx;color:#1e293b;font-size:38rpx;font-weight:700}
-.work-scope{display:flex;align-items:center;margin:8rpx 30rpx;min-height:44rpx;padding:6rpx 0}
+.work-scope{display:flex;align-items:center;margin:8rpx 30rpx 0;min-height:44rpx;padding:6rpx 0}
 .work-scope-hover{background:#eaf3ff;border-radius:8rpx}
 .work-scope-mark{width:14rpx;height:14rpx;margin-right:14rpx;border-radius:50%;background:#087CF0}
 .work-scope-mark-disabled{background:#087CF0}
 .work-scope-copy{display:flex;align-items:baseline;gap:8rpx;color:#708196;font-size:24rpx}
 .work-scope-name{color:#1F2937;font-size:28rpx;font-weight:700}
-.summary-bar{display:flex;margin:16rpx 30rpx 0;padding:18rpx 8rpx;background:#fff;border-radius:18rpx;border:1rpx solid #dbe6f1}
+.summary-bar{display:flex;margin:8rpx 30rpx 0;padding:18rpx 8rpx;background:#fff;border-radius:18rpx;border:1rpx solid #dbe6f1}
 .summary-bar>view{flex:1;text-align:center;border-right:1rpx solid #edf1f5}
 .summary-bar>view:last-child{border-right:0}
 .summary-bar .summary-value{display:block;color:#1687f5;font-size:28rpx;font-weight:700}

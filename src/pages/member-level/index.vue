@@ -174,7 +174,7 @@ export default {
 .hero-title{display:block;margin-top:10rpx;color:#1e293b;font-size:38rpx;font-weight:700}
 
 /* ── 部门范围条 ── */
-.work-scope{display:flex;align-items:center;margin:8rpx 30rpx;min-height:44rpx;padding:6rpx 0}
+.work-scope{display:flex;align-items:center;margin:8rpx 30rpx 0;min-height:44rpx;padding:6rpx 0}
 .work-scope-hover{background:#eaf3ff;border-radius:8rpx}
 .work-scope-mark{width:14rpx;height:14rpx;margin-right:14rpx;border-radius:50%;background:#087CF0}
 .work-scope-mark-disabled{background:#087CF0}
@@ -194,7 +194,7 @@ export default {
 .bottom-bar .add-button::after{border:none}
 
 /* ── 滚动列表区 ── */
-.scroll{flex:1;width:100%;min-height:0;padding:0 30rpx 160rpx!important;box-sizing:border-box;overflow-x:hidden}
+.scroll{flex:1;width:100%;min-height:0;padding:8rpx 30rpx 160rpx!important;box-sizing:border-box;overflow-x:hidden}
 .list-card{margin-top:16rpx!important;padding:20rpx 28rpx!important}
 .state-card{padding:28rpx 28rpx!important}
 

@@ -157,7 +157,7 @@ onMounted(async () => { if (!requireModulePermission('configSync')) return; cons
 .hero-subtitle{display:block;margin-top:12rpx;color:#5A6B7F;font-size:24rpx}
 
 /* ── 部门范围条 ── */
-.work-scope{display:flex;align-items:center;margin:8rpx 30rpx;min-height:44rpx}
+.work-scope{display:flex;align-items:center;margin:8rpx 30rpx 0;min-height:44rpx}
 .work-scope-mark{width:14rpx;height:14rpx;margin-right:16rpx;border-radius:50%;background:#1687f5}
 .work-scope-copy{display:flex;align-items:baseline;color:#8192a6;font-size:24rpx}
 .work-scope-label{color:#5A6B7F}
@@ -191,7 +191,7 @@ onMounted(async () => { if (!requireModulePermission('configSync')) return; cons
 .empty{margin:40rpx 30rpx;padding:30rpx;color:#64748b;text-align:center;font-size:25rpx;line-height:38rpx}
 
 /* ── 浮动底部操作栏 ── */
-.scroll{flex:1;width:100%;min-height:0;padding:0 0 200rpx;box-sizing:border-box;overflow-x:hidden}
+.scroll{flex:1;width:100%;min-height:0;padding:8rpx 0 200rpx;box-sizing:border-box;overflow-x:hidden}
 .scroll-pad{height:8rpx}
 .bottom-bar{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;gap:16rpx;padding:20rpx 24rpx;padding-bottom:calc(20rpx + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1rpx solid #E2E8F0;z-index:10}
 .bottom-bar .add-button{width:320rpx;height:84rpx;line-height:84rpx;background:linear-gradient(135deg,#087CF0,#5AA9E8);color:#FFF;font-size:28rpx;border-radius:999rpx;text-align:center;box-shadow:0 6rpx 20rpx rgba(8,124,240,.25);border:0;padding:0}

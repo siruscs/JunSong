@@ -3,7 +3,6 @@
     <view class="hero"><text class="eyebrow">会员服务</text><text class="hero-title">购买记录</text></view>
     <view class="work-scope" :class="{ 'work-scope-disabled': !switchable }" :hover-class="switchable ? 'work-scope-hover' : ''" hover-stay-time="80" hover-start-time="30" @tap="openDeptSwitcher"><view class="work-scope-mark" :class="{ 'work-scope-mark-disabled': !switchable }"></view><view class="work-scope-copy"><text class="work-scope-label">{{ scopeLabel }}</text><text class="work-scope-name">{{ currentDeptName || '未选择部门' }}</text></view></view>
     <view class="summary-bar" v-if="summary">
-      <view><text class="summary-value">{{ Number(summary.purchaseOrderCount || 0) }}</text><text class="summary-label">购买单数</text></view>
       <view><text class="summary-value">{{ quantity(summary.purchaseQuantity) }}<text class="summary-gift">赠</text><text class="summary-gift-num">{{ quantity(summary.giftQuantity) }}</text></text><text class="summary-label">数量</text></view>
       <view><text class="summary-value primary"><text class="summary-currency">¥</text>{{ money(summary.totalAmount) }}</text><text class="summary-label">应收金额</text></view>
       <view><text class="summary-value success"><text class="summary-currency">¥</text>{{ money(summary.paidAmount) }}</text><text class="summary-label">已收金额</text></view>
@@ -323,7 +322,7 @@ export default {
 .hero-title{display:block;margin-top:10rpx;color:#1e293b;font-size:38rpx;font-weight:700}
 
 /* ── 部门范围条 ── */
-.work-scope{display:flex;align-items:center;margin:8rpx 30rpx;min-height:44rpx;padding:6rpx 0}
+.work-scope{display:flex;align-items:center;margin:8rpx 30rpx 0;min-height:44rpx;padding:6rpx 0}
 .work-scope-hover{background:#eaf3ff;border-radius:8rpx}
 .work-scope-mark{width:14rpx;height:14rpx;margin-right:14rpx;border-radius:50%;background:#087CF0}
 .work-scope-mark-disabled{background:#087CF0}
@@ -338,7 +337,7 @@ export default {
 .section-link{font-size:22rpx;color:#94A3B8}
 
 /* ── 列表顶部条（计数 + 筛选浮动按钮） ── */
-.list-header-bar{display:flex;align-items:center;justify-content:space-between;margin:16rpx 30rpx 0;gap:16rpx}
+.list-header-bar{display:flex;align-items:center;justify-content:space-between;margin:8rpx 30rpx 0;gap:16rpx}
 .list-header-count{font-size:24rpx;color:#708196;font-weight:600}
 .filter-fab{display:flex;align-items:center;gap:8rpx;height:64rpx;line-height:64rpx;padding:0 24rpx;border:0;border-radius:999rpx;background:linear-gradient(135deg,#C65A4A,#F2A88D);color:#fff;font-size:24rpx;font-weight:700;box-shadow:0 4rpx 14rpx rgba(198,90,74,.25);position:relative}
 .filter-fab::after{border:none}
@@ -346,7 +345,7 @@ export default {
 .filter-fab-badge{min-width:32rpx;height:32rpx;line-height:32rpx;text-align:center;padding:0 8rpx;border-radius:999rpx;background:#fff;color:#C65A4A;font-size:20rpx;font-weight:800}
 
 /* ── 顶部统计条：一行4格，数字加粗文字不加粗 ── */
-.summary-bar{display:flex;margin:16rpx 30rpx 0;padding:20rpx 4rpx;background:#fff;border-radius:18rpx;border:1rpx solid #dbe6f1;box-sizing:border-box}
+.summary-bar{display:flex;margin:8rpx 30rpx 0;padding:20rpx 4rpx;background:#fff;border-radius:18rpx;border:1rpx solid #dbe6f1;box-sizing:border-box}
 .summary-bar>view{flex:1;text-align:center;border-right:1rpx solid #edf1f5;min-width:0}
 .summary-bar>view:last-child{border-right:0}
 .summary-value{display:block;font-size:30rpx;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#102A3A}

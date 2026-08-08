@@ -346,10 +346,7 @@ export default {
       }
       this.loading = true
       this.loadingText = '正在登录...'
-      setToken('')
-      uni.removeStorageSync('userInfo')
-      uni.removeStorageSync('modules')
-      uni.removeStorageSync('permissions')
+      clearSession()
 
       try {
         // 第一步：用户名密码登录（小程序专用接口 /auth/mp/login，已在网关白名单）
@@ -388,9 +385,27 @@ export default {
             timeout: 12000
           })
           const info = infoRes || infoRes.data || {}
-          const deptList = (info.depts || info.data?.depts || info.user?.depts || [])
+          let deptList = (info.depts || info.data?.depts || info.user?.depts || [])
           const currentDeptId = info.currentDeptId || info.data?.currentDeptId || info.user?.deptId
           const userObj = info.user || info.data?.user || {}
+          const roles = info.roles || info.data?.roles || []
+          const isAdminUser = Array.isArray(roles) && roles.includes('admin')
+
+          // admin 用户在 sys_user_dept 关联表中通常无记录，getInfo 返回 depts 为空
+          // 此时调 /system/user/deptTree 加载全部门树，确保能选择店面
+          if (deptList.length === 0 && isAdminUser) {
+            try {
+              const treeRes = await request({
+                url: '/system/user/deptTree',
+                method: 'GET',
+                noRedirect: true,
+                silent: true,
+                timeout: 12000
+              })
+              const treeDepts = treeRes?.data || treeRes?.depts || []
+              if (Array.isArray(treeDepts) && treeDepts.length) deptList = treeDepts
+            } catch (e) {}
+          }
 
           // 保存用户基础信息
           const baseInfo = {

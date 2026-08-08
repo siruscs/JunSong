@@ -54,7 +54,7 @@
 
 <script>
 import miniProgramShare from '@/mixins/miniProgramShare.js'
-import { setToken } from '@/api/index.js'
+import { clearSession } from '@/api/index.js'
 import { request } from '@/api/index.js'
 import { isAdmin } from '@/utils/permission.js'
 import { getStatusBarHeight } from '@/utils/systemInfo.js'
@@ -174,10 +174,7 @@ export default {
         content: '确定要退出登录吗？',
         success: (res) => {
           if (res.confirm) {
-            setToken('')
-            uni.removeStorageSync('userInfo')
-            uni.removeStorageSync('modules')
-            uni.removeStorageSync('permissions')
+            clearSession()
             uni.reLaunch({ url: '/pages/login/index' })
           }
         }

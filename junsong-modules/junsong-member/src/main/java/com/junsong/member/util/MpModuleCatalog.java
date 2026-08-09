@@ -90,8 +90,6 @@ public final class MpModuleCatalog {
             v("member:seckill:list", "member:seckill:query")),
         m("seckillRecord", "秒杀记录", GROUP_MEMBER, true,
             v("member:seckillRecord:list", "member:seckillRecord:query")),
-        m("configSync", "配置同步", GROUP_MEMBER, true,
-            v("member:configSync:query")),
 
         // ===== 会员运营（小程序端 pages/member/{dashboard,growth,actions,points}.vue）=====
         // 这4个功能不是独立 CRUD 模块（不在九宫格以 module schema 渲染），
@@ -135,11 +133,14 @@ public final class MpModuleCatalog {
             v("finance:costAccounting:list", "finance:costAccounting:query")),
         m("stockCost", "库存与成本", GROUP_FINANCE, true,
             v("finance:report:stock", "finance:stock:list")),
-        m("stockLedger", "库存流水", GROUP_FINANCE, true,
+        // stockLedger 是 stockCost 的三级页面（库存查询→库存流水明细），不应单独授权；
+        // hasFrontendPage=false 使其不出现在 PC 权限配置页和九宫格，前端通过 authKey:'stockCost' 继承访问权限。
+        m("stockLedger", "库存流水", GROUP_FINANCE, false,
             v("finance:stockLedger:list", "finance:stock:ledger:query", "finance:stock:ledger:list")),
         m("stockAdjustment", "库存调整", GROUP_FINANCE, true,
             v("finance:stockInit:list")),
-        m("stocktake", "库存盘点", GROUP_FINANCE, true,
+        // stocktake 小程序端暂无对应功能页面，hasFrontendPage=false 避免出现在权限配置页
+        m("stocktake", "库存盘点", GROUP_FINANCE, false,
             v("finance:stocktake:list", "finance:stocktake:query")),
         m("verificationRecord", "核销记录", GROUP_FINANCE, true,
             v("finance:expense:verificationRecord:list")),
@@ -149,14 +150,16 @@ public final class MpModuleCatalog {
             v("system:user:list", "system:user:query")),
         m("deptManage", "部门管理", GROUP_SYSTEM, true,
             v("system:dept:list", "system:dept:query")),
+        m("configSync", "配置同步", GROUP_SYSTEM, true,
+            v("member:configSync:query")),
 
         // ===== 移动办公 =====
-        m("wfTodo", "待办任务", GROUP_OFFICE, true,
-            v("workflow:mobile:todo")),
-        m("wfDone", "已办任务", GROUP_OFFICE, true,
-            v("workflow:mobile:done")),
-        m("wfNotify", "消息通知", GROUP_OFFICE, true,
-            v("workflow:mobile:notify"))
+        // wfTodo/wfDone/wfNotify 是小程序端的审批流聚合入口，真正的权限边界由后端 workflow 服务按用户角色判定，
+        // 这里只按「PC 小程序权限页显式勾选了哪个模块」控制可见性，不再用 sys_role_menu 的 perms 做二次过滤。
+        // 否则会出现「PC 小程序权限页明明勾了，sys_role_menu 里没配 workflow:mobile:* 权限码 → 小程序端入口消失」的假性BUG。
+        m("wfTodo", "待办任务", GROUP_OFFICE, true, v()),
+        m("wfDone", "已办任务", GROUP_OFFICE, true, v()),
+        m("wfNotify", "消息通知", GROUP_OFFICE, true, v())
     );
 
     private static Module m(String key, String displayName, String groupName, boolean hasFrontendPage, String[] viewPermissions) {

@@ -48,39 +48,62 @@ router.beforeEach(async (to, from, next) => {
       next({ path: '/' })
       NProgress.done()
     } else {
-      const userStore = useUserStore()
-      if (userStore.roles.length === 0) {
-        isRelogin.show = true
-        try {
-          await userStore.getInfo()
-          isRelogin.show = false
-          const permissionStore = usePermissionStore()
-          const { asyncRoutes, rewriteRoutes } = await permissionStore.generateRoutes()
-          asyncRoutes.forEach((route: any) => {
-            try {
-              router.addRoute(route)
-            } catch (err) {
-              throw new Error(`动态路由注册失败：${route?.path || route?.name || '未知路由'}，${err instanceof Error ? err.message : err}`)
+            const userStore = useUserStore()
+            if (userStore.roles.length === 0) {
+              isRelogin.show = true
+              try {
+                await userStore.getInfo()
+                isRelogin.show = false
+                const permissionStore = usePermissionStore()
+                const { asyncRoutes, rewriteRoutes, skippedRoutes, recordAddRouteError } = await permissionStore.generateRoutes()
+                const addRouteFails: any[] = []
+                asyncRoutes.forEach((route: any) => {
+                  try {
+                    router.addRoute(route)
+                  } catch (err) {
+                    addRouteFails.push({ route: route?.path || route?.name || 'unknown', err: err instanceof Error ? err.message : String(err) })
+                  }
+                })
+                rewriteRoutes.forEach((route: any) => {
+                  try {
+                    router.addRoute(route)
+                  } catch (err) {
+                    addRouteFails.push({ route: route?.path || route?.name || 'unknown', err: err instanceof Error ? err.message : String(err) })
+                  }
+                })
+                if (recordAddRouteError && addRouteFails.length) {
+                  recordAddRouteError(addRouteFails)
+                }
+                if (skippedRoutes?.length || addRouteFails.length) {
+                  const msgs: string[] = []
+                  if (skippedRoutes?.length) {
+                    msgs.push(`已跳过 ${skippedRoutes.length} 条异常菜单（path/component 缺失等）`)
+                  }
+                  if (addRouteFails.length) {
+                    msgs.push(`${addRouteFails.length} 条动态路由注册失败`)
+                  }
+                  ElMessage.warning({
+                    message: `菜单加载存在异常，已自动跳过异常项：${msgs.join('；')}。详细请查看控制台或联系管理员。`,
+                    duration: 8000,
+                    showClose: true,
+                  })
+                }
+                next({ ...to, replace: true })
+              } catch (err) {
+                isRelogin.show = false
+                // BUG FIX: 菜单初始化异常不再强退 logout，让用户至少进入工作台看到可访问菜单；把错误以警告方式暴露。
+                console.error('[router] 登录后菜单初始化失败', err)
+                ElMessage.warning({
+                  message: `登录成功，但初始化用户菜单失败：${err instanceof Error ? err.message : String(err)}。已跳过异常菜单，请尝试访问顶部菜单或联系管理员修复。`,
+                  duration: 12000,
+                  showClose: true,
+                })
+                next({ path: to.path === '/' || !to.path ? '/' : to.path, replace: true })
+              }
+            } else {
+              next()
             }
-          })
-          rewriteRoutes.forEach((route: any) => {
-            try {
-              router.addRoute(route)
-            } catch (err) {
-              throw new Error(`菜单路由注册失败：${route?.path || route?.name || '未知路由'}，${err instanceof Error ? err.message : err}`)
-            }
-          })
-          next({ ...to, replace: true })
-        } catch (err) {
-          isRelogin.show = false
-          showBootstrapError('登录成功，但初始化用户菜单失败，请联系管理员检查菜单路由配置。', err)
-          await userStore.logout()
-          next({ path: '/' })
-        }
-      } else {
-        next()
-      }
-    }
+          }
   } else {
     if (isWhiteList(to.path)) {
       next()

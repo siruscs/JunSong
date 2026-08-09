@@ -41,6 +41,14 @@ public class ValidateCodeServiceImpl implements ValidateCodeService
     private static final Logger log = LoggerFactory.getLogger(ValidateCodeServiceImpl.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
+    /** 验证码一次性复用窗口（分钟）。多部门用户首次登录后弹出部门选择，二次登录仍会带
+     *  相同的 uuid/code。为了不立刻因为"key 已删"而报"验证码已失效"进入死循环，
+     *  首次验证成功后改为覆盖写入同 code 值并设置此 TTL，窗口期内允许同 code 再通过一次。
+     *  复用仍需严格 code 匹配；不同 code 一律拒绝，防止暴力破解。窗口建议 5 分钟，
+     *  已远大于用户从"看到部门选择弹框 → 点击部门 → 进入工作台"的正常用时，
+     *  且远短于 CAPTCHA_EXPIRATION（12 小时），避免长期暴露复用态。 */
+    public static final int CAPTCHA_REUSE_WINDOW_MINUTES = 5;
+
     @Resource(name = "captchaProducer")
     private Producer captchaProducer;
 
@@ -87,7 +95,6 @@ public class ValidateCodeServiceImpl implements ValidateCodeService
             ajax.put("preventSavePassword", isTrue(pspObj));
             return ajax;
         }
-
         // 保存验证码信息
         String uuid = IdUtils.simpleUUID();
         String verifyKey = CacheConstants.CAPTCHA_CODE_KEY + uuid;
@@ -180,10 +187,53 @@ public class ValidateCodeServiceImpl implements ValidateCodeService
     }
 
     /**
-     * Redis 缓存丢失时，兜底查库获取验证码开关配置
-     * 用同步 HttpClient 避开 reactive 线程 block 限制
+     * 校验验证码
      */
-    private boolean isCaptchaDisabledFromRemote()
+    @Override
+    public void checkCaptcha(String code, String uuid) throws CaptchaException
+    {
+        if (StringUtils.isEmpty(code))
+        {
+            throw new CaptchaException("验证码不能为空");
+        }
+        String verifyKey = CacheConstants.CAPTCHA_CODE_KEY + StringUtils.nvl(uuid, "");
+        String captcha = redisService.getCacheObject(verifyKey);
+        if (captcha == null)
+        {
+            throw new CaptchaException("验证码已失效");
+        }
+        // 严格 code 匹配（大小写不敏感）；复用窗口期内也必须同 code，
+        // 否则拒绝，防止"uuid 存在就过"的降级安全漏洞。
+        if (!code.equalsIgnoreCase(captcha))
+        {
+            // 注意：失败时不要删除 key，否则用户第一次输错就连再输正确的机会都没有。
+            // 允许用户在原本的 CAPTCHA_EXPIRATION 之内重试，直到 uuid 自然过期。
+            throw new CaptchaException("验证码错误");
+        }
+        // 首次验证成功后，不立即删除 key。覆盖成相同 code 并重置一个更短的复用窗口，
+        // 以支持多部门用户二次带 deptId 的登录请求继续通过。窗口结束后 key 自然过期，
+        // 下一次必须刷新验证码重新获取，保留一次性语义的同时避免部门选择死循环。
+        redisService.setCacheObject(verifyKey, code, (long) CAPTCHA_REUSE_WINDOW_MINUTES, TimeUnit.MINUTES);
+    }
+
+    /**
+     * 验证码开关兜底：当 Redis 里 {@code sys_config:sys.account.captchaEnabled} 读为 null（
+     * 缓存被清理 / 未初始化 / TTL 过期）时，同步查 system 模块的 HTTP configKey 接口，
+     * 把结果写回 Redis，避免把"读不到"错误地当作"默认要验证码"。
+     *
+     * <p>返回 true 明确表示"业务开关 = 关闭，不需要图形验证码"；返回 false 表示
+     * "保持启用"（接口失败或缺省一律 fail-closed 启用图形验证码，避免绕过）。
+     *
+     * <p>此方法供 {@code ValidateCodeFilter} 与 {@code createCaptcha} 共享，确保两者
+     * 在缓存丢失时得到同一结果，避免"刷页面时 createCaptcha 说不用验证码、
+     * 点登录时 filter 说要验证码"的前后不一致体验。
+     *
+     * @param redisService  注入的 RedisService（用于回写缓存）
+     * @param log           调用方 Logger（方便记录是哪一侧触发的兜底）
+     * @param callerHint    调用方提示，如 "ValidateCodeFilter" / "createCaptcha"
+     * @return true = captcha 已被业务显式关闭（false）；否则 false
+     */
+    public static boolean captchaEnabledFallback(RedisService redisService, Logger log, String callerHint)
     {
         try
         {
@@ -198,18 +248,45 @@ public class ValidateCodeServiceImpl implements ValidateCodeService
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200)
             {
-                log.warn("Redis 缓存丢失，远程查询验证码配置 HTTP {}，默认保持开启", response.statusCode());
+                if (log != null)
+                {
+                    log.warn("[{}] Redis 缓存丢失，远程查询验证码配置 HTTP {}，默认保持启用",
+                            callerHint, response.statusCode());
+                }
                 return false;
             }
             JsonNode node = objectMapper.readTree(response.body());
             String value = node.has("data") ? node.get("data").asText() : null;
-            return "false".equalsIgnoreCase(value);
+            boolean disabled = "false".equalsIgnoreCase(value);
+            // 回写缓存：下次读 Redis 就不会再穿透了。值写成字符串形式，保证下次
+            // captchaEnabledObj = redisService.getCacheObject(...) 得到的 Boolean 语义
+            // 与 DB 一致。即使 DB 值为 true，写回去也比留着 null 强（避免反复走 HTTP）。
+            if (redisService != null)
+            {
+                redisService.setCacheObject(
+                        CacheConstants.SYS_CONFIG_KEY + "sys.account.captchaEnabled",
+                        disabled ? "false" : "true");
+            }
+            return disabled;
         }
         catch (Exception e)
         {
-            log.warn("Redis 缓存丢失，远程查询验证码配置失败，默认保持开启: {}", e.getMessage());
+            if (log != null)
+            {
+                log.warn("[{}] Redis 缓存丢失，远程查询验证码配置失败，默认保持开启: {}",
+                        callerHint, e.getMessage());
+            }
             return false;
         }
+    }
+
+    /**
+     * Redis 缓存丢失时，兜底查库获取验证码开关配置。
+     * 已重构为调用共享的 {@link #captchaEnabledFallback(RedisService, Logger, String)}。
+     */
+    private boolean isCaptchaDisabledFromRemote()
+    {
+        return captchaEnabledFallback(redisService, log, "createCaptcha");
     }
 
     private boolean isFalse(Object value)
@@ -235,28 +312,5 @@ public class ValidateCodeServiceImpl implements ValidateCodeService
         }
         text = text.replace("\\n", "").replace("\\r", "");
         return text.trim();
-    }
-
-    /**
-     * 校验验证码
-     */
-    @Override
-    public void checkCaptcha(String code, String uuid) throws CaptchaException
-    {
-        if (StringUtils.isEmpty(code))
-        {
-            throw new CaptchaException("验证码不能为空");
-        }
-        String verifyKey = CacheConstants.CAPTCHA_CODE_KEY + StringUtils.nvl(uuid, "");
-        String captcha = redisService.getCacheObject(verifyKey);
-        if (captcha == null)
-        {
-            throw new CaptchaException("验证码已失效");
-        }
-        redisService.deleteObject(verifyKey);
-        if (!code.equalsIgnoreCase(captcha))
-        {
-            throw new CaptchaException("验证码错误");
-        }
     }
 }

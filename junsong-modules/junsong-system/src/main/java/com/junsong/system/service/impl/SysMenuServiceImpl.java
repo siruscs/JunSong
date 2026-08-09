@@ -224,13 +224,26 @@ public class SysMenuServiceImpl implements ISysMenuService
     public List<RouterVo> buildMenus(List<SysMenu> menus)
     {
         List<RouterVo> routers = new LinkedList<RouterVo>();
+        if (menus == null)
+        {
+            return routers;
+        }
         for (SysMenu menu : menus)
         {
+            if (menu == null)
+            {
+                continue;
+            }
+            // 菜单路由防御性检查并规范化：空 path / 空 component 的叶子节点需要兜底，
+            // 避免 Vue Router addRoute 抛 invalid route 导致用户登录失败。
+            normalizeMenuPathsForRoute(menu);
             RouterVo router = new RouterVo();
             router.setHidden("1".equals(menu.getVisible()));
             router.setName(getRouteName(menu));
-            router.setPath(getRouterPath(menu));
-            router.setComponent(getComponent(menu));
+            final String rawPath = getRouterPath(menu);
+            router.setPath(sanitizeRouterPath(rawPath, menu));
+            final String rawComponent = getComponent(menu);
+            router.setComponent(sanitizeComponent(rawComponent, menu));
             router.setQuery(menu.getQuery());
             router.setMeta(new MetaVo(menu.getMenuName(), menu.getIcon(), StringUtils.equals("1", menu.getIsCache()), menu.getPath()));
             List<SysMenu> cMenus = menu.getChildren();
@@ -245,8 +258,8 @@ public class SysMenuServiceImpl implements ISysMenuService
                 router.setMeta(null);
                 List<RouterVo> childrenList = new ArrayList<RouterVo>();
                 RouterVo children = new RouterVo();
-                children.setPath(menu.getPath());
-                children.setComponent(menu.getComponent());
+                children.setPath(sanitizeRouterPath(menu.getPath(), menu));
+                children.setComponent(StringUtils.isNotEmpty(menu.getComponent()) ? menu.getComponent() : UserConstants.LAYOUT);
                 children.setName(getRouteName(menu.getRouteName(), menu.getPath()));
                 children.setMeta(new MetaVo(menu.getMenuName(), menu.getIcon(), StringUtils.equals("1", menu.getIsCache()), menu.getPath()));
                 children.setQuery(menu.getQuery());
@@ -260,16 +273,82 @@ public class SysMenuServiceImpl implements ISysMenuService
                 List<RouterVo> childrenList = new ArrayList<RouterVo>();
                 RouterVo children = new RouterVo();
                 String routerPath = innerLinkReplaceEach(menu.getPath());
-                children.setPath(routerPath);
+                children.setPath(sanitizeRouterPath(routerPath, menu));
                 children.setComponent(UserConstants.INNER_LINK);
                 children.setName(getRouteName(menu.getRouteName(), routerPath));
                 children.setMeta(new MetaVo(menu.getMenuName(), menu.getIcon(), menu.getPath()));
                 childrenList.add(children);
                 router.setChildren(childrenList);
             }
+            // 没有 children 且没有 component 也没有 redirect 的叶子节点 → 跳过不输出，前端 fail-soft 不阻塞登录
+            if (router.getChildren() == null || router.getChildren().isEmpty())
+            {
+                boolean hasComponent = StringUtils.isNotEmpty(router.getComponent());
+                boolean hasRedirect = StringUtils.isNotEmpty(router.getRedirect());
+                boolean isExternal = isExternalRouterPath(router.getPath());
+                if (!hasComponent && !hasRedirect && !isExternal)
+                {
+                    log.warn("[buildMenus] 跳过异常菜单 menuId={} menuName={}：component 为空且无 children/redirect/external，避免前端 addRoute 异常",
+                            menu.getMenuId(), menu.getMenuName());
+                    continue;
+                }
+            }
             routers.add(router);
         }
         return routers;
+    }
+
+    /**
+     * 规范化菜单路径：去除首尾空白，合并连续斜杠；必要时按 menuId 生成占位路径。
+     */
+    private void normalizeMenuPathsForRoute(SysMenu menu)
+    {
+        if (StringUtils.isNotEmpty(menu.getPath()))
+        {
+            String normalized = menu.getPath().trim().replaceAll("/{2,}", "/");
+            menu.setPath(normalized);
+        }
+    }
+
+    private String sanitizeRouterPath(String rawPath, SysMenu menu)
+    {
+        String path = StringUtils.isEmpty(rawPath) ? "" : rawPath.trim().replaceAll("/{2,}", "/");
+        if (StringUtils.isEmpty(path))
+        {
+            String fallback = "/placeholder-menu-" + (menu.getMenuId() != null ? String.valueOf(menu.getMenuId()) : "orphan");
+            log.warn("[buildMenus] 菜单 menuId={} menuName={} path 为空，已兜底为 {}", menu.getMenuId(), menu.getMenuName(), fallback);
+            return fallback;
+        }
+        return path;
+    }
+
+    private String sanitizeComponent(String rawComponent, SysMenu menu)
+    {
+        // 对一级菜单（Layout 父级）或目录型节点，空 component 可以兜底为 Layout/ParentView
+        boolean isRoot = MENU_ROOT_ID.equals(menu.getParentId());
+        boolean hasChildren = StringUtils.isNotEmpty(menu.getChildren());
+        boolean dirOrFrame = UserConstants.TYPE_DIR.equals(menu.getMenuType()) || isMenuFrame(menu);
+        if (StringUtils.isEmpty(rawComponent))
+        {
+            if (isRoot || hasChildren || dirOrFrame)
+            {
+                String fallback = isRoot && !dirOrFrame ? UserConstants.LAYOUT
+                        : UserConstants.PARENT_VIEW;
+                log.warn("[buildMenus] 菜单 menuId={} menuName={} component 为空，已兜底为 {}", menu.getMenuId(), menu.getMenuName(), fallback);
+                return fallback;
+            }
+        }
+        return rawComponent;
+    }
+
+    private boolean isExternalRouterPath(String path)
+    {
+        if (StringUtils.isEmpty(path))
+        {
+            return false;
+        }
+        String p = path.trim();
+        return p.startsWith("http://") || p.startsWith("https://") || p.startsWith("mailto:") || p.startsWith("tel:");
     }
 
     /**

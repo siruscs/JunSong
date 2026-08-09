@@ -16,6 +16,7 @@ import com.junsong.member.service.IMemMpRoleModuleService;
 import com.junsong.member.service.IMemMpDashboardService;
 import com.junsong.member.mapper.MemMpDashboardMapper;
 import com.junsong.member.util.MpModuleCatalog;
+import com.junsong.member.util.MpModuleCatalogSupplier;
 import com.junsong.system.api.RemoteUserService;
 import com.junsong.system.api.domain.SysRole;
 import com.junsong.system.api.model.LoginUser;
@@ -30,6 +31,7 @@ public class MemMpController extends BaseController {
 
     // 权威模块字典统一维护在 MpModuleCatalog，避免与 MemMpPermController / mpPerm/index.vue /
     // 小程序端 modules.js 四处各写一份导致名称/分组/漏项不一致。
+    // 此处 ALL_MODULES 仅用于 "key 是否在已声明模块集合里" 的 contains 判断，不需要顺序。
     private static final List<String> ALL_MODULES = MpModuleCatalog.frontendModuleKeys();
 
     @Autowired
@@ -43,6 +45,9 @@ public class MemMpController extends BaseController {
 
     @Autowired
     private RemoteUserService remoteUserService;
+
+    @Autowired
+    private MpModuleCatalogSupplier moduleCatalogSupplier;
 
     @GetMapping("/userinfo")
     public AjaxResult getUserInfo() {
@@ -64,17 +69,35 @@ public class MemMpController extends BaseController {
 
         List<String> modules = getAccessibleModules(loginUser);
         result.put("modules", modules);
+        // 小程序端首页 / 工作台九宫格的分组显示顺序，来自 PC「功能模块调整」。
+        result.put("groupOrder", moduleCatalogSupplier.sortedGroupNames());
 
         return AjaxResult.success(result);
     }
 
+    /**
+     * 返回当前登录用户可见的小程序模块清单 + 分组排序顺序。
+     *
+     * <p>响应 data 结构：<pre>
+     * {
+     *   "modules":    ["member","memberPurchase",...],  // 同组内按 PC 端排序
+     *   "groupOrder": ["会员服务","会员运营",...]       // 大分组的显示顺序
+     * }
+     * </pre>
+     * 为了兼容旧版本小程序解析（Array.isArray 判断），仍会额外在顶层携带
+     * 与 modules 相同的列表，但小程序端请优先读取 modules / groupOrder 字段。
+     */
     @GetMapping("/modules")
     public AjaxResult getModules() {
         LoginUser loginUser = SecurityUtils.getLoginUser();
         if (loginUser == null) {
             return AjaxResult.error("未登录");
         }
-        return AjaxResult.success(getAccessibleModules(loginUser));
+        List<String> modules = getAccessibleModules(loginUser);
+        Map<String, Object> payload = new LinkedHashMap<>(4);
+        payload.put("modules", modules);
+        payload.put("groupOrder", moduleCatalogSupplier.sortedGroupNames());
+        return AjaxResult.success(payload);
     }
 
     private List<String> getAccessibleModules(LoginUser loginUser) {
@@ -99,10 +122,13 @@ public class MemMpController extends BaseController {
         if (configured == null || configured.isEmpty()) {
             return Collections.emptyList();
         }
-        return configured.stream()
+        List<String> visible = configured.stream()
                 .filter(this::hasModuleViewPermission)
                 .distinct()
                 .collect(Collectors.toList());
+        // 按 PC 端「功能模块调整」配置的显示顺序重排后再返回给小程序端，
+        // 确保小程序端 storage.modules 的 this.modules 数组顺序与 PC mpPerm 页勾选顺序一致。
+        return moduleCatalogSupplier.sortModuleKeys(visible);
     }
 
     /** 检查当前登录用户是否拥有指定模块的查看权限（任一命中即可视为可见） */

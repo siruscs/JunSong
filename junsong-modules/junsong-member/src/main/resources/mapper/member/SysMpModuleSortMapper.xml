@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.junsong.member.mapper.SysMpModuleSortMapper">
+
+    <resultMap type="com.junsong.member.domain.SysMpModuleSort" id="MpModuleSortResult">
+        <result property="id"          column="id"/>
+        <result property="moduleKey"   column="module_key"/>
+        <result property="groupName"   column="group_name"/>
+        <result property="sortOrder"   column="sort_order"/>
+        <result property="remark"      column="remark"/>
+        <result property="createBy"    column="create_by"/>
+        <result property="createTime"  column="create_time"/>
+        <result property="updateBy"    column="update_by"/>
+        <result property="updateTime"  column="update_time"/>
+    </resultMap>
+
+    <sql id="selectColumns">
+        SELECT s.id, s.module_key, s.group_name, s.sort_order, s.remark,
+               s.create_by, s.create_time, s.update_by, s.update_time
+        FROM sys_mp_module_sort s
+    </sql>
+
+    <select id="selectAll" resultMap="MpModuleSortResult">
+        <include refid="selectColumns"/>
+        ORDER BY s.sort_order ASC, s.id ASC
+    </select>
+
+    <select id="selectByModuleKey" resultMap="MpModuleSortResult">
+        <include refid="selectColumns"/>
+        WHERE s.module_key = #{moduleKey}
+        LIMIT 1
+    </select>
+
+    <select id="selectList" resultMap="MpModuleSortResult">
+        <include refid="selectColumns"/>
+    </select>
+
+    <insert id="insert" parameterType="com.junsong.member.domain.SysMpModuleSort" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_mp_module_sort (module_key, group_name, sort_order, remark, create_by, create_time, update_by, update_time)
+        VALUES (#{moduleKey}, #{groupName}, #{sortOrder}, #{remark}, #{createBy}, #{createTime}, #{updateBy}, #{updateTime})
+    </insert>
+
+    <update id="updateById" parameterType="com.junsong.member.domain.SysMpModuleSort">
+        UPDATE sys_mp_module_sort
+        <set>
+            <if test="moduleKey != null and moduleKey != ''">module_key = #{moduleKey},</if>
+            <if test="groupName != null">group_name = #{groupName},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime}</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateByModuleKey" parameterType="com.junsong.member.domain.SysMpModuleSort">
+        UPDATE sys_mp_module_sort
+        <set>
+            <if test="groupName != null">group_name = #{groupName},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime}</if>
+        </set>
+        WHERE module_key = #{moduleKey}
+    </update>
+
+    <delete id="deleteAll">
+        DELETE FROM sys_mp_module_sort
+    </delete>
+
+</mapper>

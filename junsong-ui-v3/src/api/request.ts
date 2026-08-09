@@ -73,6 +73,7 @@ service.interceptors.request.use(
       } else {
         // 自动键管理：按请求签名复用同键
         const signature = computeRequestSignature(config.url, method, config.data)
+        ;(config as any)._idempotencySig = signature
         autoKey = consumeReusableKey(signature, scene)
       }
       config.headers!['X-Idempotency-Key'] = autoKey
@@ -141,7 +142,9 @@ service.interceptors.response.use(
       const forceNewKey = (res.config as any).idempotencyNewKey === true
         || (String(res.config.method || '').toLowerCase() === 'put' && !explicitKey)
       if (!explicitKey && !forceNewKey) {
-        const signature = computeRequestSignature(res.config.url, res.config.method, res.config.data)
+        // 优先使用请求拦截器存储的签名，避免 axios 序列化 data 后签名不一致
+        const signature = (res.config as any)._idempotencySig
+          || computeRequestSignature(res.config.url, res.config.method, res.config.data)
         const usedKey = res.config.headers?.['X-Idempotency-Key'] as string | undefined
         if (usedKey) {
           if (code === 200) {
@@ -225,7 +228,8 @@ service.interceptors.response.use(
       const forceNewKey = (cfg as any).idempotencyNewKey === true
         || (String(cfg.method || '').toLowerCase() === 'put' && !explicitKey)
       if (!explicitKey && !forceNewKey) {
-        const signature = computeRequestSignature(cfg.url, cfg.method, cfg.data)
+        const signature = (cfg as any)._idempotencySig
+          || computeRequestSignature(cfg.url, cfg.method, cfg.data)
         const usedKey = cfg.headers?.['X-Idempotency-Key'] as string | undefined
         if (usedKey) {
           releaseReusableKey(signature, usedKey)

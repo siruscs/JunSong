@@ -147,6 +147,32 @@ JunSong-Cloud is a multi-tenant retail/member/finance platform.
 6. Before commit, stage only task-owned files, run `detect_changes(scope="staged")`, inspect staged names, and run `git diff --cached --check`.
 7. Never use destructive Git cleanup or commit secrets/runtime data.
 
+## 文档命名与归档规范
+
+本项目使用中文作为文档的第一语言。所有由 Agent 生成/新增的文档、清单、报告、设计稿、计划、执行脚本及导出物（包括但不限于 `*.md`、`*.sql`、`*.json`、`*.yml`、验收/执行/部署报告、菜单权限清单、配置变更清单）必须遵守以下命名与归档规则：
+
+1. **文件名必须使用中文主题**：
+   - 可在中文主题前加 `YYYY-MM-DD-` 或 `YYYYMMDD-` 作为时间前缀便于排序；
+   - 可在中文主题后加 `.zh-CN` 标记语种（可选但推荐）；
+   - 禁止使用纯英文 kebab-case 命名（例如 `2026-07-12-some-english-topic.md`），禁止用英文缩写代替中文主题名；
+   - 命名示例：
+     - `2026-08-09-配置同步模块迁移至系统管理分组计划.zh-CN.md`
+     - `菜单路由健康检查与修复说明.md`
+     - `20260809-菜单权限清理_PROD执行.sql`
+
+2. **必须归档到 `docs/` 对应的子目录**：
+   - 计划/方案 → `docs/superpowers/plans/`
+   - 设计/规格 → `docs/superpowers/specs/`
+   - 验收/执行/部署报告 → `docs/superpowers/reports/`
+   - 进度/跟踪 → `docs/superpowers/tracking/`
+   - 调研/分析 → `docs/superpowers/research/`
+   - 架构决策 → `docs/adr/`
+   - SQL 变更脚本（无论一次性还是可重复执行）统一放入项目根下的 `sql/` 目录，文件名同样使用中文主题。
+
+3. **历史英文文档的过渡**：`docs/superpowers/plans/`、`specs/` 中现存的 `YYYY-MM-DD-english-topic.md` 文件不需要一次性全部重命名；但在下次执行相关任务需要编辑/引用它们时，同步把文件名改写为符合上述规范的中文命名（保留日期前缀）。
+
+4. **生成即合规**：不要先生成临时的英文命名文档再计划后续改名 —— 如果用户明确要求"生成一个 XXX 文档"，第一版输出的文件路径即要满足中文命名+归入对应子目录。
+
 ## Task-Specific Reading
 
 | Task | Required document |

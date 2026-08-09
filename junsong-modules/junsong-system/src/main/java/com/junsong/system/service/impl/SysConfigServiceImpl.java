@@ -193,6 +193,11 @@ public class SysConfigServiceImpl implements ISysConfigService
 
     /**
      * 清空参数缓存数据
+     *
+     * <p>注意：对外暴露的 {@link #clearConfigCache()} 仍保留原来的"全量 SCAN 删除"语义，
+     * 因为它是 {@link ISysConfigService} 公开接口契约，外部可能直接调用以强制清缓存。
+     * 内部重置流程（见 {@link #resetConfigCache()}）已切换为"覆盖写 + 只删多余 key"，
+     * 避免出现中间空窗口导致 sys_config 被误读为 null 并退回到默认值。
      */
     @Override
     public void clearConfigCache()
@@ -203,12 +208,55 @@ public class SysConfigServiceImpl implements ISysConfigService
 
     /**
      * 重置参数缓存数据
+     *
+     * <p>BUG1 修复：原先流程是 {@code clearConfigCache()} 全量 SCAN 清空 →
+     * {@code loadingConfigCache()} 再写回，两步之间存在"读 null"窗口，
+     * 对于任何直接从 Redis 取 {@code sys_config:*} 的消费者（如 gateway 的
+     * {@code ValidateCodeFilter}）会把 null 退回到默认行为，
+     * 典型现象是"参数表明明设 FALSE，但是刷新缓存的那一瞬间还需要图形验证码"，
+     * 缓存压力大时甚至持续退不回来。
+     *
+     * <p>新流程改成覆盖式无窗口：
+     * <ol>
+     *   <li>先 {@code loadingConfigCache()}：按 DB 最新值覆盖 Redis 中已有的 key。
+     *       这一步不会让任何一个已存在的 key 变成 null。</li>
+     *   <li>再用 SCAN 扫出当前 Redis 里所有 {@code SYS_CONFIG_KEY + "*"} key，
+     *       与 DB 中这一次加载的 key 做差集，只删掉"DB 已经不存在"的旧 key。</li>
+     * </ol>
+     *
+     * <p>注意：由于系统参数条目总数很小（通常几十到几百条），在应用节点本地构建 keySet
+     * 再做差集完全可接受；相比"先全删后写"的实现代价更低且完全规避空窗口。
      */
     @Override
     public void resetConfigCache()
     {
-        clearConfigCache();
-        loadingConfigCache();
+        List<SysConfig> configsList = configMapper.selectConfigList(new SysConfig());
+        // 1) 先覆盖写所有 DB 里仍存在的 key（原子覆盖，不暴露空窗口）。
+        java.util.Set<String> dbKeys = new java.util.HashSet<>();
+        for (SysConfig config : configsList)
+        {
+            String cacheKey = getCacheKey(config.getConfigKey());
+            dbKeys.add(cacheKey);
+            redisService.setCacheObject(cacheKey, config.getConfigValue());
+        }
+        // 2) 再扫出现有 Redis key，删除"DB 已经没有"的多余缓存。
+        Collection<String> existingKeys = redisService.scan(CacheConstants.SYS_CONFIG_KEY + "*");
+        if (existingKeys == null || existingKeys.isEmpty())
+        {
+            return;
+        }
+        java.util.List<String> staleKeys = new java.util.ArrayList<>(existingKeys.size());
+        for (String k : existingKeys)
+        {
+            if (!dbKeys.contains(k))
+            {
+                staleKeys.add(k);
+            }
+        }
+        if (!staleKeys.isEmpty())
+        {
+            redisService.deleteObject(staleKeys);
+        }
     }
 
     /**

@@ -52,7 +52,21 @@ public class ValidateCodeFilter extends AbstractGatewayFilterFactory<Object>
             }
 
             Object captchaEnabledObj = redisService.getCacheObject(CacheConstants.SYS_CONFIG_KEY + "sys.account.captchaEnabled");
-            if ("false".equalsIgnoreCase(normalizeBooleanValue(captchaEnabledObj)))
+            boolean disabledByRemote = false;
+            if (captchaEnabledObj == null)
+            {
+                // BUG1 修复：Redis 缓存丢失（常见于 resetConfigCache 先清后写、FLUSHDB、
+                // 持久化失败等）时，必须与 createCaptcha 保持一致的"查库兜底 + 回写缓存"，
+                // 否则会被下方 captchaProperties.getEnabled() 的 Nacos 默认值"覆盖回 true"，
+                // 导致明明参数表设了 FALSE 却仍然要求用户输入图形验证码。
+                disabledByRemote = com.junsong.gateway.service.impl.ValidateCodeServiceImpl
+                        .captchaEnabledFallback(redisService, log, "ValidateCodeFilter");
+            }
+            else if ("false".equalsIgnoreCase(normalizeBooleanValue(captchaEnabledObj)))
+            {
+                return chain.filter(exchange);
+            }
+            if (disabledByRemote)
             {
                 return chain.filter(exchange);
             }

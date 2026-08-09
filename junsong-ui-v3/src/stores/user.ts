@@ -10,6 +10,38 @@ import router from '@/router'
 
 const defAva = ''
 
+const LAST_DEPT_KEY_PREFIX = 'lastLoginDept.'
+
+/**
+ * 生成"上次登录部门"持久化 key。
+ * 与小程序 mergePersistedUser 对齐：同时按 userId + userName 双写，
+ * 优先级：session > local，查询时先按 userId 命中再按 userName 兜底。
+ */
+function lastDeptKeys(userId?: string, userName?: string) {
+  const keys: string[] = []
+  if (userId) keys.push(`${LAST_DEPT_KEY_PREFIX}uid:${userId}`)
+  if (userName) keys.push(`${LAST_DEPT_KEY_PREFIX}uname:${userName}`)
+  return keys
+}
+
+function rememberLastDept(deptId: number, userId?: string, userName?: string) {
+  const payload = { deptId, t: Date.now() }
+  for (const key of lastDeptKeys(userId, userName)) {
+    cache.session.setJSON(key, payload)
+    cache.local.setJSON(key, payload)
+  }
+}
+
+function recallLastDept(userId?: string, userName?: string): number | null {
+  for (const key of lastDeptKeys(userId, userName)) {
+    const s = cache.session.getJSON(key)
+    if (s && typeof s.deptId === 'number') return s.deptId
+    const l = cache.local.getJSON(key)
+    if (l && typeof l.deptId === 'number') return l.deptId
+  }
+  return null
+}
+
 function normalizeAvatar(avatar?: string) {
   if (isEmpty(avatar)) return defAva
   const value = avatar!
@@ -59,10 +91,16 @@ export const useUserStore = defineStore('user', () => {
     avatar.value = avatarVal
     if (res.depts && res.depts.length > 0) {
       depts.value = res.depts
-      const selectedDeptId = res.currentDeptId ?? res.currentDept?.deptId ?? res.depts[0].deptId
-      const currentDept = res.depts.find((d: any) => d.deptId === selectedDeptId) || res.depts[0]
+      // 对齐小程序 mergePersistedUser 优先级：后端 res.currentDeptId > res.currentDept.deptId > 缓存 lastDeptId > depts[0]
+      const cachedDeptId = recallLastDept(user.userId, user.userName)
+      const backendPreferred = res.currentDeptId ?? res.currentDept?.deptId ?? user.deptId ?? user.currentDeptId
+      const preselectId = backendPreferred ?? cachedDeptId ?? res.depts[0].deptId
+      const currentDept = res.depts.find((d: any) => d.deptId === preselectId) || res.depts[0]
       currentDeptId.value = currentDept.deptId
       currentDeptName.value = currentDept.deptName || ''
+      if (typeof currentDept.deptId === 'number') {
+        rememberLastDept(currentDept.deptId, user.userId, user.userName)
+      }
     } else {
       depts.value = []
       currentDeptId.value = null
@@ -99,10 +137,15 @@ export const useUserStore = defineStore('user', () => {
     const dept = depts.value.find((d: any) => d.deptId === deptId)
     currentDeptId.value = deptId
     currentDeptName.value = dept ? dept.deptName : ''
+    if (typeof deptId === 'number') {
+      rememberLastDept(deptId, id.value, name.value)
+    }
     return res
   }
 
   async function logout() {
+    const keys = lastDeptKeys(id.value, name.value)
+    keys.forEach((k) => { cache.session.remove(k) })
     await logoutApi()
     token.value = ''
     roles.value = []
@@ -114,6 +157,8 @@ export const useUserStore = defineStore('user', () => {
   }
 
   function fedLogOut() {
+    const keys = lastDeptKeys(id.value, name.value)
+    keys.forEach((k) => { cache.session.remove(k) })
     token.value = ''
     removeToken()
   }
@@ -122,5 +167,6 @@ export const useUserStore = defineStore('user', () => {
     token, id, name, nickName, avatar, roles, permissions,
     depts, currentDeptId, currentDeptName,
     login, getInfo, switchDept, logout, fedLogOut,
+    recallLastDept, rememberLastDept,
   }
 })

@@ -22,7 +22,7 @@ function normalizeRouteNames(routeList: any[], used = new Set<string>()) {
   routeList.forEach((route) => {
     const rawName = route.name != null ? String(route.name) : ''
     const baseName = rawName && !/^\d+$/.test(rawName)
-      ? rawName
+      ? baseNameSanitize(rawName)
       : toRouteName(route.component || route.path || route.meta?.title || 'route')
     let routeName = baseName
     let index = 1
@@ -35,6 +35,56 @@ function normalizeRouteNames(routeList: any[], used = new Set<string>()) {
       normalizeRouteNames(route.children, used)
     }
   })
+}
+
+function baseNameSanitize(input: string): string {
+  // 过滤掉菜单路由名称中可能导致 Vue Router 命名异常的字符/空白
+  const cleaned = String(input || '').trim().replace(/[^\w\u4e00-\u9fa5$-]/g, '')
+  return cleaned || 'Route'
+}
+
+function normalizeRouterPath(input: unknown, fallback?: string): string {
+  const raw = String(input ?? '').trim()
+  if (!raw) return fallback || '/placeholder-route'
+  // 把多段连续斜杠合并为单段，首尾保留语义（外部链接原样返回即可，isExternalLink 会过滤）
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw)) return raw
+  const collapsed = raw.replace(/\/{2,}/g, '/')
+  return collapsed || (fallback || '/placeholder-route')
+}
+
+/**
+ * 菜单路由清洗与 fail-soft 防御：
+ *  - 过滤 null/undefined 节点
+ *  - 按钮级 / path/component 全非法且无 children 的叶子节点自动跳过，不阻塞登录流程
+ *  - 空 path / 重复 '//' 的路径自动兜底为 placeholder-route
+ * 返回值：{ sanitized, skipped: [{title, path, reason}] }
+ */
+function sanitizeRouteTree(routeList: any[]): { sanitized: any[]; skipped: any[] } {
+  const skipped: any[] = []
+  const sanitized: any[] = []
+  for (const raw of routeList || []) {
+    if (raw == null) continue
+    const route = { ...raw }
+    const title = route.meta?.title ?? route.name ?? route.path ?? '(unknown)'
+    // 路径归一：含 '//' / 空字符串都要修正，避免 Vue Router addRoute 抛 "invalid route path"
+    route.path = normalizeRouterPath(route.path, undefined)
+    if (route.meta) route.meta = { ...route.meta }
+    // 递归 children
+    if (Array.isArray(route.children) && route.children.length > 0) {
+      const nested = sanitizeRouteTree(route.children)
+      skipped.push(...nested.skipped)
+      route.children = nested.sanitized
+    }
+    // 没有 component 且没有 children 且不是外链的叶子 → 跳过（Vue Router 无法注册）
+    const componentMissing = !route.component && !route.children?.length
+    const hasRedirect = !!route.redirect || route.redirect === 0
+    if (componentMissing && !hasRedirect && !isExternalLink(route.path) && !isExternalLink(route.meta?.link)) {
+      skipped.push({ title, path: route.path, component: route.component, reason: 'component 为空且没有 children 也没有 redirect，已跳过' })
+      continue
+    }
+    sanitized.push(route)
+  }
+  return { sanitized, skipped }
 }
 
 function mergeRouteTrees(routeList: any[]): any[] {
@@ -94,6 +144,20 @@ export const usePermissionStore = defineStore('permission', () => {
   const defaultRoutes = ref<any[]>([])
   const topbarRouters = ref<any[]>([])
   const sidebarRouters = ref<any[]>([])
+  const skippedRoutes = ref<any[]>([])
+  const addRouteErrors = ref<any[]>([])
+
+  function recordSkipped(items: any[]) {
+    if (!Array.isArray(items) || !items.length) return
+    skippedRoutes.value = skippedRoutes.value.concat(items)
+    console.warn('[permission] 菜单路由跳过项：', items)
+  }
+
+  function recordAddRouteError(errors: any[]) {
+    if (!Array.isArray(errors) || !errors.length) return
+    addRouteErrors.value = addRouteErrors.value.concat(errors)
+    console.error('[permission] addRoute 失败项：', errors)
+  }
 
   function filterAsyncRouter(asyncRouterMap: any[], lastRouter: any = false, type: boolean = false): any[] {
     return asyncRouterMap.filter((route) => {
@@ -180,8 +244,13 @@ export const usePermissionStore = defineStore('permission', () => {
     normalizeMenuIcons(rdata)
     normalizeRouteNames(sdata)
     normalizeRouteNames(rdata)
-    const sidebarRoutes = filterAsyncRouter(sdata)
-    const rewriteRoutes = filterAsyncRouter(rdata, false, true)
+    // BUG FIX: 空 component / 空 path / '//' 重复斜杠 的菜单，在前端侧先 sanitize；
+    // 有缺陷的菜单跳过 + 留痕（skippedRoutes），保证 ADMIN 不因单条异常菜单导致登录完全失败。
+    const sdataSanitized = sanitizeRouteTree(sdata)
+    const rdataSanitized = sanitizeRouteTree(rdata)
+    recordSkipped([...sdataSanitized.skipped, ...rdataSanitized.skipped])
+    const sidebarRoutes = filterAsyncRouter(sdataSanitized.sanitized)
+    const rewriteRoutes = filterAsyncRouter(rdataSanitized.sanitized, false, true)
     const asyncRoutes = filterDynamicRoutes(dynamicRoutes)
     rewriteRoutes.push({ path: '/:pathMatch(.*)*', redirect: '/404', hidden: true })
     routes.value = constantRoutes.concat(rewriteRoutes)
@@ -189,10 +258,13 @@ export const usePermissionStore = defineStore('permission', () => {
     sidebarRouters.value = constantRoutes.concat(sidebarRoutes)
     defaultRoutes.value = sidebarRoutes
     topbarRouters.value = sidebarRoutes
-    return { asyncRoutes, rewriteRoutes }
+    return { asyncRoutes, rewriteRoutes, skippedRoutes: skippedRoutes.value, recordAddRouteError }
   }
 
-  return { routes, addRoutes, defaultRoutes, topbarRouters, sidebarRouters, generateRoutes }
+  return {
+    routes, addRoutes, defaultRoutes, topbarRouters, sidebarRouters,
+    skippedRoutes, addRouteErrors, generateRoutes, recordAddRouteError,
+  }
 })
 
 export const loadView = (view: string) => {

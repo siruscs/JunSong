@@ -54,7 +54,7 @@ public class TenantSqlInterceptor implements Interceptor
     private static final String TENANT_COLUMN = "tenant_id";
 
     private static final Pattern TENANT_TABLE_PATTERN =
-            Pattern.compile("^(sys_(?!menu$|menu_backup|dict_type$|dict_data$|region$|tenant$|operation_schedule_log$|action_center_touch_log$|action_center_touch_throttle$|data_retention_policy$|data_archive_run$|operation_audit_snapshot$|operation_alert_rule$|operation_alert_event$)|fin_(?!composite_period_item$|composite_pool_dept$|composite_pool_investor$|ance_prediction_factor$|ance_review_knowledge$|ance_review_task$|ance_review_task_log$)|mem_(?!refund_apply$|member_no_sequence$)|lc_|wf_).*");
+            Pattern.compile("^(sys_(?!menu$|menu_backup|dict_type$|dict_data$|region$|tenant$|operation_schedule_log$|action_center_touch_log$|action_center_touch_throttle$|data_retention_policy$|data_archive_run$|operation_audit_snapshot$|operation_alert_rule$|operation_alert_event$|mp_module_sort$)|fin_(?!composite_period_item$|composite_pool_dept$|composite_pool_investor$|ance_prediction_factor$|ance_review_knowledge$|ance_review_task$|ance_review_task_log$)|mem_(?!refund_apply$|member_no_sequence$)|lc_|wf_).*");
 
     private static final Pattern EXCLUDE_TABLES =
             Pattern.compile("^(act_|flw_|qrtz_|gen_).*");

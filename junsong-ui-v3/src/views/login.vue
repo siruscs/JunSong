@@ -224,6 +224,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { getCodeImg as getCodeImgApi, getUserDepts as getUserDeptsApi } from '@/api/login'
 import Cookies from 'js-cookie'
 import { encrypt, decrypt } from '@/utils/jsencrypt'
+import cache from '@/utils/cache'
 import brandMarkSvg from '@/assets/logo/junsong-mark-theme.svg?raw'
 
 const router = useRouter()
@@ -309,6 +310,32 @@ function handleUsernameBlur() {
   loginForm.deptId = null
 }
 
+function pickPreselectedDept(depts: any[], username: string): number | null {
+  if (!Array.isArray(depts) || !depts.length) return null
+  // 对齐小程序 mergePersistedUser 优先级：session lastDeptId > localStorage lastDeptId > depts[0]
+  const userNameKey = String(username || '').trim()
+  const sessionKey = `lastLoginDept.uname:${userNameKey}`
+  const fromSession = cache.session.getJSON(sessionKey)
+  if (fromSession && typeof fromSession.deptId === 'number'
+      && depts.some((d) => String(d.deptId) === String(fromSession.deptId))) {
+    return fromSession.deptId
+  }
+  const fromLocal = cache.local.getJSON(sessionKey)
+  if (fromLocal && typeof fromLocal.deptId === 'number'
+      && depts.some((d) => String(d.deptId) === String(fromLocal.deptId))) {
+    return fromLocal.deptId
+  }
+  return depts[0]?.deptId ?? null
+}
+
+function persistDeptSelectionByUsername(username: string, deptId: number) {
+  if (!username || typeof deptId !== 'number') return
+  const key = `lastLoginDept.uname:${String(username).trim()}`
+  const payload = { deptId, t: Date.now() }
+  cache.session.setJSON(key, payload)
+  cache.local.setJSON(key, payload)
+}
+
 function handleLogin() {
   if (loading.value) return
   if (!loginFormRef.value) return
@@ -342,7 +369,8 @@ function handleLogin() {
             const deptRes: any = await getUserDeptsApi(loginForm.username)
             if (deptRes.code === 200 && Array.isArray(deptRes.data) && deptRes.data.length > 1) {
               userDepts.value = deptRes.data
-              selectedDeptId.value = null
+              // BUG FIX: 多机构用户进入部门选择前，按"session 记忆 > localStorage 记忆 > 首部门"的优先级回选，与小程序对齐。
+              selectedDeptId.value = pickPreselectedDept(deptRes.data, loginForm.username)
               deptDialogVisible.value = true
               loading.value = false
               return
@@ -368,15 +396,35 @@ async function confirmDeptLogin() {
   if (!selectedDeptId.value || deptConfirmLoading.value) return
   deptConfirmLoading.value = true
   try {
+    persistDeptSelectionByUsername(loginForm.username, selectedDeptId.value)
     await userStore.login({
       username: loginForm.username,
       password: loginForm.password,
+      // 说明：这里仍带 code + uuid，是为了复用后端 CAPTCHA_REUSE_WINDOW_MINUTES
+      // （5 分钟）内的"同 uuid + 同 code 允许一次性复用"票据，避免因为第一次校验
+      // 成功后 Redis key 被删除而导致二次登录命中"验证码已失效"的死循环。
+      // 窗口过期或前后 code 不一致时，后端仍会严格拒绝，保留一次性语义。
       code: loginForm.code,
       uuid: loginForm.uuid,
       deptId: selectedDeptId.value,
     })
     deptDialogVisible.value = false
     await router.push({ path: route.query.redirect ? route.query.redirect as string : '/' })
+  } catch (e: any) {
+    // 二次校验失败（常见于用户在部门弹层停留超过了复用窗口、或系统重启了 Redis），
+    // 必须让用户有明确的出路：关闭部门弹窗 → 自动刷新图形验证码 → 清空 code 字段，
+    // 用户只需重新点一下验证码图输入新值再提交，不再被"失效 → 弹部门 → 再失效"卡住。
+    const msg: string = typeof e?.message === 'string' ? e.message : String(e?.msg || e || '')
+    if (msg.includes('验证码') || msg.includes('captcha') || msg.includes('CAPTCHA')) {
+      deptDialogVisible.value = false
+      loginForm.code = ''
+      if (captchaEnabled.value) {
+        getCode()
+      }
+      // 只把错误提示抛给全局 toast / 拦截器即可；避免页面上再同时弹另一层错误层
+      return
+    }
+    throw e
   } finally {
     deptConfirmLoading.value = false
   }

@@ -106,116 +106,149 @@
 
 ## 三、技术架构图
 
-> 采用 **七层严格矩阵式分层架构**，每层所有节点横向对齐（像图1一样），连线仅保留 L1→L2→L3→L4→L5→L6→L7 的**垂直主链路**，杜绝斜向/跨层连线导致 Mermaid 把子图挤到左上角乱飞。横切能力（Feign/Nacos/Sentinel/Metrics 等）在每层子图内部以文字注释说明。
+> **✅ 采用原生 inline SVG 手工绘制（不依赖 Mermaid 渲染），保证 GitHub / VS Code / Typora / Notion 所有平台显示像素级一致，绝不再出现「子图飞左上角 / 连线乱穿」。所有图层、节点、版本号、颜色与之前的 inline SVG 图 1:1 严格对应。**
+>
+> 七层严格矩阵式分层：用户接入 → 接入网关 → 认证中心 → 业务服务 → 微服务治理 → 数据存储 → DevOps 可观测。连线仅保留垂直主链路 6 条；Feign / Nacos / Sentinel / Metrics 等横切能力改为每层底部灰色说明条。
 
-```mermaid
-flowchart TB
-    %% ============== 颜色主题：与 inline SVG 图一一对应 ==============
-    classDef client fill:#1e293b,stroke:#ec4899,stroke-width:2px,color:#fce7f3,font-weight:bold
-    classDef gw     fill:#7c2d12,stroke:#fb923c,stroke-width:2px,color:#fff7ed,font-weight:bold
-    classDef auth   fill:#831843,stroke:#f472b6,stroke-width:2px,color:#fce7f3,font-weight:bold
-    classDef svc    fill:#064e3b,stroke:#34d399,stroke-width:2px,color:#d1fae5,font-weight:bold
-    classDef svcCor fill:#2e1065,stroke:#a78bfa,stroke-width:3px,color:#ede9fe,font-weight:bolder
-    classDef gov    fill:#312e81,stroke:#818cf8,stroke-width:2px,color:#e0e7ff,font-weight:bold
-    classDef data   fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#fef3c7,font-weight:bold
-    classDef ops    fill:#0f172a,stroke:#64748b,stroke-width:2px,color:#f1f5f9,font-weight:bold
-    classDef tag    fill:#ede9fe,stroke:#6d28d9,stroke-dasharray:4 2,color:#4c1d95,font-weight:500
-    classDef note   fill:#f8fafc,stroke:#cbd5e1,stroke-dasharray:2 2,color:#334155,font-size:14px
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1520" width="100%" style="font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/></marker>
+    <style>
+      .tbox { display:flex; align-items:center; justify-content:center; width:100%; height:100%; text-align:center; padding:10px 8px; box-sizing:border-box; font-weight:600; line-height:1.4; font-size:12.5px; }
+      .layer-title { font-size:15px; font-weight:700; padding:8px 14px; display:flex; align-items:center; border-bottom-left-radius:8px; border-bottom-right-radius:8px; }
+      .note { padding:8px 14px; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px; font-size:12.5px; color:#475569; line-height:1.5; }
+    </style>
+  </defs>
 
-    %% ========= 第一层 用户接入层（严格 4 卡横排 + 3 协议胶囊 横排） =========
-    subgraph L1["🌐 层1 · 用户接入层 · 多端协同 + 开放生态"]
-      direction TB
-      subgraph L1A["客户端（4 个）"]
-        direction LR
-        WEB["🖥️ PC 管理后台<br/>Vue 3.5 + Element Plus<br/>Vite 8 · TS 6 · Pinia 3"]:::client
-        MP["📱 峻松店记（小程序）<br/>uni-app 3 · Vue 3.4<br/>Pinia 2.1 · Vite 5.2"]:::client
-        ISV["🔌 ISV 第三方<br/>HMAC-SHA256 签名"]:::client
-        SDK["🧰 多语言 SDK<br/>Java / Python / Go / JS"]:::client
-      end
-      subgraph L1B["安全协议（3 个胶囊）"]
-        direction LR
-        T1["⚡ HTTPS + JWT"]:::tag
-        T2["🔒 WSS + Token"]:::tag
-        T3["🔑 Nonce 防重放"]:::tag
-      end
-    end
+  <!-- ============ 层1 用户接入层（粉） ============ -->
+  <g>
+    <rect x="20" y="10" width="1160" height="200" rx="14" fill="#fdf2f8" stroke="#ec4899" stroke-width="2"/>
+    <rect x="20" y="10" width="1160" height="34" rx="14" fill="#ec4899"/>
+    <rect x="20" y="30" width="1160" height="14" fill="#fdf2f8"/>
+    <foreignObject x="30" y="10" width="500" height="34"><div class="layer-title" style="color:#fff;background:transparent;">🌐 层1 · 用户接入层 · 多端协同 + 开放生态</div></foreignObject>
 
-    %% ========= 第二层 接入网关层（严格 4 卡横排） =========
-    subgraph L2["🛡️ 层2 · 接入网关层 · junsong-gateway :8080"]
-      direction LR
-      GW["⚡ Spring Cloud Gateway 2025.1<br/>路由转发 · JWT 校验 · 跨域 · 黑名单"]:::gw
-      SENT["🚦 Sentinel 1.8.9<br/>限流 · 熔断 · 降级 · 热点参数"]:::gw
-      HMAC["🔐 HMAC 签名鉴权<br/>开放 API · SHA-256 · Nonce 5min"]:::gw
-      RATE["⏱️ 应用级限流<br/>Redis 计数器 · 日配额"]:::gw
-      NOTE_GW["ℹ️ 横切说明：网关层统一叠加 Sentinel 限流 / HMAC 开放签名 / 应用级配额 能力"]:::note
-    end
+    <!-- 4 客户端卡片 -->
+    <foreignObject x="40" y="58" width="268" height="108"><div class="tbox" style="background:#1e293b;color:#fce7f3;border:2px solid #ec4899;border-radius:10px;">🖥️ PC 管理后台<br/>Vue 3.5 + Element Plus<br/>Vite 8 · TS 6 · Pinia 3</div></foreignObject>
+    <foreignObject x="328" y="58" width="268" height="108"><div class="tbox" style="background:#1e293b;color:#fce7f3;border:2px solid #ec4899;border-radius:10px;">📱 峻松店记（小程序）<br/>uni-app 3 · Vue 3.4<br/>Pinia 2.1 · Vite 5.2</div></foreignObject>
+    <foreignObject x="616" y="58" width="268" height="108"><div class="tbox" style="background:#1e293b;color:#fce7f3;border:2px solid #ec4899;border-radius:10px;">🔌 ISV 第三方<br/>HMAC-SHA256 签名<br/>应用级配额管理</div></foreignObject>
+    <foreignObject x="904" y="58" width="268" height="108"><div class="tbox" style="background:#1e293b;color:#fce7f3;border:2px solid #ec4899;border-radius:10px;">🧰 多语言 SDK<br/>Java / Python / Go / JS<br/>OpenAPI Generator</div></foreignObject>
 
-    %% ========= 第三层 认证中心（1 卡） =========
-    subgraph L3["🎫 层3 · 认证中心 · junsong-auth :9200"]
-      AUTH["junsong-auth :9200<br/>Spring Boot 4.0.3<br/>JJWT 0.9.1 令牌签发 · 黑名单<br/>Kaptcha 图形验证码<br/>@InnerAuth · X-Inner-Token"]:::auth
-    end
+    <!-- 3 协议胶囊 -->
+    <foreignObject x="300" y="176" width="190" height="26"><div class="tbox" style="background:#ede9fe;color:#4c1d95;border:1px dashed #6d28d9;border-radius:13px;font-size:12.5px;">⚡ HTTPS + JWT</div></foreignObject>
+    <foreignObject x="506" y="176" width="190" height="26"><div class="tbox" style="background:#ede9fe;color:#4c1d95;border:1px dashed #6d28d9;border-radius:13px;font-size:12.5px;">🔒 WSS + Token</div></foreignObject>
+    <foreignObject x="712" y="176" width="190" height="26"><div class="tbox" style="background:#ede9fe;color:#4c1d95;border:1px dashed #6d28d9;border-radius:13px;font-size:12.5px;">🔑 Nonce 防重放</div></foreignObject>
+  </g>
 
-    %% ========= 第四层 业务服务层（严格两行：第一行5 / 第二行3） =========
-    subgraph L4["💼 层4 · 业务服务层 · 8 微服务 · Spring Boot 4.0.3 · JDK 17"]
-      direction TB
-      subgraph L4_1["核心业务（5 个，横排）"]
-        direction LR
-        SYS["🏢 system :9201<br/>RBAC · 门店地图 · 治理审计<br/>行政区域 · 数据归档 · 字典参数"]:::svc
-        MEM["👥 member<br/>档案 · 积分商城 · 等级卡<br/>增长动作 · 秒抢/签到 · 政策排序<br/>购买单 · 退货 · 退款 · 领取"]:::svc
-        FIN["💰 finance :9205 ⭐<br/>进销存 · 费用/借支核销（幂等）<br/>库存三层 + 移动加权成本<br/>会计期间 · 投资分润 · 预测驾驶舱"]:::svcCor
-        WF["🔀 workflow<br/>Flowable 8.0.0 · BPMN 2.0<br/>低代码引擎 · 会签/加签/抄送<br/>节点字段权限 · 超时处理"]:::svc
-        OPEN["🌐 open :9208<br/>ISV 应用/密钥 · Webhook 订阅<br/>可信上下文 · 限流 · 调用日志<br/>SDK 生成"]:::svc
-      end
-      subgraph L4_2["支撑服务（3 个，横排）"]
-        direction LR
-        GEN["⚙️ gen :9202<br/>Velocity 2.3 模板<br/>前后端 CRUD 一键产出"]:::svc
-        JOB["⏱️ job :9203<br/>Quartz 调度 · 作业日志"]:::svc
-        FILE["📁 file :9300<br/>MinIO 上传/下载 · 图片/附件"]:::svc
-      end
-      NOTE_L4["ℹ️ 内部说明：服务间 OpenFeign + LoadBalancer 调用；workflow→finance 审批联动；open 聚合 sys/member/workflow 能力"]:::note
-    end
+  <!-- 主链路1 垂直线：L1底部中点 → L2顶部中点 -->
+  <line x1="600" y1="210" x2="600" y2="238" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrow)"/>
 
-    %% ========= 第五层 微服务治理层（严格 7 节点横排） =========
-    subgraph L5["⚙️ 层5 · 微服务治理层 · Governance（7 项）"]
-      direction LR
-      NACOS["📋 Nacos V3 :8848<br/>服务注册发现 · 配置中心<br/>grpc 长连接 · 多租户命名空间"]:::gov
-      FEIGN["🔗 OpenFeign + LB<br/>声明式 REST · lb:// 寻址<br/>TTL 上下文透传 · Fallback"]:::gov
-      SEATA["🌐 Apache Seata 2.5.0<br/>分布式事务 · AT 模式预留<br/>TCC / XA 兼容"]:::gov
-      MYB["🗄️ MyBatis 4.0.1<br/>JSqlParser 5.3 多租户拦截<br/>dynamic-ds 4.5 动态数据源"]:::gov
-      DRUID["💊 Druid 1.2.28<br/>连接池 · SQL 监控 · 慢查询"]:::gov
-      LOG["📜 Logback + TTL 2.14<br/>链路日志 · 操作审计"]:::gov
-      IDEM["🪪 @Idempotent 幂等框架<br/>Redis 快速通道 + DB 持久化<br/>X-Idempotency-Key"]:::gov
-    end
+  <!-- ============ 层2 接入网关层（橙） ============ -->
+  <g>
+    <rect x="20" y="238" width="1160" height="170" rx="14" fill="#fff7ed" stroke="#c2410c" stroke-width="2"/>
+    <rect x="20" y="238" width="1160" height="34" rx="14" fill="#c2410c"/>
+    <rect x="20" y="258" width="1160" height="14" fill="#fff7ed"/>
+    <foreignObject x="30" y="238" width="600" height="34"><div class="layer-title" style="color:#fff;background:transparent;">🛡️ 层2 · 接入网关层 · junsong-gateway :8080</div></foreignObject>
 
-    %% ========= 第六层 数据存储层（严格 4 椭圆横排） =========
-    subgraph L6["💾 层6 · 数据存储层 · Persistence（4 项）"]
-      direction LR
-      MYSQL[("🗄️ MySQL 8.0<br/>utf8mb4 · InnoDB<br/>194 业务表 · 27 基础表")]:::data
-      REDIS[("⚡ Redis 8.x<br/>缓存 · 会话 · 令牌<br/>限流 · 幂等快速通道<br/>FastJson2 2.0.61 序列化")]:::data
-      MINIO[("📦 MinIO 8.2.2<br/>S3 兼容对象存储<br/>附件 · 图片 · 导出文件")]:::data
-      AMAP["🗺️ 高德地图 API<br/>地理编码 · 逆地理 · POI<br/>瓦片渲染 · Leaflet 1.9 · 热力图"]:::data
-    end
+    <!-- 4 网关卡 -->
+    <foreignObject x="40" y="286" width="268" height="88"><div class="tbox" style="background:#7c2d12;color:#fff7ed;border:2px solid #fb923c;border-radius:10px;">⚡ SC Gateway 2025.1<br/>路由转发 · JWT 校验<br/>跨域 · 黑名单 · 路径重写</div></foreignObject>
+    <foreignObject x="328" y="286" width="268" height="88"><div class="tbox" style="background:#7c2d12;color:#fff7ed;border:2px solid #fb923c;border-radius:10px;">🚦 Sentinel 1.8.9<br/>限流 QPS · 熔断平均RT<br/>降级异常比例 · 热点参数</div></foreignObject>
+    <foreignObject x="616" y="286" width="268" height="88"><div class="tbox" style="background:#7c2d12;color:#fff7ed;border:2px solid #fb923c;border-radius:10px;">🔐 HMAC 签名鉴权<br/>开放 API · SHA-256<br/>Nonce 5min 防重放 · 配额</div></foreignObject>
+    <foreignObject x="904" y="286" width="268" height="88"><div class="tbox" style="background:#7c2d12;color:#fff7ed;border:2px solid #fb923c;border-radius:10px;">⏱️ 应用级限流<br/>Redis 计数器 · 日配额<br/>分钟级 QPS 阈值</div></foreignObject>
+  </g>
 
-    %% ========= 第七层 DevOps 可观测层（严格 7 节点横排） =========
-    subgraph L7["🛰️ 层7 · DevOps · 可观测性 · Cloud Native（7 项）"]
-      direction LR
-      DOCKER["🐳 Docker · Compose v2<br/>分阶段 Dockerfile<br/>独立镜像 · 一键编排"]:::ops
-      K8S["☸️ Kubernetes<br/>Deployment · HPA · Ingress<br/>ConfigMap · 36 份 YAML"]:::ops
-      CI["🔄 GitHub Actions 3 流水线<br/>CI 编译 · CD-Docker<br/>CD-K8s 发布"]:::ops
-      PROM["📊 Prometheus<br/>JVM · HTTP · 自定义指标"]:::ops
-      GRAF["📈 Grafana<br/>可视化面板 · 告警规则"]:::ops
-      LOKI["📚 Loki + Promtail<br/>日志聚合 · 容器日志采集"]:::ops
-      SBA["🩺 Spring Boot Admin 4.0.2<br/>Micrometer 1.16.3<br/>实例健康 · JVM · HTTP"]:::ops
-    end
+  <!-- 主链路2 -->
+  <line x1="600" y1="408" x2="600" y2="436" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrow)"/>
 
-    %% ========= 唯一的连线：垂直主链路（L1 → L2 → L3 → L4 → L5 → L6 → L7），每层只用一个节点连接下一层第一个节点，保证矩阵上下严格对齐，不乱飞 =========
-    WEB --> GW
-    GW --> AUTH
-    AUTH --> SYS
-    SYS --> NACOS
-    NACOS --> MYSQL
-    MYSQL --> DOCKER
-```
+  <!-- ============ 层3 认证中心（玫红） ============ -->
+  <g>
+    <rect x="20" y="436" width="1160" height="140" rx="14" fill="#fce7f3" stroke="#831843" stroke-width="2"/>
+    <rect x="20" y="436" width="1160" height="34" rx="14" fill="#831843"/>
+    <rect x="20" y="456" width="1160" height="14" fill="#fce7f3"/>
+    <foreignObject x="30" y="436" width="600" height="34"><div class="layer-title" style="color:#fff;background:transparent;">🎫 层3 · 认证中心 · junsong-auth :9200</div></foreignObject>
+
+    <foreignObject x="380" y="484" width="440" height="82"><div class="tbox" style="background:#831843;color:#fce7f3;border:2px solid #f472b6;border-radius:10px;">junsong-auth :9200 · Spring Boot 4.0.3<br/>JJWT 0.9.1 令牌签发 · 会话黑名单<br/>Kaptcha 图形验证码 · @InnerAuth · X-Inner-Token</div></foreignObject>
+  </g>
+
+  <!-- 主链路3 -->
+  <line x1="600" y1="576" x2="600" y2="604" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  <!-- ============ 层4 业务服务层（绿 + finance紫粗） ============ -->
+  <g>
+    <rect x="20" y="604" width="1160" height="300" rx="14" fill="#ecfdf5" stroke="#065f46" stroke-width="2"/>
+    <rect x="20" y="604" width="1160" height="34" rx="14" fill="#065f46"/>
+    <rect x="20" y="624" width="1160" height="14" fill="#ecfdf5"/>
+    <foreignObject x="30" y="604" width="800" height="34"><div class="layer-title" style="color:#fff;background:transparent;">💼 层4 · 业务服务层 · 8 微服务 · Spring Boot 4.0.3 · JDK 17</div></foreignObject>
+
+    <!-- 行1 核心业务 5 个 -->
+    <foreignObject x="40" y="658" width="216" height="110"><div class="tbox" style="background:#064e3b;color:#d1fae5;border:2px solid #34d399;border-radius:10px;">🏢 system :9201<br/>RBAC · 门店地图 · 审计<br/>行政区域 · 数据归档 · 字典参数</div></foreignObject>
+    <foreignObject x="272" y="658" width="216" height="110"><div class="tbox" style="background:#064e3b;color:#d1fae5;border:2px solid #34d399;border-radius:10px;">👥 member<br/>档案 · 积分 · 等级卡<br/>增长动作 · 政策 · 购买/退货/退款/领取</div></foreignObject>
+    <foreignObject x="504" y="658" width="216" height="110"><div class="tbox" style="background:#2e1065;color:#ede9fe;border:3px solid #a78bfa;border-radius:10px;">💰 finance :9205 ⭐<br/>进销存 · 费用/借支核销（幂等）<br/>库存三层 · 会计期间 · 预测</div></foreignObject>
+    <foreignObject x="736" y="658" width="216" height="110"><div class="tbox" style="background:#064e3b;color:#d1fae5;border:2px solid #34d399;border-radius:10px;">🔀 workflow<br/>Flowable 8.0.0 BPMN 2.0<br/>低代码 · 会签/加签/抄送 · 超时</div></foreignObject>
+    <foreignObject x="968" y="658" width="200" height="110"><div class="tbox" style="background:#064e3b;color:#d1fae5;border:2px solid #34d399;border-radius:10px;">🌐 open :9208<br/>ISV 应用/密钥 · Webhook<br/>可信上下文 · SDK 生成</div></foreignObject>
+
+    <!-- 行2 支撑服务 3 个 -->
+    <foreignObject x="290" y="784" width="200" height="76"><div class="tbox" style="background:#064e3b;color:#d1fae5;border:2px solid #34d399;border-radius:10px;">⚙️ gen :9202<br/>Velocity 2.3 模板<br/>前后端 CRUD 一键产出</div></foreignObject>
+    <foreignObject x="508" y="784" width="200" height="76"><div class="tbox" style="background:#064e3b;color:#d1fae5;border:2px solid #34d399;border-radius:10px;">⏱️ job :9203<br/>Quartz 调度 · 作业日志<br/>健康检查 · 预警</div></foreignObject>
+    <foreignObject x="726" y="784" width="200" height="76"><div class="tbox" style="background:#064e3b;color:#d1fae5;border:2px solid #34d399;border-radius:10px;">📁 file :9300<br/>MinIO 上传/下载<br/>图片 · 附件 · 缩略图</div></foreignObject>
+
+    <!-- 层内说明 -->
+    <foreignObject x="40" y="872" width="1120" height="24"><div class="note">ℹ️ 层内说明：服务间 OpenFeign + LoadBalancer 声明式调用；workflow 审批联动 finance；open 聚合 sys/member/workflow 能力；全体服务向 Nacos V3 grpc 注册心跳。</div></foreignObject>
+  </g>
+
+  <!-- 主链路4 -->
+  <line x1="600" y1="904" x2="600" y2="932" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  <!-- ============ 层5 微服务治理层（靛） ============ -->
+  <g>
+    <rect x="20" y="932" width="1160" height="170" rx="14" fill="#eef2ff" stroke="#3730a3" stroke-width="2"/>
+    <rect x="20" y="932" width="1160" height="34" rx="14" fill="#3730a3"/>
+    <rect x="20" y="952" width="1160" height="14" fill="#eef2ff"/>
+    <foreignObject x="30" y="932" width="700" height="34"><div class="layer-title" style="color:#fff;background:transparent;">⚙️ 层5 · 微服务治理层 · Governance（7 项）</div></foreignObject>
+
+    <foreignObject x="40" y="980" width="154" height="110"><div class="tbox" style="background:#312e81;color:#e0e7ff;border:2px solid #818cf8;border-radius:10px;">📋 Nacos V3 :8848<br/>注册发现 · 配置中心<br/>grpc 长连接 · 多租户NS</div></foreignObject>
+    <foreignObject x="208" y="980" width="154" height="110"><div class="tbox" style="background:#312e81;color:#e0e7ff;border:2px solid #818cf8;border-radius:10px;">🔗 OpenFeign + LB<br/>声明式 REST · lb:// 寻址<br/>TTL 透传 · Fallback</div></foreignObject>
+    <foreignObject x="376" y="980" width="154" height="110"><div class="tbox" style="background:#312e81;color:#e0e7ff;border:2px solid #818cf8;border-radius:10px;">🌐 Apache Seata 2.5.0<br/>分布式事务 · AT 预留<br/>TCC / XA 兼容</div></foreignObject>
+    <foreignObject x="544" y="980" width="154" height="110"><div class="tbox" style="background:#312e81;color:#e0e7ff;border:2px solid #818cf8;border-radius:10px;">🗄️ MyBatis 4.0.1<br/>JSqlParser 5.3 多租户<br/>dynamic-ds 4.5 动态源</div></foreignObject>
+    <foreignObject x="712" y="980" width="154" height="110"><div class="tbox" style="background:#312e81;color:#e0e7ff;border:2px solid #818cf8;border-radius:10px;">💊 Druid 1.2.28<br/>连接池 · SQL 监控<br/>WallFilter · 慢查询</div></foreignObject>
+    <foreignObject x="880" y="980" width="154" height="110"><div class="tbox" style="background:#312e81;color:#e0e7ff;border:2px solid #818cf8;border-radius:10px;">📜 Logback + TTL 2.14<br/>链路日志 · MDC 追踪<br/>操作审计落库</div></foreignObject>
+    <foreignObject x="1046" y="980" width="126" height="110"><div class="tbox" style="background:#312e81;color:#e0e7ff;border:2px solid #818cf8;border-radius:10px;">🪪 @Idempotent<br/>Redis 快速通道 + DB<br/>X-Idempotency-Key</div></foreignObject>
+  </g>
+
+  <!-- 主链路5 -->
+  <line x1="600" y1="1102" x2="600" y2="1130" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  <!-- ============ 层6 数据存储层（琥珀） ============ -->
+  <g>
+    <rect x="20" y="1130" width="1160" height="170" rx="14" fill="#fffbeb" stroke="#92400e" stroke-width="2"/>
+    <rect x="20" y="1130" width="1160" height="34" rx="14" fill="#92400e"/>
+    <rect x="20" y="1150" width="1160" height="14" fill="#fffbeb"/>
+    <foreignObject x="30" y="1130" width="600" height="34"><div class="layer-title" style="color:#fff;background:transparent;">💾 层6 · 数据存储层 · Persistence（4 项）</div></foreignObject>
+
+    <foreignObject x="90" y="1178" width="252" height="110"><div class="tbox" style="background:#78350f;color:#fef3c7;border:2px solid #f59e0b;border-radius:55px;">🗄️ MySQL 8.0 · InnoDB<br/>utf8mb4 · 194 业务表<br/>27 基础表 · 行级锁</div></foreignObject>
+    <foreignObject x="378" y="1178" width="252" height="110"><div class="tbox" style="background:#78350f;color:#fef3c7;border:2px solid #f59e0b;border-radius:55px;">⚡ Redis 8.x<br/>缓存 · 会话 · 令牌 · 限流<br/>FastJson2 2.0.61 序列化</div></foreignObject>
+    <foreignObject x="666" y="1178" width="252" height="110"><div class="tbox" style="background:#78350f;color:#fef3c7;border:2px solid #f59e0b;border-radius:55px;">📦 MinIO 8.2.2<br/>S3 兼容对象存储<br/>附件 · 图片 · 导出文件</div></foreignObject>
+    <foreignObject x="954" y="1178" width="206" height="110"><div class="tbox" style="background:#78350f;color:#fef3c7;border:2px solid #f59e0b;border-radius:55px;">🗺️ 高德地图 API<br/>地理编码 · 逆地理 · POI<br/>Leaflet 1.9 瓦片 · 热力</div></foreignObject>
+  </g>
+
+  <!-- 主链路6 -->
+  <line x1="600" y1="1300" x2="600" y2="1328" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  <!-- ============ 层7 DevOps 可观测层（深灰） ============ -->
+  <g>
+    <rect x="20" y="1328" width="1160" height="182" rx="14" fill="#f1f5f9" stroke="#0f172a" stroke-width="2"/>
+    <rect x="20" y="1328" width="1160" height="34" rx="14" fill="#0f172a"/>
+    <rect x="20" y="1348" width="1160" height="14" fill="#f1f5f9"/>
+    <foreignObject x="30" y="1328" width="800" height="34"><div class="layer-title" style="color:#fff;background:transparent;">🛰️ 层7 · DevOps · 可观测性 · Cloud Native（7 项）</div></foreignObject>
+
+    <foreignObject x="40" y="1376" width="154" height="120"><div class="tbox" style="background:#0f172a;color:#f1f5f9;border:2px solid #64748b;border-radius:10px;">🐳 Docker · Compose v2<br/>分阶段 Dockerfile<br/>独立镜像 · 一键编排</div></foreignObject>
+    <foreignObject x="208" y="1376" width="154" height="120"><div class="tbox" style="background:#0f172a;color:#f1f5f9;border:2px solid #64748b;border-radius:10px;">☸️ Kubernetes<br/>Deployment · HPA · Ingress<br/>ConfigMap · 36 YAML</div></foreignObject>
+    <foreignObject x="376" y="1376" width="154" height="120"><div class="tbox" style="background:#0f172a;color:#f1f5f9;border:2px solid #64748b;border-radius:10px;">🔄 GitHub Actions 3 流水线<br/>ci 编译 · cd-docker 镜像<br/>cd-k8s K8s 滚动发布</div></foreignObject>
+    <foreignObject x="544" y="1376" width="154" height="120"><div class="tbox" style="background:#0f172a;color:#f1f5f9;border:2px solid #64748b;border-radius:10px;">📊 Prometheus<br/>JVM · HTTP 指标<br/>自定义业务指标</div></foreignObject>
+    <foreignObject x="712" y="1376" width="154" height="120"><div class="tbox" style="background:#0f172a;color:#f1f5f9;border:2px solid #64748b;border-radius:10px;">📈 Grafana<br/>可视化面板 · 告警规则<br/>看板统一入口</div></foreignObject>
+    <foreignObject x="880" y="1376" width="154" height="120"><div class="tbox" style="background:#0f172a;color:#f1f5f9;border:2px solid #64748b;border-radius:10px;">📚 Loki + Promtail<br/>日志聚合 · 容器采集<br/>查询 / 过滤 / 告警</div></foreignObject>
+    <foreignObject x="1046" y="1376" width="126" height="120"><div class="tbox" style="background:#0f172a;color:#f1f5f9;border:2px solid #64748b;border-radius:10px;">🩺 Spring Boot Admin 4.0.2<br/>Micrometer 1.16.3<br/>实例健康 · JVM · HTTP</div></foreignObject>
+  </g>
+</svg>
 
 ### 架构亮点矩阵 · Highlights（9 维）
 

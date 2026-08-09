@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1460" width="100%" style="font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif">
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/></marker>
+    <style>
+      .tb { display:flex; align-items:center; justify-content:center; width:100%; height:100%; text-align:center; padding:10px 8px; box-sizing:border-box; font-weight:600; line-height:1.45; font-size:12.5px; }
+      .lt { font-size:15px; font-weight:700; padding:8px 14px; display:flex; align-items:center; }
+      .nt { padding:8px 14px; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px; font-size:12.5px; color:#475569; line-height:1.5; }
+    </style>
+  </defs>
+
+  <!-- A1 双端 粉 -->
+  <g>
+    <rect x="20" y="10" width="1160" height="170" rx="14" fill="#fdf2f8" stroke="#ec4899" stroke-width="2.5"/>
+    <rect x="20" y="10" width="1160" height="34" rx="14" fill="#ec4899"/>
+    <rect x="20" y="30" width="1160" height="14" fill="#fdf2f8"/>
+    <rect x="30" y="10" width="500" height="34" rx="10" fill="transparent" stroke="none" stroke-width="2"/><text x="280" y="31.375" text-anchor="middle" fill="#fff" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="280" dy="0">🧑‍💻 段1 · 双端协同应用（2 端）</tspan></text>
+
+    <rect x="120" y="58" width="440" height="100" rx="10" fill="#fff" stroke="#ec4899" stroke-width="2"/><text x="340" y="94.25" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="340" dy="0">🖥️ PC 管理后台（Vue 3.5 · TS 6 · Vite 8）</tspan><tspan x="340" dy="18.125">驾驶舱 · 低代码设计器 · 权限配置</tspan><tspan x="340" dy="18.125">小程序模块拖拽排序 · 模块权限配置</tspan></text>
+    <rect x="640" y="58" width="440" height="100" rx="10" fill="#fff" stroke="#ec4899" stroke-width="2"/><text x="860" y="94.25" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="860" dy="0">📱 峻松店记（小程序 · uni-app 3）</tspan><tspan x="860" dy="18.125">库存查询 · 进货/退货 · 借支 · 核销</tspan><tspan x="860" dy="18.125">工作台分组 · 部门切换 · 状态空页复用</tspan></text>
+  </g>
+  <line x1="600" y1="180" x2="600" y2="208" stroke="#64748b" stroke-width="2.5" marker-end="url(#a2)"/>
+
+  <!-- A2 网关 蓝 -->
+  <g>
+    <rect x="20" y="208" width="1160" height="130" rx="14" fill="#eff6ff" stroke="#0284c7" stroke-width="2.5"/>
+    <rect x="20" y="208" width="1160" height="34" rx="14" fill="#0284c7"/>
+    <rect x="20" y="228" width="1160" height="14" fill="#eff6ff"/>
+    <rect x="30" y="208" width="620" height="34" rx="10" fill="transparent" stroke="none" stroke-width="2"/><text x="340" y="229.375" text-anchor="middle" fill="#fff" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="340" dy="0">⚡ 段2 · 网关接入 · junsong-gateway :8080</tspan></text>
+    <rect x="280" y="258" width="640" height="72" rx="10" fill="#fff" stroke="#0284c7" stroke-width="2"/><text x="600" y="289.312" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="600" dy="0">🌉 Spring Cloud Gateway · 路由转发 · JWT 鉴权 · Sentinel 1.8.9 限流</tspan><tspan x="600" dy="18.125">HMAC-SHA256 签名 · 应用级日配额 · 跨域 · 黑名单</tspan></text>
+  </g>
+  <line x1="600" y1="338" x2="600" y2="366" stroke="#64748b" stroke-width="2.5" marker-end="url(#a2)"/>
+
+  <!-- A3 认证 玫红 -->
+  <g>
+    <rect x="20" y="366" width="1160" height="120" rx="14" fill="#fce7f3" stroke="#831843" stroke-width="2.5"/>
+    <rect x="20" y="366" width="1160" height="34" rx="14" fill="#831843"/>
+    <rect x="20" y="386" width="1160" height="14" fill="#fce7f3"/>
+    <rect x="30" y="366" width="540" height="34" rx="10" fill="transparent" stroke="none" stroke-width="2"/><text x="300" y="387.375" text-anchor="middle" fill="#fff" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="300" dy="0">🎫 段3 · 认证中心 · junsong-auth :9200</tspan></text>
+    <rect x="300" y="408" width="600" height="66" rx="10" fill="#fff" stroke="#831843" stroke-width="2"/><text x="600" y="436.312" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="600" dy="0">🔐 登录 · 令牌签发 · 会话黑名单 · Kaptcha 图形验证码</tspan><tspan x="600" dy="18.125">@InnerAuth 内部调用隔离 + X-Inner-Token 机制</tspan></text>
+  </g>
+  <line x1="600" y1="486" x2="600" y2="514" stroke="#64748b" stroke-width="2.5" marker-end="url(#a2)"/>
+
+  <!-- A4 微服务集群 8 绿 -->
+  <g>
+    <rect x="20" y="514" width="1160" height="300" rx="14" fill="#ecfdf5" stroke="#059669" stroke-width="2.5"/>
+    <rect x="20" y="514" width="1160" height="34" rx="14" fill="#059669"/>
+    <rect x="20" y="534" width="1160" height="14" fill="#ecfdf5"/>
+    <rect x="30" y="514" width="820" height="34" rx="10" fill="transparent" stroke="none" stroke-width="2"/><text x="440" y="535.375" text-anchor="middle" fill="#fff" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="440" dy="0">☁️ 段4 · 微服务集群段 · 8 微服务 · Spring Boot 4.0.3 · JDK 17</tspan></text>
+
+    <rect x="40" y="568" width="268" height="96" rx="10" fill="#fff" stroke="#059669" stroke-width="2"/><text x="174" y="602.25" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="174" dy="0">🏢 system :9201</tspan><tspan x="174" dy="18.125">RBAC · 门店地图 · 审计</tspan><tspan x="174" dy="18.125">行政区域 · 数据归档 · 多租户拦截</tspan></text>
+    <rect x="328" y="568" width="268" height="96" rx="10" fill="#fff" stroke="#059669" stroke-width="2"/><text x="462" y="602.25" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="462" dy="0">👥 member</tspan><tspan x="462" dy="18.125">档案 · 积分 · 等级卡</tspan><tspan x="462" dy="18.125">增长动作 · 购买/退货/退款/领取</tspan></text>
+    <rect x="616" y="568" width="268" height="96" rx="10" fill="#f5f3ff" stroke="#6d28d9" stroke-width="2"/><text x="750" y="602.25" text-anchor="middle" fill="#4c1d95" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="750" dy="0">💰 finance :9205 ⭐</tspan><tspan x="750" dy="18.125">进销存 · 费用/借支核销</tspan><tspan x="750" dy="18.125">库存三层 · 会计期间 · 分润 · 驾驶舱 · 预测</tspan></text>
+    <rect x="904" y="568" width="268" height="96" rx="10" fill="#fff" stroke="#059669" stroke-width="2"/><text x="1038" y="602.25" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="1038" dy="0">🔀 workflow</tspan><tspan x="1038" dy="18.125">Flowable 8.0.0 BPMN 2.0</tspan><tspan x="1038" dy="18.125">bpmn-js 设计器 · 会签/加签/抄送 · 低代码</tspan></text>
+
+    <rect x="120" y="686" width="230" height="78" rx="10" fill="#fff" stroke="#059669" stroke-width="2"/><text x="235" y="711.25" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="235" dy="0">🌐 open :9208</tspan><tspan x="235" dy="18.125">ISV 应用/密钥 · Webhook</tspan><tspan x="235" dy="18.125">可信上下文 · SDK 生成</tspan></text>
+    <rect x="370" y="686" width="230" height="78" rx="10" fill="#fff" stroke="#059669" stroke-width="2"/><text x="485" y="711.25" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="485" dy="0">⚙️ gen :9202</tspan><tspan x="485" dy="18.125">Velocity 2.3</tspan><tspan x="485" dy="18.125">前后端 CRUD 一键产出</tspan></text>
+    <rect x="620" y="686" width="230" height="78" rx="10" fill="#fff" stroke="#059669" stroke-width="2"/><text x="735" y="711.25" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="735" dy="0">⏱️ job :9203</tspan><tspan x="735" dy="18.125">Quartz 调度器</tspan><tspan x="735" dy="18.125">作业日志 · 健康检查</tspan></text>
+    <rect x="870" y="686" width="230" height="78" rx="10" fill="#fff" stroke="#059669" stroke-width="2"/><text x="985" y="711.25" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="985" dy="0">📁 file :9300</tspan><tspan x="985" dy="18.125">MinIO 上传/下载</tspan><tspan x="985" dy="18.125">图片 · 附件 · 缩略图</tspan></text>
+
+    <rect x="40" y="776" width="1120" height="26" rx="10" fill="#ffffff" stroke="none" stroke-width="2"/><text x="600" y="793.375" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="600" dy="0">ℹ️ 段内说明：服务间 OpenFeign + LoadBalancer；open 聚合 sys/member/workflow；workflow 审批联动 finance；全体服务 → Nacos V3 grpc 注册心跳；敏感字段 @Sensitive 脱敏。</tspan></text>
+  </g>
+  <line x1="600" y1="814" x2="600" y2="842" stroke="#64748b" stroke-width="2.5" marker-end="url(#a2)"/>
+
+  <!-- A5 存储 5 琥珀 -->
+  <g>
+    <rect x="20" y="842" width="1160" height="170" rx="14" fill="#fffbeb" stroke="#f59e0b" stroke-width="2.5"/>
+    <rect x="20" y="842" width="1160" height="34" rx="14" fill="#f59e0b"/>
+    <rect x="20" y="862" width="1160" height="14" fill="#fffbeb"/>
+    <rect x="30" y="842" width="520" height="34" rx="10" fill="transparent" stroke="none" stroke-width="2"/><text x="290" y="863.375" text-anchor="middle" fill="#fff" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="290" dy="0">🗄️ 段5 · 存储与中间件（5 项）</tspan></text>
+
+    <rect x="58" y="890" width="212" height="100" rx="10" fill="#fff" stroke="#f59e0b" stroke-width="2"/><text x="164" y="926.25" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="164" dy="0">📋 Nacos V3</tspan><tspan x="164" dy="18.125">注册 · 配置 · grpc</tspan><tspan x="164" dy="18.125">多租户命名空间</tspan></text>
+    <rect x="288" y="890" width="212" height="100" rx="10" fill="#fff" stroke="#f59e0b" stroke-width="2"/><text x="394" y="926.25" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="394" dy="0">🗄️ MySQL 8.0</tspan><tspan x="394" dy="18.125">utf8mb4 · InnoDB</tspan><tspan x="394" dy="18.125">194 业务 · 27 基础表</tspan></text>
+    <rect x="518" y="890" width="212" height="100" rx="10" fill="#fff" stroke="#f59e0b" stroke-width="2"/><text x="624" y="926.25" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="624" dy="0">⚡ Redis 8.x</tspan><tspan x="624" dy="18.125">缓存 · 会话 · 令牌</tspan><tspan x="624" dy="18.125">限流 · 幂等 · FastJson2</tspan></text>
+    <rect x="748" y="890" width="212" height="100" rx="10" fill="#fff" stroke="#f59e0b" stroke-width="2"/><text x="854" y="926.25" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="854" dy="0">📦 MinIO 8.2.2</tspan><tspan x="854" dy="18.125">S3 兼容 · 对象存储</tspan><tspan x="854" dy="18.125">分块上传 · 预签名</tspan></text>
+    <rect x="978" y="890" width="184" height="100" rx="10" fill="#fff" stroke="#f59e0b" stroke-width="2"/><text x="1070" y="926.25" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="1070" dy="0">🗺️ 高德 API</tspan><tspan x="1070" dy="18.125">地理编码 · POI · 瓦片</tspan><tspan x="1070" dy="18.125">密度热力图</tspan></text>
+  </g>
+  <line x1="600" y1="1012" x2="600" y2="1040" stroke="#64748b" stroke-width="2.5" marker-end="url(#a2)"/>
+
+  <!-- A6 DevOps + QA 4 灰 -->
+  <g>
+    <rect x="20" y="1040" width="1160" height="180" rx="14" fill="#f8fafc" stroke="#64748b" stroke-width="2.5"/>
+    <rect x="20" y="1040" width="1160" height="34" rx="14" fill="#64748b"/>
+    <rect x="20" y="1060" width="1160" height="14" fill="#f8fafc"/>
+    <rect x="30" y="1040" width="680" height="34" rx="10" fill="transparent" stroke="none" stroke-width="2"/><text x="370" y="1061.38" text-anchor="middle" fill="#fff" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="370" dy="0">🛠️ 段6 · DevOps · 质量保障 · 可观测（4 分区）</tspan></text>
+
+    <rect x="40" y="1090" width="268" height="112" rx="10" fill="#fff" stroke="#64748b" stroke-width="2"/><text x="174" y="1123.19" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="174" dy="0">🐳 容器化与编排</tspan><tspan x="174" dy="18.125">Docker Engine · Compose v2</tspan><tspan x="174" dy="18.125">K8s Deployment · HPA · Ingress</tspan><tspan x="174" dy="18.125">ConfigMap · 36 份 YAML 清单</tspan></text>
+    <rect x="328" y="1090" width="268" height="112" rx="10" fill="#fff" stroke="#64748b" stroke-width="2"/><text x="462" y="1123.19" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="462" dy="0">🔄 CI/CD 流水线</tspan><tspan x="462" dy="18.125">GitHub Actions · 3 条</tspan><tspan x="462" dy="18.125">ci 编译 · cd-docker 镜像</tspan><tspan x="462" dy="18.125">cd-k8s K8s 滚动发布</tspan></text>
+    <rect x="616" y="1090" width="268" height="112" rx="10" fill="#fff" stroke="#64748b" stroke-width="2"/><text x="750" y="1123.19" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="750" dy="0">📊 可观测三件套</tspan><tspan x="750" dy="18.125">Prometheus · Grafana</tspan><tspan x="750" dy="18.125">Loki + Promtail 日志聚合</tspan><tspan x="750" dy="18.125">Spring Boot Admin 4.0.2 · Micrometer</tspan></text>
+    <rect x="904" y="1090" width="268" height="112" rx="10" fill="#312e81" stroke="#a78bfa" stroke-width="2"/><text x="1038" y="1123.19" text-anchor="middle" fill="#ede9fe" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="1038" dy="0">✅ 质量保障工具链</tspan><tspan x="1038" dy="18.125">📝 契约测试 node --test</tspan><tspan x="1038" dy="18.125">🎭 Playwright E2E · ⚡ k6 压测</tspan><tspan x="1038" dy="18.125">🛡️ @Sensitive 脱敏 · XSS · Druid Wall</tspan></text>
+  </g>
+
+  <!-- 图例：4 种连线语义 -->
+  <rect x="30" y="1240" width="1140" height="90" rx="10" fill="#ffffff" stroke="none" stroke-width="2"/><text x="600" y="1253.12" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="600" dy="0">📖 连线语义说明（为保证布局稳定仅保留 5 条垂直线，其余关系改为文字说明）：</tspan><tspan x="600" dy="18.125">· → HTTPS / HTTP REST 实线 主请求流量：双端 → 网关 → 认证 → 服务集群 → 存储 → DevOps 采集；</tspan><tspan x="600" dy="18.125">· 服务间声明式调用：使用 OpenFeign + LoadBalancer（未画连线，段4说明条已标注）；</tspan><tspan x="600" dy="18.125">· 服务注册发现：9 个微服务 + 认证 → Nacos V3 grpc 长连接注册心跳；</tspan><tspan x="600" dy="18.125">· 质量/安全门禁：Playwright E2E 对双端回归；契约测试 + k6 压测 + 安全脱敏 对服务集群门禁。</tspan></text>
+</svg>

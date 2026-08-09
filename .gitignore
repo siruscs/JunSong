@@ -177,6 +177,16 @@ skills-lock.json
 # 文档 (部署更新文档 / AI 生成文档，逐个确认后再上传)
 
 docs/
+!docs/
+docs/*
+!docs/superpowers/
+docs/superpowers/*
+!docs/superpowers/specs/
+docs/superpowers/specs/*
+!docs/superpowers/specs/2026-08-09-峻松云架构设计四视图.zh-CN.md
+!docs/superpowers/specs/峻松云架构图/
+docs/superpowers/specs/峻松云架构图/*
+!docs/superpowers/specs/峻松云架构图/*.svg
 DEPLOYMENT_GUIDE.md
 TROUBLESHOOTING.md
 PROD部署更新文档.md

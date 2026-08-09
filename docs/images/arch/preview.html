@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>军颂云架构图预览</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 1240px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #0f172a;
+    }
+    .subtitle {
+      text-align: center;
+      color: #64748b;
+      font-size: 14px;
+      margin-bottom: 40px;
+    }
+    .preview-section {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 32px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid #f1f5f9;
+    }
+    .preview-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .preview-meta {
+      font-size: 13px;
+      color: #94a3b8;
+    }
+    .preview-desc {
+      font-size: 14px;
+      color: #475569;
+      margin-bottom: 16px;
+      line-height: 1.6;
+    }
+    .preview-frame {
+      width: 100%;
+      overflow: hidden;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+    }
+    .preview-frame svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .file-tag {
+      display: inline-block;
+      font-family: "SF Mono", "Consolas", monospace;
+      font-size: 12px;
+      color: #0284c7;
+      background: #eff6ff;
+      padding: 3px 10px;
+      border-radius: 4px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 20px;
+      color: #ffffff;
+    }
+    .badge-pink { background: #ec4899; }
+    .badge-blue { background: #0284c7; }
+    .badge-green { background: #059669; }
+    .badge-teal { background: #0d9488; }
+    .badge-amber { background: #f59e0b; }
+    .badge-purple { background: #7c3aed; }
+    .badge-gray { background: #64748b; }
+
+    .toc {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 40px;
+    }
+    .toc a {
+      display: block;
+      padding: 12px 16px;
+      background: #ffffff;
+      border-radius: 10px;
+      text-decoration: none;
+      color: #475569;
+      font-size: 14px;
+      font-weight: 500;
+      border: 1px solid #e2e8f0;
+      transition: all 0.2s;
+    }
+    .toc a:hover {
+      border-color: #0284c7;
+      color: #0284c7;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(2,132,199,0.15);
+    }
+
+    .divider {
+      text-align: center;
+      color: #cbd5e1;
+      margin: 16px 0 32px;
+      font-size: 12px;
+    }
+
+    @media print {
+      body { background: #ffffff; padding: 0; }
+      .preview-section { page-break-before: always; box-shadow: none; }
+      .toc, h1, .subtitle, .divider { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>军颂云 · 架构图预览</h1>
+    <p class="subtitle">共 5 张架构图 · 点击目录快速跳转</p>
+
+    <nav class="toc">
+      <a href="#arch1">① 七层技术架构 (1200×1520)</a>
+      <a href="#arch2">② 五层系统架构 (1200×1180)</a>
+      <a href="#arch3">③ 六层应用架构 (1200×1460)</a>
+      <a href="#arch4">④ 6×4 技术矩阵 (1200×1500)</a>
+      <a href="#arch5">⑤ 六列功能架构 (1200×1280)</a>
+    </nav>
+
+    <!-- ============ SVG 1 ============ -->
+    <section id="arch1" class="preview-section">
+      <div class="preview-header">
+        <div>
+          <span class="badge badge-pink">用户接入</span>
+          <span class="badge badge-blue">网关</span>
+          <span class="badge badge-red" style="background:#dc2626">认证</span>
+          <span class="badge badge-green">业务</span>
+          <span class="badge badge-teal">治理</span>
+          <span class="badge badge-amber">数据</span>
+          <span class="badge badge-gray">DevOps</span>
+        </div>
+        <span class="file-tag">arch-tech-7layer.svg</span>
+      </div>
+      <div class="preview-desc">
+        从用户接入层到 DevOps 可观测层，展示军颂云平台的七层技术架构。包含 Vue3 前端、Spring Cloud Gateway、OAuth2 认证、九大微服务集群、Nacos 治理、MySQL/Redis 存储、Docker/K8s 基础设施。
+      </div>
+      <div class="preview-frame">
+        <img src="arch-tech-7layer.svg" alt="七层技术架构图" style="width:100%;display:block">
+      </div>
+    </section>
+
+    <!-- ============ SVG 2 ============ -->
+    <section id="arch2" class="preview-section">
+      <div class="preview-header">
+        <div>
+          <span class="badge badge-pink">用户层</span>
+          <span class="badge badge-blue">网关层</span>
+          <span class="badge badge-green">业务层</span>
+          <span class="badge badge-amber">数据层</span>
+          <span class="badge badge-teal">基础设施</span>
+        </div>
+        <span class="file-tag">arch-system-5layer.svg</span>
+      </div>
+      <div class="preview-desc">
+        五层系统架构：用户接入 → 接入网关 → 业务服务（9 大微服务） → 数据资源 → 基础设施。底部附有完整的颜色图例说明。
+      </div>
+      <div class="preview-frame">
+        <img src="arch-system-5layer.svg" alt="五层系统架构图" style="width:100%;display:block">
+      </div>
+    </section>
+
+    <!-- ============ SVG 3 ============ -->
+    <section id="arch3" class="preview-section">
+      <div class="preview-header">
+        <div>
+          <span class="badge badge-pink">双端</span>
+          <span class="badge badge-blue">网关</span>
+          <span class="badge badge-red" style="background:#dc2626">认证</span>
+          <span class="badge badge-green">微服务</span>
+          <span class="badge badge-amber">存储中间件</span>
+          <span class="badge badge-teal">DevOps+QA</span>
+        </div>
+        <span class="file-tag">arch-app-6segment.svg</span>
+      </div>
+      <div class="preview-desc">
+        应用六层架构图：双端应用 → 网关 → 认证中心 → 微服务集群 → 存储中间件 → DevOps + QA。每层以水平色带形式展示，微服务层含 9 个核心服务卡片。
+      </div>
+      <div class="preview-frame">
+        <img src="arch-app-6segment.svg" alt="六层应用架构图" style="width:100%;display:block">
+      </div>
+    </section>
+
+    <!-- ============ SVG 4 ============ -->
+    <section id="arch4" class="preview-section">
+      <div class="preview-header">
+        <div>
+          <span class="badge badge-pink">用户端</span>
+          <span class="badge badge-blue">网关</span>
+          <span class="badge badge-green">核心框架</span>
+          <span class="badge badge-teal">支撑框架</span>
+          <span class="badge badge-amber">数据层</span>
+          <span class="badge badge-gray">基础设施</span>
+        </div>
+        <span class="file-tag">arch-tech-6x4grid.svg</span>
+      </div>
+      <div class="preview-desc">
+        技术栈 6×4 矩阵图，每行展示一个技术领域，每行包含 4 款核心技术组件，标注具体版本号。涵盖 Vue3、Spring Boot 3.2、Nacos 2.3、MySQL 8.0、Docker 25 等技术选型。
+      </div>
+      <div class="preview-frame">
+        <img src="arch-tech-6x4grid.svg" alt="6x4技术矩阵图" style="width:100%;display:block">
+      </div>
+    </section>
+
+    <!-- ============ SVG 5 ============ -->
+    <section id="arch5" class="preview-section">
+      <div class="preview-header">
+        <div>
+          <span class="badge badge-blue">平台治理</span>
+          <span class="badge badge-green">会员运营</span>
+          <span class="badge badge-purple">财务核算 ⭐</span>
+          <span class="badge badge-teal">工作流</span>
+          <span class="badge badge-amber">开放平台</span>
+          <span class="badge badge-pink">经营决策</span>
+        </div>
+        <span class="file-tag">arch-func-6column.svg</span>
+      </div>
+      <div class="preview-desc">
+        六列功能架构图，以列的形式展示六大业务域。财务核算列以紫色边框高亮（⭐核心业务），包含 9 个功能卡片：订单、支付、账户、账本、发票、对账、报表、风控、分账。
+      </div>
+      <div class="preview-frame">
+        <img src="arch-func-6column.svg" alt="六列功能架构图" style="width:100%;display:block">
+      </div>
+    </section>
+
+    <div class="divider">— END —</div>
+  </div>
+</body>
+</html>

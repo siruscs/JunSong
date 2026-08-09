@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1520" width="1200" height="1520">
+  <defs>
+    <style>
+      .title { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 22px; font-weight: 700; fill: #1e293b; }
+      .layer-title { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 17px; font-weight: 700; fill: #ffffff; }
+      .layer-desc { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 12px; fill: #475569; }
+      .card-title { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 14px; font-weight: 600; fill: #1e293b; }
+      .card-sub { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 11px; fill: #64748b; }
+      .card-star { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 16px; fill: #f59e0b; }
+    </style>
+    <marker id="arrowDown" markerWidth="10" markerHeight="10" refX="5" refY="2" orient="auto">
+      <path d="M0,0 L5,8 L10,0 Z" fill="#64748b"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="1520" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="600" y="38" text-anchor="middle" class="title">军颂云 · 七层技术架构图</text>
+
+  <!-- ==================== Layer 1: 用户接入层 (pink) ==================== -->
+  <rect x="60" y="70" width="1080" height="170" rx="12" fill="#fdf2f8" stroke="#ec4899" stroke-width="2"/>
+  <rect x="60" y="70" width="1080" height="44" rx="12" fill="#ec4899"/>
+  <rect x="60" y="102" width="1080" height="12" fill="#ec4899"/>
+  <text x="90" y="100" class="layer-title">① 用户接入层</text>
+  <text x="310" y="100" class="layer-desc" fill="#fce7f3">多端统一接入，覆盖PC Web与移动端小程序</text>
+
+  <!-- Cards in Layer 1 -->
+  <rect x="130" y="130" width="220" height="90" rx="10" fill="#ffffff" stroke="#fbcfe8" stroke-width="1.5"/>
+  <text x="240" y="160" text-anchor="middle" class="card-title">PC 端</text>
+  <text x="240" y="182" text-anchor="middle" class="card-sub">Vue 3 + Vite</text>
+  <text x="240" y="202" text-anchor="middle" class="card-sub">TypeScript · Pinia</text>
+
+  <rect x="470" y="130" width="220" height="90" rx="10" fill="#ffffff" stroke="#fbcfe8" stroke-width="1.5"/>
+  <text x="580" y="160" text-anchor="middle" class="card-title">移动端</text>
+  <text x="580" y="182" text-anchor="middle" class="card-sub">uni-app · Vue 3</text>
+  <text x="580" y="202" text-anchor="middle" class="card-sub">微信/支付宝小程序</text>
+
+  <rect x="810" y="130" width="220" height="90" rx="10" fill="#ffffff" stroke="#fbcfe8" stroke-width="1.5"/>
+  <text x="920" y="160" text-anchor="middle" class="card-title">API 文档</text>
+  <text x="920" y="182" text-anchor="middle" class="card-sub">Swagger / Knife4j</text>
+  <text x="920" y="202" text-anchor="middle" class="card-sub">在线调试接口</text>
+
+  <!-- Arrow 1→2 -->
+  <line x1="600" y1="240" x2="600" y2="265" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrowDown)"/>
+
+  <!-- ==================== Layer 2: 接入网关层 (blue) ==================== -->
+  <rect x="60" y="270" width="1080" height="160" rx="12" fill="#eff6ff" stroke="#0284c7" stroke-width="2"/>
+  <rect x="60" y="270" width="1080" height="44" rx="12" fill="#0284c7"/>
+  <rect x="60" y="302" width="1080" height="12" fill="#0284c7"/>
+  <text x="90" y="300" class="layer-title">② 接入网关层</text>
+  <text x="330" y="300" class="layer-desc" fill="#dbeafe">统一入口 · 路由转发 · 流量防护</text>
+
+  <rect x="160" y="325" width="260" height="90" rx="10" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="290" y="355" text-anchor="middle" class="card-title">Spring Cloud Gateway</text>
+  <text x="290" y="377" text-anchor="middle" class="card-sub">路由 · 转发 · 限流</text>
+  <text x="290" y="397" text-anchor="middle" class="card-sub">动态路由配置</text>
+
+  <rect x="470" y="325" width="260" height="90" rx="10" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="600" y="355" text-anchor="middle" class="card-title">Sentinel</text>
+  <text x="600" y="377" text-anchor="middle" class="card-sub">熔断降级 · 流控</text>
+  <text x="600" y="397" text-anchor="middle" class="card-sub">热点参数防护</text>
+
+  <rect x="780" y="325" width="260" height="90" rx="10" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="910" y="355" text-anchor="middle" class="card-title">CORS / 跨域</text>
+  <text x="910" y="377" text-anchor="middle" class="card-sub">全局异常处理</text>
+  <text x="910" y="397" text-anchor="middle" class="card-sub">统一响应封装</text>
+
+  <!-- Arrow 2→3 -->
+  <line x1="600" y1="430" x2="600" y2="455" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrowDown)"/>
+
+  <!-- ==================== Layer 3: 认证中心层 (red) ==================== -->
+  <rect x="60" y="460" width="1080" height="160" rx="12" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
+  <rect x="60" y="460" width="1080" height="44" rx="12" fill="#dc2626"/>
+  <rect x="60" y="492" width="1080" height="12" fill="#dc2626"/>
+  <text x="90" y="490" class="layer-title">③ 认证中心层</text>
+  <text x="330" y="490" class="layer-desc" fill="#fecaca">统一认证 · 权限管控 · Token 签发</text>
+
+  <rect x="160" y="515" width="260" height="90" rx="10" fill="#ffffff" stroke="#fecaca" stroke-width="1.5"/>
+  <text x="290" y="545" text-anchor="middle" class="card-title">OAuth2 / JWT</text>
+  <text x="290" y="567" text-anchor="middle" class="card-sub">多种登录方式</text>
+  <text x="290" y="587" text-anchor="middle" class="card-sub">Token 刷新机制</text>
+
+  <rect x="470" y="515" width="260" height="90" rx="10" fill="#ffffff" stroke="#fecaca" stroke-width="1.5"/>
+  <text x="600" y="545" text-anchor="middle" class="card-title">RBAC 权限模型</text>
+  <text x="600" y="567" text-anchor="middle" class="card-sub">角色 · 菜单 · 按钮</text>
+  <text x="600" y="587" text-anchor="middle" class="card-sub">数据权限隔离</text>
+
+  <rect x="780" y="515" width="260" height="90" rx="10" fill="#ffffff" stroke="#fecaca" stroke-width="1.5"/>
+  <text x="910" y="545" text-anchor="middle" class="card-title">单点登录 SSO</text>
+  <text x="910" y="567" text-anchor="middle" class="card-sub">Redis Token 存储</text>
+  <text x="910" y="587" text-anchor="middle" class="card-sub">登出 &amp; 失效机制</text>
+
+  <!-- Arrow 3→4 -->
+  <line x1="600" y1="620" x2="600" y2="645" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrowDown)"/>
+
+  <!-- ==================== Layer 4: 业务服务层 (green) ==================== -->
+  <rect x="60" y="650" width="1080" height="180" rx="12" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <rect x="60" y="650" width="1080" height="44" rx="12" fill="#059669"/>
+  <rect x="60" y="682" width="1080" height="12" fill="#059669"/>
+  <text x="90" y="680" class="layer-title">④ 业务服务层 · 九大微服务</text>
+  <text x="390" y="680" class="layer-desc" fill="#d1fae5">Spring Boot 微服务集群 · 业务领域驱动</text>
+
+  <!-- 9 cards in 3x3 grid -->
+  <rect x="80" y="700" width="140" height="52" rx="8" fill="#ffffff" stroke="#a7f3d0" stroke-width="1.2"/>
+  <text x="150" y="722" text-anchor="middle" class="card-title" font-size="12">系统服务</text>
+  <text x="150" y="740" text-anchor="middle" class="card-sub" font-size="10">system-server</text>
+
+  <rect x="235" y="700" width="140" height="52" rx="8" fill="#ffffff" stroke="#a7f3d0" stroke-width="1.2"/>
+  <text x="305" y="722" text-anchor="middle" class="card-title" font-size="12">认证服务</text>
+  <text x="305" y="740" text-anchor="middle" class="card-sub" font-size="10">auth-server</text>
+
+  <rect x="390" y="700" width="140" height="52" rx="8" fill="#ffffff" stroke="#a7f3d0" stroke-width="1.2"/>
+  <text x="460" y="722" text-anchor="middle" class="card-title" font-size="12">会员服务</text>
+  <text x="460" y="740" text-anchor="middle" class="card-sub" font-size="10">member-server</text>
+
+  <rect x="545" y="700" width="140" height="52" rx="8" fill="#fef3c7" stroke="#fbbf24" stroke-width="1.5"/>
+  <text x="615" y="718" text-anchor="middle" class="card-title" font-size="12">财务服务 ⭐</text>
+  <text x="615" y="736" text-anchor="middle" class="card-sub" font-size="10" fill="#92400e">finance-server</text>
+
+  <rect x="700" y="700" width="140" height="52" rx="8" fill="#ffffff" stroke="#a7f3d0" stroke-width="1.2"/>
+  <text x="770" y="722" text-anchor="middle" class="card-title" font-size="12">工作流服务</text>
+  <text x="770" y="740" text-anchor="middle" class="card-sub" font-size="10">workflow-server</text>
+
+  <rect x="855" y="700" width="140" height="52" rx="8" fill="#ffffff" stroke="#a7f3d0" stroke-width="1.2"/>
+  <text x="925" y="722" text-anchor="middle" class="card-title" font-size="12">开放平台</text>
+  <text x="925" y="740" text-anchor="middle" class="card-sub" font-size="10">open-server</text>
+
+  <rect x="157" y="760" width="140" height="52" rx="8" fill="#ffffff" stroke="#a7f3d0" stroke-width="1.2"/>
+  <text x="227" y="782" text-anchor="middle" class="card-title" font-size="12">代码生成</text>
+  <text x="227" y="800" text-anchor="middle" class="card-sub" font-size="10">gen-server</text>
+
+  <rect x="430" y="760" width="140" height="52" rx="8" fill="#ffffff" stroke="#a7f3d0" stroke-width="1.2"/>
+  <text x="500" y="782" text-anchor="middle" class="card-title" font-size="12">定时任务</text>
+  <text x="500" y="800" text-anchor="middle" class="card-sub" font-size="10">job-server</text>
+
+  <rect x="703" y="760" width="140" height="52" rx="8" fill="#ffffff" stroke="#a7f3d0" stroke-width="1.2"/>
+  <text x="773" y="782" text-anchor="middle" class="card-title" font-size="12">文件服务</text>
+  <text x="773" y="800" text-anchor="middle" class="card-sub" font-size="10">file-server</text>
+
+  <!-- Arrow 4→5 -->
+  <line x1="600" y1="830" x2="600" y2="855" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrowDown)"/>
+
+  <!-- ==================== Layer 5: 微服务治理层 (teal) ==================== -->
+  <rect x="60" y="860" width="1080" height="160" rx="12" fill="#f0fdfa" stroke="#0d9488" stroke-width="2"/>
+  <rect x="60" y="860" width="1080" height="44" rx="12" fill="#0d9488"/>
+  <rect x="60" y="892" width="1080" height="12" fill="#0d9488"/>
+  <text x="90" y="890" class="layer-title">⑤ 微服务治理层</text>
+  <text x="330" y="890" class="layer-desc" fill="#ccfbf1">服务注册 · 配置中心 · 链路追踪</text>
+
+  <rect x="130" y="915" width="220" height="90" rx="10" fill="#ffffff" stroke="#99f6e4" stroke-width="1.5"/>
+  <text x="240" y="945" text-anchor="middle" class="card-title">Nacos 注册中心</text>
+  <text x="240" y="967" text-anchor="middle" class="card-sub">服务发现 · 健康检查</text>
+  <text x="240" y="987" text-anchor="middle" class="card-sub">动态配置管理</text>
+
+  <rect x="470" y="915" width="220" height="90" rx="10" fill="#ffffff" stroke="#99f6e4" stroke-width="1.5"/>
+  <text x="580" y="945" text-anchor="middle" class="card-title">Sentinel 限流</text>
+  <text x="580" y="967" text-anchor="middle" class="card-sub">熔断降级 · 系统保护</text>
+  <text x="580" y="987" text-anchor="middle" class="card-sub">规则持久化</text>
+
+  <rect x="810" y="915" width="220" height="90" rx="10" fill="#ffffff" stroke="#99f6e4" stroke-width="1.5"/>
+  <text x="920" y="945" text-anchor="middle" class="card-title">Seata 分布式事务</text>
+  <text x="920" y="967" text-anchor="middle" class="card-sub">AT 模式 · 一致性</text>
+  <text x="920" y="987" text-anchor="middle" class="card-sub">微服务事务协调</text>
+
+  <!-- Arrow 5→6 -->
+  <line x1="600" y1="1020" x2="600" y2="1045" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrowDown)"/>
+
+  <!-- ==================== Layer 6: 数据存储层 (amber) ==================== -->
+  <rect x="60" y="1050" width="1080" height="160" rx="12" fill="#fffbeb" stroke="#f59e0b" stroke-width="2"/>
+  <rect x="60" y="1050" width="1080" height="44" rx="12" fill="#f59e0b"/>
+  <rect x="60" y="1082" width="1080" height="12" fill="#f59e0b"/>
+  <text x="90" y="1080" class="layer-title">⑥ 数据存储层</text>
+  <text x="310" y="1080" class="layer-desc" fill="#fde68a">关系型 · 缓存 · 对象存储 · 注册配置</text>
+
+  <rect x="100" y="1105" width="220" height="90" rx="10" fill="#ffffff" stroke="#fde68a" stroke-width="1.5"/>
+  <text x="210" y="1135" text-anchor="middle" class="card-title">MySQL</text>
+  <text x="210" y="1157" text-anchor="middle" class="card-sub">主从读写分离</text>
+  <text x="210" y="1177" text-anchor="middle" class="card-sub">业务数据持久化</text>
+
+  <rect x="350" y="1105" width="220" height="90" rx="10" fill="#ffffff" stroke="#fde68a" stroke-width="1.5"/>
+  <text x="460" y="1135" text-anchor="middle" class="card-title">Redis</text>
+  <text x="460" y="1157" text-anchor="middle" class="card-sub">缓存 · Session · 锁</text>
+  <text x="460" y="1177" text-anchor="middle" class="card-sub">Redisson 客户端</text>
+
+  <rect x="600" y="1105" width="220" height="90" rx="10" fill="#ffffff" stroke="#fde68a" stroke-width="1.5"/>
+  <text x="710" y="1135" text-anchor="middle" class="card-title">MinIO</text>
+  <text x="710" y="1157" text-anchor="middle" class="card-sub">对象存储</text>
+  <text x="710" y="1177" text-anchor="middle" class="card-sub">文件 · 图片 · 附件</text>
+
+  <rect x="850" y="1105" width="220" height="90" rx="10" fill="#ffffff" stroke="#fde68a" stroke-width="1.5"/>
+  <text x="960" y="1135" text-anchor="middle" class="card-title">Nacos</text>
+  <text x="960" y="1157" text-anchor="middle" class="card-sub">配置中心</text>
+  <text x="960" y="1177" text-anchor="middle" class="card-sub">注册发现</text>
+
+  <!-- Arrow 6→7 -->
+  <line x1="600" y1="1210" x2="600" y2="1235" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrowDown)"/>
+
+  <!-- ==================== Layer 7: DevOps可观测层 (gray) ==================== -->
+  <rect x="60" y="1240" width="1080" height="180" rx="12" fill="#f8fafc" stroke="#64748b" stroke-width="2"/>
+  <rect x="60" y="1240" width="1080" height="44" rx="12" fill="#475569"/>
+  <rect x="60" y="1272" width="1080" height="12" fill="#475569"/>
+  <text x="90" y="1270" class="layer-title">⑦ DevOps 可观测层</text>
+  <text x="370" y="1270" class="layer-desc" fill="#cbd5e1">容器化 · 编排 · 监控 · 日志 · 链路</text>
+
+  <rect x="80" y="1295" width="180" height="52" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+  <text x="170" y="1326" text-anchor="middle" class="card-title" font-size="13">Docker</text>
+
+  <rect x="280" y="1295" width="180" height="52" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+  <text x="370" y="1326" text-anchor="middle" class="card-title" font-size="13">Kubernetes</text>
+
+  <rect x="480" y="1295" width="180" height="52" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+  <text x="570" y="1326" text-anchor="middle" class="card-title" font-size="13">Grafana</text>
+
+  <rect x="680" y="1295" width="180" height="52" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+  <text x="770" y="1326" text-anchor="middle" class="card-title" font-size="13">Prometheus</text>
+
+  <rect x="880" y="1295" width="180" height="52" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+  <text x="970" y="1326" text-anchor="middle" class="card-title" font-size="13">ELK / Loki</text>
+
+  <rect x="180" y="1355" width="180" height="52" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+  <text x="270" y="1386" text-anchor="middle" class="card-title" font-size="13">SkyWalking</text>
+
+  <rect x="510" y="1355" width="180" height="52" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+  <text x="600" y="1386" text-anchor="middle" class="card-title" font-size="13">Jenkins CI/CD</text>
+
+  <rect x="840" y="1355" width="180" height="52" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>
+  <text x="930" y="1386" text-anchor="middle" class="card-title" font-size="13">Harbor</text>
+
+  <!-- Footer -->
+  <text x="600" y="1470" text-anchor="middle" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#94a3b8">
+    © 2025 军颂云平台 · 七层技术架构 · Spring Cloud Alibaba 全家桶
+  </text>
+</svg>

@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1280" width="1200" height="1280">
+  <defs>
+    <style>
+      .title { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 22px; font-weight: 700; fill: #1e293b; }
+      .col-title { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 15px; font-weight: 700; fill: #ffffff; }
+      .col-desc { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 10px; fill: #475569; }
+      .fn-title { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 12px; font-weight: 600; fill: #1e293b; }
+      .fn-desc { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 10px; fill: #94a3b8; }
+      .col-tag { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 9px; fill: #64748b; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="1280" fill="#ffffff"/>
+
+  <text x="600" y="38" text-anchor="middle" class="title">军颂云 · 六列功能架构图</text>
+
+  <!-- 6 columns, each ~180px wide, gap between columns -->
+  <!-- Start x=60, total width=1080, 6 columns with gaps -->
+  <!-- Col width: 170, gap: 10 -->
+  <!-- x positions: 60, 240, 420, 600, 780, 960 -->
+  <!-- Col widths: 170 each -->
+
+  <!-- ===== Column 1: 平台治理 (blue) ===== -->
+  <rect x="60" y="65" width="170" height="1130" rx="10" fill="#eff6ff" stroke="#0284c7" stroke-width="1.5"/>
+  <rect x="60" y="65" width="170" height="40" rx="10" fill="#0284c7"/>
+  <rect x="60" y="92" width="170" height="13" fill="#0284c7"/>
+  <text x="145" y="90" text-anchor="middle" class="col-title">平台治理</text>
+  <text x="145" y="108" text-anchor="middle" class="col-desc" fill="#dbeafe">system / auth</text>
+
+  <!-- 8 function cards -->
+  <rect x="72" y="118" width="146" height="50" rx="6" fill="#ffffff" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="145" y="138" text-anchor="middle" class="fn-title">用户管理</text>
+  <text x="145" y="155" text-anchor="middle" class="fn-desc">新增 · 编辑 · 禁用</text>
+
+  <rect x="72" y="175" width="146" height="50" rx="6" fill="#ffffff" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="145" y="195" text-anchor="middle" class="fn-title">角色权限</text>
+  <text x="145" y="212" text-anchor="middle" class="fn-desc">RBAC · 菜单 · 按钮</text>
+
+  <rect x="72" y="232" width="146" height="50" rx="6" fill="#ffffff" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="145" y="252" text-anchor="middle" class="fn-title">部门组织</text>
+  <text x="145" y="269" text-anchor="middle" class="fn-desc">树形结构 · 数据权限</text>
+
+  <rect x="72" y="289" width="146" height="50" rx="6" fill="#ffffff" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="145" y="309" text-anchor="middle" class="fn-title">字典管理</text>
+  <text x="145" y="326" text-anchor="middle" class="fn-desc">数据字典 · 枚举值</text>
+
+  <rect x="72" y="346" width="146" height="50" rx="6" fill="#ffffff" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="145" y="366" text-anchor="middle" class="fn-title">参数配置</text>
+  <text x="145" y="383" text-anchor="middle" class="fn-desc">系统参数 · 业务参数</text>
+
+  <rect x="72" y="403" width="146" height="50" rx="6" fill="#ffffff" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="145" y="423" text-anchor="middle" class="fn-title">日志审计</text>
+  <text x="145" y="440" text-anchor="middle" class="fn-desc">操作日志 · 登录日志</text>
+
+  <rect x="72" y="460" width="146" height="50" rx="6" fill="#ffffff" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="145" y="480" text-anchor="middle" class="fn-title">代码生成</text>
+  <text x="145" y="497" text-anchor="middle" class="fn-desc">CRUD · 模板 · 预览</text>
+
+  <rect x="72" y="517" width="146" height="50" rx="6" fill="#ffffff" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="145" y="537" text-anchor="middle" class="fn-title">定时任务</text>
+  <text x="145" y="554" text-anchor="middle" class="fn-desc">XXL-Job · 动态调度</text>
+
+  <!-- ===== Column 2: 会员运营 (green) ===== -->
+  <rect x="240" y="65" width="170" height="1130" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
+  <rect x="240" y="65" width="170" height="40" rx="10" fill="#059669"/>
+  <rect x="240" y="92" width="170" height="13" fill="#059669"/>
+  <text x="325" y="90" text-anchor="middle" class="col-title">会员运营</text>
+  <text x="325" y="108" text-anchor="middle" class="col-desc" fill="#d1fae5">member / crm</text>
+
+  <rect x="252" y="118" width="146" height="50" rx="6" fill="#ffffff" stroke="#a7f3d0" stroke-width="1"/>
+  <text x="325" y="138" text-anchor="middle" class="fn-title">会员档案</text>
+  <text x="325" y="155" text-anchor="middle" class="fn-desc">资料 · 标签 · 分级</text>
+
+  <rect x="252" y="175" width="146" height="50" rx="6" fill="#ffffff" stroke="#a7f3d0" stroke-width="1"/>
+  <text x="325" y="195" text-anchor="middle" class="fn-title">会员等级</text>
+  <text x="325" y="212" text-anchor="middle" class="fn-desc">成长值 · 等级权益</text>
+
+  <rect x="252" y="232" width="146" height="50" rx="6" fill="#ffffff" stroke="#a7f3d0" stroke-width="1"/>
+  <text x="325" y="252" text-anchor="middle" class="fn-title">积分体系</text>
+  <text x="325" y="269" text-anchor="middle" class="fn-desc">获取 · 消耗 · 过期</text>
+
+  <rect x="252" y="289" width="146" height="50" rx="6" fill="#ffffff" stroke="#a7f3d0" stroke-width="1"/>
+  <text x="325" y="309" text-anchor="middle" class="fn-title">优惠券</text>
+  <text x="325" y="326" text-anchor="middle" class="fn-desc">发放 · 核销 · 统计</text>
+
+  <rect x="252" y="346" width="146" height="50" rx="6" fill="#ffffff" stroke="#a7f3d0" stroke-width="1"/>
+  <text x="325" y="366" text-anchor="middle" class="fn-title">客户标签</text>
+  <text x="325" y="383" text-anchor="middle" class="fn-desc">RFM · 画像分析</text>
+
+  <rect x="252" y="403" width="146" height="50" rx="6" fill="#ffffff" stroke="#a7f3d0" stroke-width="1"/>
+  <text x="325" y="423" text-anchor="middle" class="fn-title">消息通知</text>
+  <text x="325" y="440" text-anchor="middle" class="fn-desc">站内 · 短信 · 推送</text>
+
+  <rect x="252" y="460" width="146" height="50" rx="6" fill="#ffffff" stroke="#a7f3d0" stroke-width="1"/>
+  <text x="325" y="480" text-anchor="middle" class="fn-title">邀请返利</text>
+  <text x="325" y="497" text-anchor="middle" class="fn-desc">邀请 · 佣金 · 结算</text>
+
+  <rect x="252" y="517" width="146" height="50" rx="6" fill="#ffffff" stroke="#a7f3d0" stroke-width="1"/>
+  <text x="325" y="537" text-anchor="middle" class="fn-title">行为分析</text>
+  <text x="325" y="554" text-anchor="middle" class="fn-desc">埋点 · 漏斗 · 留存</text>
+
+  <!-- ===== Column 3: 财务核算 (purple⭐ highlight) ===== -->
+  <rect x="420" y="65" width="170" height="1130" rx="10" fill="#faf5ff" stroke="#7c3aed" stroke-width="3.5"/>
+  <rect x="420" y="65" width="170" height="40" rx="10" fill="#7c3aed"/>
+  <rect x="420" y="92" width="170" height="13" fill="#7c3aed"/>
+  <text x="505" y="88" text-anchor="middle" class="col-title">财务核算 ⭐</text>
+  <text x="505" y="108" text-anchor="middle" class="col-desc" fill="#ede9fe">finance-server · 核心业务</text>
+
+  <rect x="432" y="118" width="146" height="50" rx="6" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="505" y="138" text-anchor="middle" class="fn-title" fill="#6d28d9">订单管理</text>
+  <text x="505" y="155" text-anchor="middle" class="fn-desc">下单 · 支付 · 退款</text>
+
+  <rect x="432" y="175" width="146" height="50" rx="6" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="505" y="195" text-anchor="middle" class="fn-title" fill="#6d28d9">支付结算</text>
+  <text x="505" y="212" text-anchor="middle" class="fn-desc">微信 · 支付宝 · 银联网关</text>
+
+  <rect x="432" y="232" width="146" height="50" rx="6" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="505" y="252" text-anchor="middle" class="fn-title" fill="#6d28d9">账户管理</text>
+  <text x="505" y="269" text-anchor="middle" class="fn-desc">个人账户 · 企业账户</text>
+
+  <rect x="432" y="289" width="146" height="50" rx="6" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="505" y="309" text-anchor="middle" class="fn-title" fill="#6d28d9">账本管理</text>
+  <text x="505" y="326" text-anchor="middle" class="fn-desc">多账本 · 科目 · 分录</text>
+
+  <rect x="432" y="346" width="146" height="50" rx="6" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="505" y="366" text-anchor="middle" class="fn-title" fill="#6d28d9">发票管理</text>
+  <text x="505" y="383" text-anchor="middle" class="fn-desc">开票 · 红冲 · 归档</text>
+
+  <rect x="432" y="403" width="146" height="50" rx="6" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="505" y="423" text-anchor="middle" class="fn-title" fill="#6d28d9">对账管理</text>
+  <text x="505" y="440" text-anchor="middle" class="fn-desc">自动对账 · 差异处理</text>
+
+  <rect x="432" y="460" width="146" height="50" rx="6" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="505" y="480" text-anchor="middle" class="fn-title" fill="#6d28d9">财务报表</text>
+  <text x="505" y="497" text-anchor="middle" class="fn-desc">利润表 · 资产负债表</text>
+
+  <rect x="432" y="517" width="146" height="50" rx="6" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="505" y="537" text-anchor="middle" class="fn-title" fill="#6d28d9">风控合规</text>
+  <text x="505" y="554" text-anchor="middle" class="fn-desc">交易监控 · 反洗钱</text>
+
+  <rect x="432" y="574" width="146" height="50" rx="6" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.2"/>
+  <text x="505" y="594" text-anchor="middle" class="fn-title" fill="#6d28d9">分账结算</text>
+  <text x="505" y="611" text-anchor="middle" class="fn-desc">多方分账 · 佣金结算</text>
+
+  <!-- ===== Column 4: 工作流低代码 (teal) ===== -->
+  <rect x="600" y="65" width="170" height="1130" rx="10" fill="#f0fdfa" stroke="#0d9488" stroke-width="1.5"/>
+  <rect x="600" y="65" width="170" height="40" rx="10" fill="#0d9488"/>
+  <rect x="600" y="92" width="170" height="13" fill="#0d9488"/>
+  <text x="685" y="90" text-anchor="middle" class="col-title">工作流低代码</text>
+  <text x="685" y="108" text-anchor="middle" class="col-desc" fill="#ccfbf1">workflow / lowcode</text>
+
+  <rect x="612" y="118" width="146" height="50" rx="6" fill="#ffffff" stroke="#99f6e4" stroke-width="1"/>
+  <text x="685" y="138" text-anchor="middle" class="fn-title">流程设计</text>
+  <text x="685" y="155" text-anchor="middle" class="fn-desc">BPMN · 可视化拖拽</text>
+
+  <rect x="612" y="175" width="146" height="50" rx="6" fill="#ffffff" stroke="#99f6e4" stroke-width="1"/>
+  <text x="685" y="195" text-anchor="middle" class="fn-title">表单设计</text>
+  <text x="685" y="212" text-anchor="middle" class="fn-desc">拖拽 · 控件 · 校验</text>
+
+  <rect x="612" y="232" width="146" height="50" rx="6" fill="#ffffff" stroke="#99f6e4" stroke-width="1"/>
+  <text x="685" y="252" text-anchor="middle" class="fn-title">流程实例</text>
+  <text x="685" y="269" text-anchor="middle" class="fn-desc">发起 · 审批 · 归档</text>
+
+  <rect x="612" y="289" width="146" height="50" rx="6" fill="#ffffff" stroke="#99f6e4" stroke-width="1"/>
+  <text x="685" y="309" text-anchor="middle" class="fn-title">审批中心</text>
+  <text x="685" y="326" text-anchor="middle" class="fn-desc">待办 · 已办 · 抄送</text>
+
+  <rect x="612" y="346" width="146" height="50" rx="6" fill="#ffffff" stroke="#99f6e4" stroke-width="1"/>
+  <text x="685" y="366" text-anchor="middle" class="fn-title">条件分支</text>
+  <text x="685" y="383" text-anchor="middle" class="fn-desc">网关 · 表达式</text>
+
+  <rect x="612" y="403" width="146" height="50" rx="6" fill="#ffffff" stroke="#99f6e4" stroke-width="1"/>
+  <text x="685" y="423" text-anchor="middle" class="fn-title">数据联动</text>
+  <text x="685" y="440" text-anchor="middle" class="fn-desc">字段映射 · 自动赋值</text>
+
+  <rect x="612" y="460" width="146" height="50" rx="6" fill="#ffffff" stroke="#99f6e4" stroke-width="1"/>
+  <text x="685" y="480" text-anchor="middle" class="fn-title">通知提醒</text>
+  <text x="685" y="497" text-anchor="middle" class="fn-desc">待办推送 · 消息通知</text>
+
+  <rect x="612" y="517" width="146" height="50" rx="6" fill="#ffffff" stroke="#99f6e4" stroke-width="1"/>
+  <text x="685" y="537" text-anchor="middle" class="fn-title">流程监控</text>
+  <text x="685" y="554" text-anchor="middle" class="fn-desc">运行状态 · 异常处理</text>
+
+  <!-- ===== Column 5: 开放平台 (amber) ===== -->
+  <rect x="780" y="65" width="170" height="1130" rx="10" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+  <rect x="780" y="65" width="170" height="40" rx="10" fill="#f59e0b"/>
+  <rect x="780" y="92" width="170" height="13" fill="#f59e0b"/>
+  <text x="865" y="90" text-anchor="middle" class="col-title">开放平台</text>
+  <text x="865" y="108" text-anchor="middle" class="col-desc" fill="#fde68a">open / api</text>
+
+  <rect x="792" y="118" width="146" height="50" rx="6" fill="#ffffff" stroke="#fde68a" stroke-width="1"/>
+  <text x="865" y="138" text-anchor="middle" class="fn-title">应用管理</text>
+  <text x="865" y="155" text-anchor="middle" class="fn-desc">创建 · 密钥 · 回调</text>
+
+  <rect x="792" y="175" width="146" height="50" rx="6" fill="#ffffff" stroke="#fde68a" stroke-width="1"/>
+  <text x="865" y="195" text-anchor="middle" class="fn-title">API 目录</text>
+  <text x="865" y="212" text-anchor="middle" class="fn-desc">接口分类 · 版本管理</text>
+
+  <rect x="792" y="232" width="146" height="50" rx="6" fill="#ffffff" stroke="#fde68a" stroke-width="1"/>
+  <text x="865" y="252" text-anchor="middle" class="fn-title">OAuth2 授权</text>
+  <text x="865" y="269" text-anchor="middle" class="fn-desc">授权码 · 隐式 · 密码</text>
+
+  <rect x="792" y="289" width="146" height="50" rx="6" fill="#ffffff" stroke="#fde68a" stroke-width="1"/>
+  <text x="865" y="309" text-anchor="middle" class="fn-title">接口调用</text>
+  <text x="865" y="326" text-anchor="middle" class="fn-desc">限流 · 签名 · 验签</text>
+
+  <rect x="792" y="346" width="146" height="50" rx="6" fill="#ffffff" stroke="#fde68a" stroke-width="1"/>
+  <text x="865" y="366" text-anchor="middle" class="fn-title">回调通知</text>
+  <text x="865" y="383" text-anchor="middle" class="fn-desc">事件 · 异步 · 重试</text>
+
+  <rect x="792" y="403" width="146" height="50" rx="6" fill="#ffffff" stroke="#fde68a" stroke-width="1"/>
+  <text x="865" y="423" text-anchor="middle" class="fn-title">SDK 下载</text>
+  <text x="865" y="440" text-anchor="middle" class="fn-desc">Java · Python · PHP</text>
+
+  <rect x="792" y="460" width="146" height="50" rx="6" fill="#ffffff" stroke="#fde68a" stroke-width="1"/>
+  <text x="865" y="480" text-anchor="middle" class="fn-title">调用统计</text>
+  <text x="865" y="497" text-anchor="middle" class="fn-desc">QPS · 成功率 · 错误码</text>
+
+  <rect x="792" y="517" width="146" height="50" rx="6" fill="#ffffff" stroke="#fde68a" stroke-width="1"/>
+  <text x="865" y="537" text-anchor="middle" class="fn-title">开发者认证</text>
+  <text x="865" y="554" text-anchor="middle" class="fn-desc">实名认证 · 审核</text>
+
+  <!-- ===== Column 6: 经营决策 (pink) ===== -->
+  <rect x="960" y="65" width="170" height="1130" rx="10" fill="#fdf2f8" stroke="#ec4899" stroke-width="1.5"/>
+  <rect x="960" y="65" width="170" height="40" rx="10" fill="#ec4899"/>
+  <rect x="960" y="92" width="170" height="13" fill="#ec4899"/>
+  <text x="1045" y="90" text-anchor="middle" class="col-title">经营决策</text>
+  <text x="1045" y="108" text-anchor="middle" class="col-desc" fill="#fce7f3">bi / report</text>
+
+  <rect x="972" y="118" width="146" height="50" rx="6" fill="#ffffff" stroke="#fbcfe8" stroke-width="1"/>
+  <text x="1045" y="138" text-anchor="middle" class="fn-title">数据大屏</text>
+  <text x="1045" y="155" text-anchor="middle" class="fn-desc">可视化 · 实时</text>
+
+  <rect x="972" y="175" width="146" height="50" rx="6" fill="#ffffff" stroke="#fbcfe8" stroke-width="1"/>
+  <text x="1045" y="195" text-anchor="middle" class="fn-title">经营分析</text>
+  <text x="1045" y="212" text-anchor="middle" class="fn-desc">营收 · 用户 · 渠道</text>
+
+  <rect x="972" y="232" width="146" height="50" rx="6" fill="#ffffff" stroke="#fbcfe8" stroke-width="1"/>
+  <text x="1045" y="252" text-anchor="middle" class="fn-title">财务报表</text>
+  <text x="1045" y="269" text-anchor="middle" class="fn-desc">收支 · 利润 · 现金流</text>
+
+  <rect x="972" y="289" width="146" height="50" rx="6" fill="#ffffff" stroke="#fbcfe8" stroke-width="1"/>
+  <text x="1045" y="309" text-anchor="middle" class="fn-title">会员分析</text>
+  <text x="1045" y="326" text-anchor="middle" class="fn-desc">留存 · 活跃 · 转化</text>
+
+  <rect x="972" y="346" width="146" height="50" rx="6" fill="#ffffff" stroke="#fbcfe8" stroke-width="1"/>
+  <text x="1045" y="366" text-anchor="middle" class="fn-title">渠道分析</text>
+  <text x="1045" y="383" text-anchor="middle" class="fn-desc">渠道占比 · ROI</text>
+
+  <rect x="972" y="403" width="146" height="50" rx="6" fill="#ffffff" stroke="#fbcfe8" stroke-width="1"/>
+  <text x="1045" y="423" text-anchor="middle" class="fn-title">预测预警</text>
+  <text x="1045" y="440" text-anchor="middle" class="fn-desc">AI 预测 · 异常预警</text>
+
+  <rect x="972" y="460" width="146" height="50" rx="6" fill="#ffffff" stroke="#fbcfe8" stroke-width="1"/>
+  <text x="1045" y="480" text-anchor="middle" class="fn-title">自定义报表</text>
+  <text x="1045" y="497" text-anchor="middle" class="fn-desc">拖拽 · 导出 · 订阅</text>
+
+  <rect x="972" y="517" width="146" height="50" rx="6" fill="#ffffff" stroke="#fbcfe8" stroke-width="1"/>
+  <text x="1045" y="537" text-anchor="middle" class="fn-title">数据权限</text>
+  <text x="1045" y="554" text-anchor="middle" class="fn-desc">行级 · 列级 · 行列级</text>
+
+  <!-- ===== Connection arrows at bottom ===== -->
+  <!-- Simple line connectors between columns -->
+  <line x1="245" y1="1220" x2="260" y2="1220" stroke="#cbd5e1" stroke-width="2"/>
+  <line x1="425" y1="1220" x2="440" y2="1220" stroke="#cbd5e1" stroke-width="2"/>
+  <line x1="605" y1="1220" x2="620" y2="1220" stroke="#cbd5e1" stroke-width="2"/>
+  <line x1="785" y1="1220" x2="800" y2="1220" stroke="#cbd5e1" stroke-width="2"/>
+  <line x1="965" y1="1220" x2="980" y2="1220" stroke="#cbd5e1" stroke-width="2"/>
+
+  <text x="600" y="1250" text-anchor="middle" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#94a3b8">
+    © 2025 军颂云 · 六列功能架构 · 平台 → 会员 → 财务 → 工作流 → 开放 → 决策
+  </text>
+</svg>

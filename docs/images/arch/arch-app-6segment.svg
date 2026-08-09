@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1460" width="1200" height="1460">
+  <defs>
+    <style>
+      .title { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 22px; font-weight: 700; fill: #1e293b; }
+      .seg-title { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 16px; font-weight: 700; fill: #ffffff; }
+      .seg-desc { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 12px; fill: #475569; }
+      .card-title { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 13px; font-weight: 600; fill: #1e293b; }
+      .card-sub { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 11px; fill: #64748b; }
+    </style>
+    <marker id="arrD" markerWidth="10" markerHeight="10" refX="5" refY="2" orient="auto">
+      <path d="M0,0 L5,8 L10,0 Z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="1460" fill="#ffffff"/>
+
+  <text x="600" y="38" text-anchor="middle" class="title">军颂云 · 应用六层架构图</text>
+
+  <!-- ===== Segment 1: 双端 (pink) ===== -->
+  <rect x="60" y="68" width="1080" height="170" rx="12" fill="#fdf2f8" stroke="#ec4899" stroke-width="2"/>
+  <rect x="60" y="68" width="1080" height="42" rx="12" fill="#ec4899"/>
+  <rect x="60" y="98" width="1080" height="12" fill="#ec4899"/>
+  <text x="90" y="96" class="seg-title">① 双端应用</text>
+  <text x="270" y="96" class="seg-desc" fill="#fce7f3">PC 管理后台 + 移动端小程序</text>
+
+  <rect x="140" y="125" width="280" height="95" rx="10" fill="#ffffff" stroke="#fbcfe8" stroke-width="1.5"/>
+  <text x="280" y="158" text-anchor="middle" class="card-title">PC 管理后台</text>
+  <text x="280" y="180" text-anchor="middle" class="card-sub">Vue 3 + Vite + TypeScript</text>
+  <text x="280" y="200" text-anchor="middle" class="card-sub">Element Plus · Pinia · Vue Router</text>
+
+  <rect x="460" y="125" width="280" height="95" rx="10" fill="#ffffff" stroke="#fbcfe8" stroke-width="1.5"/>
+  <text x="600" y="158" text-anchor="middle" class="card-title">移动端小程序</text>
+  <text x="600" y="180" text-anchor="middle" class="card-sub">uni-app · Vue 3</text>
+  <text x="600" y="200" text-anchor="middle" class="card-sub">微信 · 支付宝 · H5</text>
+
+  <rect x="780" y="125" width="280" height="95" rx="10" fill="#ffffff" stroke="#fbcfe8" stroke-width="1.5"/>
+  <text x="920" y="158" text-anchor="middle" class="card-title">API 文档门户</text>
+  <text x="920" y="180" text-anchor="middle" class="card-sub">Swagger / Knife4j</text>
+  <text x="920" y="200" text-anchor="middle" class="card-sub">在线接口调试</text>
+
+  <line x1="600" y1="240" x2="600" y2="265" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arrD)"/>
+
+  <!-- ===== Segment 2: 网关 (blue) ===== -->
+  <rect x="60" y="270" width="1080" height="145" rx="12" fill="#eff6ff" stroke="#0284c7" stroke-width="2"/>
+  <rect x="60" y="270" width="1080" height="42" rx="12" fill="#0284c7"/>
+  <rect x="60" y="300" width="1080" height="12" fill="#0284c7"/>
+  <text x="90" y="298" class="seg-title">② 网关层</text>
+  <text x="270" y="298" class="seg-desc" fill="#dbeafe">统一接入 · 路由 · 安全</text>
+
+  <rect x="160" y="320" width="260" height="80" rx="10" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="290" y="350" text-anchor="middle" class="card-title">Spring Cloud Gateway</text>
+  <text x="290" y="372" text-anchor="middle" class="card-sub">路由 · 过滤 · 鉴权</text>
+
+  <rect x="470" y="320" width="260" height="80" rx="10" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="600" y="350" text-anchor="middle" class="card-title">Sentinel</text>
+  <text x="600" y="372" text-anchor="middle" class="card-sub">熔断 · 降级 · 限流</text>
+
+  <rect x="780" y="320" width="260" height="80" rx="10" fill="#ffffff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="910" y="350" text-anchor="middle" class="card-title">CORS / 跨域 / 统一异常</text>
+  <text x="910" y="372" text-anchor="middle" class="card-sub">全局拦截 · 响应封装</text>
+
+  <line x1="600" y1="415" x2="600" y2="440" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arrD)"/>
+
+  <!-- ===== Segment 3: 认证 (red) ===== -->
+  <rect x="60" y="445" width="1080" height="145" rx="12" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
+  <rect x="60" y="445" width="1080" height="42" rx="12" fill="#dc2626"/>
+  <rect x="60" y="475" width="1080" height="12" fill="#dc2626"/>
+  <text x="90" y="473" class="seg-title">③ 认证中心</text>
+  <text x="270" y="473" class="seg-desc" fill="#fecaca">统一认证 · 权限模型 · SSO</text>
+
+  <rect x="160" y="495" width="260" height="80" rx="10" fill="#ffffff" stroke="#fecaca" stroke-width="1.5"/>
+  <text x="290" y="525" text-anchor="middle" class="card-title">OAuth2 / JWT</text>
+  <text x="290" y="547" text-anchor="middle" class="card-sub">密码 · 短信 · 第三方登录</text>
+
+  <rect x="470" y="495" width="260" height="80" rx="10" fill="#ffffff" stroke="#fecaca" stroke-width="1.5"/>
+  <text x="600" y="525" text-anchor="middle" class="card-title">RBAC 权限</text>
+  <text x="600" y="547" text-anchor="middle" class="card-sub">角色 · 菜单 · 数据权限</text>
+
+  <rect x="780" y="495" width="260" height="80" rx="10" fill="#ffffff" stroke="#fecaca" stroke-width="1.5"/>
+  <text x="910" y="525" text-anchor="middle" class="card-title">SSO 单点登录</text>
+  <text x="910" y="547" text-anchor="middle" class="card-sub">Redis Token · 登出机制</text>
+
+  <line x1="600" y1="590" x2="600" y2="615" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arrD)"/>
+
+  <!-- ===== Segment 4: 微服务集群 (green) ===== -->
+  <rect x="60" y="620" width="1080" height="200" rx="12" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <rect x="60" y="620" width="1080" height="42" rx="12" fill="#059669"/>
+  <rect x="60" y="650" width="1080" height="12" fill="#059669"/>
+  <text x="90" y="648" class="seg-title">④ 微服务集群</text>
+  <text x="310" y="648" class="seg-desc" fill="#d1fae5">九大业务微服务 · Spring Cloud</text>
+
+  <!-- Row 1 -->
+  <rect x="75" y="670" width="155" height="55" rx="8" fill="#ffffff" stroke="#a7f3d0" stroke-width="1.2"/>
+  <text x="152" y="703" text-anchor="middle" class="card-title" font-size="12">系统服务</text>
+
+  <rect x="245" y="670" width="155" height="55" rx="8" fill="#ffffff" stroke="#a7f3d0" stroke-width="1.2"/>
+  <text x="322" y="703" text-anchor="middle" class="card-title" font-size="12">认证服务</text>
+
+  <rect x="415" y="670" width="155" height="55" rx="8" fill="#ffffff" stroke="#a7f3d0" stroke-width="1.2"/>
+  <text x="492" y="703" text-anchor="middle" class="card-title" font-size="12">会员服务</text>
+
+  <rect x="585" y="670" width="155" height="55" rx="8" fill="#fef3c7" stroke="#fbbf24" stroke-width="1.8"/>
+  <text x="662" y="703" text-anchor="middle" class="card-title" font-size="12" fill="#92400e">财务服务 ⭐</text>
+
+  <rect x="755" y="670" width="155" height="55" rx="8" fill="#ffffff" stroke="#a7f3d0" stroke-width="1.2"/>
+  <text x="832" y="703" text-anchor="middle" class="card-title" font-size="12">工作流服务</text>
+
+  <rect x="925" y="670" width="155" height="55" rx="8" fill="#ffffff" stroke="#a7f3d0" stroke-width="1.2"/>
+  <text x="1002" y="703" text-anchor="middle" class="card-title" font-size="12">开放平台</text>
+
+  <!-- Row 2 -->
+  <rect x="160" y="735" width="155" height="55" rx="8" fill="#ffffff" stroke="#a7f3d0" stroke-width="1.2"/>
+  <text x="237" y="768" text-anchor="middle" class="card-title" font-size="12">代码生成</text>
+
+  <rect x="425" y="735" width="155" height="55" rx="8" fill="#ffffff" stroke="#a7f3d0" stroke-width="1.2"/>
+  <text x="502" y="768" text-anchor="middle" class="card-title" font-size="12">定时任务</text>
+
+  <rect x="690" y="735" width="155" height="55" rx="8" fill="#ffffff" stroke="#a7f3d0" stroke-width="1.2"/>
+  <text x="767" y="768" text-anchor="middle" class="card-title" font-size="12">文件服务</text>
+
+  <line x1="600" y1="820" x2="600" y2="845" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arrD)"/>
+
+  <!-- ===== Segment 5: 存储中间件 (amber) ===== -->
+  <rect x="60" y="850" width="1080" height="165" rx="12" fill="#fffbeb" stroke="#f59e0b" stroke-width="2"/>
+  <rect x="60" y="850" width="1080" height="42" rx="12" fill="#f59e0b"/>
+  <rect x="60" y="880" width="1080" height="12" fill="#f59e0b"/>
+  <text x="90" y="878" class="seg-title">⑤ 存储与中间件</text>
+  <text x="340" y="878" class="seg-desc" fill="#fde68a">数据库 · 缓存 · 对象存储 · 消息队列</text>
+
+  <rect x="100" y="900" width="220" height="95" rx="10" fill="#ffffff" stroke="#fde68a" stroke-width="1.5"/>
+  <text x="210" y="930" text-anchor="middle" class="card-title">MySQL</text>
+  <text x="210" y="952" text-anchor="middle" class="card-sub">业务数据持久化</text>
+  <text x="210" y="972" text-anchor="middle" class="card-sub">主从 · 读写分离</text>
+
+  <rect x="340" y="900" width="220" height="95" rx="10" fill="#ffffff" stroke="#fde68a" stroke-width="1.5"/>
+  <text x="450" y="930" text-anchor="middle" class="card-title">Redis</text>
+  <text x="450" y="952" text-anchor="middle" class="card-sub">缓存 · Session · 锁</text>
+  <text x="450" y="972" text-anchor="middle" class="card-sub">Redisson</text>
+
+  <rect x="580" y="900" width="220" height="95" rx="10" fill="#ffffff" stroke="#fde68a" stroke-width="1.5"/>
+  <text x="690" y="930" text-anchor="middle" class="card-title">MinIO</text>
+  <text x="690" y="952" text-anchor="middle" class="card-sub">对象存储</text>
+  <text x="690" y="972" text-anchor="middle" class="card-sub">文件 · 图片 · 附件</text>
+
+  <rect x="820" y="900" width="220" height="95" rx="10" fill="#ffffff" stroke="#fde68a" stroke-width="1.5"/>
+  <text x="930" y="930" text-anchor="middle" class="card-title">Nacos / RabbitMQ</text>
+  <text x="930" y="952" text-anchor="middle" class="card-sub">配置 · 注册 · 消息</text>
+  <text x="930" y="972" text-anchor="middle" class="card-sub">服务治理</text>
+
+  <line x1="600" y1="1015" x2="600" y2="1040" stroke="#94a3b8" stroke-width="2.5" marker-end="url(#arrD)"/>
+
+  <!-- ===== Segment 6: DevOps+QA (teal) ===== -->
+  <rect x="60" y="1045" width="1080" height="185" rx="12" fill="#f0fdfa" stroke="#0d9488" stroke-width="2"/>
+  <rect x="60" y="1045" width="1080" height="42" rx="12" fill="#0d9488"/>
+  <rect x="60" y="1075" width="1080" height="12" fill="#0d9488"/>
+  <text x="90" y="1073" class="seg-title">⑥ DevOps + QA</text>
+  <text x="270" y="1073" class="seg-desc" fill="#ccfbf1">CI/CD · 容器编排 · 监控告警 · 质量保障</text>
+
+  <!-- Row 1 -->
+  <rect x="80" y="1095" width="230" height="50" rx="8" fill="#ffffff" stroke="#99f6e4" stroke-width="1.2"/>
+  <text x="195" y="1126" text-anchor="middle" class="card-title" font-size="13">Docker</text>
+
+  <rect x="330" y="1095" width="230" height="50" rx="8" fill="#ffffff" stroke="#99f6e4" stroke-width="1.2"/>
+  <text x="445" y="1126" text-anchor="middle" class="card-title" font-size="13">Kubernetes</text>
+
+  <rect x="580" y="1095" width="230" height="50" rx="8" fill="#ffffff" stroke="#99f6e4" stroke-width="1.2"/>
+  <text x="695" y="1126" text-anchor="middle" class="card-title" font-size="13">Jenkins CI/CD</text>
+
+  <rect x="830" y="1095" width="230" height="50" rx="8" fill="#ffffff" stroke="#99f6e4" stroke-width="1.2"/>
+  <text x="945" y="1126" text-anchor="middle" class="card-title" font-size="13">Harbor 镜像仓库</text>
+
+  <!-- Row 2 -->
+  <rect x="80" y="1155" width="230" height="50" rx="8" fill="#ffffff" stroke="#99f6e4" stroke-width="1.2"/>
+  <text x="195" y="1186" text-anchor="middle" class="card-title" font-size="13">Grafana + Prometheus</text>
+
+  <rect x="330" y="1155" width="230" height="50" rx="8" fill="#ffffff" stroke="#99f6e4" stroke-width="1.2"/>
+  <text x="445" y="1186" text-anchor="middle" class="card-title" font-size="13">SkyWalking</text>
+
+  <rect x="580" y="1155" width="230" height="50" rx="8" fill="#ffffff" stroke="#99f6e4" stroke-width="1.2"/>
+  <text x="695" y="1186" text-anchor="middle" class="card-title" font-size="13">ELK / Loki</text>
+
+  <rect x="830" y="1155" width="230" height="50" rx="8" fill="#ffffff" stroke="#99f6e4" stroke-width="1.2"/>
+  <text x="945" y="1186" text-anchor="middle" class="card-title" font-size="13">Nexus QA</text>
+
+  <text x="600" y="1280" text-anchor="middle" font-family="PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#94a3b8">
+    © 2025 军颂云 · 六层应用架构 · 双端 → 网关 → 认证 → 微服务 → 存储 → DevOps
+  </text>
+</svg>

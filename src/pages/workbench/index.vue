@@ -73,32 +73,6 @@
           </view>
         </view>
       </view>
-
-      <!-- 会员运营快捷入口（R1-R25 同步） -->
-      <view class="section" v-if="filteredMemberGrowthEntries.length">
-        <view class="section-header">
-          <view>
-            <text class="section-title">会员运营</text>
-            <text class="section-sub">{{ filteredMemberGrowthEntries.length }} 个功能</text>
-          </view>
-          <view class="section-mark" style="background:#8B5CF6"></view>
-        </view>
-        <view class="grid">
-          <view
-            class="tile"
-            hover-class="tile--active"
-            v-for="entry in filteredMemberGrowthEntries"
-            :key="entry.key"
-            @tap="openMemberPage(entry.key)"
-          >
-            <view class="tile-icon" :style="{ background: entry.bg }">
-              <text class="tile-icon-text">{{ entry.letter }}</text>
-            </view>
-            <text class="tile-title">{{ entry.title }}</text>
-            <text class="tile-desc">{{ entry.desc }}</text>
-          </view>
-        </view>
-      </view>
     </scroll-view>
 
     <!-- 经营任务快捷入口（角色优先：有权限即展示） -->
@@ -152,7 +126,8 @@ const MODULE_BG = {
   wfTodo: 'rgba(16,185,129,0.08)', wfDone: 'rgba(16,185,129,0.08)', wfNotify: 'rgba(16,185,129,0.08)',
   stockCost: 'rgba(14,165,233,0.08)', stockAdjustment: 'rgba(245,158,11,0.08)', stockLedger: 'rgba(6,182,212,0.08)', stocktake: 'rgba(99,102,241,0.08)',
   memberPurchase: 'rgba(8,124,240,0.08)', memberPurchaseReturn: 'rgba(239,68,68,0.08)',
-  configSync: 'rgba(107,114,128,0.08)', campaignPolicy: 'rgba(249,115,22,0.08)', memberLevel: 'rgba(139,92,246,0.08)'
+  configSync: 'rgba(107,114,128,0.08)', campaignPolicy: 'rgba(249,115,22,0.08)', memberLevel: 'rgba(139,92,246,0.08)',
+  dashboard: 'rgba(8,124,240,0.08)', growth: 'rgba(139,92,246,0.08)', actions: 'rgba(14,165,233,0.08)', points: 'rgba(245,158,11,0.08)'
 }
 
 const MODULE_LETTER = {
@@ -165,7 +140,8 @@ const MODULE_LETTER = {
   wfTodo: '📥', wfDone: '📤', wfNotify: '🔔',
   stockCost: '📋', stockAdjustment: '⚖️', stockLedger: '📒', stocktake: '🔢',
   memberPurchase: '🛍️', memberPurchaseReturn: '↩️',
-  configSync: '🔄', campaignPolicy: '🎯', memberLevel: '🎖️'
+  configSync: '🔄', campaignPolicy: '🎯', memberLevel: '🎖️',
+  dashboard: '📊', growth: '🌟', actions: '🎯', points: '🎯'
 }
 
 const MODULE_ICON_COLOR = {
@@ -179,7 +155,8 @@ const MODULE_ICON_COLOR = {
   wfTodo: '#10B981', wfDone: '#10B981', wfNotify: '#10B981',
   stockCost: '#0EA5E9', stockAdjustment: '#F59E0B', stockLedger: '#06B6D4', stocktake: '#6366F1',
   memberPurchase: '#087CF0', memberPurchaseReturn: '#EF4444',
-  configSync: '#6B7280', campaignPolicy: '#F97316', memberLevel: '#8B5CF6'
+  configSync: '#6B7280', campaignPolicy: '#F97316', memberLevel: '#8B5CF6',
+  dashboard: '#087CF0', growth: '#8B5CF6', actions: '#0EA5E9', points: '#F59E0B'
 }
 
 const MODULE_DESC = {
@@ -217,11 +194,16 @@ const MODULE_DESC = {
   memberPurchaseReturn: '退货与退款',
   configSync: '跨机构配置同步',
   campaignPolicy: '销售政策',
-  memberLevel: '等级与权益'
+  memberLevel: '等级与权益',
+  dashboard: '会员增长与分层洞察',
+  growth: '等级、成长值与签到',
+  actions: '待执行与已完成动作',
+  points: '积分流水与待领取兑换'
 }
 
 const GROUP_COLOR = {
   '会员服务': '#087CF0',
+  '会员运营': '#8B5CF6',
   '财务管理': '#F59E0B',
   '系统管理': '#6366F1',
   '移动办公': '#10B981'
@@ -234,6 +216,7 @@ export default {
   data() {
     return {
       modules: [],
+      groupOrder: [],
       searchQuery: '',
       recent: [],
       currentDate: '',
@@ -246,7 +229,7 @@ export default {
   },
   computed: {
     authorizedGroups() {
-      return filterAuthorizedGroups(groups, this.modules).map((group) => ({
+      return filterAuthorizedGroups(groups, this.modules, this.groupOrder).map((group) => ({
         ...group,
         items: group.items.map((item) => ({ ...item, desc: this.getModuleDesc(item.key) }))
       }))
@@ -306,12 +289,22 @@ export default {
   async onShow() {
     try {
       const res = await request({ url: '/member/mp/modules', method: 'GET', silent: true, timeout: 12000 })
-      const latestModules = Array.isArray(res.data || res) ? (res.data || res) : []
+      const payload = res.data || res || {}
+      var latestModules = []
+      var latestGroupOrder = []
+      if (Array.isArray(payload)) {
+        latestModules = payload
+      } else if (payload && typeof payload === 'object') {
+        if (Array.isArray(payload.modules)) latestModules = payload.modules
+        if (Array.isArray(payload.groupOrder)) latestGroupOrder = payload.groupOrder
+      }
       if (latestModules.length) uni.setStorageSync('modules', latestModules)
+      if (latestGroupOrder.length) uni.setStorageSync('groupOrder', latestGroupOrder)
     } catch (e) {
       // 保留本地缓存，避免模块接口短暂不可用时工作台空白
     }
     this.modules = uni.getStorageSync('modules') || []
+    this.groupOrder = uni.getStorageSync('groupOrder') || []
     this.recent = sanitizeModuleKeys(uni.getStorageSync('miniProgramRecent') || [], this.authorizedKeys)
     uni.setStorageSync('miniProgramRecent', this.recent)
     this.loadQuickStats()

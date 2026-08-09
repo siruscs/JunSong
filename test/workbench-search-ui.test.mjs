@@ -6,7 +6,7 @@ const source = readFileSync(new URL('../src/pages/workbench/index.vue', import.m
 
 test('builds searchable groups from authorized modules with descriptions', () => {
   assert.match(source, /filterModuleGroups/)
-  assert.match(source, /filterAuthorizedGroups\(groups,\s*this\.modules\)/)
+  assert.match(source, /filterAuthorizedGroups\(groups,\s*this\.modules(,\s*this\.groupOrder)?\)/)
   assert.match(source, /desc:\s*this\.getModuleDesc\(item\.key\)/)
   assert.match(source, /filterModuleGroups\(this\.authorizedGroups,\s*this\.searchQuery\)/)
 })
@@ -41,13 +41,17 @@ test('keeps member custom entry navigation intact', () => {
   assert.match(source, /mod\s*&&\s*mod\.customPage/)
 })
 
-test('filters member custom entries and uses true search results for scroll and empty state', () => {
-  assert.match(source, /filteredMemberGrowthEntries\(\)\s*\{[\s\S]*filterEntries\(this\.memberGrowthEntries,\s*this\.searchQuery\)/)
-  assert.match(source, /hasSearchResults\(\)\s*\{[\s\S]*this\.filteredGroups\.length[\s\S]*this\.filteredMemberGrowthEntries\.length/)
+test('all module groups (including 会员运营) are rendered via filteredGroups, no duplicated hardcoded operation block', () => {
+  // 所有业务分组都应走统一的 groups dictionary + filterAuthorizedGroups 渲染：
+  // ① scroll-view 里只存在一套 v-for="group in filteredGroups"
+  // ② 不再存在单独的"会员运营快捷入口"硬编码块（即不得使用 filteredMemberGrowthEntries 作为独立 section 的 v-if/v-for 条件）
+  // ③ hasSearchResults 仅以 filteredGroups 长度为权威（加上经营任务是附加区块，不计入）
+  assert.match(source, /<view class="section" v-for="group in filteredGroups" :key="group\.name">/)
+  assert.match(source, /<text class="section-title">\{\{ group\.name \}\}<\/text>/)
+  assert.doesNotMatch(source, /v-if="filteredMemberGrowthEntries\.length"/)
+  assert.doesNotMatch(source, /v-for="entry in filteredMemberGrowthEntries"/)
+  assert.match(source, /hasSearchResults\(\)\s*\{[\s\S]*this\.filteredGroups\.length/)
   assert.match(source, /<scroll-view[^>]*v-if="hasSearchResults"/)
-  assert.match(source, /v-if="filteredMemberGrowthEntries\.length"/)
-  assert.match(source, /v-for="entry in filteredMemberGrowthEntries"/)
-  assert.match(source, /\{\{ filteredMemberGrowthEntries\.length \}\}\s*个功能/)
 })
 
 test('shows search-specific empty copy and keeps no-permission copy for empty unsearched workbench', () => {

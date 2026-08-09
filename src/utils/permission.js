@@ -39,7 +39,7 @@ export function hasModulePermission(moduleKey, grants) {
   grants = getPermissionGrants(grants)
   if (grants.length === 0) return false
   const config = modules[moduleKey]
-  const aliases = [moduleKey, config?.authKey].filter(Boolean)
+  const aliases = [moduleKey, config?.authKey, ...(config?.altAuthKeys || [])].filter(Boolean)
   return grants.some((grant) => aliases.includes(grant))
 }
 
@@ -126,15 +126,82 @@ export function installNavigationGuard() {
   }
 }
 
-export function filterAuthorizedGroups(groups, grants) {
+export function filterAuthorizedGroups(groups, grants, groupOrder) {
   // 入口展示只以“后端 /mp/userinfo -> storage.modules 下发的模块授权”为准。
   // 不再用 action 权限做兜底，保证契约（permission.test.mjs 里 'action permission cannot grant access to a module entry'）成立。
   // 如果 BY 用户需要看到更多模块，修复点在 MemMpController#getAccessibleModules：
   // 当 mem_mp_role_module 漏配时，会按 MpModuleCatalog 的 view 权限做兜底再合并返回。
-  return groups.map((group) => ({
-    ...group,
-    items: group.items.filter((item) => hasModulePermission(item.key, grants))
-  })).filter((group) => group.items.length > 0)
+  //
+  // 顺序权威同样来自后端：
+  // grants（storage.modules / this.modules）由 MemMpController#getAccessibleModules
+  // 通过 MpModuleCatalogSupplier#sortModuleKeys 按 sys_mp_module_sort 排好序后返回，
+  // 这里按 grants 的下标对每个 group.items 重排，保证 PC「功能模块调整」的顺序立即生效。
+  //
+  // groupOrder 由后端 MpModuleCatalogSupplier#sortedGroupNames（sys_mp_module_sort 的 @GROUP@ 哨兵行）
+  // 下发，用于重排整个大分组（会员服务/会员运营/财务/系统/移动办公）的顺序。
+  //
+  // 实现刻意用了保守写法（普通 object 作下标表、不用 Map/Number.MAX_SAFE_INTEGER），
+  // 避免微信开发者工具早期启动阶段的沙箱兼容性问题。
+  var grantArr = Array.isArray(grants) ? grants : []
+  var orderIdx = {}
+  var i
+  for (i = 0; i < grantArr.length; i++) {
+    var k = grantArr[i]
+    if (k !== undefined && k !== null) {
+      orderIdx[String(k)] = i
+    }
+  }
+  var hasOrder = grantArr.length > 0
+  var res = []
+  for (i = 0; i < groups.length; i++) {
+    var group = groups[i]
+    var src = (group && group.items) ? group.items : []
+    var items = []
+    for (var j = 0; j < src.length; j++) {
+      if (hasModulePermission(src[j].key, grants)) items.push(src[j])
+    }
+    if (hasOrder && items.length > 1) {
+      items.sort(function (a, b) {
+        var ia = orderIdx[a.key]
+        var ib = orderIdx[b.key]
+        var ra = (ia === undefined || ia === null) ? 1000000000 : ia
+        var rb = (ib === undefined || ib === null) ? 1000000000 : ib
+        if (ra === rb) return 0
+        return ra < rb ? -1 : 1
+      })
+    }
+    if (items.length > 0) {
+      var outGroup = {}
+      for (var kk in group) {
+        if (Object.prototype.hasOwnProperty.call(group, kk)) outGroup[kk] = group[kk]
+      }
+      outGroup.items = items
+      res.push(outGroup)
+    }
+  }
+  // 按 groupOrder 对整个分组重排（兼容老版本未传时保持原有顺序）
+  var goArr = Array.isArray(groupOrder) ? groupOrder : []
+  if (goArr.length > 0) {
+    var groupIdx = {}
+    for (i = 0; i < goArr.length; i++) {
+      var gn = goArr[i]
+      if (gn !== undefined && gn !== null) {
+        groupIdx[String(gn)] = i
+      }
+    }
+    var missingOrder = 1000000000
+    res.sort(function (a, b) {
+      var na = a ? String(a.name || '') : ''
+      var nb = b ? String(b.name || '') : ''
+      var ia = groupIdx[na]
+      var ib = groupIdx[nb]
+      var ra = (ia === undefined || ia === null) ? missingOrder : ia
+      var rb = (ib === undefined || ib === null) ? missingOrder : ib
+      if (ra === rb) return 0
+      return ra < rb ? -1 : 1
+    })
+  }
+  return res
 }
 
 export function requireModulePermission(moduleKey, grants) {

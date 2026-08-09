@@ -287,6 +287,64 @@ export const modules = {
     actions: [{ name: '领取', action: 'receive', url: '/member/seckillRecord/claim/{id}', idKey: 'recordId', method: 'PUT' }]
   },
 
+  // ===== 会员运营 =====
+  // 小程序侧真实独立页面位于 /pages/member/{dashboard,growth,actions,points}.vue
+  // customPage 必须是独立 navigateTo 页面（不能是 tabbar 页 workbench/index），否则会被 uni.navigateTo 静默拒收。
+  dashboard: {
+    group: '会员运营',
+    title: '会员运营看板',
+    desc: '会员增长与分层洞察',
+    letter: '📊',
+    bg: 'rgba(8,124,240,0.08)',
+    color: '#087CF0',
+    customPage: '/pages/member/dashboard',
+    // 后端模块授权只下发 'member' 一个 key（不会下 dashboard/growth/actions/points 各自独立授权），
+    // 但 openModule→hasModulePermission 会按被点击的子模块 key 去查，因此这里用 authKey 指向后端真实的模块授权名。
+    // hasModulePermission 的 aliases = [key, authKey]，只要 grants 里有 'member' 即可通过。
+    authKey: 'member',
+    permissions: { view: ['member:member:list', 'member:member:query'] }
+  },
+  growth: {
+    group: '会员运营',
+    title: '成长体系',
+    desc: '等级、成长值与签到',
+    letter: '🌟',
+    bg: 'rgba(139,92,246,0.08)',
+    color: '#8B5CF6',
+    customPage: '/pages/member/growth',
+    authKey: 'member',
+    permissions: { view: ['member:member:list', 'member:member:query'] }
+  },
+  actions: {
+    group: '会员运营',
+    title: '增长动作',
+    desc: '待执行与已完成动作',
+    letter: '🎯',
+    bg: 'rgba(14,165,233,0.08)',
+    color: '#0EA5E9',
+    customPage: '/pages/member/actions',
+    authKey: 'member',
+    permissions: { view: ['member:member:list', 'member:member:query'] }
+  },
+  points: {
+    group: '会员运营',
+    title: '积分运营',
+    desc: '积分流水与待领取兑换',
+    letter: '🎯',
+    bg: 'rgba(245,158,11,0.08)',
+    color: '#F59E0B',
+    customPage: '/pages/member/points',
+    // 积分运营除了 member 大模块授权，还额外接受 pointsRecord / pointsExchange 任意一项授权（openMemberPage 里的原判定逻辑一致）
+    altAuthKeys: ['pointsRecord', 'pointsExchange'],
+    authKey: 'member',
+    permissions: {
+      view: [
+        'member:pointsRecord:list', 'member:pointsRecord:query',
+        'member:pointsExchange:list', 'member:pointsExchange:query'
+      ]
+    }
+  },
+
   // ===== 财务管理 =====
   expense: {
     group: '财务管理',
@@ -369,7 +427,7 @@ export const modules = {
     ]
   },
   configSync: {
-    group: '会员服务',
+    group: '系统管理',
     title: '配置同步',
     customPage: '/pages/config-sync/index',
     permissions: { view: ['member:configSync:query'] }
@@ -575,6 +633,8 @@ export const modules = {
     group: '财务管理',
     title: '库存流水',
     customPage: '/pages/stock-ledger/index',
+    // 库存流水是库存查询的三级页面，不应单独授权；有 stockCost 权限即可访问
+    authKey: 'stockCost',
     permissions: { view: ['finance:stockLedger:list', 'finance:stock:ledger:query', 'finance:stock:ledger:list'] }
   },
   stockAdjustment: {
@@ -686,15 +746,28 @@ export const moduleList = Object.keys(modules).map((key) => ({ key, ...modules[k
 // 会员服务分组内顺序与 PC 端 mpPerm 页面、后端 MpModuleCatalog 完全一致
 const memberServiceOrder = ['member', 'memberPurchase', 'memberPurchaseReturn', 'memberLevel', 'campaignPolicy',
   'pointsGoods', 'pointsRule', 'pointsRecord', 'pointsExchange',
-  'seckill', 'seckillRecord', 'configSync'
+  'seckill', 'seckillRecord'
 ]
 const orderedMemberServices = memberServiceOrder.map((key) => ({ key, ...modules[key] })).filter((item) => item && item.group === '会员服务')
 
+// 会员运营分组内顺序（dashboard/growth/actions/points），与后端 MpModuleCatalog + PC DEFAULT_MODULES 一致
+const operationOrder = ['dashboard', 'growth', 'actions', 'points']
+const orderedOperation = operationOrder.map((key) => ({ key, ...modules[key] })).filter((item) => item && item.group === '会员运营')
+
+// 系统管理分组内顺序（userManage / deptManage / configSync），与后端 MpModuleCatalog + PC DEFAULT_MODULES 一致
+const systemOrder = ['userManage', 'deptManage', 'configSync']
+const orderedSystem = systemOrder.map((key) => ({ key, ...modules[key] })).filter((item) => item && item.group === '系统管理')
+
+// 移动办公分组内顺序（wfTodo/wfDone/wfNotify），与后端 MpModuleCatalog + PC DEFAULT_MODULES 一致
+const officeOrder = ['wfTodo', 'wfDone', 'wfNotify']
+const orderedOffice = officeOrder.map((key) => ({ key, ...modules[key] })).filter((item) => item && item.group === '移动办公')
+
 export const groups = [
   { name: '会员服务', items: orderedMemberServices },
+  { name: '会员运营', items: orderedOperation },
   { name: '财务管理', items: moduleList.filter((item) => item.group === '财务管理') },
-  { name: '系统管理', items: moduleList.filter((item) => item.group === '系统管理') },
-  { name: '移动办公', items: moduleList.filter((item) => item.group === '移动办公') }
+  { name: '系统管理', items: orderedSystem },
+  { name: '移动办公', items: orderedOffice }
 ]
 
 export function getModule(key) {

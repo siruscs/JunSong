@@ -1082,13 +1082,28 @@ export default {
           withContextMeta: true
         })
         if (res.contextMeta?.staleContext) return
-        const modules = res.data || res || []
-        const moduleList = Array.isArray(modules) ? modules : []
+        // 响应结构兼容：新版是 { modules: [...], groupOrder: [...] }，旧版小程序只认数组
+        const payload = res.data || res || {}
+        var moduleList = []
+        var groupOrderList = []
+        if (Array.isArray(payload)) {
+          moduleList = payload
+        } else if (payload && typeof payload === 'object') {
+          if (Array.isArray(payload.modules)) {
+            moduleList = payload.modules
+          }
+          if (Array.isArray(payload.groupOrder)) {
+            groupOrderList = payload.groupOrder
+          }
+        }
         // 小程序模块权限只以后端 /member/mp/modules 下发为准，
         // 即使是系统管理员也不再本地 bypass，
         // 保证 PC 端“小程序权限”清空后小程序端真实看不到对应模块。
         this.modules = moduleList
         uni.setStorageSync('modules', this.modules)
+        if (groupOrderList.length > 0) {
+          uni.setStorageSync('groupOrder', groupOrderList)
+        }
       } catch (e) {
         this.logRequestFailure('modules refresh failed', e)
       }

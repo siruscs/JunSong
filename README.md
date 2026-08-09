@@ -21,17 +21,20 @@
 
 平台具备以下特色：
 
-- **现代技术栈**：后端 Spring Boot 4.x + Spring Cloud 2025.x + JDK 17，前端 Vue 3.5 + Vite 8 + TypeScript + Element Plus。
-- **微服务架构**：以 Nacos 为注册/配置中心，Gateway 统一网关，Redis 鉴权，按业务域拆分独立服务。
+- **现代技术栈**：后端 Spring Boot 4.0.3 + Spring Cloud 2025.1.0 + Spring Cloud Alibaba 2025.1.0.0 + JDK 17，前端 Vue 3.5 + Vite 8 + TS 6 + Element Plus 2.14，小程序 uni-app 3.0 + Vue 3.4 + Pinia 2.1。
+- **微服务架构**：以 Nacos V3 为注册/配置中心，Gateway 统一网关，JWT 鉴权，按业务域拆分 8 个独立服务。
+- **多租户与数据权限**：基于 `TenantContext` + `TenantSqlInterceptor` 的 SQL 级租户隔离，`@DataScope` 注解的部门级数据权限双控。
+- **幂等性框架**：自研 `@Idempotent` 注解 + `X-Idempotency-Key` 请求头，Redis 快速通道 + DB 持久化兜底，防止重复提交。
 - **经营决策**：提供经营总览、财务概览、会员概览、系统概览、待办任务、异常预警和复盘动作入口。
-- **财务闭环**：覆盖进销存、费用、成本、投资分润、应收催收、现金流预测、经营复盘、质量评分和知识库。
+- **财务闭环**：覆盖进销存、库存三层（快照+流水+成本层）、费用核销/反核销、投资分润、应收催收、现金流预测、经营复盘、质量评分和知识库。
 - **会员增长**：覆盖会员资料、积分、等级、签到、分层、增长动作、活动 ROI 和生命周期任务。
 - **开放平台**：提供 HMAC-SHA256 签名鉴权、可信 `X-Open-*` 上下文、应用级限流、多语言 SDK、Webhook 订阅、调用日志和内部接口隔离。
 - **业务驱动**：覆盖门店地图选址、门店开业流程、Flowable 工作流、低代码表单和移动端运营场景。
 - **低代码能力**：基于元数据可视化配置业务表单与审批流程，自动装配流程变量，加速业务交付。
 - **地理可视化**：集成高德地图，支持门店地图查询、门店密度热力分析、地图选点回填省市区街道。
-- **可观测性与治理**：Prometheus + Grafana + Loki 全链路监控，叠加敏感数据脱敏、高危操作审计、数据归档、告警事件和性能基线。
+- **可观测性与治理**：Prometheus + Grafana + Loki 全链路监控，Spring Boot Admin 实例健康，叠加敏感数据脱敏、高危操作审计、数据归档、告警事件和性能基线。
 - **云原生就绪**：GitHub Actions CI/CD 流水线 + Kubernetes 部署清单（含 HPA 自动扩缩、Ingress 路由）。
+- **双端协同**：PC 管理后台与微信小程序「峻松店记」共享同一套后端权限码与 API，移动端覆盖会员运营、库存查询、进货退货、借支核销、工作流待办等场景。
 
 ---
 
@@ -45,14 +48,25 @@
 | Spring Cloud | 2025.1.0 | 微服务框架 |
 | Spring Cloud Alibaba | 2025.1.0.0 | 阿里微服务套件 |
 | JDK | 17 | 运行环境 |
-| Nacos | 3.x | 注册中心 / 配置中心 |
-| MyBatis / PageHelper | - | 持久层 / 分页 |
-| Redis | - | 缓存 / 鉴权 |
-| Flowable | - | 工作流引擎 |
-| Sentinel | - | 流量控制 |
-| MinIO | - | 对象存储 |
-| JJWT | - | 令牌鉴权 |
-| SpringDoc OpenAPI | - | 接口文档 |
+| Nacos | 3.x（V3 API） | 注册中心 / 配置中心（grpc 长连接） |
+| MyBatis | 4.0.1 | 持久层（XML 映射 + 多租户 SQL 拦截） |
+| PageHelper | 2.1.0 | 分页插件 |
+| dynamic-datasource | 4.5.0 | 多数据源（@Master/@Slave） |
+| Druid | 1.2.28 | 数据库连接池 / SQL 监控 |
+| Redis | 6.0+（PROD 8.x） | 缓存 / 会话 / 鉴权 / 限流计数器 |
+| Flowable | - | 工作流引擎（BPMN 2.0） |
+| Sentinel | - | 流量控制 / 熔断降级 |
+| Seata | - | 分布式事务（AT 模式预留） |
+| MinIO | 8.2.2 | S3 兼容对象存储 |
+| JJWT | 0.9.1 | JWT 令牌签发与校验 |
+| SpringDoc OpenAPI | 3.0.2 | 接口文档（Knife4j 4.5.0 增强） |
+| FastJson2 | 2.0.61 | JSON 序列化（Redis 存储） |
+| Kaptcha | 2.3.3 | 图形验证码 |
+| Apache POI | 4.1.2 | Excel 导入导出 |
+| Velocity | 2.3 | 代码生成模板引擎 |
+| TransmittableThreadLocal | 2.14.5 | 跨线程上下文传递（链路日志） |
+| JSqlParser | 5.3 | SQL 解析（多租户拦截器） |
+| Spring Boot Admin | 4.0.2 | 微服务实例健康监控 |
 | Micrometer | - | 指标采集（Prometheus） |
 
 ### 前端
@@ -63,127 +77,197 @@
 | Vite | 8 | 构建工具 |
 | TypeScript | 6 | 脚本语言 |
 | Element Plus | 2.14 | UI 组件库 |
-| Pinia | 3 | 状态管理 |
+| Pinia | 3 | 状态管理（含持久化插件） |
 | Vue Router | 4 | 路由管理 |
 | ECharts | 6 | 数据图表 |
+| bpmn-js | 18 | BPMN 流程图渲染（工作流设计器） |
 | Leaflet | 1.9 | 地图渲染（高德瓦片） |
+| SortableJS | 1.15 | 拖拽排序（模块卡片 / 表格行） |
+| ExcelJS | 4.4 | Excel 读写 |
 | Axios | 1.x | HTTP 客户端 |
+| JSEncrypt | 3.0 | RSA 加密（登录密码） |
+| STOMP.js + SockJS | 7.3 / 1.6 | WebSocket 实时通信 |
+| unplugin-auto-import | 21 | API 自动导入 |
+| unplugin-vue-components | 32 | 组件自动导入 |
 
-### 移动端
+### 移动端（微信小程序「峻松店记」）
 
-- **uni-app + Vue 3** 构建的微信小程序「峻松店记」，承载会员与财务运营的移动场景。
+| 技术 | 版本 | 说明 |
+| :--- | :--- | :--- |
+| uni-app | 3.0.0-5000 | 跨端框架（@dcloudio） |
+| Vue | 3.4 | 视图框架 |
+| Pinia | 2.1 | 状态管理 |
+| Vite | 5.2 | 构建工具 |
+| WeChat MiniProgram | - | 目标平台 |
+
+> 小程序承载会员运营、库存查询、进货单、退货单、借支、费用核销、工作流待办/已办/通知等移动场景，与 PC 端共享同一套后端权限码与 API。
 
 ---
 
 ## 三、技术架构图
 
+> 采用 **六层分层架构**：用户接入层 → 网关治理层 → 业务服务层 → 中间件治理层 → 数据存储层 → DevOps 可观测层。每层标注核心技术框架与版本，体现微服务治理、双端协同、云原生与全链路可观测能力。
+
 ```mermaid
 flowchart TB
-    subgraph Deploy["部署层"]
+    %% ============ 样式定义（深色渐变 / 高对比） ============
+    classDef client fill:#1e293b,stroke:#38bdf8,color:#e0f2fe,font-weight:bold
+    classDef gw fill:#7c2d12,stroke:#fb923c,color:#fff7ed,font-weight:bold
+    classDef auth fill:#831843,stroke:#f472b6,color:#fce7f3,font-weight:bold
+    classDef svc fill:#064e3b,stroke:#34d399,color:#d1fae5,font-weight:bold
+    classDef gov fill:#312e81,stroke:#818cf8,color:#e0e7ff,font-weight:bold
+    classDef data fill:#92400e,stroke:#fbbf24,color:#fef3c7,font-weight:bold
+    classDef ops fill:#0f172a,stroke:#94a3b8,color:#f1f5f9,font-weight:bold
+    classDef infra fill:#1e1b4b,stroke:#a78bfa,color:#ede9fe,font-weight:bold
+
+    %% ============ ① 用户接入层 ============
+    subgraph L1["🌐 用户接入层 · Multi-Channel"]
+        direction LR
+        WEB["🖥️ PC 管理后台<br/>Vue 3.5 · Vite 8 · TS 6<br/>Element Plus 2.14 · Pinia 3 · ECharts 6"]
+        MP["📱 微信小程序「峻松店记」<br/>uni-app · Vue 3 · Pinia<br/>WeChat MiniProgram"]
+        SDK["🔌 开放平台 SDK<br/>OpenAPI Generator<br/>Java / Python / Go / JS"]
+        APP["👤 ISV / 第三方应用<br/>HMAC-SHA256 签名"]
+    end
+
+    %% ============ ② 网关治理层 ============
+    subgraph L2["🛡️ 网关治理层 · API Gateway"]
+        direction LR
+        GW["⚡ Spring Cloud Gateway 2025.1<br/>junsong-gateway :8080<br/>路由转发 · JWT 鉴权 · 黑名单 · 跨域"]
+        SENT["🚦 Sentinel · 流量控制<br/>限流 · 熔断 · 降级 · 热点参数"]
+        HMAC["🔐 ApiKeyAuthFilter<br/>开放 API 签名认证<br/>Nonce 防重放 · 时间戳 5min"]
+        RATE["⏱️ RateLimitFilter<br/>Redis 计数器 · 应用级日配额"]
+    end
+
+    %% ============ ③ 认证中心 ============
+    subgraph L3["🎫 认证中心 · Auth"]
+        AUTH["junsong-auth :9200<br/>Spring Boot 4.0.3<br/>登录 · 令牌签发 · JJWT 鉴权<br/>图形验证码 Kaptcha"]
+    end
+
+    %% ============ ④ 业务服务层 ============
+    subgraph L4["💼 业务服务层 · Microservices<br/>Spring Boot 4.0.3 · Spring Cloud Alibaba 2025.1.0.0 · JDK 17"]
         direction TB
-        Docker["Docker / Docker Compose<br/>容器化部署"]
-        K8S["Kubernetes<br/>（可选）容器编排"]
+        SYS["junsong-system :9201<br/>RBAC · 门店地图 · 治理审计<br/>行政区域 · 数据归档 · 告警事件"]
+        MEM["junsong-member<br/>会员档案 · 积分商城 · 等级卡<br/>增长动作 · 活动 ROI · 小程序权限"]
+        FIN["junsong-finance :9205<br/>进销存 · 费用核销/反核销<br/>投资分润 · 现金流预测 · 成本核算"]
+        WF["junsong-workflow<br/>Flowable BPM · 低代码引擎<br/>会签/加签/抄送 · 节点字段权限"]
+        OPEN["junsong-open :9208<br/>应用密钥 · Webhook 订阅<br/>可信上下文 · 调用日志 · 内部隔离"]
+        GEN["junsong-gen :9202<br/>代码生成 · Velocity 模板"]
+        JOB["junsong-job :9203<br/>Quartz 定时任务调度"]
+        FILE["junsong-file :9300<br/>MinIO 对象存储 · 附件图片"]
     end
 
-    subgraph Client["客户端层"]
-        WEB["Web 管理后台<br/>Vue3 + Vite + TS + Element Plus"]
-        MP["微信小程序<br/>uni-app + Vue3"]
+    %% ============ ⑤ 中间件治理层 ============
+    subgraph L5["⚙️ 微服务治理层 · Governance"]
+        direction LR
+        NACOS["📋 Nacos V3 · 8848<br/>服务注册发现 · 配置中心<br/>grpc 长连接 · 多租户命名空间"]
+        FEIGN["🔗 OpenFeign + LoadBalancer<br/>声明式 REST · lb://服务名寻址<br/>上下文透传 · Fallback 降级"]
+        SEATA["🌐 Seata · 分布式事务<br/>AT 模式 · 全局锁 · TCC 补偿"]
+        MYBATIS["🗄️ MyBatis 4 + PageHelper<br/>JSqlParser · 多租户 SQL 拦截<br/>动态数据源 dynamic-ds 4.5"]
+        DRUID["💊 Druid 1.2.28<br/>连接池 · SQL 监控 · 慢查询"]
+        LOG["📜 Logback + TTL<br/>transmittable-thread-local<br/>链路日志 · 操作审计"]
     end
 
-    subgraph Gateway["网关层"]
-        GW["Spring Cloud Gateway<br/>junsong-gateway :8080<br/>路由 / 鉴权 / 限流 / Sentinel<br/>开放API: HMAC签名 + 版本路由"]
+    %% ============ ⑥ 数据存储层 ============
+    subgraph L6["💾 数据存储层 · Persistence"]
+        direction LR
+        MYSQL[("🗄️ MySQL 8.0<br/>业务数据持久化<br/>utf8mb4 · 194 表")]
+        REDIS[("⚡ Redis 8.x<br/>缓存 · 会话 · 鉴权令牌<br/>限流计数器 · 排行榜")]
+        MINIO[("📦 MinIO<br/>S3 兼容对象存储<br/>附件 · 图片 · 导出文件")]
+        AMAP["🗺️ 高德地图 API<br/>地理编码 · 逆地理编码<br/>POI 检索 · 瓦片服务"]
     end
 
-    subgraph Auth["认证中心"]
-        AUTH["Spring Boot<br/>junsong-auth :9200<br/>登录 / 令牌 / JWT 鉴权"]
+    %% ============ ⑦ DevOps 与可观测层 ============
+    subgraph L7["🛰️ DevOps · 可观测性 · Cloud Native"]
+        direction LR
+        DOCKER["🐳 Docker / Compose<br/>容器化部署 · 多服务编排"]
+        K8S["☸️ Kubernetes<br/>Deployment · HPA · Ingress<br/>ConfigMap · 36 份清单"]
+        CI["🔄 GitHub Actions<br/>CI 编译 · CD-Docker · CD-K8s<br/>3 条流水线"]
+        PROM["📊 Prometheus :9090<br/>JVM · HTTP · 自定义指标"]
+        GRAF["📈 Grafana :3000<br/>可视化面板 · 告警规则"]
+        LOKI["📚 Loki + Promtail :3100<br/>日志聚合 · 容器日志采集"]
+        ADMIN["🩺 Spring Boot Admin 4.0.2<br/>服务健康 · 实例监控"]
     end
 
-    subgraph Business["业务服务层<br/>Spring Boot + Spring Cloud Alibaba<br/>服务间：OpenFeign + LoadBalancer"]
-        SYS["Spring Boot<br/>junsong-system :9201<br/>系统管理 / 门店地图 / 治理审计 / 归档告警"]
-        MEM["Spring Boot<br/>junsong-member<br/>会员 / 积分 / 增长动作 / 活动 ROI"]
-        FIN["Spring Boot<br/>junsong-finance<br/>进销存 / 应收催收 / 现金流 / 预测辅助"]
-        WF["Spring Boot<br/>junsong-workflow<br/>Flowable 工作流 / 低代码引擎"]
-        OPEN["Spring Boot<br/>junsong-open :9208<br/>开放平台 / 应用密钥<br/>可信上下文 / Webhook / 调用日志"]
-        GEN["Spring Boot<br/>junsong-gen :9202<br/>代码生成"]
-        JOB["Spring Boot<br/>junsong-job :9203<br/>定时任务调度"]
-        FILE["Spring Boot<br/>junsong-file :9300<br/>文件服务 / MinIO 存储"]
-    end
+    %% ============ 主体调用链 ============
+    WEB --> GW
+    MP --> GW
+    SDK --> GW
+    APP --> GW
 
-    subgraph Monitor["可观测性层"]
-        PROM["Prometheus :9090<br/>指标采集"]
-        GRAF["Grafana :3000<br/>可视化面板"]
-        LOKI["Loki :3100<br/>日志聚合"]
-    end
+    GW --> AUTH
+    GW --> SYS
+    GW --> MEM
+    GW --> FIN
+    GW --> WF
+    GW --> OPEN
+    GW --> GEN
+    GW --> JOB
+    GW --> FILE
 
-    subgraph Infra["基础设施层<br/>Docker 容器化"]
-        NACOS["Nacos 3.x<br/>Docker 部署<br/>注册中心 / 配置中心 / 服务发现"]
-        REDIS[("Redis<br/>Docker 部署<br/>缓存 / 会话 / 鉴权")]
-        MYSQL[("MySQL 8.0<br/>Docker 部署<br/>业务数据持久化")]
-        MINIO[("MinIO<br/>Docker 部署<br/>对象存储")]
-        SENTINEL["Sentinel<br/>Docker 部署<br/>流量控制 / 熔断"]
-        AMAP["高德地图 API<br/>地理编码 / 逆地理编码 / POI"]
-    end
+    GW -. "限流熔断" .-> SENT
+    GW -. "开放API鉴权" .-> HMAC
+    GW -. "应用限流" .-> RATE
 
-    WEB & MP --> Gateway
-    Gateway --> Auth
-    Gateway --> SYS
-    Gateway --> MEM
-    Gateway --> FIN
-    Gateway --> WF
-    Gateway --> OPEN
-    Gateway --> GEN
-    Gateway --> JOB
-    Gateway --> FILE
+    %% 开放平台聚合
+    OPEN -. "聚合能力" .-> WF
+    OPEN -. "聚合能力" .-> MEM
+    OPEN -. "聚合能力" .-> SYS
 
-    %% 开放平台差异化能力聚合
-    OPEN -. "聚合调用" .-> WF
-    OPEN -. "聚合调用" .-> MEM
-    OPEN -. "聚合调用" .-> SYS
-
-    %% 可观测性采集
-    PROM -. "metrics采集" .-> Gateway
-    PROM -. "metrics采集" .-> Business
-    GRAF --> PROM
-    GRAF --> LOKI
-
-    %% 服务间调用：OpenFeign 声明式 REST（基于 Nacos 服务发现 + LoadBalancer 负载均衡）
-    AUTH -. "Feign 调用<br/>查用户/权限" .-> SYS
+    %% 服务间 Feign
+    AUTH -. "Feign 查用户/权限" .-> SYS
     MEM -. "Feign 调用" .-> SYS
     FIN -. "Feign 调用" .-> SYS
-    WF -. "Feign 调用" .-> SYS
+    WF -. "Feign 业务联动" .-> FIN
     MEM -. "Feign 文件上传" .-> FILE
     FIN -. "Feign 文件上传" .-> FILE
-    WF -. "Feign 业务联动" .-> FIN
 
-    %% 服务发现与负载均衡：所有服务注册到 Nacos，Feign 经 LoadBalancer 选址
-    Business -. "服务注册/发现" .-> NACOS
-    AUTH -. "服务注册/发现" .-> NACOS
+    %% 治理层
+    SYS & MEM & FIN & WF & OPEN & GEN & JOB & FILE -. "注册/订阅" .-> NACOS
+    AUTH -. "注册" .-> NACOS
+    SYS & MEM & FIN & WF & OPEN & GEN & JOB & FILE -. "Feign + LB" .-> FEIGN
+    SYS & MEM & FIN -. "MyBatis + Druid" .-> MYBATIS
+    MYBATIS -. "连接池" .-> DRUID
+    SYS & MEM & FIN & WF -. "链路日志" .-> LOG
 
+    %% 数据层访问
+    MYBATIS --> MYSQL
     AUTH -.-> REDIS
+    GW -.-> REDIS
+    FILE --> MINIO
     SYS --> AMAP
 
-    Business --> NACOS
-    Business --> MYSQL
-    Business -.-> REDIS
-    FILE --> MINIO
-    Gateway -.-> SENTINEL
+    %% DevOps 采集
+    DOCKER --> K8S
+    K8S --> CI
+    PROM -. "metrics" .-> GW
+    PROM -. "metrics" .-> L4
+    GRAF --> PROM
+    GRAF --> LOKI
+    ADMIN -. "健康检查" .-> L4
 
-    Deploy --> Gateway
-    Deploy --> Auth
-    Deploy --> Business
-    Deploy --> NACOS
-    Deploy --> REDIS
-    Deploy --> MYSQL
-    Deploy --> MINIO
-    Deploy --> SENTINEL
+    %% 样式应用
+    class WEB,MP,SDK,APP client
+    class GW,SENT,HMAC,RATE gw
+    class AUTH auth
+    class SYS,MEM,FIN,WF,OPEN,GEN,JOB,FILE svc
+    class NACOS,FEIGN,SEATA,MYBATIS,DRUID,LOG gov
+    class MYSQL,REDIS,MINIO,AMAP data
+    class DOCKER,K8S,CI,PROM,GRAF,LOKI,ADMIN ops
 ```
 
-> **服务间调用技术说明**
-> - **OpenFeign**：服务间采用声明式 REST 调用，接口定义集中在 `junsong-api` 模块（如 `junsong-api-system`），调用方注入即用。
-> - **Nacos 服务发现**：所有服务启动即注册到 Nacos，Feign 通过服务名（`lb://服务名`）寻址，无需硬编码 IP。
-> - **Spring Cloud LoadBalancer**：Feign 调用经客户端负载均衡在多实例间选址。
-> - **Sentinel**：为 Feign 调用与网关入口提供流量控制与熔断降级。
-> - **请求上下文透传**：Feign 拦截器自动透传当前用户令牌与上下文，保证下游服务的鉴权与数据权限一致。
+> **架构亮点 · Highlights**
+>
+> | 维度 | 能力 |
+> | :--- | :--- |
+> | 🔷 **现代技术栈** | 后端 Spring Boot 4.0.3 + Spring Cloud 2025.1.0 + Spring Cloud Alibaba 2025.1.0.0 + JDK 17；前端 Vue 3.5 + Vite 8 + TS 6 + Element Plus 2.14 |
+> | 🧩 **微服务治理** | Nacos V3 注册/配置 · OpenFeign + LoadBalancer 声明式调用 · Sentinel 限流熔断 · Seata 分布式事务 · Fallback 降级 |
+> | 🔐 **安全防御** | JWT 鉴权 · HMAC-SHA256 签名 · Nonce 防重放 · `@InnerAuth` + `X-Inner-Token` 内部接口隔离 · 数据脱敏 · RBAC + 数据权限双控 |
+> | 📊 **数据层** | MySQL 8.0 + Druid 1.2.28 连接池 · Redis 8.x 缓存/会话 · MinIO S3 兼容存储 · 多租户 SQL 拦截器 · 动态数据源 |
+> | 🛰️ **云原生** | Docker / Docker Compose 一键部署 · Kubernetes HPA 自动扩缩 · GitHub Actions CI/CD 3 条流水线 |
+> | 📈 **全链路可观测** | Prometheus 指标采集 · Grafana 可视化 · Loki 日志聚合 · Spring Boot Admin 实例健康 · Logback + TTL 链路追踪 |
+> | 🌐 **多端协同** | PC 管理后台 · 微信小程序「峻松店记」· 开放平台多语言 SDK（Java/Python/Go/JS）· ISV 第三方应用接入 |
+> | 🗺️ **LBS 能力** | 高德地图 · 地理编码 · 逆地理编码 · POI 检索 · 门店密度热力分析 · Leaflet 瓦片渲染 |
+> | ⚙️ **业务中台** | Flowable BPM 工作流 · 低代码表单引擎 · 多租户 · 多门店数据权限 · 经营驾驶舱 · 现金流预测 |
 
 ---
 
@@ -191,30 +275,31 @@ flowchart TB
 
 ```
 com.junsong
-├── junsong-gateway          // 网关模块 [8080]：路由转发、鉴权、限流
-├── junsong-auth             // 认证中心 [9200]：登录、令牌、权限校验
-├── junsong-api              // 接口模块：对外 Feign 接口定义
-├── junsong-common           // 通用模块
-│   ├── junsong-common-core          // 核心工具
-│   ├── junsong-common-datascope     // 数据权限
-│   ├── junsong-common-datasource    // 多数据源
-│   ├── junsong-common-log           // 操作日志
-│   ├── junsong-common-redis         // 缓存服务
-│   ├── junsong-common-security      // 安全模块
-│   ├── junsong-common-sensitive     // 数据脱敏
-│   └── junsong-common-swagger       // 接口文档
-├── junsong-modules          // 业务模块
-│   ├── junsong-system       // 系统管理 [9201]：RBAC、门店地图、治理审计、归档告警
-│   ├── junsong-member       // 会员营销：会员、积分、等级、签到、增长动作、活动 ROI
-│   ├── junsong-finance      // 财务核算：进销存、应收催收、现金流、预测辅助、票据 OCR
-│   ├── junsong-workflow     // 工作流：Flowable 引擎 + 低代码配置引擎
-│   ├── junsong-open         // 开放平台 [9208]：应用管理、API Key、Webhook、调用日志、可信上下文
-│   ├── junsong-gen          // 代码生成 [9202]
-│   ├── junsong-job          // 定时任务 [9203]
-│   └── junsong-file         // 文件服务 [9300]
-├── junsong-visual           // 图形化管理
-├── junsong-ui-v3            // 前端工程 (Vue3 + Vite + TS)
-└── junsong-miniprogram      // 微信小程序 (uni-app + Vue3)
+├── junsong-gateway          // 网关模块 [8080]：路由转发、JWT 鉴权、限流、HMAC 签名、应用级限流
+├── junsong-auth             // 认证中心 [9200]：登录、令牌签发、JJWT 鉴权、图形验证码
+├── junsong-api              // 接口模块：对外 Feign 接口定义（junsong-api-system 等）
+├── junsong-common           // 通用模块（9 个子模块）
+│   ├── junsong-common-core          // 核心工具 · 多租户上下文 · 幂等性框架 · XSS 过滤 · 工作流实体基类
+│   ├── junsong-common-datascope     // 数据权限（@DataScope 注解 + AOP）
+│   ├── junsong-common-datasource    // 多数据源（@Master/@Slave + dynamic-ds 4.5）
+│   ├── junsong-common-log           // 操作日志（@Log 注解 + 异步落库）
+│   ├── junsong-common-redis         // 缓存服务 · FastJson2 序列化 · 幂等性快速通道
+│   ├── junsong-common-seata         // 分布式事务（Seata AT 模式预留）
+│   ├── junsong-common-security      // 安全模块 · @RequiresPermissions/@RequiresRoles · @InnerAuth · Feign 拦截器
+│   ├── junsong-common-sensitive     // 数据脱敏（@Sensitive 注解 + Jackson 序列化器）
+│   └── junsong-common-swagger       // 接口文档（SpringDoc OpenAPI 自动配置）
+├── junsong-modules          // 业务模块（8 个微服务）
+│   ├── junsong-system       // 系统管理 [9201]：RBAC、行政区域、门店地图、治理审计、归档告警
+│   ├── junsong-member       // 会员营销：会员档案、积分商城、等级、增长动作、活动 ROI、小程序权限
+│   ├── junsong-finance      // 财务核算 [9205]：进销存、费用核销/反核销、投资分润、现金流预测、成本核算
+│   ├── junsong-workflow     // 工作流：Flowable BPM + 低代码配置引擎
+│   ├── junsong-open         // 开放平台 [9208]：应用密钥、Webhook、调用日志、内部接口隔离
+│   ├── junsong-gen          // 代码生成 [9202]：Velocity 模板 + 前后端 CRUD 代码
+│   ├── junsong-job          // 定时任务 [9203]：Quartz 调度 + 调度日志
+│   └── junsong-file         // 文件服务 [9300]：MinIO 对象存储 + 本地存储
+├── junsong-visual           // 图形化管理（junsong-monitor：Spring Boot Admin 实例监控）
+├── junsong-ui-v3            // 前端工程（Vue 3.5 + Vite 8 + TS 6 + Element Plus 2.14）
+└── junsong-miniprogram      // 微信小程序「峻松店记」（uni-app 3.0 + Vue 3.4 + Pinia 2.1）
 ```
 
 ---
@@ -234,13 +319,15 @@ com.junsong
 - 营销活动：秒杀活动与秒杀记录、退款申请。
 - 小程序管理与权限、会员/秒杀运营报表。
 
-### 财务核算（junsong-finance）
-- 进销存：商品、供应商、进货单、销售记录、费用记录、借支管理。
-- 投资分润：投资人管理、投资款记录、投资人返款、店面分润配置、分润结转。
-- 经营闭环：应收催收、承诺回款、现金流预测、复盘任务、复盘质量评分和复盘知识库。
-- 预测辅助：现金流、应收、会员动作和库存风险的可解释预测，以及只读 what-if 模拟。
-- 核算报表：核算周期、成本核算，及成本/费用/利润/分润/销售/库存多维报表。
-- 票据 OCR 识别。
+### 财务核算（junsong-finance :9205）
+- **进销存**：商品、供应商、进货单、销售记录、销售收款、费用记录、借支管理。
+- **库存三层**：库存快照 + 库存流水 + 库存账（成本层），支持库存初始化、库存盘点、库存调整。
+- **费用核销**：批量核销/反核销、幂等性保护、条件更新 + 乐观锁、快照校验、下游使用拦截、LEGACY 批次保护。
+- **投资分润**：投资人管理、投资款记录、投资人返款、店面分润配置、分润结转。
+- **经营闭环**：应收催收、承诺回款、现金流预测、复盘任务、复盘质量评分、复盘知识库。
+- **预测辅助**：现金流、应收、会员动作和库存风险的可解释预测，以及只读 what-if 模拟。
+- **核算报表**：会计期间、复合核算池、移动加权成本核算，及成本/费用/利润/分润/销售/库存多维报表。
+- **票据 OCR 识别**（基于 PaddleOCR）。
 
 ### 工作流与低代码（junsong-workflow）
 - **引擎层**：基于 Flowable 的流程定义、流程实例（发起/查询/终止）、任务处理（待办/已办/签收/审批/驳回/转办）、历史流转与流程跟踪图。
@@ -276,15 +363,18 @@ com.junsong
 
 ## 六、环境要求
 
-| 组件 | 版本要求 |
-| :--- | :--- |
-| JDK | 17+ |
-| Maven | 3.8+ |
-| Node.js | 18+ |
-| MySQL | 8.0+ |
-| Redis | 6.0+ |
-| Nacos | 3.x |
-| MinIO | 最新稳定版 |
+| 组件 | 版本要求 | 说明 |
+| :--- | :--- | :--- |
+| JDK | 17+ | 后端运行环境 |
+| Maven | 3.8+ | 后端构建 |
+| Node.js | 18+ | 前端 / 小程序构建 |
+| pnpm | 8+ | 前端包管理（推荐） |
+| MySQL | 8.0+ | 业务数据持久化（utf8mb4） |
+| Redis | 6.0+（PROD 实际 8.x） | 缓存 / 会话 / 鉴权 |
+| Nacos | 3.x | 注册中心 / 配置中心（V3 API） |
+| MinIO | 最新稳定版 | 对象存储 |
+| Docker & Compose | 最新稳定版 | 容器化部署 |
+| 微信开发者工具 | 最新稳定版 | 小程序调试与上传 |
 
 ---
 
@@ -304,7 +394,13 @@ cp .env.example .env
 
 ### 2. 初始化数据库
 
-导入 `sql/` 目录下的初始化脚本（业务库、配置库等），具体顺序参考脚本命名。
+使用 v1.1.0 一键初始化脚本（194 张业务表 DDL + 27 张基础表预置数据）：
+
+```bash
+bin/deploy-sql.sh sql/JunSong-Cloud-v1.1.0-数据库初始化-系统库.sql dev
+```
+
+> 所有非 ASCII SQL 已强制 `SET NAMES utf8mb4;`，客户端使用 `--default-character-set=utf8mb4`。
 
 ### 3. 启动后端
 
@@ -317,17 +413,39 @@ cd docker
 docker compose up -d
 ```
 
-### 4. 启动前端
+### 4. 启动前端（PC 管理后台）
 
 ```bash
 cd junsong-ui-v3
-npm install
-npm run dev
+pnpm install      # 或 npm install
+pnpm run dev      # 或 npm run dev
 ```
 
 ### 5. 启动小程序
 
-使用 HBuilderX 或微信开发者工具打开 `junsong-miniprogram` 目录，配置网关地址后运行。
+```bash
+cd junsong-miniprogram
+npm install
+npm run build:mp-weixin    # 构建到 dist/build/mp-weixin
+```
+
+使用微信开发者工具打开 `junsong-miniprogram` 目录（或 `dist/build/mp-weixin`），配置网关地址后运行。
+
+### 6. 健康检查
+
+```bash
+# 后端容器状态
+docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+
+# 网关健康检查
+curl -s http://127.0.0.1:8081/actuator/health
+
+# 前端页面
+curl -I http://127.0.0.1/
+
+# PC 管理后台健康脚本
+npm run admin:health
+```
 
 ---
 
@@ -335,19 +453,23 @@ npm run dev
 
 ```
 JunSong-Cloud
-├── junsong-gateway/         # 网关
-├── junsong-auth/            # 认证中心
-├── junsong-api/             # Feign 接口
-├── junsong-common/          # 通用模块
-├── junsong-modules/         # 业务微服务
-├── junsong-visual/          # 图形化管理
-├── junsong-ui-v3/           # 前端工程
-├── junsong-miniprogram/     # 微信小程序
-├── sdk/                     # 多语言 SDK（Java/Python/Go/JS）+ 调用示例
-├── k8s/                     # Kubernetes 部署清单
-├── docker/                  # 容器编排与配置（敏感信息已脱敏）
-├── .github/workflows/       # GitHub Actions CI/CD 流水线
-├── sql/                     # 数据库初始化脚本
+├── junsong-gateway/         # 网关（Spring Cloud Gateway）
+├── junsong-auth/            # 认证中心（JWT）
+├── junsong-api/             # Feign 接口定义
+├── junsong-common/          # 通用模块（9 个子模块：core/datascope/datasource/log/redis/seata/security/sensitive/swagger）
+├── junsong-modules/         # 业务微服务（8 个：system/member/finance/workflow/open/gen/job/file）
+├── junsong-visual/          # 图形化管理（Spring Boot Admin 监控）
+├── junsong-ui-v3/           # 前端工程（Vue 3.5 + Vite 8 + TS 6 + Element Plus）
+├── junsong-miniprogram/     # 微信小程序「峻松店记」（uni-app + Vue 3，嵌套 Git 仓库）
+├── sdk/                     # 开放平台多语言 SDK（Java / Python / Go / JS）+ 调用示例
+├── k8s/                     # Kubernetes 部署清单（Deployment / Service / Ingress / HPA / ConfigMap）
+├── docker/                  # 容器编排与配置（敏感信息已脱敏，含 .env.example）
+├── .github/workflows/       # GitHub Actions CI/CD 流水线（CI 编译 / CD-Docker / CD-K8s）
+├── e2e/                     # 端到端测试（Playwright，覆盖 auth/dashboard/workflow/lowcode/security）
+├── perf/                    # 性能压测场景（k6，覆盖 finance/lowcode/member）
+├── scripts/                 # 契约测试与健康检查脚本（admin-health / three-module-regression 等）
+├── sql/                     # 数据库脚本（v1.1.0 初始化 + 历史迁移 + PROD 数据修复）
+├── bin/                     # 部署脚本（deploy-*.sh / deploy-sql.sh / switch-env.sh）
 └── pom.xml                  # 父级依赖管理
 ```
 

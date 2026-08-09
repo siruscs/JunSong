@@ -106,7 +106,7 @@
 
 ## 三、技术架构图
 
-> 采用 **七层分层架构**（用户接入 → 网关治理 → 认证中心 → 业务服务 → 微服务治理 → 数据存储 → DevOps 可观测），每层节点与 inline SVG 渲染图**结构 · 名称 · 版本号 · 端口 · 颜色主题 1:1 对应**。Mermaid 在 GitHub / VS Code / Typora 中可直接渲染。
+> 采用 **七层严格矩阵式分层架构**，每层所有节点横向对齐（像图1一样），连线仅保留 L1→L2→L3→L4→L5→L6→L7 的**垂直主链路**，杜绝斜向/跨层连线导致 Mermaid 把子图挤到左上角乱飞。横切能力（Feign/Nacos/Sentinel/Metrics 等）在每层子图内部以文字注释说明。
 
 ```mermaid
 flowchart TB
@@ -119,148 +119,102 @@ flowchart TB
     classDef gov    fill:#312e81,stroke:#818cf8,stroke-width:2px,color:#e0e7ff,font-weight:bold
     classDef data   fill:#78350f,stroke:#f59e0b,stroke-width:2px,color:#fef3c7,font-weight:bold
     classDef ops    fill:#0f172a,stroke:#64748b,stroke-width:2px,color:#f1f5f9,font-weight:bold
+    classDef tag    fill:#ede9fe,stroke:#6d28d9,stroke-dasharray:4 2,color:#4c1d95,font-weight:500
+    classDef note   fill:#f8fafc,stroke:#cbd5e1,stroke-dasharray:2 2,color:#334155,font-size:14px
 
-    %% ========= 第一层 用户接入层（对应 SVG 第一行 4 卡片） =========
+    %% ========= 第一层 用户接入层（严格 4 卡横排 + 3 协议胶囊 横排） =========
     subgraph L1["🌐 层1 · 用户接入层 · 多端协同 + 开放生态"]
-      direction LR
-      WEB["🖥️ PC 管理后台<br/>Vue 3.5 + Element Plus<br/>Vite 8 · TS 6 · Pinia 3"]
-      MP["📱 峻松店记（小程序）<br/>uni-app 3 · Vue 3.4<br/>Pinia 2.1 · Vite 5.2"]
-      ISV["🔌 ISV 第三方<br/>HMAC-SHA256 签名"]
-      SDK["🧰 多语言 SDK<br/>Java / Python / Go / JS"]
-    end
-
-    %% ========= 第二层 接入网关层（对应 SVG 第二行 4 卡片 + 协议行） =========
-    subgraph L2["🛡️ 层2 · 接入网关层 · Gateway :8080"]
-      direction LR
-      GW["⚡ Spring Cloud Gateway 2025.1<br/>junsong-gateway · 路由转发 · JWT · 跨域 · 黑名单"]
-      SENT["🚦 Sentinel 1.8.9<br/>限流 · 熔断 · 降级 · 热点参数"]
-      HMAC["🔐 HMAC 签名鉴权<br/>开放 API · SHA-256 · Nonce 5min"]
-      RATE["⏱️ 应用级限流<br/>Redis 计数器 · 日配额"]
-    end
-
-    %% ========= 第三层 认证中心（对应 SVG 第三层 1 框） =========
-    subgraph L3["🎫 层3 · 认证中心 · Auth :9200"]
-      AUTH["junsong-auth :9200<br/>Spring Boot 4.0.3<br/>JJWT 0.9.1 令牌签发 · 黑名单<br/>Kaptcha 图形验证码<br/>@InnerAuth · X-Inner-Token"]
-    end
-
-    %% ========= 第四层 业务服务层（对应 SVG 第四层 2 行 8 服务 + 认证） =========
-    subgraph L4["💼 层4 · 业务服务层 · 8 微服务 + 认证<br/>Spring Boot 4.0.3 · SCA 2025.1.0.0 · JDK 17"]
       direction TB
-      subgraph L4_1["核心业务 5 个（与 SVG 第一行对应）"]
+      subgraph L1A["客户端（4 个）"]
         direction LR
-        SYS["🏢 系统管理 system :9201<br/>RBAC · 门店地图 · 治理审计<br/>行政区域 · 数据归档 · 字典参数"]
-        MEM["👥 会员营销 member<br/>档案 · 积分商城 · 等级卡<br/>增长动作 · 秒抢签到 · 政策排序<br/>购买单 · 退货 · 退款 · 领取"]
-        FIN["💰 财务核算 finance :9205 ⭐<br/>进销存 · 费用/借支核销（含幂等）<br/>库存三层 + 移动加权成本<br/>会计期间 · 投资分润 · 预测驾驶舱"]:::svcCor
-        WF["🔀 工作流 workflow<br/>Flowable 8.0.0 · BPMN 2.0<br/>低代码引擎 · 会签/加签/抄送<br/>节点字段权限 · 超时处理"]
-        OPEN["🌐 开放平台 open :9208<br/>ISV 应用/密钥 · Webhook 订阅<br/>可信上下文 · 限流 · 调用日志<br/>SDK 生成"]
+        WEB["🖥️ PC 管理后台<br/>Vue 3.5 + Element Plus<br/>Vite 8 · TS 6 · Pinia 3"]:::client
+        MP["📱 峻松店记（小程序）<br/>uni-app 3 · Vue 3.4<br/>Pinia 2.1 · Vite 5.2"]:::client
+        ISV["🔌 ISV 第三方<br/>HMAC-SHA256 签名"]:::client
+        SDK["🧰 多语言 SDK<br/>Java / Python / Go / JS"]:::client
       end
-      subgraph L4_2["支撑服务 3 个（与 SVG 第二行对应）"]
+      subgraph L1B["安全协议（3 个胶囊）"]
         direction LR
-        GEN["⚙️ 代码生成 gen :9202<br/>Velocity 2.3 模板<br/>前后端 CRUD 一键产出"]
-        JOB["⏱️ 定时任务 job :9203<br/>Quartz 调度 · 作业日志"]
-        FILE["📁 文件服务 file :9300<br/>MinIO 上传/下载 · 图片/附件"]
+        T1["⚡ HTTPS + JWT"]:::tag
+        T2["🔒 WSS + Token"]:::tag
+        T3["🔑 Nonce 防重放"]:::tag
       end
     end
 
-    %% ========= 第五层 微服务治理层（对应 SVG 第五层 7 节点） =========
-    subgraph L5["⚙️ 层5 · 微服务治理层 · Governance"]
+    %% ========= 第二层 接入网关层（严格 4 卡横排） =========
+    subgraph L2["🛡️ 层2 · 接入网关层 · junsong-gateway :8080"]
       direction LR
-      NACOS["📋 Nacos V3 :8848<br/>服务注册发现 · 配置中心<br/>grpc 长连接 · 多租户命名空间"]
-      FEIGN["🔗 OpenFeign + LoadBalancer<br/>声明式 REST · lb:// 寻址<br/>TTL 上下文透传 · Fallback"]
-      SEATA["🌐 Apache Seata 2.5.0<br/>分布式事务 · AT 模式预留<br/>TCC / XA 兼容"]
-      MYB["🗄️ MyBatis 4.0.1 · PageHelper 2.1<br/>JSqlParser 5.3 多租户拦截<br/>dynamic-ds 4.5 动态数据源"]
-      DRUID["💊 Druid 1.2.28<br/>连接池 · SQL 监控 · 慢查询"]
-      LOG["📜 Logback + TTL 2.14<br/>transmittable-thread-local<br/>链路日志 · 操作审计"]
-      IDEM["🪪 @Idempotent 幂等框架<br/>Redis 快速通道 + DB 持久化<br/>X-Idempotency-Key"]
+      GW["⚡ Spring Cloud Gateway 2025.1<br/>路由转发 · JWT 校验 · 跨域 · 黑名单"]:::gw
+      SENT["🚦 Sentinel 1.8.9<br/>限流 · 熔断 · 降级 · 热点参数"]:::gw
+      HMAC["🔐 HMAC 签名鉴权<br/>开放 API · SHA-256 · Nonce 5min"]:::gw
+      RATE["⏱️ 应用级限流<br/>Redis 计数器 · 日配额"]:::gw
+      NOTE_GW["ℹ️ 横切说明：网关层统一叠加 Sentinel 限流 / HMAC 开放签名 / 应用级配额 能力"]:::note
     end
 
-    %% ========= 第六层 数据存储层（对应 SVG 第六层 4 椭圆） =========
-    subgraph L6["💾 层6 · 数据存储层 · Persistence"]
-      direction LR
-      MYSQL[("🗄️ MySQL 8.0<br/>utf8mb4 · InnoDB<br/>194 业务表 · 27 基础表")]
-      REDIS[("⚡ Redis 8.x<br/>缓存 · 会话 · 令牌<br/>限流 · 幂等快速通道<br/>FastJson2 2.0.61 序列化")]
-      MINIO[("📦 MinIO 8.2.2<br/>S3 兼容对象存储<br/>附件 · 图片 · 导出文件")]
-      AMAP["🗺️ 高德地图 API<br/>地理编码 · 逆地理 · POI<br/>瓦片渲染 · Leaflet 1.9 · 密度热力"]
+    %% ========= 第三层 认证中心（1 卡） =========
+    subgraph L3["🎫 层3 · 认证中心 · junsong-auth :9200"]
+      AUTH["junsong-auth :9200<br/>Spring Boot 4.0.3<br/>JJWT 0.9.1 令牌签发 · 黑名单<br/>Kaptcha 图形验证码<br/>@InnerAuth · X-Inner-Token"]:::auth
     end
 
-    %% ========= 第七层 DevOps 可观测层（对应 SVG 第七层 7 节点） =========
-    subgraph L7["🛰️ 层7 · DevOps · 可观测性 · Cloud Native"]
-      direction LR
-      DOCKER["🐳 Docker · Compose v2<br/>分阶段 Dockerfile<br/>独立镜像 · 一键编排"]
-      K8S["☸️ Kubernetes<br/>Deployment · HPA · Ingress<br/>ConfigMap · 36 份 YAML 清单"]
-      CI["🔄 GitHub Actions 3 流水线<br/>CI 编译 · CD-Docker<br/>CD-K8s 发布"]
-      PROM["📊 Prometheus<br/>JVM · HTTP · 自定义指标"]
-      GRAF["📈 Grafana<br/>可视化面板 · 告警规则"]
-      LOKI["📚 Loki + Promtail<br/>日志聚合 · 容器日志采集"]
-      SBA["🩺 Spring Boot Admin 4.0.2<br/>Micrometer 1.16.3<br/>实例健康 · JVM · HTTP"]
+    %% ========= 第四层 业务服务层（严格两行：第一行5 / 第二行3） =========
+    subgraph L4["💼 层4 · 业务服务层 · 8 微服务 · Spring Boot 4.0.3 · JDK 17"]
+      direction TB
+      subgraph L4_1["核心业务（5 个，横排）"]
+        direction LR
+        SYS["🏢 system :9201<br/>RBAC · 门店地图 · 治理审计<br/>行政区域 · 数据归档 · 字典参数"]:::svc
+        MEM["👥 member<br/>档案 · 积分商城 · 等级卡<br/>增长动作 · 秒抢/签到 · 政策排序<br/>购买单 · 退货 · 退款 · 领取"]:::svc
+        FIN["💰 finance :9205 ⭐<br/>进销存 · 费用/借支核销（幂等）<br/>库存三层 + 移动加权成本<br/>会计期间 · 投资分润 · 预测驾驶舱"]:::svcCor
+        WF["🔀 workflow<br/>Flowable 8.0.0 · BPMN 2.0<br/>低代码引擎 · 会签/加签/抄送<br/>节点字段权限 · 超时处理"]:::svc
+        OPEN["🌐 open :9208<br/>ISV 应用/密钥 · Webhook 订阅<br/>可信上下文 · 限流 · 调用日志<br/>SDK 生成"]:::svc
+      end
+      subgraph L4_2["支撑服务（3 个，横排）"]
+        direction LR
+        GEN["⚙️ gen :9202<br/>Velocity 2.3 模板<br/>前后端 CRUD 一键产出"]:::svc
+        JOB["⏱️ job :9203<br/>Quartz 调度 · 作业日志"]:::svc
+        FILE["📁 file :9300<br/>MinIO 上传/下载 · 图片/附件"]:::svc
+      end
+      NOTE_L4["ℹ️ 内部说明：服务间 OpenFeign + LoadBalancer 调用；workflow→finance 审批联动；open 聚合 sys/member/workflow 能力"]:::note
     end
 
-    %% ========= 主调用链：用户 → 网关 =========
+    %% ========= 第五层 微服务治理层（严格 7 节点横排） =========
+    subgraph L5["⚙️ 层5 · 微服务治理层 · Governance（7 项）"]
+      direction LR
+      NACOS["📋 Nacos V3 :8848<br/>服务注册发现 · 配置中心<br/>grpc 长连接 · 多租户命名空间"]:::gov
+      FEIGN["🔗 OpenFeign + LB<br/>声明式 REST · lb:// 寻址<br/>TTL 上下文透传 · Fallback"]:::gov
+      SEATA["🌐 Apache Seata 2.5.0<br/>分布式事务 · AT 模式预留<br/>TCC / XA 兼容"]:::gov
+      MYB["🗄️ MyBatis 4.0.1<br/>JSqlParser 5.3 多租户拦截<br/>dynamic-ds 4.5 动态数据源"]:::gov
+      DRUID["💊 Druid 1.2.28<br/>连接池 · SQL 监控 · 慢查询"]:::gov
+      LOG["📜 Logback + TTL 2.14<br/>链路日志 · 操作审计"]:::gov
+      IDEM["🪪 @Idempotent 幂等框架<br/>Redis 快速通道 + DB 持久化<br/>X-Idempotency-Key"]:::gov
+    end
+
+    %% ========= 第六层 数据存储层（严格 4 椭圆横排） =========
+    subgraph L6["💾 层6 · 数据存储层 · Persistence（4 项）"]
+      direction LR
+      MYSQL[("🗄️ MySQL 8.0<br/>utf8mb4 · InnoDB<br/>194 业务表 · 27 基础表")]:::data
+      REDIS[("⚡ Redis 8.x<br/>缓存 · 会话 · 令牌<br/>限流 · 幂等快速通道<br/>FastJson2 2.0.61 序列化")]:::data
+      MINIO[("📦 MinIO 8.2.2<br/>S3 兼容对象存储<br/>附件 · 图片 · 导出文件")]:::data
+      AMAP["🗺️ 高德地图 API<br/>地理编码 · 逆地理 · POI<br/>瓦片渲染 · Leaflet 1.9 · 热力图"]:::data
+    end
+
+    %% ========= 第七层 DevOps 可观测层（严格 7 节点横排） =========
+    subgraph L7["🛰️ 层7 · DevOps · 可观测性 · Cloud Native（7 项）"]
+      direction LR
+      DOCKER["🐳 Docker · Compose v2<br/>分阶段 Dockerfile<br/>独立镜像 · 一键编排"]:::ops
+      K8S["☸️ Kubernetes<br/>Deployment · HPA · Ingress<br/>ConfigMap · 36 份 YAML"]:::ops
+      CI["🔄 GitHub Actions 3 流水线<br/>CI 编译 · CD-Docker<br/>CD-K8s 发布"]:::ops
+      PROM["📊 Prometheus<br/>JVM · HTTP · 自定义指标"]:::ops
+      GRAF["📈 Grafana<br/>可视化面板 · 告警规则"]:::ops
+      LOKI["📚 Loki + Promtail<br/>日志聚合 · 容器日志采集"]:::ops
+      SBA["🩺 Spring Boot Admin 4.0.2<br/>Micrometer 1.16.3<br/>实例健康 · JVM · HTTP"]:::ops
+    end
+
+    %% ========= 唯一的连线：垂直主链路（L1 → L2 → L3 → L4 → L5 → L6 → L7），每层只用一个节点连接下一层第一个节点，保证矩阵上下严格对齐，不乱飞 =========
     WEB --> GW
-    MP --> GW
-    ISV --> GW
-    SDK --> GW
-
-    %% ========= 网关 → 所有服务 + 认证 =========
     GW --> AUTH
-    GW --> SYS
-    GW --> MEM
-    GW --> FIN
-    GW --> WF
-    GW --> OPEN
-    GW --> GEN
-    GW --> JOB
-    GW --> FILE
-
-    %% ========= 网关横切（虚线说明标签） =========
-    GW -. "限流熔断" .-> SENT
-    GW -. "开放API鉴权" .-> HMAC
-    GW -. "应用级限流" .-> RATE
-
-    %% ========= 服务间 Feign 调用 =========
-    AUTH -. "Feign 查用户/权限" .-> SYS
-    MEM -. "Feign 部门/用户" .-> SYS
-    FIN -. "Feign 部门/用户" .-> SYS
-    WF -. "审批联动 Feign" .-> FIN
-    MEM -. "文件上传 Feign" .-> FILE
-    FIN -. "文件上传 Feign" .-> FILE
-    OPEN -. "聚合能力" .-> SYS
-    OPEN -. "聚合能力" .-> MEM
-    OPEN -. "聚合能力" .-> WF
-
-    %% ========= 服务注册 / 治理 =========
-    SYS & MEM & FIN & WF & OPEN & GEN & JOB & FILE -. "Nacos 注册心跳" .-> NACOS
-    AUTH -. "注册" .-> NACOS
-    SYS & MEM & FIN & WF & OPEN & GEN & JOB & FILE -. "Feign + LB" .-> FEIGN
-    SYS & MEM & FIN & WF & OPEN -. "持久层" .-> MYB
-    MYB -. "连接池" .-> DRUID
-    SYS & MEM & FIN & WF -. "链路日志" .-> LOG
-    SYS & MEM & FIN & WF -. "幂等性保护" .-> IDEM
-
-    %% ========= 数据层访问 =========
-    MYB --> MYSQL
-    AUTH -. "会话/黑名单" .-> REDIS
-    GW -. "限流/缓存" .-> REDIS
-    FILE --> MINIO
-    SYS --> AMAP
-
-    %% ========= DevOps 采集 =========
-    DOCKER --> K8S --> CI
-    PROM -. "metrics" .-> GW
-    PROM -. "metrics" .-> L4
-    GRAF --> PROM
-    GRAF --> LOKI
-    SBA -. "健康/监控" .-> L4
-
-    %% ========= 颜色绑定 =========
-    class WEB,MP,ISV,SDK client
-    class GW,SENT,HMAC,RATE gw
-    class AUTH auth
-    class SYS,MEM,WF,OPEN,GEN,JOB,FILE svc
-    class FIN svcCor
-    class NACOS,FEIGN,SEATA,MYB,DRUID,LOG,IDEM gov
-    class MYSQL,REDIS,MINIO,AMAP data
-    class DOCKER,K8S,CI,PROM,GRAF,LOKI,SBA ops
+    AUTH --> SYS
+    SYS --> NACOS
+    NACOS --> MYSQL
+    MYSQL --> DOCKER
 ```
 
 ### 架构亮点矩阵 · Highlights（9 维）

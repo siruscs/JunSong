@@ -54,9 +54,9 @@
 | dynamic-datasource | 4.5.0 | 多数据源（@Master/@Slave） |
 | Druid | 1.2.28 | 数据库连接池 / SQL 监控 |
 | Redis | 6.0+（PROD 8.x） | 缓存 / 会话 / 鉴权 / 限流计数器 |
-| Flowable | - | 工作流引擎（BPMN 2.0） |
-| Sentinel | - | 流量控制 / 熔断降级 |
-| Seata | - | 分布式事务（AT 模式预留） |
+| Flowable | 8.0.0 | 工作流引擎（BPMN 2.0，原生支持 Spring Boot 4） |
+| Sentinel | 1.8.9 | 流量控制 / 熔断降级（alibaba-csp） |
+| Seata | 2.5.0 | 分布式事务（Apache Seata，AT 模式预留） |
 | MinIO | 8.2.2 | S3 兼容对象存储 |
 | JJWT | 0.9.1 | JWT 令牌签发与校验 |
 | SpringDoc OpenAPI | 3.0.2 | 接口文档（Knife4j 4.5.0 增强） |
@@ -67,7 +67,7 @@
 | TransmittableThreadLocal | 2.14.5 | 跨线程上下文传递（链路日志） |
 | JSqlParser | 5.3 | SQL 解析（多租户拦截器） |
 | Spring Boot Admin | 4.0.2 | 微服务实例健康监控 |
-| Micrometer | - | 指标采集（Prometheus） |
+| Micrometer | 1.16.3 | 指标采集（Prometheus） |
 
 ### 前端
 

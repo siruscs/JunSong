@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1280" width="100%" style="font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1400" width="100%" style="font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif">
   <style>
     .tb { display:flex; align-items:center; justify-content:center; width:100%; height:100%; text-align:center; padding:9px 7px; box-sizing:border-box; font-weight:600; line-height:1.45; font-size:12.5px; }
     .lt { font-size:16px; font-weight:700; padding:10px 12px; display:flex; align-items:center; justify-content:center; text-align:center; border-radius:10px 10px 0 0; color:#fff; }
@@ -7,12 +7,12 @@
 
   <!-- 顶部标题条 -->
   <rect x="20" y="10" width="1160" height="56" rx="12" fill="#1e293b"/>
-  <rect x="30" y="10" width="1140" height="56" rx="10" fill="#ffffff" stroke="none" stroke-width="2"/><text x="600" y="45" text-anchor="middle" fill="#fff" font-size="20px" font-weight="800" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="600" dy="0">🏢 峻松云 v1.1.0 · 6 大业务能力域 · 49 项子功能（卡片墙）</tspan></text>
+  <rect x="30" y="10" width="1140" height="56" rx="10" fill="#1e293b" stroke="none" stroke-width="2"/><text x="600" y="45" text-anchor="middle" fill="#fff" font-size="20px" font-weight="800" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="600" dy="0">🏢 峻松云 v1.1.0 · 6 大业务能力域 · 49 项子功能（卡片墙）</tspan></text>
 
   <!-- 列1 平台治理 蓝 -->
   <g>
     <rect x="20" y="86" width="180" height="1164" rx="12" fill="#eff6ff" stroke="#0284c7" stroke-width="2.5"/>
-    <rect x="20" y="86" width="180" height="48" rx="10" fill="#0284c7" stroke="none" stroke-width="2"/><text x="110" y="105.312" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="110" dy="0">① 平台治理 👮</tspan><tspan x="110" dy="18.125">（8 项）</tspan></text>
+    <rect x="20" y="86" width="180" height="48" rx="10" fill="#0284c7" stroke="none" stroke-width="2"/><text x="110" y="105.312" text-anchor="middle" fill="#ffffff" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="110" dy="0">① 平台治理 👮</tspan><tspan x="110" dy="18.125">（8 项）</tspan></text>
 
     <rect x="30" y="152" width="160" height="112" rx="10" fill="#fff" stroke="#0284c7" stroke-width="2"/><text x="110" y="194.25" text-anchor="middle" fill="#0c4a6e" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="110" dy="0">🔐 RBAC 权限体系</tspan><tspan x="110" dy="18.125">用户 / 角色 / 菜单</tspan><tspan x="110" dy="18.125">部门 / 岗位</tspan></text>
     <rect x="30" y="278" width="160" height="112" rx="10" fill="#fff" stroke="#0284c7" stroke-width="2"/><text x="110" y="320.25" text-anchor="middle" fill="#0c4a6e" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="110" dy="0">🧩 多租户隔离</tspan><tspan x="110" dy="18.125">TenantContext 上下文</tspan><tspan x="110" dy="18.125">JSqlParser SQL 拦截器</tspan></text>
@@ -27,7 +27,7 @@
   <!-- 列2 会员运营 玫红 -->
   <g>
     <rect x="220" y="86" width="180" height="1164" rx="12" fill="#fdf2f8" stroke="#be185d" stroke-width="2.5"/>
-    <rect x="220" y="86" width="180" height="48" rx="10" fill="#be185d" stroke="none" stroke-width="2"/><text x="310" y="105.312" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="310" dy="0">② 会员运营 💕</tspan><tspan x="310" dy="18.125">（8 项）</tspan></text>
+    <rect x="220" y="86" width="180" height="48" rx="10" fill="#be185d" stroke="none" stroke-width="2"/><text x="310" y="105.312" text-anchor="middle" fill="#ffffff" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="310" dy="0">② 会员运营 💕</tspan><tspan x="310" dy="18.125">（8 项）</tspan></text>
 
     <rect x="230" y="152" width="160" height="112" rx="10" fill="#fff" stroke="#be185d" stroke-width="2"/><text x="310" y="194.25" text-anchor="middle" fill="#831843" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="310" dy="0">👤 会员档案</tspan><tspan x="310" dy="18.125">基础信息 · 标签分群</tspan><tspan x="310" dy="18.125">自定义字段扩展</tspan></text>
     <rect x="230" y="278" width="160" height="112" rx="10" fill="#fff" stroke="#be185d" stroke-width="2"/><text x="310" y="320.25" text-anchor="middle" fill="#831843" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="310" dy="0">🎫 积分体系</tspan><tspan x="310" dy="18.125">获取规则 · 消耗规则</tspan><tspan x="310" dy="18.125">积分商城兑换</tspan></text>
@@ -42,7 +42,7 @@
   <!-- 列3 财务核算 紫粗 9 项核心 -->
   <g>
     <rect x="420" y="86" width="180" height="1294" rx="12" fill="#f5f3ff" stroke="#6d28d9" stroke-width="3.5"/>
-    <rect x="420" y="86" width="180" height="48" rx="10" fill="#6d28d9" stroke="none" stroke-width="2"/><text x="510" y="105.312" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="510" dy="0">③ 财务核算 ⭐💰</tspan><tspan x="510" dy="18.125">（9 项 · v1.1 核心域）</tspan></text>
+    <rect x="420" y="86" width="180" height="48" rx="10" fill="#6d28d9" stroke="none" stroke-width="2"/><text x="510" y="105.312" text-anchor="middle" fill="#ffffff" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="510" dy="0">③ 财务核算 ⭐💰</tspan><tspan x="510" dy="18.125">（9 项 · v1.1 核心域）</tspan></text>
 
     <rect x="430" y="152" width="160" height="120" rx="10" fill="#fff" stroke="#6d28d9" stroke-width="2"/><text x="510" y="198.25" text-anchor="middle" fill="#4c1d95" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="510" dy="0">📦 进销存管理</tspan><tspan x="510" dy="18.125">商品 · 供应商 · 进货单</tspan><tspan x="510" dy="18.125">销售记录 · 销售收款</tspan></text>
     <rect x="430" y="288" width="160" height="120" rx="10" fill="#fff" stroke="#6d28d9" stroke-width="2"/><text x="510" y="334.25" text-anchor="middle" fill="#4c1d95" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="510" dy="0">📊 库存三层架构</tspan><tspan x="510" dy="18.125">快照表 + 流水表 + 成本账</tspan><tspan x="510" dy="18.125">账实一致三账校验</tspan></text>
@@ -58,7 +58,7 @@
   <!-- 列4 工作流·低代码 绿 -->
   <g>
     <rect x="620" y="86" width="180" height="1164" rx="12" fill="#ecfdf5" stroke="#059669" stroke-width="2.5"/>
-    <rect x="620" y="86" width="180" height="48" rx="10" fill="#059669" stroke="none" stroke-width="2"/><text x="710" y="105.312" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="710" dy="0">④ 工作流·低代码 🔀</tspan><tspan x="710" dy="18.125">（8 项）</tspan></text>
+    <rect x="620" y="86" width="180" height="48" rx="10" fill="#059669" stroke="none" stroke-width="2"/><text x="710" y="105.312" text-anchor="middle" fill="#ffffff" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="710" dy="0">④ 工作流·低代码 🔀</tspan><tspan x="710" dy="18.125">（8 项）</tspan></text>
 
     <rect x="630" y="152" width="160" height="112" rx="10" fill="#fff" stroke="#059669" stroke-width="2"/><text x="710" y="194.25" text-anchor="middle" fill="#064e3b" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="710" dy="0">⚙️ Flowable 8.0.0</tspan><tspan x="710" dy="18.125">BPMN 2.0 标准引擎</tspan><tspan x="710" dy="18.125">原生支持 Spring Boot 4</tspan></text>
     <rect x="630" y="278" width="160" height="112" rx="10" fill="#fff" stroke="#059669" stroke-width="2"/><text x="710" y="320.25" text-anchor="middle" fill="#064e3b" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="710" dy="0">🎨 可视化设计器</tspan><tspan x="710" dy="18.125">bpmn-js 18 · 拖拽</tspan><tspan x="710" dy="18.125">属性面板 · XML 预览</tspan></text>
@@ -73,7 +73,7 @@
   <!-- 列5 开放平台 琥珀 -->
   <g>
     <rect x="820" y="86" width="180" height="1164" rx="12" fill="#fffbeb" stroke="#d97706" stroke-width="2.5"/>
-    <rect x="820" y="86" width="180" height="48" rx="10" fill="#d97706" stroke="none" stroke-width="2"/><text x="910" y="105.312" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="910" dy="0">⑤ 开放平台 🌐</tspan><tspan x="910" dy="18.125">（8 项）</tspan></text>
+    <rect x="820" y="86" width="180" height="48" rx="10" fill="#d97706" stroke="none" stroke-width="2"/><text x="910" y="105.312" text-anchor="middle" fill="#ffffff" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="910" dy="0">⑤ 开放平台 🌐</tspan><tspan x="910" dy="18.125">（8 项）</tspan></text>
 
     <rect x="830" y="152" width="160" height="112" rx="10" fill="#fff" stroke="#d97706" stroke-width="2"/><text x="910" y="194.25" text-anchor="middle" fill="#92400e" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="910" dy="0">🤝 ISV 应用管理</tspan><tspan x="910" dy="18.125">注册 → 审核 → 上线 → 下架</tspan><tspan x="910" dy="18.125">全生命周期管理</tspan></text>
     <rect x="830" y="278" width="160" height="112" rx="10" fill="#fff" stroke="#d97706" stroke-width="2"/><text x="910" y="320.25" text-anchor="middle" fill="#92400e" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="910" dy="0">🔑 密钥与轮换</tspan><tspan x="910" dy="18.125">AppKey / Secret 颁发</tspan><tspan x="910" dy="18.125">自动轮换 · 手动吊销</tspan></text>
@@ -88,7 +88,7 @@
   <!-- 列6 经营决策 紫 -->
   <g>
     <rect x="1020" y="86" width="160" height="1164" rx="12" fill="#f3e8ff" stroke="#7c3aed" stroke-width="2.5"/>
-    <rect x="1020" y="86" width="160" height="48" rx="10" fill="#7c3aed" stroke="none" stroke-width="2"/><text x="1100" y="105.312" text-anchor="middle" fill="#111827" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="1100" dy="0">⑥ 经营决策 🎯</tspan><tspan x="1100" dy="18.125">（8 项）</tspan></text>
+    <rect x="1020" y="86" width="160" height="48" rx="10" fill="#7c3aed" stroke="none" stroke-width="2"/><text x="1100" y="105.312" text-anchor="middle" fill="#ffffff" font-size="12.5px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="1100" dy="0">⑥ 经营决策 🎯</tspan><tspan x="1100" dy="18.125">（8 项）</tspan></text>
 
     <rect x="1030" y="152" width="140" height="112" rx="10" fill="#fff" stroke="#7c3aed" stroke-width="2"/><text x="1100" y="194.8" text-anchor="middle" fill="#5b21b6" font-size="12px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="1100" dy="0">📊 经营驾驶舱</tspan><tspan x="1100" dy="17.4">经营总览 · 财务概览</tspan><tspan x="1100" dy="17.4">会员概览 三核心看板</tspan></text>
     <rect x="1030" y="278" width="140" height="112" rx="10" fill="#fff" stroke="#7c3aed" stroke-width="2"/><text x="1100" y="320.8" text-anchor="middle" fill="#5b21b6" font-size="12px" font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif"><tspan x="1100" dy="0">🏠 系统概览页</tspan><tspan x="1100" dy="17.4">待办任务 · 异常预警</tspan><tspan x="1100" dy="17.4">关键 KPI 指标卡片</tspan></text>

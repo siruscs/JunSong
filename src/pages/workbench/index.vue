@@ -124,7 +124,7 @@ const MODULE_BG = {
   deptProfitConfig: 'rgba(107,114,128,0.08)', accountingPeriod: 'rgba(245,158,11,0.08)', profitShare: 'rgba(244,63,94,0.08)',
   costAccounting: 'rgba(6,182,212,0.08)', verificationRecord: 'rgba(59,130,246,0.08)', userManage: 'rgba(99,102,241,0.08)', deptManage: 'rgba(34,197,94,0.08)',
   wfTodo: 'rgba(16,185,129,0.08)', wfDone: 'rgba(16,185,129,0.08)', wfNotify: 'rgba(16,185,129,0.08)',
-  stockCost: 'rgba(14,165,233,0.08)', stockAdjustment: 'rgba(245,158,11,0.08)', stockLedger: 'rgba(6,182,212,0.08)', stocktake: 'rgba(99,102,241,0.08)',
+  stockCost: 'rgba(14,165,233,0.08)', stockAdjustment: 'rgba(245,158,11,0.08)', stocktake: 'rgba(99,102,241,0.08)',
   memberPurchase: 'rgba(8,124,240,0.08)', memberPurchaseReturn: 'rgba(239,68,68,0.08)',
   configSync: 'rgba(107,114,128,0.08)', campaignPolicy: 'rgba(249,115,22,0.08)', memberLevel: 'rgba(139,92,246,0.08)',
   dashboard: 'rgba(8,124,240,0.08)', growth: 'rgba(139,92,246,0.08)', actions: 'rgba(14,165,233,0.08)', points: 'rgba(245,158,11,0.08)'
@@ -138,7 +138,7 @@ const MODULE_LETTER = {
   deptProfitConfig: '⚙️', accountingPeriod: '📅', profitShare: '📊',
   costAccounting: '🧮', verificationRecord: '✅', userManage: '👥', deptManage: '🏢',
   wfTodo: '📥', wfDone: '📤', wfNotify: '🔔',
-  stockCost: '📋', stockAdjustment: '⚖️', stockLedger: '📒', stocktake: '🔢',
+  stockCost: '📋', stockAdjustment: '⚖️', stocktake: '🔢',
   memberPurchase: '🛍️', memberPurchaseReturn: '↩️',
   configSync: '🔄', campaignPolicy: '🎯', memberLevel: '🎖️',
   dashboard: '📊', growth: '🌟', actions: '🎯', points: '🎯'
@@ -153,7 +153,7 @@ const MODULE_ICON_COLOR = {
   deptProfitConfig: '#6B7280', accountingPeriod: '#F59E0B', profitShare: '#F43F5E',
   costAccounting: '#06B6D4', verificationRecord: '#3B82F6', userManage: '#6366F1', deptManage: '#22C55E',
   wfTodo: '#10B981', wfDone: '#10B981', wfNotify: '#10B981',
-  stockCost: '#0EA5E9', stockAdjustment: '#F59E0B', stockLedger: '#06B6D4', stocktake: '#6366F1',
+  stockCost: '#0EA5E9', stockAdjustment: '#F59E0B', stocktake: '#6366F1',
   memberPurchase: '#087CF0', memberPurchaseReturn: '#EF4444',
   configSync: '#6B7280', campaignPolicy: '#F97316', memberLevel: '#8B5CF6',
   dashboard: '#087CF0', growth: '#8B5CF6', actions: '#0EA5E9', points: '#F59E0B'
@@ -188,7 +188,6 @@ const MODULE_DESC = {
   wfNotify: '审批消息通知',
   stockCost: '库存数量和成本',
   stockAdjustment: '库存盘点调整',
-  stockLedger: '库存变动流水',
   stocktake: '盘点任务管理',
   memberPurchase: '购买与收款',
   memberPurchaseReturn: '退货与退款',

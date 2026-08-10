@@ -633,8 +633,11 @@ export const modules = {
     group: '财务管理',
     title: '库存流水',
     customPage: '/pages/stock-ledger/index',
-    // 库存流水是库存查询的三级页面，不应单独授权；有 stockCost 权限即可访问
+    // 库存流水是库存查询的三级页面，不应出现在小程序一级功能页面/权限配置页；
+    // hiddenEntry=true 使其从 groups/moduleList/filterAuthorizedGroups 的一级入口中剔除。
+    // 访问权限通过 authKey='stockCost' 继承，从库存查询页内按钮跳转。
     authKey: 'stockCost',
+    hiddenEntry: true,
     permissions: { view: ['finance:stockLedger:list', 'finance:stock:ledger:query', 'finance:stock:ledger:list'] }
   },
   stockAdjustment: {
@@ -741,7 +744,9 @@ export const modules = {
   }
 }
 
-export const moduleList = Object.keys(modules).map((key) => ({ key, ...modules[key] }))
+export const moduleList = Object.keys(modules)
+  .map((key) => ({ key, ...modules[key] }))
+  .filter((m) => !m.hiddenEntry)
 
 // 会员服务分组内顺序与 PC 端 mpPerm 页面、后端 MpModuleCatalog 完全一致
 const memberServiceOrder = ['member', 'memberPurchase', 'memberPurchaseReturn', 'memberLevel', 'campaignPolicy',
@@ -763,11 +768,11 @@ const officeOrder = ['wfTodo', 'wfDone', 'wfNotify']
 const orderedOffice = officeOrder.map((key) => ({ key, ...modules[key] })).filter((item) => item && item.group === '移动办公')
 
 export const groups = [
-  { name: '会员服务', items: orderedMemberServices },
-  { name: '会员运营', items: orderedOperation },
+  { name: '会员服务', items: orderedMemberServices.filter((m) => !m.hiddenEntry) },
+  { name: '会员运营', items: orderedOperation.filter((m) => !m.hiddenEntry) },
   { name: '财务管理', items: moduleList.filter((item) => item.group === '财务管理') },
-  { name: '系统管理', items: orderedSystem },
-  { name: '移动办公', items: orderedOffice }
+  { name: '系统管理', items: orderedSystem.filter((m) => !m.hiddenEntry) },
+  { name: '移动办公', items: orderedOffice.filter((m) => !m.hiddenEntry) }
 ]
 
 export function getModule(key) {

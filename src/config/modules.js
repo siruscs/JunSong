@@ -770,7 +770,7 @@ const orderedOffice = officeOrder.map((key) => ({ key, ...modules[key] })).filte
 export const groups = [
   { name: '会员服务', items: orderedMemberServices.filter((m) => !m.hiddenEntry) },
   { name: '会员运营', items: orderedOperation.filter((m) => !m.hiddenEntry) },
-  { name: '财务管理', items: moduleList.filter((item) => item.group === '财务管理') },
+  { name: '财务管理', items: moduleList.filter((item) => item.group === '财务管理' && !item.hiddenEntry) },
   { name: '系统管理', items: orderedSystem.filter((m) => !m.hiddenEntry) },
   { name: '移动办公', items: orderedOffice.filter((m) => !m.hiddenEntry) }
 ]

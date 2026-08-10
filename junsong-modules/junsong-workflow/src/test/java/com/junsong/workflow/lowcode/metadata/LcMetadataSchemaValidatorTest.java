@@ -36,6 +36,46 @@ class LcMetadataSchemaValidatorTest
     }
 
     @Test
+    void acceptsQuantityAndAmountPrecisionContracts()
+    {
+        LcBizObject object = object("expense", "费用", "GENERIC", null, null, "0", null);
+        LcBizField quantity = field("expense", "quantity", "数量", "DECIMAL");
+        quantity.setValueType("quantity");
+        quantity.setScale(3);
+        quantity.setDisplayFormat("0.000");
+
+        LcBizField amount = field("expense", "amount", "金额", "MONEY");
+        amount.setValueType("amount");
+        amount.setScale(2);
+        amount.setDisplayFormat("0.00");
+
+        assertDoesNotThrow(() -> validator.validate(config(object, List.of(quantity, amount))));
+    }
+
+    @Test
+    void rejectsInvalidQuantityAmountAndDateTimeContracts()
+    {
+        LcBizObject object = object("expense", "费用", "GENERIC", null, null, "0", null);
+        LcBizField quantity = field("expense", "quantity", "数量", "DECIMAL");
+        quantity.setValueType("quantity");
+        quantity.setScale(2);
+        quantity.setDisplayFormat("0.00");
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(config(object, List.of(quantity))));
+
+        LcBizField amount = field("expense", "amount", "金额", "MONEY");
+        amount.setValueType("amount");
+        amount.setScale(3);
+        amount.setDisplayFormat("0.000");
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(config(object, List.of(amount))));
+
+        LcBizField dateTime = field("expense", "created_at", "创建时间", "DATETIME");
+        dateTime.setValueType("datetime");
+        dateTime.setTimezone("UTC");
+        dateTime.setDisplayFormat("2026-08-04T23:23:23");
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(config(object, List.of(dateTime))));
+    }
+
+    @Test
     void rejectsWorkflowWithoutProcessKey()
     {
         LcBizObject object = object("expense", "费用", "GENERIC", null, null, "1", null);

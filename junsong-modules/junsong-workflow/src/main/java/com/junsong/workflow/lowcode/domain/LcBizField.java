@@ -13,6 +13,10 @@ public class LcBizField extends BaseEntity
     private String fieldKey;
     private String fieldLabel;
     private String fieldType;
+    private String valueType;
+    private Integer scale;
+    private String timezone;
+    private String displayFormat;
     private String componentType;
     private String required;
     private String defaultValue;
@@ -79,6 +83,15 @@ public class LcBizField extends BaseEntity
     {
         this.fieldType = fieldType;
     }
+
+    public String getValueType() { return valueType; }
+    public void setValueType(String valueType) { this.valueType = valueType; }
+    public Integer getScale() { return scale; }
+    public void setScale(Integer scale) { this.scale = scale; }
+    public String getTimezone() { return timezone; }
+    public void setTimezone(String timezone) { this.timezone = timezone; }
+    public String getDisplayFormat() { return displayFormat; }
+    public void setDisplayFormat(String displayFormat) { this.displayFormat = displayFormat; }
 
     public String getComponentType()
     {

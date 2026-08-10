@@ -16,6 +16,11 @@ import java.util.List;
  */
 public class LcBizConfigDTO
 {
+    private String modelVersion;
+    private Integer schemaVersion;
+    private Integer sourceVersion;
+    private String timezone;
+    private String publishRemark;
     private LcBizObject bizObject;
     private List<LcBizField> fields;
     private List<LcBizPageSchema> pageSchemas;
@@ -24,6 +29,17 @@ public class LcBizConfigDTO
     private List<LcBizAction> actions;
     private List<LcBizPostAction> postActions;
     private List<LcBizNodeTimer> nodeTimers;
+
+    public String getModelVersion() { return modelVersion; }
+    public void setModelVersion(String modelVersion) { this.modelVersion = modelVersion; }
+    public Integer getSchemaVersion() { return schemaVersion; }
+    public void setSchemaVersion(Integer schemaVersion) { this.schemaVersion = schemaVersion; }
+    public Integer getSourceVersion() { return sourceVersion; }
+    public void setSourceVersion(Integer sourceVersion) { this.sourceVersion = sourceVersion; }
+    public String getTimezone() { return timezone; }
+    public void setTimezone(String timezone) { this.timezone = timezone; }
+    public String getPublishRemark() { return publishRemark; }
+    public void setPublishRemark(String publishRemark) { this.publishRemark = publishRemark; }
 
     public LcBizObject getBizObject() { return bizObject; }
     public void setBizObject(LcBizObject bizObject) { this.bizObject = bizObject; }

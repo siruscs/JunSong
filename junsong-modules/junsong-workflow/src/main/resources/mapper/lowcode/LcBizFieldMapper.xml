@@ -10,6 +10,10 @@
         <result property="fieldKey" column="field_key"/>
         <result property="fieldLabel" column="field_label"/>
         <result property="fieldType" column="field_type"/>
+        <result property="valueType" column="value_type"/>
+        <result property="scale" column="scale"/>
+        <result property="timezone" column="timezone"/>
+        <result property="displayFormat" column="display_format"/>
         <result property="componentType" column="component_type"/>
         <result property="required" column="required"/>
         <result property="defaultValue" column="default_value"/>
@@ -33,7 +37,7 @@
     </resultMap>
 
     <sql id="selectLcBizFieldVo">
-        select id, biz_code, field_key, field_label, field_type, component_type, required,
+        select id, biz_code, field_key, field_label, field_type, value_type, scale, timezone, display_format, component_type, required,
                default_value, dict_type, upload_config, field_ext, validate_rule, stage,
                is_query, is_list, is_detail, is_process_var, process_var_name, parent_field_key, order_num,
                del_flag, create_by, create_time, update_by, update_time
@@ -69,12 +73,12 @@
 
     <insert id="insertLcBizField" parameterType="com.junsong.workflow.lowcode.domain.LcBizField" useGeneratedKeys="true" keyProperty="id">
         insert into lc_biz_field(
-            biz_code, field_key, field_label, field_type, component_type, required,
+            biz_code, field_key, field_label, field_type, value_type, scale, timezone, display_format, component_type, required,
             default_value, dict_type, upload_config, field_ext, validate_rule, stage,
             is_query, is_list, is_detail, is_process_var, process_var_name, parent_field_key, order_num,
             del_flag, create_by, create_time, update_by, update_time
         ) values (
-            #{bizCode}, #{fieldKey}, #{fieldLabel}, #{fieldType}, #{componentType}, #{required},
+            #{bizCode}, #{fieldKey}, #{fieldLabel}, #{fieldType}, #{valueType}, #{scale}, #{timezone}, #{displayFormat}, #{componentType}, #{required},
             #{defaultValue}, #{dictType}, #{uploadConfig}, #{fieldExt}, #{validateRule}, #{stage},
             #{isQuery}, #{isList}, #{isDetail}, #{isProcessVar}, #{processVarName}, #{parentFieldKey}, #{orderNum},
             #{delFlag}, #{createBy}, sysdate(), #{updateBy}, sysdate()
@@ -88,6 +92,10 @@
             <if test="fieldKey != null">field_key = #{fieldKey},</if>
             <if test="fieldLabel != null">field_label = #{fieldLabel},</if>
             <if test="fieldType != null">field_type = #{fieldType},</if>
+            <if test="valueType != null">value_type = #{valueType},</if>
+            <if test="scale != null">scale = #{scale},</if>
+            <if test="timezone != null">timezone = #{timezone},</if>
+            <if test="displayFormat != null">display_format = #{displayFormat},</if>
             <if test="componentType != null">component_type = #{componentType},</if>
             <if test="required != null">required = #{required},</if>
             <if test="defaultValue != null">default_value = #{defaultValue},</if>

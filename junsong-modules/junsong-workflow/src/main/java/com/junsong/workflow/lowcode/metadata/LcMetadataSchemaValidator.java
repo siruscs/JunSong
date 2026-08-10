@@ -24,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class LcMetadataSchemaValidator
 {
     private static final Pattern SAFE_IDENTIFIER = Pattern.compile("[A-Za-z][A-Za-z0-9_]{0,63}");
+    private static final String BUSINESS_TIMEZONE = "Asia/Shanghai";
     private static final Set<String> SUPPORTED_FIELD_TYPES = Set.of(
             "STRING", "INTEGER", "DECIMAL", "BOOLEAN", "DATE", "DATETIME", "USER", "DEPT", "DICT",
             "TEXTAREA", "NUMBER", "PERCENT", "DATE-RANGE", "TIME", "TIME-RANGE", "SELECT",
@@ -175,11 +176,46 @@ public class LcMetadataSchemaValidator
             {
                 throw invalid("DICT 字段必须配置 dictType: " + field.getFieldKey());
             }
+            validateValueContract(field);
             if (isEnabled(field.getIsProcessVar()))
             {
                 String processVarName = isBlank(field.getProcessVarName()) ? field.getFieldKey() : field.getProcessVarName();
                 requireIdentifier(processVarName, "processVarName");
             }
+        }
+    }
+
+    private static void validateValueContract(LcBizField field)
+    {
+        if (isBlank(field.getValueType())) return;
+        String valueType = field.getValueType().toLowerCase();
+        if (!Set.of("quantity", "amount", "date", "datetime").contains(valueType))
+        {
+            throw invalid("不支持的业务值类型: " + field.getFieldKey());
+        }
+        if ("quantity".equals(valueType))
+        {
+            if (!Integer.valueOf(3).equals(field.getScale()) || !"0.000".equals(field.getDisplayFormat()))
+            {
+                throw invalid("数量字段必须保留 3 位小数并使用 0.000 展示: " + field.getFieldKey());
+            }
+        }
+        if ("amount".equals(valueType))
+        {
+            if (!Integer.valueOf(2).equals(field.getScale()) || !"0.00".equals(field.getDisplayFormat()))
+            {
+                throw invalid("金额字段必须保留 2 位小数并使用 0.00 展示: " + field.getFieldKey());
+            }
+        }
+        if ("date".equals(valueType) && !"YYYY-MM-DD".equals(field.getDisplayFormat()))
+        {
+            throw invalid("日期字段必须使用 YYYY-MM-DD 展示: " + field.getFieldKey());
+        }
+        if ("datetime".equals(valueType)
+                && (!BUSINESS_TIMEZONE.equals(field.getTimezone())
+                || !"YYYY-MM-DD HH:mm:ss".equals(field.getDisplayFormat())))
+        {
+            throw invalid("日期时间字段必须使用 Asia/Shanghai 和 YYYY-MM-DD HH:mm:ss 展示: " + field.getFieldKey());
         }
     }
 

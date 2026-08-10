@@ -110,21 +110,16 @@ public class MemMpController extends BaseController {
             return Collections.emptyList();
         }
 
-        // 小程序模块权限以 PC 端“小程序权限”配置（mem_mp_role_module 表）为**唯一权威来源**，
-        // 禁止再按标准 RBAC 业务权限（finance:expense:list 等）做“viewPermissions 兜底合并”，
-        // 否则即使用户在 PC 端把某角色的所有小程序模块权限全部清空，
-        // 只要系统管理员/记账员/店长仍持有对应业务权限，模块入口还是会被重新加回来。
-        // 约定：
-        //  1) 只读取 mem_mp_role_module 中显式给 (roleIds, deptId) 配置的 moduleKeys
-        //  2) 二次过滤保留（hasModuleViewPermission）：若某模块在 RBAC 里已被撤销对应
-        //     list/query 权限，仍阻止入口展示（这不会让权限变大，仅做 fail-safe）
+        // 小程序模块权限以 PC 端"小程序权限"配置（mem_mp_role_module 表）为**唯一权威来源**，
+        // 勾选即生效，禁止再按标准 RBAC 业务权限（finance:expense:list 等）做二次过滤，
+        // 否则即使用户在 PC 端已勾选某模块，只要缺少对应的 PC 业务权限码，模块入口仍会被误删。
+        // hasFrontendPage 过滤仅用于剔除 stockLedger/stocktake 等无一级入口的内部模块。
         List<String> configured = mpRoleModuleService.getAccessibleModules(roleIds, deptId);
         if (configured == null || configured.isEmpty()) {
             return Collections.emptyList();
         }
         List<String> visible = configured.stream()
                 .filter(MpModuleCatalog::hasFrontendPage)
-                .filter(this::hasModuleViewPermission)
                 .distinct()
                 .collect(Collectors.toList());
         // 按 PC 端「功能模块调整」配置的显示顺序重排后再返回给小程序端，

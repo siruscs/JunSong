@@ -123,6 +123,7 @@ public class MemMpController extends BaseController {
             return Collections.emptyList();
         }
         List<String> visible = configured.stream()
+                .filter(MpModuleCatalog::hasFrontendPage)
                 .filter(this::hasModuleViewPermission)
                 .distinct()
                 .collect(Collectors.toList());

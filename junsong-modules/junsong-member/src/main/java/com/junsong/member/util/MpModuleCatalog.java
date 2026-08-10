@@ -197,4 +197,11 @@ public final class MpModuleCatalog {
         for (Module m : ALL) if (key.equals(m.key)) return m.viewPermissions.clone();
         return new String[0];
     }
+
+    /** 该模块是否在小程序端有一级入口页面（stockLedger/stocktake=false，用于过滤显式授权残留）。 */
+    public static boolean hasFrontendPage(String key) {
+        if (key == null) return false;
+        for (Module m : ALL) if (key.equals(m.key)) return m.hasFrontendPage;
+        return false;
+    }
 }

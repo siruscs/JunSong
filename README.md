@@ -106,7 +106,7 @@
 
 ## 三、技术架构图
 
-**![峻松云 · 系统架构图](./docs/images/arch/arch-system-5layer-final.png)**
+**![峻松云 · 系统架构图](./docs/images/arch/arch-system-5layer-github.png)**
 
 > 📷 以上为 PNG 高清大图（2x DPR 浏览器渲染截图，PingFang SC 中文字体 + 蓝/粉/绿/琥珀/灰 5 色分层矩阵式），保证 GitHub / Gitee / VS Code / Typora / Notion / 语雀 **像素级一致显示**，不会出现子图错位、连线乱穿、字体缺失等问题。
 >

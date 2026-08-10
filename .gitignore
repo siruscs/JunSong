@@ -187,6 +187,9 @@ docs/superpowers/specs/*
 !docs/superpowers/specs/峻松云架构图/
 docs/superpowers/specs/峻松云架构图/*
 !docs/superpowers/specs/峻松云架构图/*.svg
+!docs/images/
+!docs/images/arch/
+!docs/images/arch/arch-system-5layer-github.png
 DEPLOYMENT_GUIDE.md
 TROUBLESHOOTING.md
 PROD部署更新文档.md

@@ -253,6 +253,12 @@ class PeerUserServiceTest
         }
 
         @Override
+        public R<LoginUser> getUserInfoById(Long userId, String source)
+        {
+            return R.fail("not implemented");
+        }
+
+        @Override
         public R<Boolean> registerUserInfo(SysUser sysUser, String source)
         {
             throw new UnsupportedOperationException();
@@ -274,6 +280,12 @@ class PeerUserServiceTest
         public R<List<String>> listUsernamesByRoleKey(String roleKey, String source)
         {
             throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public R<Boolean> isWechatLoginEnabled(Long tenantId, String source)
+        {
+            return R.ok(false);
         }
     }
 }

@@ -15,6 +15,7 @@ import com.junsong.workflow.lowcode.mapper.LcBizConfigSnapshotMapper;
 import com.junsong.workflow.lowcode.mapper.LcBizObjectMapper;
 import com.junsong.workflow.lowcode.metadata.LcMetadataSchemaValidator;
 import com.junsong.workflow.lowcode.service.LcConfigVersionService;
+import com.junsong.workflow.lowcode.service.ConfigContentHasher;
 import com.junsong.workflow.lowcode.service.LcMetadataService;
 import com.junsong.workflow.lowcode.service.LcNativeTableGenerator;
 import java.util.List;
@@ -64,12 +65,14 @@ public class LcConfigVersionServiceImpl implements LcConfigVersionService
 
         // 3. 序列化为 JSON
         String configJson = JSON.toJSONString(config);
+        String contentHash = ConfigContentHasher.sha256(configJson);
 
         // 4. 插入快照
         LcBizConfigSnapshot snapshot = new LcBizConfigSnapshot();
         snapshot.setBizCode(bizCode);
         snapshot.setVersionNo(newVersionNo);
         snapshot.setConfigJson(configJson);
+        snapshot.setContentHash(contentHash);
         snapshot.setStatus("PUBLISHED");
         snapshot.setPublishRemark(publishRemark);
         snapshot.setCreateBy(operator);

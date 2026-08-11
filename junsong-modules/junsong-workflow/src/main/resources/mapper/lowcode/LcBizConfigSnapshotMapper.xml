@@ -9,6 +9,7 @@
         <result property="bizCode" column="biz_code"/>
         <result property="versionNo" column="version_no"/>
         <result property="configJson" column="config_json"/>
+        <result property="contentHash" column="content_hash"/>
         <result property="status" column="status"/>
         <result property="publishRemark" column="publish_remark"/>
         <result property="delFlag" column="del_flag"/>
@@ -20,7 +21,7 @@
     </resultMap>
 
     <select id="selectByBizCode" resultMap="snapshotResultMap">
-        SELECT id, biz_code, version_no, config_json, status, publish_remark,
+        SELECT id, biz_code, version_no, config_json, content_hash, status, publish_remark,
                del_flag, create_by, create_time, update_by, update_time, remark
         FROM lc_biz_config_snapshot
         <where>
@@ -30,7 +31,7 @@
     </select>
 
     <select id="selectByBizCodeAndVersion" resultMap="snapshotResultMap">
-        SELECT id, biz_code, version_no, config_json, status, publish_remark,
+        SELECT id, biz_code, version_no, config_json, content_hash, status, publish_remark,
                del_flag, create_by, create_time, update_by, update_time, remark
         FROM lc_biz_config_snapshot
         <where>
@@ -54,10 +55,10 @@
 
     <insert id="insertSnapshot" parameterType="com.junsong.workflow.lowcode.domain.LcBizConfigSnapshot" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO lc_biz_config_snapshot
-            (biz_code, version_no, config_json, status, publish_remark, del_flag,
+            (biz_code, version_no, config_json, content_hash, status, publish_remark, del_flag,
              create_by, create_time, update_by, update_time, remark)
-        VALUES
-            (#{bizCode}, #{versionNo}, #{configJson}, #{status}, #{publishRemark}, '0',
+            VALUES
+            (#{bizCode}, #{versionNo}, #{configJson}, #{contentHash}, #{status}, #{publishRemark}, '0',
              #{createBy}, NOW(), '', NULL, #{remark})
     </insert>
 

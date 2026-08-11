@@ -9,6 +9,7 @@ public class LcBizConfigSnapshot
     private String bizCode;
     private Integer versionNo;
     private String configJson;
+    private String contentHash;
     private String status;
     private String publishRemark;
     private String delFlag;
@@ -28,6 +29,8 @@ public class LcBizConfigSnapshot
     public void setVersionNo(Integer versionNo) { this.versionNo = versionNo; }
     public String getConfigJson() { return configJson; }
     public void setConfigJson(String configJson) { this.configJson = configJson; }
+    public String getContentHash() { return contentHash; }
+    public void setContentHash(String contentHash) { this.contentHash = contentHash; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public String getPublishRemark() { return publishRemark; }

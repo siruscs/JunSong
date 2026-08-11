@@ -20,6 +20,7 @@ import com.junsong.workflow.lowcode.mapper.LcBizPageSchemaMapper;
 import com.junsong.workflow.lowcode.mapper.LcBizPostActionMapper;
 import com.junsong.workflow.lowcode.event.LcConfigPublishedEvent;
 import com.junsong.workflow.lowcode.service.LcMetadataService;
+import com.junsong.workflow.lowcode.service.LcConfigVersionGuard;
 import com.junsong.workflow.lowcode.metadata.LcMetadataSchemaValidator;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -88,6 +89,10 @@ public class LcMetadataServiceImpl implements LcMetadataService
         {
             throw new ServiceException("业务对象与 bizCode 不能为空");
         }
+        LcBizObject current = selectBizObjectByBizCode(obj.getBizCode());
+        Integer currentPublishedVersion = current == null || current.getPublishedVersion() == null
+                ? 0 : current.getPublishedVersion();
+        LcConfigVersionGuard.requireCompatible(config.getSourceVersion(), currentPublishedVersion);
         // 页面不要求用户填写内部存储字段；平台统一使用通用表约定。
         // 必须在 Schema 校验和 INSERT 前补齐，避免新建配置因数据库 NOT NULL 失败。
         if (obj.getPkField() == null || obj.getPkField().isBlank()) obj.setPkField("id");

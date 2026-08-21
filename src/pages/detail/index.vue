@@ -14,6 +14,7 @@
           <view class="hero-title">{{ heroTitle }}</view>
           <view v-if="heroValue" class="hero-value">{{ heroValue }}</view>
           <view v-if="heroMeta" class="hero-meta">{{ heroMeta }}</view>
+          <button v-if="moduleKey === 'sale'" class="export-image-button" :disabled="exporting" @tap.stop="exportImage">{{ exporting ? '生成中…' : '导出图片' }}</button>
         </view>
       </view>
 
@@ -274,6 +275,10 @@
         </view>
       </view>
     </view>
+    <!-- 导出画布：尺寸由 exportLongImage → renderToCanvas({width, height}) 参数驱动，
+         组件内部通过原生 setData 调整（Vue prop 会被 uni-app 编译成 u-p 透传，
+         原生 Component 收不到，绑定无效）。 -->
+    <wxml-to-canvas class="export-canvas"></wxml-to-canvas>
   </view>
 </template>
 
@@ -283,6 +288,7 @@ import { getModule, displayValue, formatDisplayValue, getValueTone } from '@/con
 import { getData, deleteData, request, actionRequest, getBaseUrl } from '@/api/index.js'
 import { hasActionPermission, requireModulePermission } from '@/utils/permission.js'
 import { isUnknownWriteOutcome } from '@/utils/operationState.js'
+import { exportLongImage } from '@/utils/longImageExport.js'
 
 export default {
   mixins: [miniProgramShare],
@@ -290,7 +296,9 @@ export default {
     return {
       moduleKey: '',
       recordId: '',
+      exportCanvasComponent: null,
       loading: true,
+      exporting: false,
       record: null,
       config: null,
       sensitiveVisible: {},
@@ -600,6 +608,9 @@ export default {
     this.loadDetail()
     this.loadDictPaymentMethods()
   },
+  onReady() {
+    this.exportCanvasComponent = this.getExportCanvasComponent()
+  },
   onShow() {
     if (this.moduleKey && this.recordId && this.record) this.loadDetail()
   },
@@ -792,6 +803,99 @@ export default {
     },
     onPaymentDateChange(e) {
       this.paymentForm.paymentDate = e.detail.value
+    },
+    async exportImage() {
+      if (this.exporting) return
+      if (this.moduleKey !== 'sale' || !this.record) {
+        uni.showToast({ title: this.loading ? '详情加载中，请稍后重试' : '当前不是销售记录详情', icon: 'none' })
+        return
+      }
+      this.exporting = true
+      uni.showLoading({ title: '准备导出…', mask: true })
+      try {
+        // 画布尺寸由 exportLongImage 内部通过 renderToCanvas({width, height}) 参数下发，
+        // 组件在原生实例上 setData 调整 buffer（页面侧 prop 绑定对原生组件无效）。
+        const exportComponent = this.exportCanvasComponent || this.getExportCanvasComponent()
+        if (!exportComponent?.renderToCanvas) throw new Error('导出插件未初始化，请稍后重试')
+        const fields = [...(this.primaryFields || []), ...(this.secondaryFields || [])]
+        const rows = fields.map((field) => ({ label: field.label, value: field.value }))
+        const payments = (this.record.payments || []).map((payment) => ({
+          label: payment.paymentNo || '缴款记录',
+          value: `¥${this.moneyText(payment.paymentAmount)} · ${this.paymentMethodText(payment.paymentMethod)}`
+        }))
+        await exportLongImage({
+          title: this.heroTitle || '销售记录详情',
+          subtitle: this.heroMeta || '销售记录',
+          component: exportComponent,
+          wxml: this.exportWxml(),
+          style: this.exportStyle(),
+          sections: [
+            { title: '销售详情', rows },
+            ...(payments.length ? [{ title: '缴款记录', rows: payments }] : [])
+          ]
+        })
+      } catch (error) {
+        uni.showModal({ title: '导出失败', content: error?.message || '插件导出失败', showCancel: false })
+      } finally {
+        uni.hideLoading()
+        this.exporting = false
+      }
+    },
+    getExportCanvasComponent() {
+      // 必须优先取原生组件实例：uni-app Vue3 的 $refs 指向包装代理，在代理上调用
+      // this.setData 会触发 __treeManager__ undefined（真机已复现）。原生页面实例的
+      // selectComponent 返回原生 Component 实例，其 setData 是合法路径 —— 组件内部
+      // _applySize 依赖它调整画布尺寸。$refs 仅作为无 selectComponent 环境的兜底。
+      const page = this.$scope?.$mp?.page || this.$mp?.page || this.$scope
+      const native = page?.selectComponent?.('.export-canvas')
+      if (native && typeof native.setData === 'function' && typeof native.renderToCanvas === 'function') {
+        return native
+      }
+      const ref = this.$refs?.exportCanvas
+      return ref?.renderToCanvas ? ref : null
+    },
+    exportWxml() {
+      const esc = (value) => String(value ?? '-').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      const fields = [...(this.primaryFields || []), ...(this.secondaryFields || [])]
+      const fieldCards = fields.map((field) => `<view class="detailCard"><view class="detailTop"><text class="detailNo">${esc(field.label)}</text><text class="detailAmount">${esc(field.value)}</text></view></view>`).join('')
+      const paymentCards = (this.record?.payments || []).map((payment) => `<view class="detailCard"><view class="detailTop"><text class="detailNo">${esc(payment.paymentNo || '缴款记录')}</text><text class="detailAmount">¥${this.moneyText(payment.paymentAmount)}</text></view><text class="detailMeta">${esc([this.paymentDateText(payment.paymentDate).slice(0, 10), this.paymentMethodText(payment.paymentMethod)].filter(Boolean).join(' · '))}</text><text class="detailContent">${esc(payment.remark || '')}</text></view>`).join('')
+      const section = (title, cards, empty, key) => `<view class="section ${key}Section"><view class="sectionHeader"><text class="sectionTitle">${title}</text></view><view class="detailList ${key}List">${cards || `<text class="empty">${empty}</text>`}</view></view>`
+      return `<view class="page"><view class="hero"><text class="heroTitle">${esc(this.heroTitle || '销售记录详情')}</text><text class="heroSub">${esc(this.heroMeta || '销售记录')}</text></view>${section('概要信息', fieldCards, '暂无详情', 'field')}${paymentCards ? section('缴款记录', paymentCards, '暂无缴款记录', 'payment') : ''}</view>`
+    },
+    exportStyle() {
+      const fieldCount = (this.primaryFields || []).length + (this.secondaryFields || []).length
+      const paymentCount = (this.record?.payments || []).length
+      const fieldListHeight = fieldCount ? fieldCount * 68 : 36
+      const paymentListHeight = paymentCount ? paymentCount * 86 : 36
+      const fieldSectionHeight = 26 + fieldListHeight
+      const paymentSectionHeight = 26 + paymentListHeight
+      // hero 高度 +16px 补偿 heroTitle marginTop；detailCard 高度 +12px 补偿 detailTop marginTop
+      const pageHeight = 14 + 156 + 14 + fieldSectionHeight + (paymentCount ? 14 + paymentSectionHeight : 0) + 14
+      return {
+        page: { width: 375, height: pageHeight, padding: 14, backgroundColor: '#E8EEF5', flexDirection: 'column' },
+        // 顶部块使用与页面 .hero-bg 相同的渐变：linear-gradient(135deg, #087CF0, #5AA9E8, #A8C7E5)
+        // （CSS 多色渐变无显式 stops 时均分 0/0.5/1）。backgroundGradient 由组件 drawView 扩展绘制。
+        hero: { width: 347, height: 156, padding: 16, backgroundGradient: { colors: [{ offset: 0, color: '#087CF0' }, { offset: 0.5, color: '#5AA9E8' }, { offset: 1, color: '#A8C7E5' }] }, borderRadius: 10, flexDirection: 'column' },
+        // 关键修复：heroTitle 添加 marginTop+marginLeft 补偿，绕过 flex+padding 布局缺陷
+        heroTitle: { width: 315, height: 24, fontSize: 17, color: '#FFFFFF', marginTop: 16, marginLeft: 16 },
+        heroSub: { width: 315, height: 18, fontSize: 11, color: '#D9E7F5', marginLeft: 16 },
+        section: { width: 347, marginTop: 14, flexDirection: 'column' },
+        fieldSection: { width: 347, height: fieldSectionHeight, marginTop: 14, flexDirection: 'column' },
+        paymentSection: { width: 347, height: paymentSectionHeight, marginTop: 14, flexDirection: 'column' },
+        sectionHeader: { width: 347, height: 26, flexDirection: 'row', justifyContent: 'space-between' },
+        sectionTitle: { width: 230, height: 24, fontSize: 16, color: '#1A2332' },
+        detailList: { width: 347, flexDirection: 'column' },
+        fieldList: { width: 347, height: fieldListHeight, flexDirection: 'column' },
+        paymentList: { width: 347, height: paymentListHeight, flexDirection: 'column' },
+        detailCard: { width: 319, height: 72, marginTop: 8, padding: 12, backgroundColor: '#FFFFFF', borderRadius: 8, flexDirection: 'column' },
+        // 关键修复：detailTop 添加 marginTop+marginLeft 补偿
+        detailTop: { width: 295, height: 22, flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, marginLeft: 12 },
+        detailNo: { width: 190, height: 20, fontSize: 14, color: '#1A2332' },
+        detailAmount: { width: 105, height: 20, fontSize: 14, color: '#1A2332', textAlign: 'right' },
+        detailMeta: { width: 295, height: 18, fontSize: 11, color: '#94A3B8', marginLeft: 12 },
+        detailContent: { width: 295, height: 18, fontSize: 11, color: '#5A6B7F', lineBreak: 'char', marginLeft: 12 },
+        empty: { width: 319, height: 36, padding: 12, fontSize: 13, color: '#94A3B8' }
+      }
     },
     // 加载数据
     async loadDetail() {
@@ -1165,6 +1269,37 @@ export default {
   position: relative;
   z-index: 1;
   padding: 40rpx 36rpx;
+}
+
+.export-image-button {
+  margin: 18rpx 0 0;
+  width: 180rpx;
+  height: 56rpx;
+  line-height: 56rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.7);
+  border-radius: 12rpx;
+  background: rgba(255, 255, 255, 0.16);
+  color: #FFFFFF;
+  font-size: 22rpx;
+}
+
+.export-canvas {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 375px;
+  opacity: 1;
+  pointer-events: none;
+}
+
+.export-fallback-canvas {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 375px;
+  height: 12000px;
+  opacity: 1;
+  pointer-events: none;
 }
 
 .hero-eyebrow {

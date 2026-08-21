@@ -106,6 +106,21 @@ function patchUniMpWeixinRuntime() {
       const logoSource = path.join(process.cwd(), 'src/static/logo.png')
       const logoTarget = path.join(process.cwd(), 'dist/static/logo.png')
       if (fs.existsSync(logoSource)) fs.copyFileSync(logoSource, logoTarget)
+      // wxml-to-canvas 是原生小程序组件，Vite 不会自动复制 src/components 下的非 Vue 组件文件。
+      // 页面配置已声明该组件，因此必须把完整运行时（wxml/js/wxss/json/utils）同步到最终产物。
+      const exportComponentSourceDir = path.join(process.cwd(), 'src/components/WxmlToCanvas')
+      const exportComponentTargetDir = path.join(process.cwd(), 'dist/components/WxmlToCanvas')
+      if (fs.existsSync(exportComponentSourceDir)) {
+        fs.cpSync(exportComponentSourceDir, exportComponentTargetDir, { recursive: true })
+      }
+      const exportComponentRuntime = path.join(exportComponentTargetDir, 'index.js')
+      const widgetUiRuntime = path.join(process.cwd(), 'node_modules/widget-ui/dist/index.js')
+      if (fs.existsSync(exportComponentRuntime) && fs.existsSync(widgetUiRuntime)) {
+        const componentCode = fs.readFileSync(exportComponentRuntime, 'utf8')
+        const widgetUiCode = fs.readFileSync(widgetUiRuntime, 'utf8')
+        const embeddedWidgetUi = `(function () { var widgetModule = { exports: {} }; var widgetExports = widgetModule.exports; var module = widgetModule; var exports = widgetExports; ${widgetUiCode}; return widgetModule.exports }())`
+        fs.writeFileSync(exportComponentRuntime, componentCode.replace('module.exports = require("widget-ui");', `module.exports = ${embeddedWidgetUi};`))
+      }
       for (const vendorPath of [
         path.join(outDir, 'common/vendor.js'),
         path.resolve(process.cwd(), 'dist/common/vendor.js')

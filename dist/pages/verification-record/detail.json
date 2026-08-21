@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "核销批次详情",
-  "usingComponents": {}
+  "usingComponents": {
+    "wxml-to-canvas": "../../components/WxmlToCanvas/index"
+  }
 }

@@ -34,7 +34,7 @@
     },
     {
       "path": "pages/detail/index",
-      "style": { "navigationBarTitleText": "详情" }
+      "style": { "navigationBarTitleText": "详情", "usingComponents": { "wxml-to-canvas": "../../components/WxmlToCanvas/index" } }
     },
     {
       "path": "pages/expense-verify/index",
@@ -138,7 +138,7 @@
     },
     {
       "path": "pages/verification-record/detail",
-      "style": { "navigationBarTitleText": "核销批次详情" }
+      "style": { "navigationBarTitleText": "核销批次详情", "usingComponents": { "wxml-to-canvas": "../../components/WxmlToCanvas/index" } }
     },
     {
       "path": "pages/wechat-bind/index",

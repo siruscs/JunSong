@@ -1,8 +1,9 @@
 <template>
   <view class="page">
     <view class="hero">
-      <text class="hero-title">核销记录</text>
-      <text class="hero-sub">费用核销批次 · 查看明细</text>
+      <view class="hero-head">
+        <view><text class="hero-title">核销记录</text><text class="hero-sub">费用核销批次 · 查看明细</text></view>
+      </view>
     </view>
 
     <view class="tab-bar">
@@ -77,7 +78,7 @@ export default {
   computed: {
     hasMore() {
       return this.batchList.length < this.total
-    }
+    },
   },
   onLoad() {
     requireModulePermission('verificationRecord')
@@ -157,6 +158,36 @@ export default {
   background: linear-gradient(135deg, #1E40AF, #3B82F6);
   border-radius: 24rpx;
   box-shadow: 0 12rpx 32rpx rgba(59, 130, 246, 0.18);
+}
+
+.hero-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.hero-head view {
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 18rpx;
+  color: #FFFFFF;
+  font-size: 25rpx;
+}
+
+.summary-row.difference {
+  font-weight: 700;
+}
+
+.summary-explanation {
+  display: block;
+  margin-top: 14rpx;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 22rpx;
 }
 
 .hero-title {

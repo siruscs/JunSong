@@ -219,16 +219,14 @@ test('verification-record exportStyle uses marginTop for first-child spacing and
   assert.match(source, /heroTitle:[^}]*marginTop:\s*16/)
   // heroTitle 使用数字 marginLeft: 16（不是字符串 '16rpx'）
   assert.match(source, /heroTitle:[^}]*marginLeft:\s*16\b/)
-  // hero 高度为 192
-  assert.match(source, /heroHeight = 192/)
+  // hero 增加核销时间、核销状态两行后高度为 236
+  assert.match(source, /heroHeight = 236/)
   // heroSub 使用数字 marginTop: 12（标题与副标题之间的间距）
   assert.match(source, /heroSub:[^}]*marginTop:\s*12/)
   // summaryExpense 使用 marginTop: 6
   assert.match(source, /summaryExpense:[^}]*marginTop:\s*6/)
-  // infoCard 使用 marginLeft: 12 创建水平间距
-  assert.match(source, /infoCard:[^}]*marginLeft:\s*12/)
-  // infoHeader 作为 infoCard 第一个子元素，使用 marginTop: 14 创建顶部间距
-  assert.match(source, /infoHeader:[^}]*marginTop:\s*14/)
+  // heroMeta 作为新增的核销时间/状态行，使用 marginTop: 4 创建行间距
+  assert.match(source, /heroMeta:[^}]*marginTop:\s*4/)
   // detailTop 作为 detailCard 第一个子元素，使用 marginTop: 14 创建顶部间距
   assert.match(source, /detailTop:[^}]*marginTop:\s*14/)
   // expenseSection 使用 marginLeft: 12
@@ -236,22 +234,23 @@ test('verification-record exportStyle uses marginTop for first-child spacing and
   // summaryAdvance 使用 marginTop: 4
   assert.match(source, /summaryAdvance:[^}]*marginTop:\s*4/)
   // explanation 使用 marginTop: 4
-  assert.match(source, /explanation:[^}]*marginTop:\s*4/)
+  assert.match(source, /explanation:[\s\S]*?marginTop:\s*4/)
   // 不再使用 spacer 元素（heroSpacer、detailSpacer）
   assert.doesNotMatch(source, /heroSpacer:/)
   assert.doesNotMatch(source, /detailSpacer:/)
 })
 
-test('sale detail exportStyle adds marginTop/marginLeft to compensate for flex+padding layout defects', () => {
+test('sale detail exportStyle keeps the page hierarchy within the export width', () => {
   const source = read('src/pages/detail/index.vue')
   // heroTitle 必须有 marginTop+marginLeft 补偿
   assert.match(source, /heroTitle:[^}]*marginTop:\s*16/)
   assert.match(source, /heroTitle:[^}]*marginLeft:\s*16/)
-  // hero 高度从 140 增加到 156
-  assert.match(source, /hero:[^}]*height:\s*156/)
-  // detailTop 必须有 marginTop+marginLeft 补偿
-  assert.match(source, /detailTop:[^}]*marginTop:\s*12/)
-  assert.match(source, /detailTop:[^}]*marginLeft:\s*12/)
-  // detailCard 高度从 60 增加到 72
-  assert.match(source, /detailCard:[^}]*height:\s*72/)
+  // hero 高度需随销售总金额行动态增加，避免导出内容被裁切
+  assert.match(source, /const heroHeight = this\.heroValue \? 186 : 156/)
+  assert.match(source, /hero:[^}]*height:\s*heroHeight/)
+  // 导出结构应与页面的概要卡片、字段行、缴款记录一致
+  assert.match(source, /sectionCard:[^}]*width:\s*347/)
+  assert.match(source, /highlightItem:[^}]*width:\s*143/)
+  assert.match(source, /fieldRow:[^}]*width:\s*299/)
+  assert.match(source, /paymentHistoryItem:[^}]*width:\s*299/)
 })

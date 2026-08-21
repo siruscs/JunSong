@@ -856,45 +856,79 @@ export default {
     },
     exportWxml() {
       const esc = (value) => String(value ?? '-').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      const fields = [...(this.primaryFields || []), ...(this.secondaryFields || [])]
-      const fieldCards = fields.map((field) => `<view class="detailCard"><view class="detailTop"><text class="detailNo">${esc(field.label)}</text><text class="detailAmount">${esc(field.value)}</text></view></view>`).join('')
-      const paymentCards = (this.record?.payments || []).map((payment) => `<view class="detailCard"><view class="detailTop"><text class="detailNo">${esc(payment.paymentNo || '缴款记录')}</text><text class="detailAmount">¥${this.moneyText(payment.paymentAmount)}</text></view><text class="detailMeta">${esc([this.paymentDateText(payment.paymentDate).slice(0, 10), this.paymentMethodText(payment.paymentMethod)].filter(Boolean).join(' · '))}</text><text class="detailContent">${esc(payment.remark || '')}</text></view>`).join('')
-      const section = (title, cards, empty, key) => `<view class="section ${key}Section"><view class="sectionHeader"><text class="sectionTitle">${title}</text></view><view class="detailList ${key}List">${cards || `<text class="empty">${empty}</text>`}</view></view>`
-      return `<view class="page"><view class="hero"><text class="heroTitle">${esc(this.heroTitle || '销售记录详情')}</text><text class="heroSub">${esc(this.heroMeta || '销售记录')}</text></view>${section('概要信息', fieldCards, '暂无详情', 'field')}${paymentCards ? section('缴款记录', paymentCards, '暂无缴款记录', 'payment') : ''}</view>`
+      const primaryFields = this.primaryFields || []
+      const secondaryFields = this.secondaryFields || []
+      const primaryRows = []
+      for (let i = 0; i < primaryFields.length; i += 2) {
+        const row = primaryFields.slice(i, i + 2).map((field) => `<view class="highlightItem"><text class="highlightLabel">${esc(field.label)}</text><text class="highlightValue ${esc(field.class || '')}">${esc(field.value)}</text></view>`).join('')
+        primaryRows.push(`<view class="highlightRow">${row}</view>`)
+      }
+      const primarySection = primaryFields.length
+        ? `<view class="sectionCard primarySection"><text class="sectionTitle">概要信息</text><view class="highlightGrid">${primaryRows.join('')}</view></view>`
+        : ''
+      const secondaryRows = secondaryFields.map((field) => `<view class="fieldRow"><text class="fieldLabel">${esc(field.label)}</text><text class="fieldValue ${esc(field.class || '')}">${esc(field.value)}</text></view>`).join('')
+      const secondarySection = secondaryFields.length
+        ? `<view class="sectionCard secondarySection"><text class="sectionTitle">详细信息</text><view class="fieldList">${secondaryRows}</view></view>`
+        : ''
+      const heroValue = this.heroValue || ''
+      const heroValueNode = heroValue ? `<text class="heroValue">${esc(heroValue)}</text>` : ''
+      const paymentCards = (this.record?.payments || []).map((payment) => {
+        const remark = payment.remark ? `<text class="paymentHistoryRemark">备注：${esc(payment.remark)}</text>` : ''
+        return `<view class="paymentHistoryItem"><view class="paymentHistoryMain"><text class="paymentHistoryNo">${esc(payment.paymentNo || '缴款记录')}</text></view><text class="paymentHistoryAmountLine">缴款金额：¥${this.moneyText(payment.paymentAmount)}</text><view class="paymentHistoryMeta"><text class="paymentHistoryMetaText paymentHistoryDate">${esc(`缴款：${this.paymentDateText(payment.paymentDate).slice(0, 10)}`)}</text><text class="paymentHistoryMetaText paymentHistoryCreate">${esc(`建单：${this.paymentDateText(payment.createTime).slice(0, 10)}`)}</text><text class="paymentHistoryMetaText paymentHistoryMethod">${esc(this.paymentMethodText(payment.paymentMethod))}</text></view>${remark}</view>`
+      }).join('')
+      const paymentSection = paymentCards
+        ? `<view class="sectionCard paymentSection"><text class="sectionTitle">缴款记录</text>${paymentCards}</view>`
+        : ''
+      return `<view class="page"><view class="hero"><text class="heroTitle">${esc(this.heroTitle || '销售记录详情')}</text>${heroValueNode}<text class="heroSub">${esc(this.heroMeta || '销售记录')}</text></view>${primarySection}${secondarySection}${paymentSection}</view>`
     },
     exportStyle() {
-      const fieldCount = (this.primaryFields || []).length + (this.secondaryFields || []).length
+      const primaryCount = (this.primaryFields || []).length
+      const secondaryCount = (this.secondaryFields || []).length
       const paymentCount = (this.record?.payments || []).length
-      const fieldListHeight = fieldCount ? fieldCount * 68 : 36
-      const paymentListHeight = paymentCount ? paymentCount * 86 : 36
-      const fieldSectionHeight = 26 + fieldListHeight
-      const paymentSectionHeight = 26 + paymentListHeight
-      // hero 高度 +16px 补偿 heroTitle marginTop；detailCard 高度 +12px 补偿 detailTop marginTop
-      const pageHeight = 14 + 156 + 14 + fieldSectionHeight + (paymentCount ? 14 + paymentSectionHeight : 0) + 14
+      const primaryRows = Math.ceil(primaryCount / 2)
+      const heroHeight = this.heroValue ? 186 : 156
+      const primarySectionHeight = primaryCount ? 14 + 24 + 8 + primaryRows * 64 : 0
+      const secondarySectionHeight = secondaryCount ? 14 + 24 + 6 + secondaryCount * 48 : 0
+      const paymentSectionHeight = paymentCount ? 14 + 24 + paymentCount * 112 : 0
+      const pageHeight = 14 + heroHeight + (primaryCount ? 14 + primarySectionHeight : 0) + (secondaryCount ? 14 + secondarySectionHeight : 0) + (paymentCount ? 14 + paymentSectionHeight : 0) + 14
       return {
         page: { width: 375, height: pageHeight, padding: 14, backgroundColor: '#E8EEF5', flexDirection: 'column' },
         // 顶部块使用与页面 .hero-bg 相同的渐变：linear-gradient(135deg, #087CF0, #5AA9E8, #A8C7E5)
         // （CSS 多色渐变无显式 stops 时均分 0/0.5/1）。backgroundGradient 由组件 drawView 扩展绘制。
-        hero: { width: 347, height: 156, padding: 16, backgroundGradient: { colors: [{ offset: 0, color: '#087CF0' }, { offset: 0.5, color: '#5AA9E8' }, { offset: 1, color: '#A8C7E5' }] }, borderRadius: 10, flexDirection: 'column' },
+        hero: { width: 347, height: heroHeight, padding: 16, backgroundGradient: { colors: [{ offset: 0, color: '#087CF0' }, { offset: 0.5, color: '#5AA9E8' }, { offset: 1, color: '#A8C7E5' }] }, borderRadius: 10, flexDirection: 'column' },
         // 关键修复：heroTitle 添加 marginTop+marginLeft 补偿，绕过 flex+padding 布局缺陷
         heroTitle: { width: 315, height: 24, fontSize: 17, color: '#FFFFFF', marginTop: 16, marginLeft: 16 },
-        heroSub: { width: 315, height: 18, fontSize: 11, color: '#D9E7F5', marginLeft: 16 },
-        section: { width: 347, marginTop: 14, flexDirection: 'column' },
-        fieldSection: { width: 347, height: fieldSectionHeight, marginTop: 14, flexDirection: 'column' },
-        paymentSection: { width: 347, height: paymentSectionHeight, marginTop: 14, flexDirection: 'column' },
-        sectionHeader: { width: 347, height: 26, flexDirection: 'row', justifyContent: 'space-between' },
-        sectionTitle: { width: 230, height: 24, fontSize: 16, color: '#1A2332' },
-        detailList: { width: 347, flexDirection: 'column' },
-        fieldList: { width: 347, height: fieldListHeight, flexDirection: 'column' },
-        paymentList: { width: 347, height: paymentListHeight, flexDirection: 'column' },
-        detailCard: { width: 319, height: 72, marginTop: 8, padding: 12, backgroundColor: '#FFFFFF', borderRadius: 8, flexDirection: 'column' },
-        // 关键修复：detailTop 添加 marginTop+marginLeft 补偿
-        detailTop: { width: 295, height: 22, flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, marginLeft: 12 },
-        detailNo: { width: 190, height: 20, fontSize: 14, color: '#1A2332' },
-        detailAmount: { width: 105, height: 20, fontSize: 14, color: '#1A2332', textAlign: 'right' },
-        detailMeta: { width: 295, height: 18, fontSize: 11, color: '#94A3B8', marginLeft: 12 },
-        detailContent: { width: 295, height: 18, fontSize: 11, color: '#5A6B7F', lineBreak: 'char', marginLeft: 12 },
-        empty: { width: 319, height: 36, padding: 12, fontSize: 13, color: '#94A3B8' }
+        heroValue: { width: 315, height: 22, fontSize: 14, color: '#FFFFFF', marginTop: 6, marginLeft: 16 },
+        heroSub: { width: 315, height: 18, fontSize: 11, color: '#D9E7F5', marginTop: 4, marginLeft: 16 },
+        sectionCard: { width: 347, backgroundColor: '#FFFFFF', borderRadius: 10, flexDirection: 'column', marginTop: 14 },
+        primarySection: { width: 347, height: primarySectionHeight },
+        secondarySection: { width: 347, height: secondarySectionHeight },
+        paymentSection: { width: 347, height: paymentSectionHeight },
+        sectionTitle: { width: 299, height: 24, fontSize: 14, color: '#1A2332', marginTop: 14, marginLeft: 16 },
+        highlightGrid: { width: 299, flexDirection: 'column', marginTop: 8, marginLeft: 16 },
+        highlightRow: { width: 299, height: 64, flexDirection: 'row', marginTop: 0 },
+        highlightItem: { width: 143, height: 54, backgroundColor: '#F5F8FA', borderRadius: 6, flexDirection: 'column', marginRight: 8 },
+        highlightLabel: { width: 119, height: 18, fontSize: 11, color: '#94A3B8', marginTop: 10, marginLeft: 12 },
+        highlightValue: { width: 119, height: 20, fontSize: 14, color: '#1A2332', marginTop: 4, marginLeft: 12 },
+        'status-ok': { backgroundColor: '#D1FAE5', color: '#065F46' },
+        'status-warn': { backgroundColor: '#FEF3C7', color: '#92400E' },
+        'status-danger': { backgroundColor: '#FEE2E2', color: '#991B1B' },
+        'status-info': { backgroundColor: '#E0F2FE', color: '#075985' },
+        'tone-warning': { color: '#B45309' },
+        fieldList: { width: 299, flexDirection: 'column', marginTop: 6, marginLeft: 16 },
+        fieldRow: { width: 299, height: 48, flexDirection: 'row', justifyContent: 'space-between' },
+        fieldLabel: { width: 120, height: 20, fontSize: 13, color: '#64748B' },
+        fieldValue: { width: 167, height: 20, fontSize: 13, color: '#1A2332', textAlign: 'right', lineBreak: 'char' },
+        paymentHistoryItem: { width: 299, height: 112, flexDirection: 'column', marginTop: 8, marginLeft: 16 },
+        paymentHistoryMain: { width: 299, height: 22, flexDirection: 'row' },
+        paymentHistoryNo: { width: 299, height: 20, fontSize: 14, color: '#1A2332' },
+        paymentHistoryAmountLine: { width: 299, height: 20, fontSize: 13, color: '#087CF0', textAlign: 'right', marginTop: 2 },
+        paymentHistoryMeta: { width: 299, height: 18, flexDirection: 'row', marginTop: 8 },
+        paymentHistoryMetaText: { height: 18, fontSize: 11, color: '#64748B' },
+        paymentHistoryDate: { width: 104 },
+        paymentHistoryCreate: { width: 104 },
+        paymentHistoryMethod: { width: 91, textAlign: 'right' },
+        paymentHistoryRemark: { width: 299, height: 18, fontSize: 12, color: '#475569', lineBreak: 'char', marginTop: 6 }
       }
     },
     // 加载数据

@@ -126,7 +126,7 @@ const MODULE_BG = {
   wfTodo: 'rgba(16,185,129,0.08)', wfDone: 'rgba(16,185,129,0.08)', wfNotify: 'rgba(16,185,129,0.08)',
   stockCost: 'rgba(14,165,233,0.08)', stockAdjustment: 'rgba(245,158,11,0.08)', stocktake: 'rgba(99,102,241,0.08)',
   memberPurchase: 'rgba(8,124,240,0.08)', memberPurchaseReturn: 'rgba(239,68,68,0.08)',
-  configSync: 'rgba(107,114,128,0.08)', campaignPolicy: 'rgba(249,115,22,0.08)', memberLevel: 'rgba(139,92,246,0.08)',
+  configSync: 'rgba(107,114,128,0.08)', campaignPolicy: 'rgba(249,115,22,0.08)', memberLevel: 'rgba(139,92,246,0.08)', experienceRecord: 'rgba(14,165,233,0.08)',
   dashboard: 'rgba(8,124,240,0.08)', growth: 'rgba(139,92,246,0.08)', actions: 'rgba(14,165,233,0.08)', points: 'rgba(245,158,11,0.08)'
 }
 
@@ -140,7 +140,7 @@ const MODULE_LETTER = {
   wfTodo: '📥', wfDone: '📤', wfNotify: '🔔',
   stockCost: '📋', stockAdjustment: '⚖️', stocktake: '🔢',
   memberPurchase: '🛍️', memberPurchaseReturn: '↩️',
-  configSync: '🔄', campaignPolicy: '🎯', memberLevel: '🎖️',
+  configSync: '🔄', campaignPolicy: '🎯', memberLevel: '🎖️', experienceRecord: '🙋',
   dashboard: '📊', growth: '🌟', actions: '🎯', points: '🎯'
 }
 
@@ -155,7 +155,7 @@ const MODULE_ICON_COLOR = {
   wfTodo: '#10B981', wfDone: '#10B981', wfNotify: '#10B981',
   stockCost: '#0EA5E9', stockAdjustment: '#F59E0B', stocktake: '#6366F1',
   memberPurchase: '#087CF0', memberPurchaseReturn: '#EF4444',
-  configSync: '#6B7280', campaignPolicy: '#F97316', memberLevel: '#8B5CF6',
+  configSync: '#6B7280', campaignPolicy: '#F97316', memberLevel: '#8B5CF6', experienceRecord: '#0EA5E9',
   dashboard: '#087CF0', growth: '#8B5CF6', actions: '#0EA5E9', points: '#F59E0B'
 }
 
@@ -194,6 +194,7 @@ const MODULE_DESC = {
   configSync: '跨机构配置同步',
   campaignPolicy: '销售政策',
   memberLevel: '等级与权益',
+  experienceRecord: '场次体验人数录入',
   dashboard: '会员增长与分层洞察',
   growth: '等级、成长值与签到',
   actions: '待执行与已完成动作',

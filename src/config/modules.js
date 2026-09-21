@@ -128,6 +128,16 @@ export const modules = {
       sync: 'member:level:sync'
     }
   },
+  experienceRecord: {
+    group: '会员服务',
+    title: '体验人数',
+    path: '/member/experienceDailyRecord',
+    customPage: '/pages/experience-record/index',
+    permissions: {
+      view: 'member:experienceDailyRecord:list',
+      edit: 'member:experienceDailyRecord:edit'
+    }
+  },
   campaignPolicy: {
     group: '会员服务',
     title: '销售政策',
@@ -749,8 +759,10 @@ export const moduleList = Object.keys(modules)
   .filter((m) => !m.hiddenEntry)
 
 // 会员服务分组内顺序与 PC 端 mpPerm 页面、后端 MpModuleCatalog 完全一致
-const memberServiceOrder = ['member', 'memberPurchase', 'memberPurchaseReturn', 'memberLevel', 'campaignPolicy',
-  'pointsGoods', 'pointsRule', 'pointsRecord', 'pointsExchange',
+// 注意：modules 里注册的新模块必须同步加入此数组，否则 workbench 网格不渲染
+// （filterAuthorizedGroups 只遍历 groups[].items，渲染顺序随后端 grants 重排）
+const memberServiceOrder = ['member', 'memberPurchase', 'memberPurchaseReturn', 'memberLevel', 'experienceRecord',
+  'campaignPolicy', 'pointsGoods', 'pointsRule', 'pointsRecord', 'pointsExchange',
   'seckill', 'seckillRecord'
 ]
 const orderedMemberServices = memberServiceOrder.map((key) => ({ key, ...modules[key] })).filter((item) => item && item.group === '会员服务')

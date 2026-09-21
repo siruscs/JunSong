@@ -61,6 +61,14 @@
       "style": { "navigationBarTitleText": "等级配置" }
     },
     {
+      "path": "pages/experience-record/index",
+      "style": { "navigationBarTitleText": "体验人数录入" }
+    },
+    {
+      "path": "pages/experience-report/index",
+      "style": { "navigationBarTitleText": "体验人数汇报" }
+    },
+    {
       "path": "pages/member-purchase-return/index",
       "style": { "navigationBarTitleText": "退货/退款" }
     },

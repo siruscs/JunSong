@@ -11,9 +11,18 @@ test('会员购买和销售政策入口必须是独立真实页面并纳入会�
   assert.match(modules, /memberPurchase: \{[\s\S]*?customPage: '\/pages\/member-purchase\/index'/)
   assert.match(modules, /campaignPolicy: \{[\s\S]*?customPage: '\/pages\/campaign-policy\/index'/)
   assert.match(modules, /memberPurchaseReturn: \{[\s\S]*?customPage: '\/pages\/member-purchase-return\/index'/)
-  assert.match(modules, /\['member', 'memberPurchase', 'memberPurchaseReturn', 'memberLevel', 'campaignPolicy'/)
+  assert.match(modules, /\['member', 'memberPurchase', 'memberPurchaseReturn', 'memberLevel', 'experienceRecord',/)
+  assert.match(modules, /experienceRecord: \{[\s\S]*?customPage: '\/pages\/experience-record\/index'/)
   assert.match(modules, /member:purchase:payment/)
   assert.match(modules, /member:purchase:delivery/)
+})
+
+test('体验人数模块卡片必须有与其他模块一致的图标与描述映射', () => {
+  const workbench = read('src/pages/workbench/index.vue')
+  assert.match(workbench, /const MODULE_BG = \{[^}]*experienceRecord: 'rgba\(/)
+  assert.match(workbench, /const MODULE_LETTER = \{[^}]*experienceRecord: '[^']+/)
+  assert.match(workbench, /const MODULE_ICON_COLOR = \{[^}]*experienceRecord: '#/)
+  assert.match(workbench, /const MODULE_DESC = \{[^}]*experienceRecord: '/)
 })
 
 test('小程序会员购买和销售政策页面必须有真实表单字段与精度约束', () => {

@@ -89,7 +89,7 @@
       <view class="preview-grid">
         <view class="preview-item" v-for="key in readonlyKeys" :key="key">
           <text class="preview-label">{{ readonlyLabel(key) }}</text>
-          <text class="preview-value">{{ previewData[key] === undefined || previewData[key] === null ? '-' : previewData[key] }}</text>
+          <text class="preview-value">{{ readonlyValue(key) }}</text>
         </view>
       </view>
     </view>
@@ -122,7 +122,7 @@
 
 <script>
 import miniProgramShare from '@/mixins/miniProgramShare.js'
-import { getModule, displayValue } from '@/config/modules.js'
+import { getModule, displayValue, formatDisplayValue } from '@/config/modules.js'
 import { getFieldPrecision, formatNumber, QUANTITY_PRECISION } from '@/config/formStandards.js'
 import { getData, addData, updateData, request } from '@/api/index.js'
 import { hasActionPermission, requireModulePermission } from '@/utils/permission.js'
@@ -161,6 +161,7 @@ export default {
       optionalCollapsed: false,
       memberPoints: '',
       pointsGoodsPrice: 0,
+      effectiveRule: null,
       productOptions: [],
       regionIndex: [0, 0, 0, 0],
       regionRange: [[], [], [], []],
@@ -179,7 +180,8 @@ export default {
       return this.getCurrentDeptId()
     },
     showMemberSearch() {
-      return (this.isSeckillRecordCreate || (this.moduleKey === 'pointsExchange' && !this.id))
+      return (this.isSeckillRecordCreate || (this.moduleKey === 'pointsExchange' && !this.id)
+        || (this.moduleKey === 'pointsRecord' && !this.id))
     },
     pointsCalc() {
       if (this.moduleKey !== 'pointsExchange' || !this.form.goodsId) return null
@@ -243,6 +245,10 @@ export default {
         return
       }
       uni.setNavigationBarTitle({ title: this.id ? '编辑' + this.config.title : '新增' + this.config.title })
+      // 积分记录新增时，预先加载生效的积分规则，用于消费金额 → 积分的自动计算
+      if (this.moduleKey === 'pointsRecord' && !this.id) {
+        this.loadPointsRule()
+      }
       this.initForm().catch(e => { this.loadError = e?.msg || '表单加载失败' }).finally(() => { this.initializing = false })
     } else {
       this.initializing = false
@@ -292,6 +298,9 @@ export default {
       }
       if (this.moduleKey === 'pointsGoods' && !this.id) {
         this.form.status = '0'
+      }
+      if (this.moduleKey === 'pointsRecord' && !this.id) {
+        this.form.recordType = '1'
       }
       if (this.moduleKey === 'product' && !this.id) {
         this.form.status = '0'
@@ -384,6 +393,8 @@ export default {
       if (field.formHidden) return true
       if (this.isSeckillRecordCreate && ['seckillId', 'memberId', 'memberNo', 'memberName', 'status'].includes(field.key)) return true
       if (this.moduleKey === 'pointsExchange' && !this.id && ['memberId', 'memberName', 'pointsDeducted', 'status', 'exchangeNo'].includes(field.key)) return true
+      // 积分记录：仅"消费得积分"(recordType=1)需要消费金额，其他类型隐藏
+      if (this.moduleKey === 'pointsRecord' && field.key === 'consumeAmount' && this.form.recordType && this.form.recordType !== '1') return true
       return false
     },
     isReadonlyField(field) {
@@ -416,6 +427,13 @@ export default {
       }
       if (this.isSeckillRecordCreate && key === 'shares') this.calculateSeckillTotal()
       if (this.moduleKey === 'pointsExchange' && key === 'quantity') this.syncPointsDeducted()
+      // 积分记录新增：消费金额 change 时，若记录类型是"消费得积分"且有生效规则，自动计算积分
+      if (this.moduleKey === 'pointsRecord' && key === 'consumeAmount' && !this.id) {
+        const recordType = this.form.recordType
+        if (recordType === '1' && this.effectiveRule) {
+          this.calculatePointsFromConsume()
+        }
+      }
     },
     // 小数字符过滤：允许数字、单个小数点、可选首位负号；只保留3位小数位以内。空、'-'、'0.'、'.'都视为合法过程态。
     sanitizeDecimal(raw, allowNegative = false, precision = QUANTITY_PRECISION) {
@@ -670,6 +688,10 @@ export default {
           }
         })
       }
+      // 积分记录新增：切换记录类型到"消费得积分"时，若已有消费金额且规则已加载，自动算积分
+      if (this.moduleKey === 'pointsRecord' && field.key === 'recordType' && !this.id && item.value === '1' && this.form.consumeAmount > 0 && this.effectiveRule) {
+        this.calculatePointsFromConsume()
+      }
     },
     hasRegionField() {
       return (this.config?.fields || []).some((field) => field.type === 'region')
@@ -677,6 +699,34 @@ export default {
     async loadRegionOptions() {
       const res = await request({ url: '/system/region/tree', method: 'GET' })
       this.regionOptions = res.data || []
+    },
+    /** 加载当前生效的积分规则（积分记录新增时使用） */
+    async loadPointsRule() {
+      try {
+        const res = await request({ url: '/member/pointsRule/effective', method: 'GET', silent: true })
+        if (res && res.data) {
+          this.effectiveRule = res.data
+        }
+      } catch (e) {
+        // 规则加载失败不阻断表单，用户可手填积分
+        this.effectiveRule = null
+      }
+    },
+    /** 根据消费金额和积分规则自动计算积分 */
+    calculatePointsFromConsume() {
+      if (!this.effectiveRule) return
+      const amt = Number(this.form.consumeAmount)
+      if (!amt || amt <= 0) return
+      const perYuan = Number(this.effectiveRule.pointsPerYuan)
+      if (!perYuan || perYuan <= 0) return
+      let rawPoints = amt / perYuan
+      // ruleType: 1=进一法, 2=四舍五入, 3=舍零取整（与 PC 端一致）
+      const rt = String(this.effectiveRule.ruleType || '')
+      if (rt === '1' || rt === '进一法') rawPoints = Math.ceil(rawPoints)
+      else if (rt === '3' || rt === '舍零取整') rawPoints = Math.floor(rawPoints)
+      else rawPoints = Math.round(rawPoints)
+      if (isNaN(rawPoints) || !isFinite(rawPoints)) return
+      this.form.points = rawPoints
     },
     resetRegionPicker() {
       this.regionIndex = [0, 0, 0, 0]
@@ -768,12 +818,23 @@ export default {
       }
       return map[key] || key
     },
+    readonlyValue(key) {
+      const raw = this.previewData?.[key]
+      if (raw === undefined || raw === null || raw === '') return '-'
+      // 在模块 fields 里找对应字段定义，复用 formatDisplayValue 做金额/百分比/数量格式化
+      const field = (this.config?.fields || []).find(f => f.key === key) || { key }
+      return formatDisplayValue(field, raw, this.previewData)
+    },
     validate() {
       if (this.isSeckillRecordCreate && !this.form.memberId) {
         uni.showToast({ title: '请先选择会员', icon: 'none' })
         return false
       }
       if (this.moduleKey === 'pointsExchange' && !this.id && !this.form.memberId) {
+        uni.showToast({ title: '请先选择会员', icon: 'none' })
+        return false
+      }
+      if (this.moduleKey === 'pointsRecord' && !this.id && !this.form.memberId) {
         uni.showToast({ title: '请先选择会员', icon: 'none' })
         return false
       }

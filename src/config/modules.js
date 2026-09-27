@@ -195,23 +195,22 @@ export const modules = {
     permissions: memberCrudPermissions('pointsRecord'),
     idKey: 'recordId',
     searchKey: 'memberName',
-    addOnly: true,
     summary: ['memberNo', 'recordType', 'points', 'balance'],
     fields: [
-      { key: 'memberId', label: '会员ID', type: 'number' },
-      { key: 'memberNo', label: '会员编号' },
-      { key: 'memberName', label: '会员姓名' },
-      { key: 'recordType', label: '类型', type: 'select', options: [
+      { key: 'memberId', label: '会员', formHidden: true },
+      { key: 'memberNo', label: '会员编号', formHidden: true },
+      { key: 'memberName', label: '会员姓名', formHidden: true },
+      { key: 'recordType', label: '类型', type: 'select', required: true, options: [
         { label: '消费得积分', value: '1' },
         { label: '兑换扣积分', value: '2' },
         { label: '过期清零', value: '3' },
         { label: '手动调整', value: '4' },
         { label: '签到得积分', value: '5' }
       ] },
-      { key: 'consumeAmount', label: '消费金额', type: 'number' },
-      { key: 'points', label: '积分变动', type: 'number' },
-      { key: 'balance', label: '变动后余额', type: 'number' },
-      { key: 'ruleCode', label: '规则名称', type: 'select', options: [
+      { key: 'consumeAmount', label: '消费金额', type: 'number', precision: 2, required: true },
+      { key: 'points', label: '积分变动', type: 'number', precision: 0, allowNegative: true, required: true },
+      { key: 'balance', label: '变动后余额', type: 'number', formHidden: true },
+      { key: 'ruleCode', label: '规则名称', type: 'select', formHidden: true, options: [
         { label: '消费得积分', value: 'PURCHASE_LEVEL_RATE' },
         { label: '兑换扣积分', value: 'EXCHANGE_DEDUCT' },
         { label: '过期清零', value: 'EXPIRE_CLEAR' },
@@ -374,9 +373,10 @@ export const modules = {
       { key: 'expenseType', label: '费用类别', type: 'select', dictType: 'finance_expense_type' },
       { key: 'expenseContent', label: '花销内容', required: true },
       { key: 'paymentMethod', label: '付款方式', type: 'select', dictType: 'finance_payment_method', options: paymentMethods },
-      { key: 'expenseAmount', label: '费用金额', type: 'number', required: true },
+      { key: 'expenseAmount', label: '费用金额', type: 'number', required: true, allowNegative: true },
       { key: 'advanceId', label: '关联借支ID', type: 'number', hidden: true },
-      { key: 'status', label: '状态', type: 'select', options: [{ label: '未核销', value: '0' }, { label: '已核销', value: '1' }], hidden: true }
+      { key: 'status', label: '状态', type: 'select', options: [{ label: '未核销', value: '0' }, { label: '已核销', value: '1' }], hidden: true },
+      { key: 'remark', label: '备注', type: 'textarea' }
     ]
   },
   advance: {
@@ -839,7 +839,12 @@ export function formatDisplayValue(field, value, item) {
   const key = field?.key || ''
   if (MONEY_KEYS.includes(key) && isNumericLike(value)) return '¥' + Number(value).toFixed(MONEY_PRECISION)
   if (POINT_KEYS.includes(key) && isNumericLike(value)) return trimNumber(value) + ' 积分'
-  if (PERCENT_KEYS.includes(key) && isNumericLike(value)) return trimNumber(value) + '%'
+  if (PERCENT_KEYS.includes(key) && isNumericLike(value)) {
+    // 兼容两种口径：≤1 当作小数比例(0.7=70%)，>1 当作百分数(70=70%)
+    const num = Number(value)
+    const pct = num <= 1 ? num * 100 : num
+    return trimNumber(pct) + '%'
+  }
   if (COUNT_KEYS.includes(key) && isNumericLike(value)) return Number(value).toFixed(QUANTITY_PRECISION).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1')
   return base
 }

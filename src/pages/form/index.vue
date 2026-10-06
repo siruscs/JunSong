@@ -399,6 +399,7 @@ export default {
     },
     isReadonlyField(field) {
       if (this.config?.readonlyFields?.includes(field.key)) return true
+      if (field.formReadonly) return true
       if (this.moduleKey === 'member' && !this.id && field.serverGenerated) return true
       return this.isSeckillRecordCreate && field.key === 'totalAmount'
     },
@@ -638,6 +639,18 @@ export default {
     },
     setValueFromField(key, value) {
       this.setValue(key, value)
+      // birthday → age 自动同步（方案 B：birthday 为真源）
+      if (this.moduleKey === 'member' && key === 'birthday') {
+        if (!value) { this.form.age = undefined }
+        else {
+          const birth = new Date(value)
+          const now = new Date()
+          let age = now.getFullYear() - birth.getFullYear()
+          const m = now.getMonth() - birth.getMonth()
+          if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--
+          this.form.age = age >= 0 ? age : undefined
+        }
+      }
     },
     inputValueFromField(key, value) {
       this.onFieldInput(key, value)

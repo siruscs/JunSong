@@ -42,7 +42,8 @@ export const modules = {
       { key: 'memberNo', label: '会员编号', serverGenerated: true },
       { key: 'memberName', label: '会员姓名', required: true },
       { key: 'phone', label: '手机号码', type: 'phone' },
-      { key: 'age', label: '年龄', type: 'number' },
+      { key: 'birthday', label: '出生日期', type: 'date' },
+      { key: 'age', label: '年龄', type: 'number', formReadonly: true, labelSuffix: '（自动）' },
       { key: 'address', label: '住址' },
       { key: 'idCard', label: '身份证号', type: 'idcard', sensitive: true },
       { key: 'cardType', label: '会员卡类型', type: 'select', displayKey: 'cardTypeName', remoteUrl: '/member/level/list', remoteLabel: 'typeName', remoteValue: 'typeCode', remoteFilterStatus: '0', required: true },
@@ -136,6 +137,38 @@ export const modules = {
     permissions: {
       view: 'member:experienceDailyRecord:list',
       edit: 'member:experienceDailyRecord:edit'
+    }
+  },
+  experienceSessionConfig: {
+    group: '会员服务',
+    title: '场次配置',
+    path: '/member/experience/sessionConfig',
+    permissions: {
+      ...memberCrudPermissions('experienceSessionConfig'),
+      // 导出（A4 图片）复用 list 权限，与 PC 端打印按钮口径一致（无独立权限码）
+      exportSessions: 'member:experienceSessionConfig:list',
+      exportSeats: 'member:experienceSessionConfig:list'
+    },
+    idKey: 'configId',
+    searchKey: 'sessionNo',
+    summary: ['sessionNo', 'timeStart', 'timeEnd', 'remark'],
+    pageActions: [
+      { name: '导出场次表', action: 'exportSessions' },
+      { name: '导出座次表', action: 'exportSeats' }
+    ],
+    fields: [
+      { key: 'sessionNo', label: '场次序号', type: 'number', required: true },
+      { key: 'timeStart', label: '开始时间', required: true, placeholder: 'HH:mm，如 07:00' },
+      { key: 'timeEnd', label: '结束时间', required: true, placeholder: 'HH:mm，如 08:00' },
+      { key: 'remark', label: '备注', type: 'textarea' }
+    ]
+  },
+  experienceStatistics: {
+    group: '会员服务',
+    title: '体验统计',
+    customPage: '/pages/experience-statistics/index',
+    permissions: {
+      view: ['member:experienceDailyRecord:list', 'member:experienceSessionConfig:list']
     }
   },
   campaignPolicy: {
@@ -762,6 +795,7 @@ export const moduleList = Object.keys(modules)
 // 注意：modules 里注册的新模块必须同步加入此数组，否则 workbench 网格不渲染
 // （filterAuthorizedGroups 只遍历 groups[].items，渲染顺序随后端 grants 重排）
 const memberServiceOrder = ['member', 'memberPurchase', 'memberPurchaseReturn', 'memberLevel', 'experienceRecord',
+  'experienceSessionConfig', 'experienceStatistics',
   'campaignPolicy', 'pointsGoods', 'pointsRule', 'pointsRecord', 'pointsExchange',
   'seckill', 'seckillRecord'
 ]

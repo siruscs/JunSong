@@ -42,6 +42,7 @@
 import { request } from '@/api/index.js'
 import { hasActionPermission } from '@/utils/permission.js'
 import { isUnknownWriteOutcome } from '@/utils/operationState.js'
+import { workContext } from '@/utils/workContext.js'
 
 export default {
   data() {
@@ -102,12 +103,11 @@ export default {
       this.loadError = ''
       this.verificationReady = false
       try {
+        const currentDeptId = workContext.snapshot().currentDeptId
         this.expenses = await Promise.all(this.expenseIds.map(async (id) => {
-          const response = await request({ url: `/finance/expense/${id}/verificationCandidate`, method: 'GET', silent: true })
+          const response = await request({ url: `/finance/expense/${id}/verificationCandidate`, method: 'GET', data: { deptId: currentDeptId }, silent: true })
           return response.data || response
         }))
-        const user = uni.getStorageSync('userInfo') || {}
-        const currentDeptId = user.currentDeptId || user.deptId
         const requestedIds = [...this.expenseIds].sort((a, b) => a - b)
         const returnedIds = [...new Set(this.expenses.map((item) => Number(item.expenseId)))].sort((a, b) => a - b)
         if (this.expenses.length !== requestedIds.length || returnedIds.length !== requestedIds.length || returnedIds.some((id, index) => id !== requestedIds[index])) {
@@ -121,7 +121,7 @@ export default {
         }
         this.advancePermissionNotice = ''
         try {
-          const response = await request({ url: '/finance/expense/unverifiedAdvances', method: 'GET', silent: true })
+          const response = await request({ url: '/finance/expense/unverifiedAdvances', method: 'GET', data: { deptId: currentDeptId }, silent: true })
           const data = response.data || response
           this.advances = Array.isArray(data) ? data : (data.rows || [])
         } catch (permErr) {
@@ -150,10 +150,12 @@ export default {
     },
     async submitVerify() {
       if (this.submitting || !this.verificationReady) return
+      const currentDeptId = workContext.snapshot().currentDeptId
       this.pendingVerifyPayload = this.pendingVerifyPayload || {
         expenseIds: [...this.expenseIds],
         advanceIds: [...this.selectedAdvanceIds],
-        requestId: this.requestId
+        requestId: this.requestId,
+        deptId: currentDeptId
       }
       this.submitting = true
       try {
